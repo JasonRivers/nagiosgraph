@@ -1,7 +1,7 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.5 2004/12/09 02:50:17 sauber Exp $
+File:    $Id: INSTALL,v 1.6 2004/12/09 06:59:11 sauber Exp $
 Author:  (c) Soren Dossing, 2004
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -32,6 +32,8 @@ Follow instructions below to install and use nagiosgraph.
        command_name  process-service-perfdata
        command_line  /usr/local/nagios/nagiosgraph/insert.pl "$LASTCHECK$||$HOSTNAME$||$SERVICEDESC$||$OUTPUT$||$PERFDATA$"
      }
+
+   Make sure there is only one definition for process-service-perfdata.
 
  - Put an icon approx. 40x40 in .../share/images/logos/ for nagios to link
    to graphs.
