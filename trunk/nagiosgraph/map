@@ -1,7 +1,30 @@
-# File:    $Id: map,v 1.1.1.1 2004/08/03 08:08:28 sauber Exp $
+# File:    $Id: map,v 1.2 2004/10/03 07:24:17 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
+
+########################################################################
+#
+# INSTRUCTIONS:
+#
+# This file contains several example of service types. Edit this file to 
+# add more service types. The data string from Nagios is in $_ . Use 
+# regular expressions to identify and extract data like the examples below
+# below.  Match on either output: or perfdata: . The code is pure perl, 
+# that will be run inside and eval{}. Results are expected in @s. The
+# general format is:
+# 
+# /output|perfdata:<servicetype> <key>=<value> <key2=value2> .../
+# and push @s, [ <databasename>,
+#                [ <key>,  GAUGE|COUNTER, <value>  ],
+#                [ <key2>, GAUGE|COUNTER, <value2> ],
+#                [ .       .              .        ],
+#                [ .       .              .        ] ];
+# 
+# But more advanced code is possible, as long as the resulting 
+# datastructure is correct.
+# 
+########################################################################
 
 # Service type: ping
 #   output:PING OK - Packet loss = 0%, RTA = 0.00 m

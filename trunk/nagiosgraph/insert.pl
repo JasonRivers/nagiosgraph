@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.2 2004/08/17 07:49:53 sauber Exp $
+# File:    $Id: insert.pl,v 1.3 2004/10/03 07:24:17 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 
 use strict;
-use Data::Dumper;
+#use Data::Dumper;  # Only need this to debug internal data structures.
 
 # Configuration
 my $configfile = '/usr/local/etc/nagiosgraph.conf';

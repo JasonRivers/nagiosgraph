@@ -1,7 +1,7 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.1.1.1 2004/08/03 08:08:28 sauber Exp $
+File:    $Id: INSTALL,v 1.2 2004/10/03 07:24:17 sauber Exp $
 Author:  (c) Soren Dossing, 2004
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -28,8 +28,9 @@ Follow instructions below to install and use nagiosgraph.
 
      define command {
        command_name  process-service-perfdata
-       command_line  /usr/local/nagios/nagiosgraph/insert.pl "$LASTCHECK$\t$HOSTNAME$\t$SERVICEDESC$\t$OUTPUT$\t$PERFDATA$"
+       command_line  /usr/local/nagios/nagiosgraph/insert.pl "$LASTCHECK$||$HOSTNAME$||$SERVICEDESC$||$OUTPUT$||$PERFDATA$"
      }
+
  - Put an icon approx. 40x40 in .../share/images/logos/ for nagios to link
    to graphs.
 
@@ -55,7 +56,7 @@ Follow instructions below to install and use nagiosgraph.
      define serviceextinfo {
        service_description  ntp
        host_name       server01,server02,server03,server04
-       notes_url       /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&db=ntp,jitter~s,offset~s&db=ntp,stratum
+       notes_url       /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&db=ntp,jitter,offset&db=ntp,stratum
        icon_image      graph.gif
        icon_image_alt  View graphs
      }
@@ -63,6 +64,10 @@ Follow instructions below to install and use nagiosgraph.
  - Configure Apache to point to show.cgi. For example:
 
      ScriptAlias /nagiosgraph/ /usr/local/nagios/nagiosgraph/
+
+ - To add new service types, edit the map file. This contains regular
+   expression to identify service types, and defines how to store data in 
+   rrd files.
 
  - Consider security
 
