@@ -1,12 +1,11 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.4 2004/10/31 05:55:27 sauber Exp $
+# File:    $Id: insert.pl,v 1.5 2004/11/11 07:22:02 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 
 use strict;
-#use Data::Dumper;  # Only need this to debug internal data structures.
 
 # Configuration
 my $configfile = '/usr/local/etc/nagiosgraph.conf';
@@ -94,7 +93,6 @@ sub createrrd {
   debug(5, "INSERT Checking $Config{rrddir}/$f");
   unless ( -e "$Config{rrddir}/$f" ) {
     $ds = "$Config{rrdtool} create $Config{rrddir}/$f --start $start";
-    #debug(5, "INSERT Labels:" . Dumper($labels));
     for ( @$labels ) {
       ($v,$t) = ($_->[0],$_->[1]);
       my $u = $t eq 'DERIVE' ? '0' : 'U' ;
@@ -110,6 +108,8 @@ sub createrrd {
   return $f;
 }
 
+# Use rrdtool to update rrd file
+#
 sub rrdupdate {
   my($file,$time,$values) = @_;
   my($ds,$c);
@@ -145,9 +145,13 @@ sub parseperfdata {
     debug(2, "Map eval error: $@") if $@;
   use strict "subs";
   debug(3, 'INSERT perfdata not recognized' unless @s;
-  #debug(5, 'INSERT @s=' . Dumper(\@s));
   return \@s;
 }
+
+### Main loop
+#  - Read config and input
+#  - Update rrd files
+#  - Create them first if necesary.
 
 readconfig();
 my %P = parseinput($ARGV[0]);
