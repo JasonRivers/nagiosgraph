@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.10 2005/03/15 14:28:27 sauber Exp $
+# File:    $Id: show.cgi,v 1.11 2005/03/22 06:02:07 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -204,7 +204,8 @@ sub page {
         print "</td></tr>\n";
       }
     } else {
-      my $arg = join '&', "host=$h", "service=$s", "graph=$t";
+      my $arg = join '&', "host=$h", "service=$s", "graph=$t",
+                          "geom=$d", "rrdopts=$o";
       print "<tr><td><img src='?$arg'></td align=center>";
       print "<td></td></tr>\n";
     }
