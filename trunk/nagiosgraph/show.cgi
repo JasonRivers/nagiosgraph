@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.8 2005/03/10 00:22:45 sauber Exp $
+# File:    $Id: show.cgi,v 1.9 2005/03/10 01:38:19 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -137,7 +137,7 @@ sub hashcolor {
 # Generate all the parameters for rrd to produce a graph
 #
 sub rrdline {
-  my($host,$service,$geom,$G,$time) = @_;
+  my($host,$service,$geom,$rrdopts,$G,$time) = @_;
   my($g,$f,$v,$c,$ds);
 
   # Identify where to pull data from and what to call it
@@ -164,13 +164,20 @@ sub rrdline {
     my($w,$h) = split 'x', $geom;
     $rg .= " -w $w -h $h";
   }
+  # Additional parameters to rrd graph, if specified
+  if ( $rrdopts ) {
+    $rg .= " $rrdopts";
+  }
   return $rg;
 }
 
 # Write a pretty page with various graphs
 #
 sub page {
-  my($h,$s,$d,@db) = @_;
+  my($h,$s,$d,$o,@db) = @_;
+
+  # Reencode rrdopts
+  $o =~ s/([\W])/"%".uc(sprintf("%2.2x",ord($1)))/eg;s/%20/+/g;
 
   # Define graph sizes
   #   Daily   =  33h =   118800s
@@ -178,7 +185,6 @@ sub page {
   #   Monthly =   5w =  3024000s
   #   Yearly  = 400d = 34560000s
   my @T=(['dai',118800], ['week',777600], ['month',3024000], ['year',34560000]);
-  
   print "<h2>nagiosgraph</h2>\n";
   printf "<blockquote>Performance data for <strong>Host:</strong> <tt>%s</tt> &#183; <strong>Service:</strong> <tt>%s</tt></blockquote>\n", $h, $s;
   for my $l ( @T ) {
@@ -188,7 +194,7 @@ sub page {
     if ( @db ) {
       for my $g ( @db ) {
         my $arg = join '&', "host=$h", "service=$s", "db=$g", "graph=$t",
-                            "geom=$d";
+                            "geom=$d", "rrdopts=$o";
         my @gl = split ',', $g;
         my $ds = shift @gl;
         print "<tr><td><img src='?$arg'></td><td align=center>";
@@ -214,13 +220,14 @@ my $service = param('service') if param('service');
 my @db = param('db') if param('db');
 my $graph = param('graph') if param('graph');
 my $geom = param('geom') if param('geom');
+my $rrdopts = param('rrdopts') if param('rrdopts');
 
 # Draw a graph or a page
 if ( $graph ) {
   print "Content-type: image/png\n\n";
   # Figure out db files and line labels
   my $G = graphinfo($host,$service,@db);
-  my $ds = rrdline($host,$service,$geom,$G,$graph);
+  my $ds = rrdline($host,$service,$geom,$rrdopts,$G,$graph);
   debug(4, "CGI System $ds");
   undef $!;
   print `$ds`;
@@ -234,7 +241,7 @@ if ( $graph ) {
   print "<META HTTP-EQUIV=\"Refresh\" CONTENT=\"300\">\n";
   print "</head>\n";
   print "<body bgcolor=#BBBBFF text=#000000>\n";
-  page($host,$service,$geom,@db);
+  page($host,$service,$geom,$rrdopts,@db);
   print "<hr>\n";
   print '<small>Created by <a href="http://nagiosgraph.sf.net/">nagiosgraph</a>.</small>';
   print "\n</body>\n</html>\n";
