@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.1.1.1 2004/08/03 08:08:28 sauber Exp $
+# File:    $Id: insert.pl,v 1.2 2004/08/17 07:49:53 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -89,8 +89,6 @@ sub createrrd {
   my($host,$service,$start,$labels) = @_;
   my($f,$v,$t,$ds,$db);
 
-  #$service = "root" if $service eq "/";
-  #$service =~ s/[^A-Z0-9]//ig;
   $db = shift @$labels;
   $f = urlencode("${host}_${service}_${db}") . '.rrd';
   debug(5, "INSERT Checking $Config{rrddir}/$f");
@@ -99,7 +97,8 @@ sub createrrd {
     #debug(5, "INSERT Labels:" . Dumper($labels));
     for ( @$labels ) {
       ($v,$t) = ($_->[0],$_->[1]);
-      $ds .= " DS:$v:$t:600:U:U";
+      my $u = $t eq 'DERIVE' ? '0' : 'U' ;
+      $ds .= " DS:$v:$t:600:$u:U";
     }
     $ds .= " RRA:AVERAGE:0.5:1:600";
     $ds .= " RRA:AVERAGE:0.5:6:700";
