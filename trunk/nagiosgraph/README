@@ -1,7 +1,7 @@
 Nagiosgraph
 -----------
 
-File:    $Id: README,v 1.3 2004/12/09 07:15:37 sauber Exp $
+File:    $Id: README,v 1.4 2004/12/09 08:14:19 sauber Exp $
 Author:  (c) Soren Dossing, 2004
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -23,6 +23,7 @@ README            - This file
 README.map        - Document for how to create map file entries
 insert.pl         - Receives output and perfdata from nagios and insert 
                     into rrd files.
+insert_fast.pl    - A modified version of insert.pl that uses shared module.
 show.cgi          - Generates a html page for the host/sevice specified, 
                     and generates graphs on-the-fly.
 nagiosgraph.conf  - paths and other configuration
