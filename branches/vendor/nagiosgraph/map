@@ -1,0 +1,143 @@
+# File:    $Id: map,v 1.1.1.1 2004/08/03 08:08:28 sauber Exp $
+# Author:  (c) Soren Dossing, 2004
+# License: OSI Artistic License
+#          http://www.opensource.org/licenses/artistic-license.php
+
+# Service type: ping
+#   output:PING OK - Packet loss = 0%, RTA = 0.00 m
+/output:PING.*?(\d+)%.+?([.\d]+)\sms/
+and push @s, [ ping,
+               [ losspct, GAUGE, $1      ],
+               [ rta,     GAUGE, $2/1000 ] ];
+
+# Service type: unix-disk
+#   ouput:DISK OK - free space: / 12372 mB (77% inode=96%): /raid 882442 mB (88% inode=91%):
+#   perfdata: /=12372mB;14417;15698;96;16019 /raid=882441mB;999780;999780;91;999780
+/output:DISK/ and do {
+  my @_pct = /: (\/.*?) .*?(\d+)% inode=(\d+)%/g;
+  while ( my($_d,$_b,$_i) = splice @_pct,0,3 ) {
+    my @_s;
+    /perfdata:.*$_d=(\d+)\w*?;(\d+);(\d+);(\d+);(\d+)/;
+    push @s, [ $_d,
+               [ free,     GAUGE, $1*1024**2  ],
+               [ user,     GAUGE, $2*1024**2  ],
+               [ root,     GAUGE, $3*1024**2  ],
+               [ max,      GAUGE, $5*1024**2  ],
+               [ blockpct, GAUGE, $_b ],
+               [ inodepct, GAUGE, $_i ] ];
+  }
+};
+
+# Service type: unix-dns
+#   output:DNS OK - 0.008 seconds response time (test.test.1M IN A192.169.0.47)
+#   perfdata:time=8260us;;;0
+/output:DNS.*?([.0-9]+) sec/
+and push @s, [ dns,
+               [ response,  GAUGE, $1 ] ];
+
+# Service type: unix-imap
+#   output:IMAP OK - 0.009 second response time on port 143
+/output:IMAP.*?([-.0-9]+) sec/
+and push @s, [ imap,
+               [ response, GAUGE, $1 ] ];
+
+# Service type: unix-ldap
+#   ouput:LDAP OK - 0.004 seconds response time
+#   perfdata:time=3657us;;;0
+/output:LDAP.*?([.0-9]+) sec/
+and push @s, [ ldap,
+               [ response, GAUGE, $1 ] ];
+
+# Service type: unix-load
+#   output: OK - load average: 0.66, 0.70, 0.73
+#   perfdata:load1=0;15;30;0 load5=0;10;25;0 load15=0;5;20;0
+/output:.*load average: ([.0-9]+), ([.0-9]+), ([.0-9]+)/
+and push @s, [ load,
+               [ avg1min,  GAUGE, $1 ],
+               [ avg5min,  GAUGE, $2 ],
+               [ avg15min, GAUGE, $3 ] ];
+
+# Service type: unix-mailq
+#   output:WARNING: mailq is 5717 (threshold w = 5000)
+#   perfdata:unsent=5717;5000;10000;0
+/perfdata:unsent=(\d+);(\d+);(\d+);(\d+)/
+and push @s, [ mailq,
+               [ qsize, GAUGE, $1 ],
+               [ qwarn, GAUGE, $2 ],
+               [ qcrit, GAUGE, $3 ] ];
+
+# Service type: unix-netstat
+#   output:OK
+#   perfdata:udpInDatagrams=46517147, udpOutDatagrams=46192507, udpInErrors=0, 
+#   tcpActiveOpens=1451583, tcpPassiveOpens=1076181, tcpAttemptFails=1909, 
+#   tcpEstabResets=5045, tcpCurrEstab=6, tcpOutDataBytes=3162434373, 
+#   tcpInDataBytes=1942718261, tcpRetransBytes=215439
+/perfdata:.*udpInDatagrams=(\d+), udpOutDatagrams=(\d+), udpInErrors=(\d+), tcpActiveOpens=(\d+), tcpPassiveOpens=(\d+), tcpAttemptFails=(\d+), tcpEstabResets=(\d+), tcpCurrEstab=(\d+), tcpOutDataBytes=(\d+), tcpInDataBytes=(\d+), tcpRetransBytes=(\d+)/
+and push @s, [ udp,
+               [ InPkts,  COUNTER, int $1/300 ],
+               [ OutPkts, COUNTER, int $2/300 ],
+               [ Errors,  COUNTER, int $3/300 ] ],
+             [ tcp,
+               [ ActOpens,    COUNTER, int $4/300    ],
+               [ PsvOpens,    COUNTER, int $5/300    ],
+               [ AttmptFails, COUNTER, int $6/300    ],
+               [ OutBytes,    COUNTER, int $9/300*8  ],
+               [ InBytes,     COUNTER, int $10/300*8 ] ];
+
+# Service type: unix-ntp
+#   output:NTP OK: Offset 0.001083 secs, jitter 14.84 msec, peer is stratum 1
+/output:NTP.*Offset ([-.0-9]+).*jitter ([-.0-9]+).*stratum (\d+)/
+and push @s, [ ntp,
+               [ offset,  GAUGE, $1      ],
+               [ jitter,  GAUGE, $2/1000 ],
+               [ stratum, GAUGE, $3+1    ] ];
+
+# Service type: unix-pop
+#   output:POP OK - 0.008 second response time on port 110
+/output:POP.*?([.0-9]+) second/
+and push @s, [ pop3,
+               [ response, GAUGE, $1 ] ];
+
+# Service type: unix-procs
+#   output:PROCS OK: 43 processes
+/output:PROCS.*?(\d+) processes\n/
+and push @s, [ procs,
+               [ procs, GAUGE, $1 ] ];
+
+# Service type: unix-smtp
+#   output:SMTP OK - 0.187 sec. response time
+/output:SMTP.*?([-.0-9]+) sec/
+and push @s, [ smtp,
+               [ response, GAUGE, $1 ] ];
+
+# Service type: unix-swap
+#   output:SWAP OK: 96% free (2616 MB out of 2744 MB)
+#   perfdata:swap=2616MB;274;54;0;2744
+/perfdata:swap=(\d+)MB;(\d+);(\d+);\d+;(\d+)/
+and push @s, [ swap,
+               [ swapfree, GAUGE, $1*1024**2 ],
+               [ swapwarn, GAUGE, $2*1024**2 ],
+               [ swapcrit, GAUGE, $3*1024**2 ],
+               [ swapmax,  GAUGE, $4*1024**2 ] ];
+
+# Service type: unix-users
+#   output:USERS OK - 4 users currently logged in
+#   perfdata:users=4;5;10;0 
+/perfdata:users=(\d+);(\d+);(\d+)/
+and push @s, [ procs,
+               [ users, GAUGE, $1 ],
+               [ warn,  GAUGE, $2 ],
+               [ crit,  GAUGE, $3 ] ];
+
+# Service type: unix-zombies
+#   ouput:PROCS OK: 0 processes with STATE = Z
+/output:PROCS.*?(\d+) processes.*Z/
+and push @s, [ zombie,
+               [ zombies, GAUGE, $1 ] ];
+
+# Service type: unix-www
+#   ouput:HTTP OK HTTP/1.1 200 OK - 1456 bytes in 0.003 seconds
+/output:HTTP.*?(\d+) byte.*?([.0-9]+) sec/
+and push @s, [ http,
+               [ bps, GAUGE, $1/$2 ] ];
+
