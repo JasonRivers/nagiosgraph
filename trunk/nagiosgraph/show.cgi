@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.7 2005/01/13 03:02:10 sauber Exp $
+# File:    $Id: show.cgi,v 1.8 2005/03/10 00:22:45 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -112,6 +112,7 @@ sub graphinfo {
     } else {
       $ds = "$Config{rrdtool} info $Config{rrddir}/$f->{file}";
       debug(4, "CGI System $ds");
+      undef $!;
       $dsout = `$ds`;
       debug(4, "CGI System returncode $? message $!");
       map { $f->{line}{$_} = 1} grep {!$H{$_}++} $dsout =~ /ds\[(.*)\]/g;
@@ -221,6 +222,7 @@ if ( $graph ) {
   my $G = graphinfo($host,$service,@db);
   my $ds = rrdline($host,$service,$geom,$G,$graph);
   debug(4, "CGI System $ds");
+  undef $!;
   print `$ds`;
   debug(4, "CGI System returncode $? message $!");
   exit;
