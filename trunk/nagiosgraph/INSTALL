@@ -1,7 +1,7 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.4 2004/12/05 06:13:49 sauber Exp $
+File:    $Id: INSTALL,v 1.5 2004/12/09 02:50:17 sauber Exp $
 Author:  (c) Soren Dossing, 2004
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -66,6 +66,8 @@ Follow instructions below to install and use nagiosgraph.
        icon_image      graph.gif
        icon_image_alt  View graphs
      }
+
+ - Add fx &geom=350x100 to notes_url line for custom sizes of graphs.
 
  - Configure Apache to point to show.cgi. For example:
 

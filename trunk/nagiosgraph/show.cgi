@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.4 2004/12/05 06:13:16 sauber Exp $
+# File:    $Id: show.cgi,v 1.5 2004/12/09 02:50:18 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -136,7 +136,7 @@ sub hashcolor {
 # Generate all the parameters for rrd to produce a graph
 #
 sub rrdline {
-  my($host,$service,$G,$time) = @_;
+  my($host,$service,$geom,$G,$time) = @_;
   my($g,$f,$v,$c,$ds);
 
   # Identify where to pull data from and what to call it
@@ -158,13 +158,18 @@ sub rrdline {
   }
 
   my $rg = "$Config{rrdtool} graph - -a PNG --start -$time $ds";
+  # Dimensions of graph if geom is specified
+  if ( $geom ) {
+    my($w,$h) = split 'x', $geom;
+    $rg .= " -w $w -h $h";
+  }
   return $rg;
 }
 
 # Write a pretty page with various graphs
 #
 sub page {
-  my($h,$s,@db) = @_;
+  my($h,$s,$d,@db) = @_;
 
   # Define graph sizes
   #   Daily   =  33h =   118800s
@@ -181,7 +186,8 @@ sub page {
     print "<blockquote><table>\n";
     if ( @db ) {
       for my $g ( @db ) {
-        my $arg = join '&', "host=$h", "service=$s", "db=$g", "graph=$t";
+        my $arg = join '&', "host=$h", "service=$s", "db=$g", "graph=$t",
+                            "geom=$d";
         my @gl = split ',', $g;
         my $ds = shift @gl;
         print "<tr><td><img src='?$arg'></td><td align=center>";
@@ -206,13 +212,14 @@ my $host = param('host') if param('host');
 my $service = param('service') if param('service');
 my @db = param('db') if param('db');
 my $graph = param('graph') if param('graph');
+my $geom = param('geom') if param('geom');
 
 # Draw a graph or a page
 if ( $graph ) {
   print "Content-type: image/png\n\n";
   # Figure out db files and line labels
   my $G = graphinfo($host,$service,@db);
-  my $ds = rrdline($host,$service,$G,$graph);
+  my $ds = rrdline($host,$service,$geom,$G,$graph);
   debug(4, "CGI System $ds");
   print `$ds`;
   debug(4, "CGI System returncode $? message $!");
@@ -225,7 +232,7 @@ if ( $graph ) {
   print "<META HTTP-EQUIV=\"Refresh\" CONTENT=\"300\">\n";
   print "</head>\n";
   print "<body bgcolor=#BBBBFF>\n";
-  page($host,$service,@db);
+  page($host,$service,$geom,@db);
   print "<hr>\n";
   print '<small>Created by <a href="http://nagiosgraph.sf.net/">nagiosgraph</a>.</small>';
   print "\n</body>\n</html>\n";
