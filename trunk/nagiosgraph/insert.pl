@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.3 2004/10/03 07:24:17 sauber Exp $
+# File:    $Id: insert.pl,v 1.4 2004/10/31 05:55:27 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -144,6 +144,7 @@ sub parseperfdata {
     eval $rules;
     debug(2, "Map eval error: $@") if $@;
   use strict "subs";
+  debug(3, 'INSERT perfdata not recognized' unless @s;
   #debug(5, 'INSERT @s=' . Dumper(\@s));
   return \@s;
 }
