@@ -1,4 +1,4 @@
-# File:    $Id: map,v 1.5 2005/01/13 03:02:59 sauber Exp $
+# File:    $Id: map,v 1.6 2005/03/10 01:49:42 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -43,6 +43,7 @@ and push @s, [ $1,
 
 
 # Service type: all unix-disk
+# Note: nagiosplugin requires the inode patch
 #   ouput:DISK OK - free space: / 12372 mB (77% inode=96%): /raid 882442 mB (88% inode=91%):
 #   perfdata: /=12372mB;14417;15698;96;16019 /raid=882441mB;999780;999780;91;999780
 /output:DISK.*inode=/ and do {
