@@ -1,12 +1,14 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.3 2004/11/12 03:01:55 sauber Exp $
+File:    $Id: INSTALL,v 1.4 2004/12/05 06:13:49 sauber Exp $
 Author:  (c) Soren Dossing, 2004
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
 
 Follow instructions below to install and use nagiosgraph.
+
+ - Check required packaged are installed: perl, nagios and rrdtool
 
  - Install nagiosgraph.conf, map, insert.pl and show.cgi somewhere, fx
    /usr/local/nagios/nagiosgraph/
@@ -34,27 +36,31 @@ Follow instructions below to install and use nagiosgraph.
  - Put an icon approx. 40x40 in .../share/images/logos/ for nagios to link
    to graphs.
 
+ - In cgi.cfg have:
+
+     xedtemplate_config_file=/usr/local/etc/nagios/serviceextinfo.cfg
+
  - Edit serviceextinfo.cfg
 
    Most services can be graphed with no particular configuration like this:
 
      define serviceextinfo {
-       service_description  dns
+       service_description  DNS
        hostgroup       servers
        notes_url       /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
        icon_image      graph.gif
        icon_image_alt  View graphs
      }
 
-   On the host_name line write all hosts where this type of data are being
-   collected.
+   Instead of hostgroup line a host_name line with all hosts where this
+   type of data are being collected.
 
    Some type of services have data values that have big differences in the
    magnitude. In such cases it's good idea to split up into seperate
    graphs. Here's an example for ntp:
 
      define serviceextinfo {
-       service_description  ntp
+       service_description  NTP
        host_name       server01,server02,server03,server04
        notes_url       /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&db=ntp,jitter,offset&db=ntp,stratum
        icon_image      graph.gif
@@ -70,6 +76,9 @@ Follow instructions below to install and use nagiosgraph.
    rrd files. Use testentry.pl for testing before inserting in map file.
 
  - Consider security
+
+ - Start Nagios. Increase debug level in nagiosgraph.conf if things don't
+   work right away.
 
  - Keep an eye on the log file. It can grow big. Perhaps rotate it, or
    decrease log level when everything works fine.
