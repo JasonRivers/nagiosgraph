@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.5 2004/11/11 07:22:02 sauber Exp $
+# File:    $Id: insert.pl,v 1.6 2004/12/01 02:34:31 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -104,6 +104,7 @@ sub createrrd {
     $ds .= " RRA:AVERAGE:0.5:288:797";
     debug(4, "INSERT System $ds");
     system ($ds);
+    debug(4, "INSERT System returncode $? message $!");
   }
   return $f;
 }
@@ -120,6 +121,7 @@ sub rrdupdate {
   }
   debug(4, "INSERT System $ds");
   system($ds);
+  debug(4, "INSERT System returncode $? message $!");
 }
 
 # See if we can recognize any of the data we got
