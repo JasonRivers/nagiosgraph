@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.7 2004/12/05 06:14:18 sauber Exp $
+# File:    $Id: insert.pl,v 1.8 2005/01/13 03:04:44 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -143,6 +143,7 @@ sub parseperfdata {
   # Send input to map file, and let it assign something to @s;
   $_="servicedescr:$P{servicedescr}\noutput:$P{output}\nperfdata:$P{perfdata}";
   no strict "subs";
+    undef $@;
     eval $rules;
     debug(2, "Map eval error: $@") if $@;
   use strict "subs";
@@ -160,6 +161,6 @@ my %P = parseinput($ARGV[0]);
 dumpperfdata(%P);
 my $S = parseperfdata(%P);
 for my $s ( @$S ) {
-  my $rrd = createrrd($P{hostname}, $P{servicedescr}, $P{lastcheck}--, $s);
+  my $rrd = createrrd($P{hostname}, $P{servicedescr}, $P{lastcheck}-1, $s);
   rrdupdate($rrd, $P{lastcheck}, $s);
 }
