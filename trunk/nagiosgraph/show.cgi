@@ -1,13 +1,12 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.1.1.1 2004/08/03 08:08:28 sauber Exp $
+# File:    $Id: show.cgi,v 1.2 2004/11/12 03:01:55 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 
 use strict;
 use CGI qw/:standard/;
-use Data::Dumper;
 
 # Configuration
 my $configfile = '/usr/local/etc/nagiosgraph.conf';
@@ -114,11 +113,7 @@ sub graphinfo {
       $ds = "$Config{rrdtool} info $Config{rrddir}/$f->{file}";
       debug(4, "CGI System $ds");
       $dsout = `$ds`;
-      #undef %H;
-      #@values = grep {!$H{$_}++} $dsout =~ /ds\[(.*)\]/g;
-      #$R{$f} = \@values;
       map { $f->{line}{$_} = 1} grep {!$H{$_}++} $dsout =~ /ds\[(.*)\]/g;
-      #debug(4, "CGI DS $f values @values");
     }
     debug(5, "CGI DS $f->{file} lines:"
            . join ', ', keys %{ $f->{line} } );
@@ -127,15 +122,15 @@ sub graphinfo {
 }
 
 # Choose a color for service
+#
 sub hashcolor {
-  my $c = 1;map{$c=($c*ord)%(16**6)}split//,$_[0];
-  my($i,$n,$m,@h);@h=(int$c/16**4,int$c/256%256,$c%256);
+  my$c=1;map{$c=1+($c*ord)%(216)}split//,$_[0];
+  my($i,$n,$m,@h);@h=(51*int$c/36,51*int$c/6%6,51*($c%6));
   for$i(0..2){$m=$i if$h[$i]<$h[$m];$n=$i if$h[$i]>$h[$n]}
-  $h[$m]=128if$h[$m]>128;$h[$n]=128if$h[$n]<128;
+  $h[$m]=102if$h[$m]>102;$h[$n]=153if$h[$n]<153;
   $c=sprintf"%06X",$h[2]+$h[1]*256+$h[0]*16**4;
   return $c;
 }
-
 
 # Generate all the parameters for rrd to produce a graph
 #
@@ -146,14 +141,11 @@ sub rrdline {
   # Identify where to pull data from and what to call it
   $ds = '';
   for $g ( @$G ) {
-    #print "file=$f<br>\n";
     $f = $g->{file};
     debug(5, "CGI file=$f");
     for $v ( keys %{ $g->{line} } ) {
       $c = hashcolor($v);
       debug(5, "CGI file=$f line=$v color=$c");
-      #print "file=$f ds=$v color=$c<br>\n";
-      #my $sv = "$service$v";
       my $sv = "$v";
       $ds .= " DEF:$sv=$Config{rrddir}/$f:$v:AVERAGE";
       $ds .= " LINE2:${sv}#$c:$sv";
@@ -165,9 +157,6 @@ sub rrdline {
   }
 
   my $rg = "$Config{rrdtool} graph - -a PNG --start -$time $ds";
-  #$u = urlencode( "$t $ds" );
-  #debug(3, "CGI System $rg<br>\n";
-  #print "<img src='?host=$host&service=$service&graph=$t'><br>\n";
   return $rg;
 }
 
@@ -183,7 +172,6 @@ sub page {
   #   Yearly  = 400d = 34560000s
   my @T=(['dai',118800], ['week',777600], ['month',3024000], ['year',34560000]);
   
-  #debug(5, 'CGI @db=' . join '&', @db);
   print "<h2>Nagios Graph</h2>\n";
   print "Host: $h<br>\n";
   print "Service: $s<br>\n";

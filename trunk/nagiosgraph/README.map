@@ -1,7 +1,7 @@
 map file
 --------
 
-File:    $Id: README.map,v 1.1 2004/10/14 07:03:33 sauber Exp $
+File:    $Id: README.map,v 1.2 2004/11/12 03:01:55 sauber Exp $
 Author:  (c) Soren Dossing, 2004
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -52,7 +52,7 @@ general format is
   ]
 
 Where DS-name is the name that will be assigned to a line showing on rrd 
-graphs. TYPE is either GAUGE or COUNTER. the DS value is the data 
+graphs. TYPE is either GAUGE or DERIVE. the DS value is the data 
 extracted in the regular expression. The DS value can be an expression, 
 for example to normalize to SI units.
 

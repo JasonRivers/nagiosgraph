@@ -1,7 +1,7 @@
 Nagiosgraph
 -----------
 
-File:    $Id: README,v 1.1.1.1 2004/08/03 08:08:28 sauber Exp $
+File:    $Id: README,v 1.2 2004/11/12 03:01:55 sauber Exp $
 Author:  (c) Soren Dossing, 2004
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -27,3 +27,4 @@ show.cgi          - Generates a html page for the host/sevice specified,
 nagiosgraph.conf  - paths and other configuration
 map               - Regular expression to identify services and 
                     specification for how to create rrd files.
+testentry.pl      - A script for testing new map file entries.
