@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.3 2004/12/01 02:40:16 sauber Exp $
+# File:    $Id: show.cgi,v 1.4 2004/12/05 06:13:16 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -173,24 +173,29 @@ sub page {
   #   Yearly  = 400d = 34560000s
   my @T=(['dai',118800], ['week',777600], ['month',3024000], ['year',34560000]);
   
-  print "<h2>Nagios Graph</h2>\n";
-  print "Host: $h<br>\n";
-  print "Service: $s<br>\n";
-  print "Lines: @db<br>\n";
+  print "<h2>nagiosgraph</h2>\n";
+  printf "<blockquote>Performance data for <strong>Host:</strong> <tt>%s</tt> &#183; <strong>Service:</strong> <tt>%s</tt></blockquote>\n", $h, $s;
   for my $l ( @T ) {
     my($p,$t) = ($l->[0],$l->[1]);
-    print "<hr>\n<h4>${p}ly graph</h4><br>\n";
+    printf "<h3>%sly</h3>\n", ucfirst $p;
+    print "<blockquote><table>\n";
     if ( @db ) {
       for my $g ( @db ) {
         my $arg = join '&', "host=$h", "service=$s", "db=$g", "graph=$t";
-        print "(<small>$arg</small>)<br>\n";
-        print "<img src='?$arg'><br><br>\n";
+        my @gl = split ',', $g;
+        my $ds = shift @gl;
+        print "<tr><td><img src='?$arg'></td><td align=center>";
+        print "<strong>$ds</strong><br><small>";
+        print join ', ', @gl;
+        print "</small>";
+        print "</td></tr>\n";
       }
     } else {
       my $arg = join '&', "host=$h", "service=$s", "graph=$t";
-      print "(<small>$arg</small>)<br>\n";
-      print "<img src='?$arg'><br><br>\n";
+      print "<tr><td><img src='?$arg'></td align=center>";
+      print "<td></td></tr>\n";
     }
+    print "</table></blockquote>\n";
   }
 }
 
@@ -216,10 +221,12 @@ if ( $graph ) {
   print "Content-type: text/html\n\n";
   print "<html>\n";
   print "<head>\n";
-  print "<title>Nagiosgraph $host-$service</title>\n";
+  print "<title>nagiosgraph: $host-$service</title>\n";
   print "<META HTTP-EQUIV=\"Refresh\" CONTENT=\"300\">\n";
   print "</head>\n";
-  print "<body>\n";
+  print "<body bgcolor=#BBBBFF>\n";
   page($host,$service,@db);
-  print "</body>\n</html>\n";
+  print "<hr>\n";
+  print '<small>Created by <a href="http://nagiosgraph.sf.net/">nagiosgraph</a>.</small>';
+  print "\n</body>\n</html>\n";
 }
