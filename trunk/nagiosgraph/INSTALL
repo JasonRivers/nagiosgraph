@@ -1,7 +1,7 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.7 2005/01/12 23:20:19 sauber Exp $
+File:    $Id: INSTALL,v 1.8 2005/01/13 03:03:40 sauber Exp $
 Author:  (c) Soren Dossing, 2004
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -33,7 +33,8 @@ Follow instructions below to install and use nagiosgraph.
        command_line  /usr/local/nagios/nagiosgraph/insert.pl "$LASTCHECK$||$HOSTNAME$||$SERVICEDESC$||$OUTPUT$||$PERFDATA$"
      }
 
-   Make sure there is only one definition for process-service-perfdata.
+   Make sure there is only one definition for process-service-perfdata. If
+   the RRDs perl modules are installed, then use insert_fast.pl instead.
 
    Contributed by Stu: In Nagios2.0 use the following macro names:
 
