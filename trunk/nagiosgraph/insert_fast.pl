@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert_fast.pl,v 1.2 2004/12/09 07:32:23 sauber Exp $
+# File:    $Id: insert_fast.pl,v 1.3 2004/12/09 09:00:28 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -107,7 +107,7 @@ sub createrrd {
     my @ds = split /\s+/, $ds;
     debug(4, "INSERT RRDs::create ". join ' ', @ds);
     RRDs::create(@ds);
-    debug(4, "INSERT RRDs::create ERR " . RRDs::error) if RRDs::error;
+    debug(2, "INSERT RRDs::create ERR " . RRDs::error) if RRDs::error;
   }
   return $f;
 }
@@ -126,7 +126,7 @@ sub rrdupdate {
   my @ds = split /\s+/, $ds;
   debug(4, "INSERT RRDs::update ". join ' ', @ds);
   RRDs::update(@ds);
-  debug(4, "INSERT RRDs::update ERR " . RRDs::error) if RRDs::error;
+  debug(2, "INSERT RRDs::update ERR " . RRDs::error) if RRDs::error;
 }
 
 # See if we can recognize any of the data we got
