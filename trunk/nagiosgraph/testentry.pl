@@ -13,4 +13,4 @@ and push @s, [ ping,
                [ losspct, GAUGE, $1      ],
                [ rta,     GAUGE, $2/1000 ] ];
 
-print Data::Dumper->Dump([@s], [qw(*s)]);
+print Data::Dumper->Dump([\@s], [qw(*s)]);
