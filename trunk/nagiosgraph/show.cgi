@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.5 2004/12/09 02:50:18 sauber Exp $
+# File:    $Id: show.cgi,v 1.6 2004/12/09 06:55:51 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -231,7 +231,7 @@ if ( $graph ) {
   print "<title>nagiosgraph: $host-$service</title>\n";
   print "<META HTTP-EQUIV=\"Refresh\" CONTENT=\"300\">\n";
   print "</head>\n";
-  print "<body bgcolor=#BBBBFF>\n";
+  print "<body bgcolor=#BBBBFF text=#000000>\n";
   page($host,$service,$geom,@db);
   print "<hr>\n";
   print '<small>Created by <a href="http://nagiosgraph.sf.net/">nagiosgraph</a>.</small>';
