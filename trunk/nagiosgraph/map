@@ -1,4 +1,4 @@
-# File:    $Id: map,v 1.6 2005/03/10 01:49:42 sauber Exp $
+# File:    $Id: map,v 1.7 2005/03/12 01:48:51 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -37,10 +37,9 @@ and push @s, [ ping,
 #  output:DISK OK - free space: /tmp 663 MB (90%):
 /output:DISK.*free space: (\S+) (\d+) MB \((\d+)\%\)/
 and push @s, [ $1,
-               [ bytesfree, GAUGE, $2*1024 ],
-               [ bytesmax, GAUGE, $3 ? $2*1024/$3*100 : 'U' ],
+               [ bytesfree, GAUGE, $2*1024**2 ],
+               [ bytesmax, GAUGE, $3 ? $2*1024**2/$3*100 : 'U' ],
                [ pctfree, GAUGE, $3 ] ];
-
 
 # Service type: all unix-disk
 # Note: nagiosplugin requires the inode patch
@@ -159,8 +158,8 @@ and push @s, [ swap,
 /perfdata:users=(\d+);(\d+);(\d+)/
 and push @s, [ procs,
                [ users, GAUGE, $1 ],
-               [ warn,  GAUGE, $2 ],
-               [ crit,  GAUGE, $3 ] ];
+               [ uwarn,  GAUGE, $2 ],
+               [ ucrit,  GAUGE, $3 ] ];
 
 # Service type: unix-zombies
 #   ouput:PROCS OK: 0 processes with STATE = Z
