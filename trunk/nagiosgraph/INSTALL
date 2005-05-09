@@ -1,14 +1,14 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.9 2005/03/10 01:38:19 sauber Exp $
+File:    $Id: INSTALL,v 1.10 2005/05/09 05:53:45 sauber Exp $
 Author:  (c) Soren Dossing, 2004
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
 
 Follow instructions below to install and use nagiosgraph.
 
- - Check required packaged are installed: perl, nagios and rrdtool
+ - Check required packaged are installed: perl, CGI, nagios and rrdtool
 
  - Install nagiosgraph.conf, map, insert.pl and show.cgi somewhere, fx
    /usr/local/nagios/nagiosgraph/
