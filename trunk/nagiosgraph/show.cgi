@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.11 2005/03/22 06:02:07 sauber Exp $
+# File:    $Id: show.cgi,v 1.12 2005/05/21 06:44:33 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -126,7 +126,7 @@ sub graphinfo {
 # Choose a color for service
 #
 sub hashcolor {
-  my$c=$Config{colorscheme};map{$c=1+(51*$c+ord)%(216)}split//,$_[0];
+  my$c=$Config{colorscheme};map{$c=(51*$c+ord)%(216)}split//,"$_[0]x";
   my($i,$n,$m,@h);@h=(51*int$c/36,51*int$c/6%6,51*($c%6));
   for$i(0..2){$m=$i if$h[$i]<$h[$m];$n=$i if$h[$i]>$h[$n]}
   $h[$m]=102if$h[$m]>102;$h[$n]=153if$h[$n]<153;
