@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert_fast.pl,v 1.4 2005/01/13 03:05:21 sauber Exp $
+# File:    $Id: insert_fast.pl,v 1.5 2005/06/23 03:28:44 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -97,7 +97,7 @@ sub createrrd {
     for ( @$labels ) {
       ($v,$t) = ($_->[0],$_->[1]);
       my $u = $t eq 'DERIVE' ? '0' : 'U' ;
-      $ds .= " DS:$v:$t:600:$u:U";
+      $ds .= " DS:$v:$t:$Config{heartbeat}:$u:U";
     }
     $ds .= " RRA:AVERAGE:0.5:1:600";
     $ds .= " RRA:AVERAGE:0.5:6:700";
