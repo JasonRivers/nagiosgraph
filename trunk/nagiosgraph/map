@@ -1,4 +1,4 @@
-# File:    $Id: map,v 1.7 2005/03/12 01:48:51 sauber Exp $
+# File:    $Id: map,v 1.8 2005/07/22 04:08:05 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -173,3 +173,13 @@ and push @s, [ zombie,
 and push @s, [ http,
                [ bps, GAUGE, $1/$2 ] ];
 
+# Service type: unix-tcp
+#   output:TCP OK - 0.061 second response time on port 22
+#   perfdata:time=0.060777s;0.000000;0.000000;0.000000;10.000000
+/output:TCP.*?on port (\d+)\s*perfdata:time=(\d+\.\d+).*(\d+\.\d+)\D*(\d+\.\d+)\D*(\d+\.\d+)\D*(\d+\.\d+)/
+and push @s, [ "tcp_$1",
+               [ 'connect_time',   GAUGE, $2 ],
+               [ 'warning_time',   GAUGE, $3 ],
+               [ 'critical_time',  GAUGE, $4 ],
+               [ 'socket_timeout', GAUGE, $6 ],
+             ];
