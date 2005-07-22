@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.10 2005/06/23 03:28:44 sauber Exp $
+# File:    $Id: insert.pl,v 1.11 2005/07/22 04:02:41 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -118,6 +118,7 @@ sub rrdupdate {
 
   $ds = "$Config{rrdtool} update $Config{rrddir}/$file $time";
   for ( @$values ) {
+    $_->[2] ||= 0;
     $ds .= ":$_->[2]";
   }
   debug(4, "INSERT System $ds");

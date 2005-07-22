@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert_fast.pl,v 1.5 2005/06/23 03:28:44 sauber Exp $
+# File:    $Id: insert_fast.pl,v 1.6 2005/07/22 04:02:41 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -120,6 +120,7 @@ sub rrdupdate {
 
   $ds = "$Config{rrddir}/$file $time";
   for ( @$values ) {
+    $_->[2] ||= 0;
     $ds .= ":$_->[2]";
   }
 
