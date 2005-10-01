@@ -1,11 +1,12 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.11 2005/07/22 04:02:41 sauber Exp $
+# File:    $Id: insert.pl,v 1.12 2005/10/01 12:41:04 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 
 use strict;
+use RRDs;
 
 # Configuration
 my $configfile = '/usr/local/etc/nagiosgraph.conf';
@@ -92,7 +93,7 @@ sub createrrd {
   $f = urlencode("${host}_${service}_${db}") . '.rrd';
   debug(5, "INSERT Checking $Config{rrddir}/$f");
   unless ( -e "$Config{rrddir}/$f" ) {
-    $ds = "$Config{rrdtool} create $Config{rrddir}/$f --start $start";
+    $ds = "$Config{rrddir}/$f --start $start";
     for ( @$labels ) {
       ($v,$t) = ($_->[0],$_->[1]);
       my $u = $t eq 'DERIVE' ? '0' : 'U' ;
@@ -102,10 +103,11 @@ sub createrrd {
     $ds .= " RRA:AVERAGE:0.5:6:700";
     $ds .= " RRA:AVERAGE:0.5:24:775";
     $ds .= " RRA:AVERAGE:0.5:288:797";
-    debug(4, "INSERT System $ds");
-    undef $!;
-    system($ds);
-    debug(4, "INSERT System returncode $? message $!");
+
+    my @ds = split /\s+/, $ds;
+    debug(4, "INSERT RRDs::create ". join ' ', @ds);
+    RRDs::create(@ds);
+    debug(2, "INSERT RRDs::create ERR " . RRDs::error) if RRDs::error;
   }
   return $f;
 }
@@ -116,15 +118,16 @@ sub rrdupdate {
   my($file,$time,$values) = @_;
   my($ds,$c);
 
-  $ds = "$Config{rrdtool} update $Config{rrddir}/$file $time";
+  $ds = "$Config{rrddir}/$file $time";
   for ( @$values ) {
     $_->[2] ||= 0;
     $ds .= ":$_->[2]";
   }
-  debug(4, "INSERT System $ds");
-  undef $!;
-  system($ds);
-  debug(4, "INSERT System returncode $? message $!");
+
+  my @ds = split /\s+/, $ds;
+  debug(4, "INSERT RRDs::update ". join ' ', @ds);
+  RRDs::update(@ds);
+  debug(2, "INSERT RRDs::update ERR " . RRDs::error) if RRDs::error;
 }
 
 # See if we can recognize any of the data we got
@@ -160,10 +163,24 @@ sub parseperfdata {
 #  - Create them first if necesary.
 
 readconfig();
-my %P = parseinput($ARGV[0]);
-dumpperfdata(%P);
-my $S = parseperfdata(%P);
-for my $s ( @$S ) {
-  my $rrd = createrrd($P{hostname}, $P{servicedescr}, $P{lastcheck}-1, $s);
-  rrdupdate($rrd, $P{lastcheck}, $s);
+debug(4, 'INSERT nagiosgraph spawned');
+my @inputlines;
+if ( $ARGV[0] ) {
+  @inputlines = $ARGV[0];
+} elsif ( defined $Config{perflog} ) {
+  open PERFLOG, $Config{perflog};
+    @inputlines = <PERFLOG>;
+  close PERFLOG
+} else {
+  debug(1, 'INSERT No inputdata. Exiting.');
+  exit 1;
+}
+for my $l ( @inputlines ) {
+  my %P = parseinput($l);
+  dumpperfdata(%P);
+  my $S = parseperfdata(%P);
+  for my $s ( @$S ) {
+    my $rrd = createrrd($P{hostname}, $P{servicedescr}, $P{lastcheck}-1, $s);
+    rrdupdate($rrd, $P{lastcheck}, $s);
+  }
 }
