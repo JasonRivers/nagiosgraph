@@ -1,11 +1,12 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.12 2005/05/21 06:44:33 sauber Exp $
+# File:    $Id: show.cgi,v 1.13 2005/10/01 15:08:02 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 
 use strict;
+use RRDs;
 use CGI qw/:standard/;
 
 # Configuration
@@ -108,16 +109,16 @@ sub graphinfo {
   }
 
   for $f ( @rrd ) {
-    if ( $f->{line} ) {
-    } else {
-      $ds = "$Config{rrdtool} info $Config{rrddir}/$f->{file}";
-      debug(4, "CGI System $ds");
-      undef $!;
-      $dsout = `$ds`;
-      debug(4, "CGI System returncode $? message $!");
-      map { $f->{line}{$_} = 1} grep {!$H{$_}++} $dsout =~ /ds\[(.*)\]/g;
+    unless ( $f->{line} ) {
+      $ds = RRDs::info "$Config{rrddir}/$f->{file}";
+      debug(2, "CGI RRDs::info ERR " . RRDs::error) if RRDs::error;
+      map { $f->{line}{$_} = 1}
+      grep {!$H{$_}++}
+      map { /ds\[(.*)\]/; $1 }
+      grep /ds\[(.*)\]/,
+      keys %$ds;
     }
-    debug(5, "CGI DS $f->{file} lines:"
+    debug(5, "CGI DS $f->{file} lines: "
            . join ', ', keys %{ $f->{line} } );
   }
   return \@rrd;
@@ -138,37 +139,36 @@ sub hashcolor {
 #
 sub rrdline {
   my($host,$service,$geom,$rrdopts,$G,$time) = @_;
-  my($g,$f,$v,$c,$ds);
+  my($g,$f,$v,$c,@ds);
 
+  @ds = ('-', '-a', 'PNG', '--start', "-$time");
   # Identify where to pull data from and what to call it
-  $ds = '';
   for $g ( @$G ) {
     $f = $g->{file};
     debug(5, "CGI file=$f");
-    for $v ( keys %{ $g->{line} } ) {
+    for $v ( sort keys %{ $g->{line} } ) {
       $c = hashcolor($v);
       debug(5, "CGI file=$f line=$v color=$c");
       my $sv = "$v";
-      $ds .= " DEF:$sv=$Config{rrddir}/$f:$v:AVERAGE";
-      $ds .= " LINE2:${sv}#$c:$sv";
-      $ds .= " GPRINT:$sv:MAX:'Max\\: %6.2lf%s'";
-      $ds .= " GPRINT:$sv:AVERAGE:'Avg\\: %6.2lf%s'";
-      $ds .= " GPRINT:$sv:MIN:'Min\\: %6.2lf%s'";
-      $ds .= " GPRINT:$sv:LAST:'Cur\\: %6.2lf%s\\n'";
+      push @ds , "DEF:$sv=$Config{rrddir}/$f:$v:AVERAGE"
+               , "LINE2:${sv}#$c:$sv"
+               , "GPRINT:$sv:MAX:Max\\: %6.2lf%s"
+               , "GPRINT:$sv:AVERAGE:Avg\\: %6.2lf%s"
+               , "GPRINT:$sv:MIN:Min\\: %6.2lf%s"
+               , "GPRINT:$sv:LAST:Cur\\: %6.2lf%s\\n";
     }
   }
 
-  my $rg = "$Config{rrdtool} graph - -a PNG --start -$time $ds";
   # Dimensions of graph if geom is specified
   if ( $geom ) {
     my($w,$h) = split 'x', $geom;
-    $rg .= " -w $w -h $h";
+    push @ds, '-w', $w, '-h', $h;
   }
   # Additional parameters to rrd graph, if specified
   if ( $rrdopts ) {
-    $rg .= " $rrdopts";
+    push @ds, split /\s+/, $rrdopts;
   }
-  return $rg;
+  return @ds;
 }
 
 # Write a pretty page with various graphs
@@ -228,11 +228,10 @@ if ( $graph ) {
   print "Content-type: image/png\n\n";
   # Figure out db files and line labels
   my $G = graphinfo($host,$service,@db);
-  my $ds = rrdline($host,$service,$geom,$rrdopts,$G,$graph);
-  debug(4, "CGI System $ds");
-  undef $!;
-  print `$ds`;
-  debug(4, "CGI System returncode $? message $!");
+  my @ds = rrdline($host,$service,$geom,$rrdopts,$G,$graph);
+  debug(4, "CGI RRDs::graph ". join ' ', @ds);
+  RRDs::graph(@ds);
+  debug(2, "CGI RRDs::graph ERR " . RRDs::error) if RRDs::error;
   exit;
 } else {
   print "Content-type: text/html\n\n";
