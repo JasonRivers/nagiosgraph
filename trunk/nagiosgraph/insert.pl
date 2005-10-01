@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.13 2005/10/01 15:19:29 sauber Exp $
+# File:    $Id: insert.pl,v 1.14 2005/10/01 15:46:28 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -112,7 +112,7 @@ sub createrrd {
   return $f;
 }
 
-# Use rrdtool to update rrd file
+# Use RRDs to update rrd file
 #
 sub rrdupdate {
   my($file,$time,$values) = @_;
