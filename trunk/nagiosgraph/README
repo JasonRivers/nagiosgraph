@@ -1,7 +1,7 @@
 Nagiosgraph
 -----------
 
-File:    $Id: README,v 1.6 2005/08/26 08:54:11 sauber Exp $
+File:    $Id: README,v 1.7 2005/10/01 15:17:58 sauber Exp $
 Author:  (c) Soren Dossing, 2004
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -18,12 +18,12 @@ Nagios is a registered trademark of Ethan Galstad.
 
 Files:
 
+CHANGELOG         - History of changes
 INSTALL           - Dcoument for how to install and use nagiosgraph
 README            - This file
 README.map        - Document for how to create map file entries
-insert.pl         - Receives output and perfdata from nagios and insert 
-                    into rrd files.
-insert_fast.pl    - A modified version of insert.pl that uses shared module.
+insert.pl         - Reads perfdata log from nagios and insert into rrd 
+                    files.
 show.cgi          - Generates a html page for the host/sevice specified, 
                     and generates graphs on-the-fly.
 nagiosgraph.conf  - paths and other configuration
