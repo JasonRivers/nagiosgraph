@@ -1,17 +1,19 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.11 2005/06/23 03:28:44 sauber Exp $
-Author:  (c) Soren Dossing, 2004
+File:    $Id: INSTALL,v 1.12 2005/10/01 15:15:42 sauber Exp $
+Author:  (c) Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
 
-Follow instructions below to install and use nagiosgraph.
+Follow instructions below to install and use nagiosgraph. The
+instructions are for Nagios 2.0b4, and might differ in other versions of
+Nagios.
 
  - Check required packaged are installed: perl, CGI, nagios and rrdtool
 
- - Install nagiosgraph.conf, map, insert.pl and show.cgi somewhere, fx
-   /usr/local/nagios/nagiosgraph/
+ - Install nagiosgraph.conf, map, insert.pl and show.cgi somewhere, for 
+   example in /usr/local/nagios/nagiosgraph/
 
  - Edit paths, debug level etc. in nagiosgraph.conf.
 
@@ -24,21 +26,22 @@ Follow instructions below to install and use nagiosgraph.
  - In nagios.cfg set:
 
      process_performance_data=1
-     service_perfdata_command=process-service-perfdata
+     service_perfdata_file=/var/spool/nagios/perfdata.log
+     service_perfdata_file_template=$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$
+     service_perfdata_file_mode=a
+     service_perfdata_file_processing_interval=30
+     service_perfdata_file_processing_command=process-service-perfdata
+
+   Make sure that service_perfdata_command is not defined.
 
  - In checkcommands.cfg or misccommands.cfg:
 
      define command {
        command_name  process-service-perfdata
-       command_line  /usr/local/nagios/nagiosgraph/insert.pl "$LASTCHECK$||$HOSTNAME$||$SERVICEDESC$||$OUTPUT$||$PERFDATA$"
+       command_line  /usr/local/nagios/nagiosgraph/insert.pl
      }
 
-   Make sure there is only one definition for process-service-perfdata. If
-   the RRDs perl modules are installed, then use insert_fast.pl instead.
-
-   Contributed by Stu: In Nagios2.0 use the following macro names:
-
-     "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
+   Make sure there is only one definition for process-service-perfdata.
 
  - Put an icon approx. 40x40 in .../share/images/logos/ for nagios to link
    to graphs.
@@ -74,11 +77,12 @@ Follow instructions below to install and use nagiosgraph.
        icon_image_alt  View graphs
      }
 
- - Add fx &geom=350x100 to notes_url line for custom sizes of graphs.
+ - Add for example &geom=350x100 to notes_url line for custom sizes of 
+   graphs.
 
- - Add fx &rrdopts=%2Dl%200%20%2Du%20100 (meaning: "-l 0 -u 100") to
-   notes_url line for custom Y axis ranges. Any rrdgraph options can be
-   specified, but has to be url encoded.
+ - Add for example &rrdopts=%2Dl%200%20%2Du%20100 (meaning: 
+   "-l 0 -u 100") to notes_url line for custom Y axis ranges. Any 
+   rrdgraph options can be specified, but has to be url encoded.
 
  - Configure Apache to point to show.cgi. For example:
 
@@ -88,7 +92,7 @@ Follow instructions below to install and use nagiosgraph.
    expression to identify service types, and defines how to store data in 
    rrd files. Use testentry.pl for testing before inserting in map file.
 
- - Consider security
+ - Consider security.
 
  - Start Nagios. Increase debug level in nagiosgraph.conf if things don't
    work right away.
