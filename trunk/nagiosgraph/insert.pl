@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.12 2005/10/01 12:41:04 sauber Exp $
+# File:    $Id: insert.pl,v 1.13 2005/10/01 15:19:29 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -105,7 +105,7 @@ sub createrrd {
     $ds .= " RRA:AVERAGE:0.5:288:797";
 
     my @ds = split /\s+/, $ds;
-    debug(4, "INSERT RRDs::create ". join ' ', @ds);
+    debug(4, "INSERT RRDs::create $ds");
     RRDs::create(@ds);
     debug(2, "INSERT RRDs::create ERR " . RRDs::error) if RRDs::error;
   }
