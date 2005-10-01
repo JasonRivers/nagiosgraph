@@ -1,7 +1,7 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.12 2005/10/01 15:15:42 sauber Exp $
+File:    $Id: INSTALL,v 1.13 2005/10/01 15:27:42 sauber Exp $
 Author:  (c) Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -34,6 +34,9 @@ Nagios.
 
    Make sure that service_perfdata_command is not defined.
 
+   Make sure that location of perfdata_file matches definition in 
+   nagiosgraph.conf .
+
  - In checkcommands.cfg or misccommands.cfg:
 
      define command {
@@ -42,6 +45,24 @@ Nagios.
      }
 
    Make sure there is only one definition for process-service-perfdata.
+
+ - Alternative to the two points above: The old style is still possible. 
+   It uses far more CPU but inserts data in rrd files immediately for 
+   every service check.
+
+   In nagios.cfg:
+
+     service_perfdata_command=process-service-perfdata
+
+   Make sure that service_perfdata_file_processing_command is not 
+   defined.
+
+   In misccommands.cfg:
+
+     define command{
+       command_name    process-service-perfdata
+       command_line  /usr/local/nagios/nagiosgraph/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
+     }
 
  - Put an icon approx. 40x40 in .../share/images/logos/ for nagios to link
    to graphs.
