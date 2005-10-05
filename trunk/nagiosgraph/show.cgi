@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.13 2005/10/01 15:08:02 sauber Exp $
+# File:    $Id: show.cgi,v 1.14 2005/10/05 12:59:44 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -225,6 +225,7 @@ my $rrdopts = param('rrdopts') if param('rrdopts');
 
 # Draw a graph or a page
 if ( $graph ) {
+  $! = 1; # Make sure headers arrive before image data
   print "Content-type: image/png\n\n";
   # Figure out db files and line labels
   my $G = graphinfo($host,$service,@db);
