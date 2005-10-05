@@ -1,0 +1,12 @@
+Bugs
+
+* None currently
+
+Desired features.
+
+* Custom reports - combine graphs of various types on one page.
+* Navigation - browse all available graphs.
+* Customize rrd options for split graphs.
+* User defined colors
+* Red bar in graph to indicate missing data
+* Installer - that can configure Nagios.
