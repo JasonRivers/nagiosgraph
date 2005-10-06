@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.14 2005/10/01 15:46:28 sauber Exp $
+# File:    $Id: insert.pl,v 1.15 2005/10/06 00:24:54 sauber Exp $
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -22,7 +22,7 @@ sub readconfig {
   open FH, $configfile;
     while (<FH>) {
       s/\s*#.*//;    # Strip comments
-      /(\w+)\s*=\s*(.*)/ and do {
+      /^(\w+)\s*=\s*(.*?)\s*$/ and do {
         $Config{$1} = $2;
         debug(5, "INSERT Config $1:$2");
       };
