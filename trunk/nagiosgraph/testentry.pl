@@ -1,5 +1,10 @@
 #!/usr/bin/perl
 
+# File:    $Id: testentry.pl,v 1.4 2005/10/08 05:55:08 sauber Stab $
+# Author:  (c) Soren Dossing, 2005
+# License: OSI Artistic License
+#          http://www.opensource.org/licenses/artistic-license.php
+
 # Modify this script to test map entries before inserting into real
 # map file. Run the script and check if the output is as expected.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# File:    $Id: testcolor.cgi,v 1.1 2005/03/22 06:45:08 sauber Exp $
-# Author:  (c) Soren Dossing, 2004
+# File:    $Id: testcolor.cgi,v 1.2 2005/10/08 05:55:08 sauber Stab $
+# Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 

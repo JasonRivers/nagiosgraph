@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.15 2005/10/06 00:24:54 sauber Exp $
-# Author:  (c) Soren Dossing, 2004
+# File:    $Id: insert.pl,v 1.16 2005/10/08 05:55:08 sauber Exp $
+# Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 
@@ -18,6 +18,8 @@ my %Config;
 # Read in config file
 #
 sub readconfig {
+  die "config file not found" unless -r $configfile;
+
   # Read configuration data
   open FH, $configfile;
     while (<FH>) {
