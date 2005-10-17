@@ -1,4 +1,4 @@
-CVS
+0.6 2005-10-18
 
 * Only using RRD perl modules is supported. Removed binary rrdtool 
   dependency.
