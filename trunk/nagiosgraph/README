@@ -1,10 +1,11 @@
 Nagiosgraph
 -----------
 
-File:    $Id: README,v 1.8 2005/10/08 05:55:08 sauber Exp $
+File:    $Id: README,v 1.9 2005/10/26 23:07:06 sauber Exp $
 Author:  (c) Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
+
 
 Summary:
 
@@ -12,9 +13,11 @@ Collects perfdata from Nagios check scripts and inserts data into rrd
 files. Data in the rrdfiles can be displayed in html pages with cgi
 script.
 
+
 Note:
 
 Nagios is a registered trademark of Ethan Galstad.
+
 
 Files:
 
@@ -31,6 +34,20 @@ map               - Regular expression to identify services and
                     specification for how to create rrd files.
 testcolor.cgi     - Preview of colors for keywords in each color scheme
 testentry.pl      - A script for testing new map file entries.
+
+
+Usage:
+
+Follow the instructions in INSTALL for how to install and configure 
+nagiosgraph.
+
+
+Getting Help:
+
+Discussions related to nagiosgraph are located in a Sourceforge help
+forum; http://sourceforge.net/forum/forum.php?forum_id=394748 . A
+Sourceforge account is necessary for posting.
+
 
 Principles of Operation:
 
