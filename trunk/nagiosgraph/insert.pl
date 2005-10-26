@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.16 2005/10/08 05:55:08 sauber Exp $
+# File:    $Id: insert.pl,v 1.17 2005/10/26 14:42:57 sauber Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -45,7 +45,7 @@ sub readconfig {
 #
 sub parseinput {
   my $data = shift;
-  debug(5, "INSERT perfdata: $data");
+  #debug(5, "INSERT perfdata: $data");
   my @d = split( /\|\|/, $data);
   return ( lastcheck    => $d[0],
            hostname     => $d[1],
@@ -137,26 +137,44 @@ sub rrdupdate {
 sub parseperfdata {
   my %P = @_;
 
-  my($rules,@s);
-
-  # Slurp in map regexp file
-  my $slurptmp = $/;
-  undef $/;
-    open FH, $Config{mapfile};
-      $rules = <FH>;
-    close FH;
-  $/ = $slurptmp;
-  #debug(5, 'INSERT $rules=' . $rules);
-
-  # Send input to map file, and let it assign something to @s;
   $_="servicedescr:$P{servicedescr}\noutput:$P{output}\nperfdata:$P{perfdata}";
-  no strict "subs";
-    undef $@;
-    eval $rules;
-    debug(2, "Map eval error: $@") if $@;
-  use strict "subs";
-  debug(3, 'INSERT perfdata not recognized') unless @s;
-  return \@s;
+  evalrules($_);
+}
+
+# Check that we have some data to work on
+#
+sub inputdata {
+  my @inputlines;
+  if ( $ARGV[0] ) {
+    @inputlines = $ARGV[0];
+  } elsif ( defined $Config{perflog} ) {
+    open PERFLOG, $Config{perflog};
+      @inputlines = <PERFLOG>;
+    close PERFLOG
+  }
+
+  # Quit if there are no data to process
+  unless ( @inputlines ) {
+    debug(4, 'INSERT No inputdata. Exiting.');
+    exit 1;
+  }
+  return @inputlines;
+}
+
+# Process all input performance data
+#
+sub processdata {
+  my @perfdatalines = @_;
+  for my $l ( @perfdatalines ) {
+    debug(5, "INSERT processing perfdata: $l");
+    my %P = parseinput($l);
+    dumpperfdata(%P);
+    my $S = parseperfdata(%P);
+    for my $s ( @$S ) {
+      my $rrd = createrrd($P{hostname}, $P{servicedescr}, $P{lastcheck}-1, $s);
+      rrdupdate($rrd, $P{lastcheck}, $s);
+    }
+  }
 }
 
 ### Main loop
@@ -165,24 +183,28 @@ sub parseperfdata {
 #  - Create them first if necesary.
 
 readconfig();
-debug(4, 'INSERT nagiosgraph spawned');
-my @inputlines;
-if ( $ARGV[0] ) {
-  @inputlines = $ARGV[0];
-} elsif ( defined $Config{perflog} ) {
-  open PERFLOG, $Config{perflog};
-    @inputlines = <PERFLOG>;
-  close PERFLOG
-} else {
-  debug(1, 'INSERT No inputdata. Exiting.');
-  exit 1;
-}
-for my $l ( @inputlines ) {
-  my %P = parseinput($l);
-  dumpperfdata(%P);
-  my $S = parseperfdata(%P);
-  for my $s ( @$S ) {
-    my $rrd = createrrd($P{hostname}, $P{servicedescr}, $P{lastcheck}-1, $s);
-    rrdupdate($rrd, $P{lastcheck}, $s);
-  }
-}
+debug(5, 'INSERT nagiosgraph spawned');
+my @perfdata = inputdata();
+
+# Read the map file and define a subroutine that parses performance data
+my($rules);
+undef $/;
+open FH, $Config{mapfile};
+  $rules = <FH>;
+close FH;
+$rules = '
+sub evalrules {
+  $_=$_[0];
+  my @s;
+  no strict "subs";
+' . $rules . '
+  use strict "subs";
+  debug(3, "INSERT perfdata not recognized") unless @s;
+  return \@s;
+}';
+undef $@;
+eval $rules;
+debug(2, "INSERT Map file eval error: $@") if $@;
+
+processdata( @perfdata );
+debug(5, 'INSERT nagiosgraph exited');

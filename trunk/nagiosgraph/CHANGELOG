@@ -1,5 +1,6 @@
 CVS
 
+* Another significant performance increase by eval of rules only once
 * Header flush bug fixed
 
 0.6 2005-10-18
