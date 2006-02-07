@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.17 2005/10/24 06:29:34 sauber Exp $
+# File:    $Id: show.cgi,v 1.18 2006/02/07 13:54:15 sauber Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -74,6 +74,19 @@ sub urlencode {
   return $_[0];
 }
 
+# Get list of matching rrd files
+#
+sub dbfilelist {
+  my($host,$service) = @_;
+
+  my $hs = urlencode "${host}_${service}";
+  my @rrd;
+  opendir DH, $Config{rrddir};
+    @rrd = map { s/.*_(\w+)\.rrd/$1/;$_ } grep /^$hs/, readdir DH;
+  closedir DH;
+  return @rrd;
+}
+
 # Find graphs and values
 #
 sub graphinfo {
@@ -103,9 +116,9 @@ sub graphinfo {
     debug(4, "CGI Specified $hs db files in $Config{rrddir}: "
            . join ', ', map { $_->{file} } @rrd);
   } else {
-    opendir DH, $Config{rrddir};
-      @rrd = map {{ file=>$_ }} grep /^$hs/, readdir DH;
-    closedir DH;
+    @rrd = map {{ file=>$_ }}
+           map { "${hs}_${_}.rrd" }
+           dbfilelist($host,$service);
     debug(4, "CGI Listing $hs db files in $Config{rrddir}: "
            . join ', ', map { $_->{file} } @rrd);
   }
@@ -179,7 +192,11 @@ sub page {
   my($h,$s,$d,$o,@db) = @_;
 
   # Reencode rrdopts
-  $o =~ s/([\W])/"%".uc(sprintf("%2.2x",ord($1)))/eg;s/%20/+/g;
+  $o = urlencode $o;
+
+  # Detect available db files
+  @db = dbfilelist($h,$s) unless @db;
+  debug(5, "CGI dbfilelist @db");
 
   # Define graph sizes
   #   Daily   =  33h =   118800s
