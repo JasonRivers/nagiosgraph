@@ -1,4 +1,8 @@
-07 2005-10-27
+CVS
+
+* Splitting graphs is now default. Contribution from Doug Farley.
+
+0.7 2005-10-27
 
 * Another significant performance increase by eval of rules only once
 * Header flush bug fixed
@@ -8,7 +12,7 @@
 * Only using RRD perl modules is supported. Removed binary rrdtool 
   dependency.
 * Added support for perfdata log file for performance increase.  
-  Contributed by Alex.
+  Contribution from Alex.
 
 0.5 2005-06-22
 
