@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.18 2006/02/07 13:54:15 sauber Exp $
+# File:    $Id: show.cgi,v 1.19 2006/02/19 01:39:09 sauber Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -82,7 +82,7 @@ sub dbfilelist {
   my $hs = urlencode "${host}_${service}";
   my @rrd;
   opendir DH, $Config{rrddir};
-    @rrd = map { s/.*_(\w+)\.rrd/$1/;$_ } grep /^$hs/, readdir DH;
+    @rrd = map { s/.*_(\w+)\.rrd/$1/;$_ } grep /^$hs.*rrd$/, readdir DH;
   closedir DH;
   return @rrd;
 }
