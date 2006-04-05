@@ -1,7 +1,7 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.13 2005/10/01 15:27:42 sauber Exp $
+File:    $Id: INSTALL,v 1.14 2006/04/05 12:37:11 sauber Exp $
 Author:  (c) Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -66,6 +66,8 @@ Nagios.
 
  - Put an icon approx. 40x40 in .../share/images/logos/ for nagios to link
    to graphs.
+
+ - Copy nagiosgraph.css to .../nagios/stylesheets/ .
 
  - In cgi.cfg have:
 

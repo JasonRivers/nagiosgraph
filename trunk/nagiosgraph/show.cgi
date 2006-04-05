@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.19 2006/02/19 01:39:09 sauber Exp $
+# File:    $Id: show.cgi,v 1.20 2006/04/05 12:37:11 sauber Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -35,8 +35,8 @@ sub readconfig {
   # Make sure log file can be written to
   unless ( -w $Config{logfile} ) {
     my $msg = "Log file $Config{logfile} not writable";
-    print "Content-type: text/html\nExpires: 0\n\n";
-    print "$msg<br>\n";
+    print header(-type => "text/html", -expires => 0);
+    print p($msg);
     debug (2, "CGI Config $msg");
     return undef;
   }
@@ -44,8 +44,8 @@ sub readconfig {
   # Make sure rrddir is readable
   unless ( -r $Config{rrddir} ) {
     my $msg = "rrd dir $Config{rrddir} not readable";
-    print "Content-type: text/html\nExpires: 0\n\n";
-    print "$msg<br>\n";
+    print header(-type => "text/html", -expires => 0);
+    print p($msg);
     debug (2, "CGI Config $msg");
     return undef;
   }
@@ -78,7 +78,6 @@ sub urlencode {
 #
 sub dbfilelist {
   my($host,$service) = @_;
-
   my $hs = urlencode "${host}_${service}";
   my @rrd;
   opendir DH, $Config{rrddir};
@@ -204,31 +203,25 @@ sub page {
   #   Monthly =   5w =  3024000s
   #   Yearly  = 400d = 34560000s
   my @T=(['dai',118800], ['week',777600], ['month',3024000], ['year',34560000]);
-  print "<h2>nagiosgraph</h2>\n";
-  printf "<blockquote>Performance data for <strong>Host:</strong> <tt>%s</tt> &#183; <strong>Service:</strong> <tt>%s</tt></blockquote>\n", $h, $s;
+  print h1("Nagiosgraph");
+  print p("Performance data for ".strong("Host: ").tt($h).' &#183; '.strong("Service: ").tt($s));
   for my $l ( @T ) {
     my($p,$t) = ($l->[0],$l->[1]);
-    printf "<h3>%sly</h3>\n", ucfirst $p;
-    print "<blockquote><table>\n";
+    print h2(ucfirst $p . "ly");
     if ( @db ) {
       for my $g ( @db ) {
         my $arg = join '&', "host=$h", "service=$s", "db=$g", "graph=$t",
                             "geom=$d", "rrdopts=$o";
         my @gl = split ',', $g;
         my $ds = shift @gl;
-        print "<tr><td><img src='?$arg'></td><td align=center>";
-        print "<strong>$ds</strong><br><small>";
-        print join ', ', @gl;
-        print "</small>";
-        print "</td></tr>\n";
+        print div({-class => "graphs"}, img( {-src => "?$arg", -alt => "Graph"} ) );
+        print div({-class => "graph_description"}, cite(strong($ds).br().small(join(", ", @gl))));
       }
     } else {
       my $arg = join '&', "host=$h", "service=$s", "graph=$t",
                           "geom=$d", "rrdopts=$o";
-      print "<tr><td><img src='?$arg'></td align=center>";
-      print "<td></td></tr>\n";
+      print div({-class => "graphs"}, img( {-src => "?$arg", -alt => "Graph"} ) );
     }
-    print "</table></blockquote>\n";
   }
 }
 
@@ -245,7 +238,7 @@ my $rrdopts = param('rrdopts') if param('rrdopts');
 # Draw a graph or a page
 if ( $graph ) {
   $| = 1; # Make sure headers arrive before image data
-  print "Content-type: image/png\n\n";
+  print header(-type => "image/png");
   # Figure out db files and line labels
   my $G = graphinfo($host,$service,@db);
   my @ds = rrdline($host,$service,$geom,$rrdopts,$G,$graph);
@@ -254,15 +247,15 @@ if ( $graph ) {
   debug(2, "CGI RRDs::graph ERR " . RRDs::error) if RRDs::error;
   exit;
 } else {
-  print "Content-type: text/html\n\n";
-  print "<html>\n";
-  print "<head>\n";
-  print "<title>nagiosgraph: $host-$service</title>\n";
-  print "<META HTTP-EQUIV=\"Refresh\" CONTENT=\"300\">\n";
-  print "</head>\n";
-  print "<body bgcolor=#BBBBFF text=#000000>\n";
+  my @style;
+  if ($Config{stylesheet}) {
+    @style = ( -style => {-src => "$Config{stylesheet}"} );
+  }
+  print header, start_html(-id=>"nagiosgraph", -title => "nagiosgraph: $host-$service",
+    -meta => { -http_equiv => "Refresh", -content => "300" },
+    @style
+    );
   page($host,$service,$geom,$rrdopts,@db);
-  print "<hr>\n";
-  print '<small>Created by <a href="http://nagiosgraph.sf.net/">nagiosgraph</a>.</small>';
-  print "\n</body>\n</html>\n";
+  print div({-id => "footer"}, hr(), small( "Created by ". a( {-href=>"http://nagiosgraph.sf.net/"}, "nagiosgraph"). "." ));
+  print end_html();
 }

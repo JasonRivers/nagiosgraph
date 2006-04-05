@@ -1,7 +1,7 @@
 Nagiosgraph
 -----------
 
-File:    $Id: README,v 1.9 2005/10/26 23:07:06 sauber Exp $
+File:    $Id: README,v 1.10 2006/04/05 12:37:11 sauber Stab $
 Author:  (c) Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -30,6 +30,7 @@ insert.pl         - Reads perfdata log from nagios and insert into rrd
 show.cgi          - Generates a html page for the host/sevice specified, 
                     and generates graphs on-the-fly.
 nagiosgraph.conf  - paths and other configuration
+nagiosgraph.css   - CSS stylesheet
 map               - Regular expression to identify services and 
                     specification for how to create rrd files.
 testcolor.cgi     - Preview of colors for keywords in each color scheme
