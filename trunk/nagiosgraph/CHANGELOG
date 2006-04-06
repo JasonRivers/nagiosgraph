@@ -1,3 +1,7 @@
+CVS
+
+* Db-file-has-a-number bug fixed. Patch from Ton Voon.
+
 0.8 2006-04-05
 
 * Use stylesheet. Contribution from Ton Voon.
