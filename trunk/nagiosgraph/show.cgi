@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.22 2006/04/12 09:42:16 sauber Exp $
+# File:    $Id: show.cgi,v 1.23 2006/07/10 13:57:37 sauber Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -213,7 +213,7 @@ sub page {
         my $arg = join '&', "host=$h", "service=$s", "db=$g", "graph=$t",
                             "geom=$d", "rrdopts=$o";
         my @gl = split ',', $g;
-        my $ds = shift @gl;
+        my $ds = shift @gl; $ds =~ s!%2F!/!g;
         print div({-class => "graphs"}, img( {-src => "?$arg", -alt => "Graph"} ) );
         print div({-class => "graph_description"}, cite(strong($ds).br().small(join(", ", @gl))));
       }
