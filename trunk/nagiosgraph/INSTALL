@@ -1,7 +1,7 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.15 2006/07/10 13:34:56 sauber Exp $
+File:    $Id: INSTALL,v 1.16 2006/07/10 14:41:35 sauber Exp $
 Author:  (c) Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -46,10 +46,10 @@ Nagios.
 
    Make sure there is only one definition for process-service-perfdata.
 
-   Some installations of Nagios requires to specify location of perl.
-   Modify command_line to:
+   Some installations of Nagios (with embedded perl) requires to specify
+   location of perl. Modify command_line to:
 
-    command_line /usr/bin/perl /etc/nagios/nagiosgraph/insert.pl
+     command_line /usr/bin/perl /etc/nagios/nagiosgraph/insert.pl
 
  - Alternative to the two points above: The old style is still possible. 
    It uses far more CPU but inserts data in rrd files immediately for 
