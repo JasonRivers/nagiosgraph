@@ -1,4 +1,4 @@
-# File:    $Id: map,v 1.9 2005/10/08 05:55:08 sauber Exp $
+# File:    $Id: map,v 1.10 2006/07/21 14:18:17 sauber Stab $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -11,7 +11,7 @@
 # add more service types. The data string from Nagios is in $_ . Use 
 # regular expressions to identify and extract data like the examples below
 # below.  Match on either output: or perfdata: . The code is pure perl, 
-# that will be run inside and eval{}. Results are expected in @s. The
+# that will be run inside an eval{}. Results are expected in @s. The
 # general format is:
 # 
 # /output|perfdata:<servicetype> <key>=<value> <key2=value2> .../
@@ -22,7 +22,7 @@
 #                [ .       .              .        ] ];
 # 
 # But more advanced code is possible, as long as the resulting 
-# datastructure is correct.
+# data structure is correct.
 # 
 ########################################################################
 
