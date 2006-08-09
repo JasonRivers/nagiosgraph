@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.25 2006/08/09 08:13:38 tonvoon Exp $
+# File:    $Id: show.cgi,v 1.26 2006/08/09 08:46:12 adegremont Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -80,6 +80,11 @@ sub debug {
 #
 sub urlencode {
   $_[0] =~ s/([\W])/"%" . uc(sprintf("%2.2x",ord($1)))/eg;
+  return $_[0];
+}
+
+sub urldecode {
+  $_[0] =~ s/%([0-9A-F]{2})/chr(hex($1))/eg;
   return $_[0];
 }
 
@@ -238,7 +243,7 @@ sub page {
                             "geom=$d", "rrdopts=$o";
 	$arg .= "&fixedscale" if ($fixedscale);
         my @gl = split ',', $g;
-        my $ds = shift @gl; $ds =~ s!%2F!/!g;
+        my $ds = urldecode shift @gl; 
         print div({-class => "graphs"}, img( {-src => "?$arg", -alt => "Graph"} ) );
         print div({-class => "graph_description"}, cite(strong($ds).br().small(join(", ", @gl))));
       }

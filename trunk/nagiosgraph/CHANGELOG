@@ -1,6 +1,8 @@
 CVS
 
-* Disk description decoding. Patch from Jeff Schaller.
+* Decode all the encoded characters of the graph description. 
+  Patch from Aurelien Degremont.
+* Align graph labels. Patch from Aurelien Degremont.
 * INSTALL mentions to specify path to perl. Explaination by Doug Farley.
 * Added fixedscale as a CGI parameter to show.cgi to fix the Y axis 
   and legend units.
