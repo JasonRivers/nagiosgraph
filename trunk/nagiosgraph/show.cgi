@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.23 2006/07/10 13:57:37 sauber Exp $
+# File:    $Id: show.cgi,v 1.24 2006/08/09 08:03:08 adegremont Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -160,12 +160,17 @@ sub rrdline {
   for $g ( @$G ) {
     $f = $g->{file};
     debug(5, "CGI file=$f");
+
+    # Compute the longest label length
+    my $longest = (sort map(length,keys(%{ $g->{line} })))[-1];
+
     for $v ( sort keys %{ $g->{line} } ) {
       $c = hashcolor($v);
       debug(5, "CGI file=$f line=$v color=$c");
       my $sv = "$v";
+      my $label = sprintf("%-${longest}s", $sv);
       push @ds , "DEF:$sv=$Config{rrddir}/$f:$v:AVERAGE"
-               , "LINE2:${sv}#$c:$sv"
+               , "LINE2:${sv}#$c:$label"
                , "GPRINT:$sv:MAX:Max\\: %6.2lf%s"
                , "GPRINT:$sv:AVERAGE:Avg\\: %6.2lf%s"
                , "GPRINT:$sv:MIN:Min\\: %6.2lf%s"
