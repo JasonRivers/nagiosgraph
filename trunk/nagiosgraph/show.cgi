@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.26 2006/08/09 08:46:12 adegremont Exp $
+# File:    $Id: show.cgi,v 1.27 2006/08/09 13:09:25 adegremont Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -10,7 +10,7 @@ use RRDs;
 use CGI qw/:standard/;
 
 # Configuration
-my $configfile = '/usr/local/etc/nagiosgraph.conf';
+my $configfile = '/usr/local/etc/nagiosgraph/nagiosgraph.conf';
 
 # Main program - change nothing below
 
@@ -21,7 +21,7 @@ my @db = param('db') if param('db');
 my $graph = param('graph') if param('graph');
 my $geom = param('geom') if param('geom');
 my $rrdopts = param('rrdopts') if param('rrdopts');
-my $fixedscale = param('fixedscale') if param('fixedscale');
+my $fixedscale = defined(param('fixedscale')) ? 1 : 0; 
 
 my %Config;
 
