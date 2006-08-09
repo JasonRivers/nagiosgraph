@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.24 2006/08/09 08:03:08 adegremont Exp $
+# File:    $Id: show.cgi,v 1.25 2006/08/09 08:13:38 tonvoon Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -13,6 +13,15 @@ use CGI qw/:standard/;
 my $configfile = '/usr/local/etc/nagiosgraph.conf';
 
 # Main program - change nothing below
+
+# Expect host, service and db input
+my $host = param('host') if param('host');
+my $service = param('service') if param('service');
+my @db = param('db') if param('db');
+my $graph = param('graph') if param('graph');
+my $geom = param('geom') if param('geom');
+my $rrdopts = param('rrdopts') if param('rrdopts');
+my $fixedscale = param('fixedscale') if param('fixedscale');
 
 my %Config;
 
@@ -170,11 +179,18 @@ sub rrdline {
       my $sv = "$v";
       my $label = sprintf("%-${longest}s", $sv);
       push @ds , "DEF:$sv=$Config{rrddir}/$f:$v:AVERAGE"
-               , "LINE2:${sv}#$c:$label"
-               , "GPRINT:$sv:MAX:Max\\: %6.2lf%s"
+               , "LINE2:${sv}#$c:$label";
+      if ($fixedscale) {
+        push @ds, "GPRINT:$sv:MAX:Max\\: %6.2lf"
+               , "GPRINT:$sv:AVERAGE:Avg\\: %6.2lf"
+               , "GPRINT:$sv:MIN:Min\\: %6.2lf"
+               , "GPRINT:$sv:LAST:Cur\\: %6.2lf\\n";
+      } else {
+        push @ds, "GPRINT:$sv:MAX:Max\\: %6.2lf%s"
                , "GPRINT:$sv:AVERAGE:Avg\\: %6.2lf%s"
                , "GPRINT:$sv:MIN:Min\\: %6.2lf%s"
                , "GPRINT:$sv:LAST:Cur\\: %6.2lf%s\\n";
+      }
     }
   }
 
@@ -186,6 +202,9 @@ sub rrdline {
   # Additional parameters to rrd graph, if specified
   if ( $rrdopts ) {
     push @ds, split /\s+/, $rrdopts;
+  }
+  if ( $fixedscale ) {
+    push @ds, "-X", "0";
   }
   return @ds;
 }
@@ -217,6 +236,7 @@ sub page {
       for my $g ( @db ) {
         my $arg = join '&', "host=$h", "service=$s", "db=$g", "graph=$t",
                             "geom=$d", "rrdopts=$o";
+	$arg .= "&fixedscale" if ($fixedscale);
         my @gl = split ',', $g;
         my $ds = shift @gl; $ds =~ s!%2F!/!g;
         print div({-class => "graphs"}, img( {-src => "?$arg", -alt => "Graph"} ) );
@@ -231,14 +251,6 @@ sub page {
 }
 
 exit unless readconfig();
-
-# Expect host, service and db input
-my $host = param('host') if param('host');
-my $service = param('service') if param('service');
-my @db = param('db') if param('db');
-my $graph = param('graph') if param('graph');
-my $geom = param('geom') if param('geom');
-my $rrdopts = param('rrdopts') if param('rrdopts');
 
 # Draw a graph or a page
 if ( $graph ) {
