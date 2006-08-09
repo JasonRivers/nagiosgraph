@@ -2,6 +2,8 @@ CVS
 
 * Disk description decoding. Patch from Jeff Schaller.
 * INSTALL mentions to specify path to perl. Explaination by Doug Farley.
+* Added fixedscale as a CGI parameter to show.cgi to fix the Y axis 
+  and legend units.
 
 0.8.2 2006-04-12
 
