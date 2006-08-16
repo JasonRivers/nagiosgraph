@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.27 2006/08/09 13:09:25 adegremont Exp $
+# File:    $Id: show.cgi,v 1.28 2006/08/16 11:31:39 tonvoon Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -274,7 +274,7 @@ if ( $graph ) {
     @style = ( -style => {-src => "$Config{stylesheet}"} );
   }
   print header, start_html(-id=>"nagiosgraph", -title => "nagiosgraph: $host-$service",
-    -meta => { -http_equiv => "Refresh", -content => "300" },
+    -head => meta({ -http_equiv => "Refresh", -content => "300" }),
     @style
     );
   page($host,$service,$geom,$rrdopts,@db);
