@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.28 2006/08/16 11:31:39 tonvoon Exp $
+# File:    $Id: show.cgi,v 1.29 2006/08/24 09:57:12 hervenicol Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -219,6 +219,10 @@ sub rrdline {
 sub page {
   my($h,$s,$d,$o,@db) = @_;
 
+  my $offset = 0;
+  $offset = param('offset') if param('offset');
+  if ( $offset <= 0 ) { $offset = 0 }
+
   # Reencode rrdopts
   $o = urlencode $o;
 
@@ -231,12 +235,16 @@ sub page {
   #   Weekly  =   9d =   777600s
   #   Monthly =   5w =  3024000s
   #   Yearly  = 400d = 34560000s
-  my @T=(['dai',118800], ['week',777600], ['month',3024000], ['year',34560000]);
+  my @T=(['dai',118800,86400], ['week',777600,604800], ['month',3024000,2592000], ['year',34560000,31536000]);
   print h1("Nagiosgraph");
   print p("Performance data for ".strong("Host: ").tt($h).' &#183; '.strong("Service: ").tt($s));
   for my $l ( @T ) {
     my($p,$t) = ($l->[0],$l->[1]);
+    print a({-id=>$p});
     print h2(ucfirst $p . "ly");
+    my $url = join '&', "host=$h", "service=$s",
+       "geom=$d", "rrdopts=$o", map { "db=$_" } @db;
+    print a( {-href=>"?$url&offset=".($offset+$l->[2])."#".$p}, "previous"), " / ", a( {-href=>"?$url&offset=".($offset-$l->[2]."#".$p) }, "next"), "<BR>";
     if ( @db ) {
       for my $g ( @db ) {
         my $arg = join '&', "host=$h", "service=$s", "db=$g", "graph=$t",
@@ -244,7 +252,7 @@ sub page {
 	$arg .= "&fixedscale" if ($fixedscale);
         my @gl = split ',', $g;
         my $ds = urldecode shift @gl; 
-        print div({-class => "graphs"}, img( {-src => "?$arg", -alt => "Graph"} ) );
+        print div({-class => "graphs"}, img( {-src => "?$arg%20%2Dsnow%2D$t%2D$offset%20%2Denow%2D$offset", -alt => "Graph"} ) );
         print div({-class => "graph_description"}, cite(strong($ds).br().small(join(", ", @gl))));
       }
     } else {

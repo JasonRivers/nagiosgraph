@@ -1,5 +1,6 @@
 CVS
 
+* Graph history. Patch from Herve Nicol.
 * Decode all the encoded characters of the graph description. 
   Patch from Aurelien Degremont.
 * Align graph labels. Patch from Aurelien Degremont.
