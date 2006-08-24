@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.17 2005/10/26 14:42:57 sauber Exp $
+# File:    $Id: insert.pl,v 1.18 2006/08/24 09:56:52 hervenicol Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -101,10 +101,10 @@ sub createrrd {
       my $u = $t eq 'DERIVE' ? '0' : 'U' ;
       $ds .= " DS:$v:$t:$Config{heartbeat}:$u:U";
     }
-    $ds .= " RRA:AVERAGE:0.5:1:600";
-    $ds .= " RRA:AVERAGE:0.5:6:700";
-    $ds .= " RRA:AVERAGE:0.5:24:775";
-    $ds .= " RRA:AVERAGE:0.5:288:797";
+    $ds .= " RRA:AVERAGE:0.5:1:17280";
+    $ds .= " RRA:AVERAGE:0.5:6:17520";
+    $ds .= " RRA:AVERAGE:0.5:24:32850";
+    $ds .= " RRA:AVERAGE:0.5:288:1095";
 
     my @ds = split /\s+/, $ds;
     debug(4, "INSERT RRDs::create $ds");
