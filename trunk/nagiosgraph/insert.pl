@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.18 2006/08/24 09:56:52 hervenicol Exp $
+# File:    $Id: insert.pl,v 1.19 2006/08/28 13:30:39 hervenicol Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -90,6 +90,28 @@ sub urlencode {
 sub createrrd {
   my($host,$service,$start,$labels) = @_;
   my($f,$v,$t,$ds,$db);
+  my($RRA_1min, $RRA_6min, $RRA_24min, $RRA_288min);
+
+  if ( defined $Config{RRA_1min} ) {
+    $RRA_1min = $Config{RRA_1min};
+  } else {
+    $RRA_1min = 600;
+  }
+  if ( defined $Config{RRA_6min} ) {
+    $RRA_6min = $Config{RRA_6min};
+  } else {
+    $RRA_6min = 700;
+  }
+  if ( defined $Config{RRA_24min} ) {
+    $RRA_24min = $Config{RRA_24min};
+  } else {
+    $RRA_24min = 775;
+  }
+  if ( defined $Config{RRA_288min} ) {
+    $RRA_288min = $Config{RRA_288min};
+  } else {
+    $RRA_288min = 797;
+  }
 
   $db = shift @$labels;
   $f = urlencode("${host}_${service}_${db}") . '.rrd';
@@ -101,10 +123,11 @@ sub createrrd {
       my $u = $t eq 'DERIVE' ? '0' : 'U' ;
       $ds .= " DS:$v:$t:$Config{heartbeat}:$u:U";
     }
-    $ds .= " RRA:AVERAGE:0.5:1:17280";
-    $ds .= " RRA:AVERAGE:0.5:6:17520";
-    $ds .= " RRA:AVERAGE:0.5:24:32850";
-    $ds .= " RRA:AVERAGE:0.5:288:1095";
+    $ds .= " RRA:AVERAGE:0.5:1:" . $RRA_1min;
+    $ds .= " RRA:AVERAGE:0.5:6:" . $RRA_6min;
+    $ds .= " RRA:AVERAGE:0.5:24:" . $RRA_24min;
+    $ds .= " RRA:AVERAGE:0.5:288:" . $RRA_288min;
+debug(1, "DS = $ds");
 
     my @ds = split /\s+/, $ds;
     debug(4, "INSERT RRDs::create $ds");
