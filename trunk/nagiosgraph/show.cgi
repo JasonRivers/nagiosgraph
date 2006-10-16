@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.29 2006/08/24 09:57:12 hervenicol Exp $
+# File:    $Id: show.cgi,v 1.30 2006/10/16 09:27:07 hervenicol Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -252,7 +252,7 @@ sub page {
 	$arg .= "&fixedscale" if ($fixedscale);
         my @gl = split ',', $g;
         my $ds = urldecode shift @gl; 
-        print div({-class => "graphs"}, img( {-src => "?$arg%20%2Dsnow%2D$t%2D$offset%20%2Denow%2D$offset", -alt => "Graph"} ) );
+        print div({-class => "graphs"}, img( {-src => "?$arg%2Dsnow%2D$t%2D$offset%20%2Denow%2D$offset", -alt => "Graph"} ) );
         print div({-class => "graph_description"}, cite(strong($ds).br().small(join(", ", @gl))));
       }
     } else {
