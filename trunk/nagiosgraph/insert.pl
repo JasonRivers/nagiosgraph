@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.20 2006/10/17 13:58:19 hervenicol Exp $
+# File:    $Id: insert.pl,v 1.21 2006/10/17 14:15:01 hervenicol Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -62,7 +62,7 @@ sub debug {
   if ( $l <= $Config{debug} ) {
     $l = qw(none critical error warn info debug)[$l];
     open LOG, ">>$Config{logfile}";
-      print LOG scalar localtime . " $RCSfile: insert.pl,v $ $Revision: 1.20 $ $l - $text\n";
+      print LOG scalar localtime . ' $RCSfile: insert.pl,v $ $Revision: 1.21 $ '."$l - $text\n";
     close LOG;
   }
 }
