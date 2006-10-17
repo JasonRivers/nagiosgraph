@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.30 2006/10/16 09:27:07 hervenicol Exp $
+# File:    $Id: show.cgi,v 1.31 2006/10/17 13:56:39 hervenicol Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -36,7 +36,7 @@ sub readconfig {
       s/\s*#.*//;    # Strip comments
       /^(\w+)\s*=\s*(.*?)\s*$/ and do {
         $Config{$1} = $2;
-        debug(5, "CGI Config $1:$2");
+        debug(5, "Config $1:$2");
       };
     }
   close FH;
@@ -46,7 +46,7 @@ sub readconfig {
     my $msg = "Log file $Config{logfile} not writable";
     print header(-type => "text/html", -expires => 0);
     print p($msg);
-    debug (2, "CGI Config $msg");
+    debug (2, "Config $msg");
     return undef;
   }
 
@@ -55,7 +55,7 @@ sub readconfig {
     my $msg = "rrd dir $Config{rrddir} not readable";
     print header(-type => "text/html", -expires => 0);
     print p($msg);
-    debug (2, "CGI Config $msg");
+    debug (2, "Config $msg");
     return undef;
   }
 
@@ -68,10 +68,8 @@ sub debug {
   my($l, $text) = @_;
   if ( $l <= $Config{debug} ) {
     $l = qw(none critical error warn info debug)[$l];
-    $text =~ s/(\w+)/$1 $l:/;
     open LOG, ">>$Config{logfile}";
-      print LOG scalar localtime;
-      print LOG " $text\n";
+      print LOG scalar localtime . " $RCSfile: show.cgi,v $ $Revision: 1.31 $ $l - $text\n";
     close LOG;
   }
 }
@@ -108,7 +106,7 @@ sub graphinfo {
 
   $hs = urlencode "${host}_${service}";
 
-  debug(5, 'CGI @db=' . join '&', @db);
+  debug(5, '@db=' . join '&', @db);
 
   # Determine which files to read lines from
   if ( @db ) {
@@ -126,27 +124,27 @@ sub graphinfo {
       }
       $n++;
     }
-    debug(4, "CGI Specified $hs db files in $Config{rrddir}: "
+    debug(4, "Specified $hs db files in $Config{rrddir}: "
            . join ', ', map { $_->{file} } @rrd);
   } else {
     @rrd = map {{ file=>$_ }}
            map { "${hs}_${_}.rrd" }
            dbfilelist($host,$service);
-    debug(4, "CGI Listing $hs db files in $Config{rrddir}: "
+    debug(4, "Listing $hs db files in $Config{rrddir}: "
            . join ', ', map { $_->{file} } @rrd);
   }
 
   for $f ( @rrd ) {
     unless ( $f->{line} ) {
       $ds = RRDs::info "$Config{rrddir}/$f->{file}";
-      debug(2, "CGI RRDs::info ERR " . RRDs::error) if RRDs::error;
+      debug(2, "RRDs::info ERR " . RRDs::error) if RRDs::error;
       map { $f->{line}{$_} = 1}
       grep {!$H{$_}++}
       map { /ds\[(.*)\]/; $1 }
       grep /ds\[(.*)\]/,
       keys %$ds;
     }
-    debug(5, "CGI DS $f->{file} lines: "
+    debug(5, "DS $f->{file} lines: "
            . join ', ', keys %{ $f->{line} } );
   }
   return \@rrd;
@@ -173,14 +171,14 @@ sub rrdline {
   # Identify where to pull data from and what to call it
   for $g ( @$G ) {
     $f = $g->{file};
-    debug(5, "CGI file=$f");
+    debug(5, "file=$f");
 
     # Compute the longest label length
     my $longest = (sort map(length,keys(%{ $g->{line} })))[-1];
 
     for $v ( sort keys %{ $g->{line} } ) {
       $c = hashcolor($v);
-      debug(5, "CGI file=$f line=$v color=$c");
+      debug(5, "file=$f line=$v color=$c");
       my $sv = "$v";
       my $label = sprintf("%-${longest}s", $sv);
       push @ds , "DEF:$sv=$Config{rrddir}/$f:$v:AVERAGE"
@@ -225,10 +223,11 @@ sub page {
 
   # Reencode rrdopts
   $o = urlencode $o;
+  if ( $o ) { $o = $o . " " }
 
   # Detect available db files
   @db = dbfilelist($h,$s) unless @db;
-  debug(5, "CGI dbfilelist @db");
+  debug(5, "dbfilelist @db");
 
   # Define graph sizes
   #   Daily   =  33h =   118800s
@@ -272,9 +271,9 @@ if ( $graph ) {
   # Figure out db files and line labels
   my $G = graphinfo($host,$service,@db);
   my @ds = rrdline($host,$service,$geom,$rrdopts,$G,$graph);
-  debug(4, "CGI RRDs::graph ". join ' ', @ds);
+  debug(4, "RRDs::graph ". join ' ', @ds);
   RRDs::graph(@ds);
-  debug(2, "CGI RRDs::graph ERR " . RRDs::error) if RRDs::error;
+  debug(2, "RRDs::graph ERR " . RRDs::error) if RRDs::error;
   exit;
 } else {
   my @style;
