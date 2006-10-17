@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.19 2006/08/28 13:30:39 hervenicol Exp $
+# File:    $Id: insert.pl,v 1.20 2006/10/17 13:58:19 hervenicol Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -26,7 +26,7 @@ sub readconfig {
       s/\s*#.*//;    # Strip comments
       /^(\w+)\s*=\s*(.*?)\s*$/ and do {
         $Config{$1} = $2;
-        debug(5, "INSERT Config $1:$2");
+        debug(5, "Config $1:$2");
       };
     }
   close FH;
@@ -45,7 +45,7 @@ sub readconfig {
 #
 sub parseinput {
   my $data = shift;
-  #debug(5, "INSERT perfdata: $data");
+  #debug(5, "perfdata: $data");
   my @d = split( /\|\|/, $data);
   return ( lastcheck    => $d[0],
            hostname     => $d[1],
@@ -61,10 +61,8 @@ sub debug {
   my($l, $text) = @_;
   if ( $l <= $Config{debug} ) {
     $l = qw(none critical error warn info debug)[$l];
-    $text =~ s/(\w+)/$1 $l:/;
     open LOG, ">>$Config{logfile}";
-      print LOG scalar localtime;
-      print LOG " $text\n";
+      print LOG scalar localtime . " $RCSfile: insert.pl,v $ $Revision: 1.20 $ $l - $text\n";
     close LOG;
   }
 }
@@ -74,7 +72,7 @@ sub debug {
 sub dumpperfdata {
   my %P = @_;
   for ( keys %P ) {
-    debug(4, "INSERT Input $_:$P{$_}");
+    debug(4, "Input $_:$P{$_}");
   }
 }
 
@@ -91,31 +89,37 @@ sub createrrd {
   my($host,$service,$start,$labels) = @_;
   my($f,$v,$t,$ds,$db);
   my($RRA_1min, $RRA_6min, $RRA_24min, $RRA_288min);
+  my(@resolution);
 
-  if ( defined $Config{RRA_1min} ) {
-    $RRA_1min = $Config{RRA_1min};
+  if (defined $Config{resolution} ) {
+    @resolution=split(/ /, $Config{resolution});
+    debug(4, "resol=$resolution[0] - $resolution[1] - $resolution[2] - $resolution[3]");
+  }
+
+  if ( defined $resolution[0] ) {
+    $RRA_1min = $resolution[0];
   } else {
     $RRA_1min = 600;
   }
-  if ( defined $Config{RRA_6min} ) {
-    $RRA_6min = $Config{RRA_6min};
+  if ( defined $resolution[1] ) {
+    $RRA_6min = $resolution[1];
   } else {
     $RRA_6min = 700;
   }
-  if ( defined $Config{RRA_24min} ) {
-    $RRA_24min = $Config{RRA_24min};
+  if ( defined $resolution[2] ) {
+    $RRA_24min = $resolution[2];
   } else {
     $RRA_24min = 775;
   }
-  if ( defined $Config{RRA_288min} ) {
-    $RRA_288min = $Config{RRA_288min};
+  if ( defined $resolution[3] ) {
+    $RRA_288min = $resolution[3];
   } else {
     $RRA_288min = 797;
   }
 
   $db = shift @$labels;
   $f = urlencode("${host}_${service}_${db}") . '.rrd';
-  debug(5, "INSERT Checking $Config{rrddir}/$f");
+  debug(5, "Checking $Config{rrddir}/$f");
   unless ( -e "$Config{rrddir}/$f" ) {
     $ds = "$Config{rrddir}/$f --start $start";
     for ( @$labels ) {
@@ -130,9 +134,9 @@ sub createrrd {
 debug(1, "DS = $ds");
 
     my @ds = split /\s+/, $ds;
-    debug(4, "INSERT RRDs::create $ds");
+    debug(4, "RRDs::create $ds");
     RRDs::create(@ds);
-    debug(2, "INSERT RRDs::create ERR " . RRDs::error) if RRDs::error;
+    debug(2, "RRDs::create ERR " . RRDs::error) if RRDs::error;
   }
   return $f;
 }
@@ -150,9 +154,9 @@ sub rrdupdate {
   }
 
   my @ds = split /\s+/, $ds;
-  debug(4, "INSERT RRDs::update ". join ' ', @ds);
+  debug(4, "RRDs::update ". join ' ', @ds);
   RRDs::update(@ds);
-  debug(2, "INSERT RRDs::update ERR " . RRDs::error) if RRDs::error;
+  debug(2, "RRDs::update ERR " . RRDs::error) if RRDs::error;
 }
 
 # See if we can recognize any of the data we got
@@ -178,7 +182,7 @@ sub inputdata {
 
   # Quit if there are no data to process
   unless ( @inputlines ) {
-    debug(4, 'INSERT No inputdata. Exiting.');
+    debug(4, 'No inputdata. Exiting.');
     exit 1;
   }
   return @inputlines;
@@ -189,7 +193,7 @@ sub inputdata {
 sub processdata {
   my @perfdatalines = @_;
   for my $l ( @perfdatalines ) {
-    debug(5, "INSERT processing perfdata: $l");
+    debug(5, "processing perfdata: $l");
     my %P = parseinput($l);
     dumpperfdata(%P);
     my $S = parseperfdata(%P);
@@ -206,7 +210,7 @@ sub processdata {
 #  - Create them first if necesary.
 
 readconfig();
-debug(5, 'INSERT nagiosgraph spawned');
+debug(5, 'nagiosgraph spawned');
 my @perfdata = inputdata();
 
 # Read the map file and define a subroutine that parses performance data
@@ -222,12 +226,12 @@ sub evalrules {
   no strict "subs";
 ' . $rules . '
   use strict "subs";
-  debug(3, "INSERT perfdata not recognized") unless @s;
+  debug(3, "perfdata not recognized") unless @s;
   return \@s;
 }';
 undef $@;
 eval $rules;
-debug(2, "INSERT Map file eval error: $@") if $@;
+debug(2, "Map file eval error: $@") if $@;
 
 processdata( @perfdata );
-debug(5, 'INSERT nagiosgraph exited');
+debug(5, 'nagiosgraph exited');
