@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.32 2006/10/17 14:15:01 hervenicol Exp $
+# File:    $Id: show.cgi,v 1.33 2006/10/27 17:48:48 vanidoso Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -28,7 +28,12 @@ my %Config;
 # Read in configuration data
 #
 sub readconfig {
-  die "config file not found" unless -r $configfile;
+  # If config file not found die gracefully
+  unless ( -r $configfile ) {
+    my $msg = "Config file not found or not readable";
+    HTMLerror($msg);
+    return undef;
+  }
 
   # Read configuration data
   open FH, $configfile;
@@ -41,36 +46,51 @@ sub readconfig {
     }
   close FH;
 
-  # Make sure log file can be written to
+   # Make sure log file can be written to
   unless ( -w $Config{logfile} ) {
     my $msg = "Log file $Config{logfile} not writable";
-    print header(-type => "text/html", -expires => 0);
-    print p($msg);
-    debug (2, "Config $msg");
+    HTMLerror($msg);
     return undef;
   }
 
   # Make sure rrddir is readable
   unless ( -r $Config{rrddir} ) {
     my $msg = "rrd dir $Config{rrddir} not readable";
-    print header(-type => "text/html", -expires => 0);
-    print p($msg);
+    HTMLerror($msg);
     debug (2, "Config $msg");
     return undef;
   }
 
+  # Configuration is sane enough, open logfile
+  open LOG, ">>$Config{logfile}" or (HTMLerror("Log: $Config{logfile} failed to open!") && return undef);
+
   return 1;
 }
 
+sub HTMLerror {
+    my $msg = join(" ", @_);
+    # It might be an error but it doesn't have to look as one
+    my $errstyle=<<ERR;
+    div.error {
+        border: solid 1px #cc3333;
+        background-color: #fff6f3;
+        padding: 0.75em;
+        }
+ERR
+    print header(-type => "text/html", -expires => 0);
+    print start_html(-id=>"nagiosgraph",-title=>'NagiosGraph Error Page');
+    print '<STYLE TYPE="text/css">' . $errstyle . '</STYLE>';
+    print div({-class => "error"}, "Nagiosgraph has detected an error in the configuration file: $configfile", br(),
+              $msg);
+    print end_html();
+}
 # Write debug information to log file
 #
 sub debug {
   my($l, $text) = @_;
   if ( $l <= $Config{debug} ) {
     $l = qw(none critical error warn info debug)[$l];
-    open LOG, ">>$Config{logfile}";
-      print LOG scalar localtime . ' $RCSfile: show.cgi,v $ $Revision: 1.32 $ '."$l - $text\n";
-    close LOG;
+      print LOG scalar localtime . ' $RCSfile: show.cgi,v $ $Revision: 1.33 $ '."$l - $text\n";
   }
 }
 
@@ -96,6 +116,42 @@ sub dbfilelist {
     @rrd = grep s/^${hs}_(.+)\.rrd$/$1/, readdir DH;
   closedir DH;
   return @rrd;
+}
+
+sub getgraphlist{
+  # Builds a hash for available servers/services to graph
+  my %servers;
+  opendir RRDF, $Config{rrddir};
+  my @rrdfiles = grep /.rrd$/ , readdir RRDF;
+  # Iterate through all the .rrd files in the directory
+  for my $f ( @rrdfiles ) {
+    # Get the host and service name. Assumes _ separator (not in host/svc name!!)
+    my($host, $svc) = split(/_/, $f, 3);
+    $servers{$host}{'NAME'} = (urldecode($host));
+    push @{$servers{$host}{'SERVICES'}}, urldecode($svc);
+  }
+  return %servers;
+
+}
+
+sub servmenu{
+  # Create server menu and associated service submenu skel
+  # Selecting a new server shows the associated  services menu
+  # Selecting a new service reloads the page with the new graphs
+  my @svrlist = sort (@_);
+   print start_form(-name=>'menuform'),
+        "Select server: ",
+        popup_menu(-name=>'servidors',
+                   -value=>\@svrlist,
+                   -default=>"$host",
+                   -onChange=>"setOptionText(this)"),
+        "Select service: ",
+        popup_menu(-name=>'services',
+                       -value=>["--"],
+                       -onChange=>"jumpto(this)"),
+        checkbox(-name=>'FixedScale',
+                 -checked=>$fixedscale),
+        end_form;
 }
 
 # Find graphs and values
@@ -274,17 +330,115 @@ if ( $graph ) {
   debug(4, "RRDs::graph ". join ' ', @ds);
   RRDs::graph(@ds);
   debug(2, "RRDs::graph ERR " . RRDs::error) if RRDs::error;
+  close LOG;
   exit;
 } else {
   my @style;
   if ($Config{stylesheet}) {
     @style = ( -style => {-src => "$Config{stylesheet}"} );
   }
+# GET LIST OF SERVERS/SERVICES
+  my %navmenu = getgraphlist;
+
   print header, start_html(-id=>"nagiosgraph", -title => "nagiosgraph: $host-$service",
     -head => meta({ -http_equiv => "Refresh", -content => "300" }),
     @style
     );
+# Create Javascript Arrays for client-side menu navigation
+  print '<script type="text/javascript">'. "\n";
+  foreach my $system (sort keys %navmenu) {
+    my $crname = $navmenu{$system}{'NAME'};
+    # Javascript doesn't like "-" characters in variable names
+    $crname =~s/-/_/g;
+    print "var ". $crname." = new Array(\"" . join ('","', sort(@{$navmenu{$system}{'SERVICES'}})) . "\");" ;
+    print "\n";
+  }
+
+  # Bulk Javascript code
+my $JSCRIPT=<<END;
+
+  //Swaps the secondary (services) menu content after a server is selected
+  function setOptionText(element) {
+     var server = element.options[element.selectedIndex].text;
+     //Converts - in hostnames to _ for matching array name
+     server = server.replace(/-/g,"_");
+     var svchosen = window.document.menuform.services;
+     var opciones = eval(server);
+     // Adjust service dropdown menu length depending on host selected
+     svchosen.length=opciones.length + 1;
+     // Hosts with only 1 service couldn't fire onChange() so we add a blank entry
+     svchosen.options[0].text = "--";
+     for (i=0; i < opciones.length; i++){
+         svchosen.options[i+1].text = opciones[i];
+     }
+  }
+
+  //Once a service is selected this function loads the new page
+  function jumpto(element) {
+    var svr = escape (document.menuform.servidors.value);
+    var svc = escape (element.options[element.selectedIndex].text);
+    var newURL = location.pathname + "?host=";
+    newURL += svr + "&" + "service=" + svc;
+    newURL += getURLparams();
+    window.location.assign ( newURL ) ;
+  }
+
+  //Auxiliary URL builder function for "jumpto" keeping the params
+  function getURLparams() {
+     var query=this.location.search.substring(1);
+     var myParams="";
+     if (query.length > 0){
+       var params = query.split("&");
+
+       for (var i=0 ; i<params.length ; i++){
+           var pos = params[i].indexOf("=");
+           var name = params[i].substring(0, pos);
+           var value = params[i].substring(pos + 1);
+
+           //Append params (except host & service and fixedscale)
+           if ( name != "host" && name != "service" && value != "fixedscale") {
+              myParams+= "&" + name + "=" + value;
+           }
+       }
+
+     }
+     // Keep track of fixedscale parameter
+     if ( document.menuform.FixedScale.checked) {
+        myParams+= "&" + "fixedscale";
+     }
+     return (myParams);
+   }
+
+  //Forces the service menu to be filled with the correct entries
+  //when the page loads
+  function preloadSVC(name) {
+      var notfound = true;
+      var i = 0;
+      while (notfound && i < document.menuform.servidors.length) {
+          if (document.menuform.servidors.options[i].text == name) {
+             notfound = false;
+             document.menuform.servidors.selectedIndex = i;
+          }
+          i++;
+      }
+      setOptionText(document.menuform.servidors);
+  }
+
+END
+  print $JSCRIPT;
+  print '</script>'."\n";
+
+  # CREATE SERVER MENU
+  servmenu(keys %navmenu);
+  # Preload selected host services
+  print '<script type="text/javascript">'. "\n";
+  print 'var prtHost="' . $host . '";' ;
+  print 'preloadSVC(prtHost);' ;
+  print '</script>'."\n";
+
   page($host,$service,$geom,$rrdopts,@db);
   print div({-id => "footer"}, hr(), small( "Created by ". a( {-href=>"http://nagiosgraph.sf.net/"}, "nagiosgraph"). "." ));
   print end_html();
 }
+
+close LOG;
