@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.33 2006/10/27 17:48:48 vanidoso Exp $
+# File:    $Id: show.cgi,v 1.34 2006/10/28 10:24:56 vanidoso Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -8,6 +8,8 @@
 use strict;
 use RRDs;
 use CGI qw/:standard/;
+use Fcntl ':flock';
+
 
 # Configuration
 my $configfile = '/usr/local/etc/nagiosgraph/nagiosgraph.conf';
@@ -61,8 +63,10 @@ sub readconfig {
     return undef;
   }
 
-  # Configuration is sane enough, open logfile
+  # Configuration is sane enough, open logfile if debug is set
+   if ($Config{debug} > 0) {
   open LOG, ">>$Config{logfile}" or (HTMLerror("Log: $Config{logfile} failed to open!") && return undef);
+   }
 
   return 1;
 }
@@ -90,7 +94,10 @@ sub debug {
   my($l, $text) = @_;
   if ( $l <= $Config{debug} ) {
     $l = qw(none critical error warn info debug)[$l];
-      print LOG scalar localtime . ' $RCSfile: show.cgi,v $ $Revision: 1.33 $ '."$l - $text\n";
+    # Get a lock on the LOG file (blocking call)
+    flock(LOG,LOCK_EX);
+      print LOG scalar localtime . ' $RCSfile: show.cgi,v $ $Revision: 1.34 $ '."$l - $text\n";
+    flock(LOG,LOCK_UN);
   }
 }
 
@@ -330,7 +337,9 @@ if ( $graph ) {
   debug(4, "RRDs::graph ". join ' ', @ds);
   RRDs::graph(@ds);
   debug(2, "RRDs::graph ERR " . RRDs::error) if RRDs::error;
-  close LOG;
+  if (fileno(LOG)) {
+     close LOG;
+  }
   exit;
 } else {
   my @style;
@@ -440,5 +449,6 @@ END
   print div({-id => "footer"}, hr(), small( "Created by ". a( {-href=>"http://nagiosgraph.sf.net/"}, "nagiosgraph"). "." ));
   print end_html();
 }
-
-close LOG;
+if (fileno(LOG)) {
+    close LOG;
+}

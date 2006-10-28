@@ -1,12 +1,13 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.21 2006/10/17 14:15:01 hervenicol Exp $
+# File:    $Id: insert.pl,v 1.22 2006/10/28 10:24:56 vanidoso Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 
 use strict;
 use RRDs;
+use Fcntl ':flock';
 
 # Configuration
 my $configfile = '/usr/local/etc/nagiosgraph.conf';
@@ -31,8 +32,10 @@ sub readconfig {
     }
   close FH;
 
-  # Make sure log file can be written to
-  die "Log file $Config{logfile} not writable" unless -w $Config{logfile};
+  # If debug is set make sure we can write to the log file
+  if ($Config{debug} > 0) {
+     open LOG, ">>$Config{logfile}" or die "Cannot append to logfile $Config{logfile}";
+  }
 
   # Make sure rrddir exist and is writable
   unless ( -w $Config{rrddir} ) {
@@ -61,9 +64,10 @@ sub debug {
   my($l, $text) = @_;
   if ( $l <= $Config{debug} ) {
     $l = qw(none critical error warn info debug)[$l];
-    open LOG, ">>$Config{logfile}";
-      print LOG scalar localtime . ' $RCSfile: insert.pl,v $ $Revision: 1.21 $ '."$l - $text\n";
-    close LOG;
+    # Get a lock on the LOG file (blocking call)
+    flock(LOG,LOCK_EX);
+      print LOG scalar localtime . ' $RCSfile: insert.pl,v $ $Revision: 1.22 $ '."$l - $text\n";
+    flock(LOG,LOCK_UN);  #Unlock file
   }
 }
 
@@ -235,3 +239,7 @@ debug(2, "Map file eval error: $@") if $@;
 
 processdata( @perfdata );
 debug(5, 'nagiosgraph exited');
+if (fileno(LOG)) {
+    close LOG;
+}
+
