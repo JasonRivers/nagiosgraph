@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.34 2006/10/28 10:24:56 vanidoso Exp $
+# File:    $Id: show.cgi,v 1.35 2006/10/28 10:53:45 vanidoso Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -48,25 +48,27 @@ sub readconfig {
     }
   close FH;
 
-   # Make sure log file can be written to
-  unless ( -w $Config{logfile} ) {
-    my $msg = "Log file $Config{logfile} not writable";
-    HTMLerror($msg);
-    return undef;
+  # If debug is set make sure we can append to logfile
+   if ($Config{debug} > 0) {
+  open LOG, ">>$Config{logfile}" or (HTMLerror("Log: $Config{logfile} failed to open!") && return undef);
+   }
+   
+  # Make sure rrddir is readable and it holds rrd databases
+  if ( -r $Config{rrddir} ) {
+    opendir RRDF, $Config{rrddir};
+    my @rrdfiles = grep /.rrd$/ , readdir RRDF;
+    if (@rrdfiles == 0) {
+      my $msg = "No RRD databases found in $Config{rrddir}";
+      HTMLerror($msg);
+    }   
   }
-
-  # Make sure rrddir is readable
-  unless ( -r $Config{rrddir} ) {
+  else {
     my $msg = "rrd dir $Config{rrddir} not readable";
     HTMLerror($msg);
     debug (2, "Config $msg");
     return undef;
   }
 
-  # Configuration is sane enough, open logfile if debug is set
-   if ($Config{debug} > 0) {
-  open LOG, ">>$Config{logfile}" or (HTMLerror("Log: $Config{logfile} failed to open!") && return undef);
-   }
 
   return 1;
 }
@@ -96,7 +98,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar localtime . ' $RCSfile: show.cgi,v $ $Revision: 1.34 $ '."$l - $text\n";
+      print LOG scalar localtime . ' $RCSfile: show.cgi,v $ $Revision: 1.35 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);
   }
 }
