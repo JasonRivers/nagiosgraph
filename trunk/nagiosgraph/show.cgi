@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.35 2006/10/28 10:53:45 vanidoso Exp $
+# File:    $Id: show.cgi,v 1.36 2006/10/30 13:05:04 vanidoso Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -60,6 +60,7 @@ sub readconfig {
     if (@rrdfiles == 0) {
       my $msg = "No RRD databases found in $Config{rrddir}";
       HTMLerror($msg);
+      return undef;
     }   
   }
   else {
@@ -98,7 +99,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar localtime . ' $RCSfile: show.cgi,v $ $Revision: 1.35 $ '."$l - $text\n";
+      print LOG scalar localtime . ' $RCSfile: show.cgi,v $ $Revision: 1.36 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);
   }
 }
@@ -406,10 +407,12 @@ my $JSCRIPT=<<END;
            var name = params[i].substring(0, pos);
            var value = params[i].substring(pos + 1);
 
-           //Append params (except host & service and fixedscale)
-           if ( name != "host" && name != "service" && value != "fixedscale") {
+           //Append "safe" params (geom, rrdopts) 
+           if ( name == "geom" || name == "rrdopts") {
               myParams+= "&" + name + "=" + value;
            }
+          // Jumpto defines host & service, checkbox selects fixedscale and
+         //  we can't determine db from JS so we discard it (enter manually)
        }
 
      }
@@ -454,3 +457,4 @@ END
 if (fileno(LOG)) {
     close LOG;
 }
+
