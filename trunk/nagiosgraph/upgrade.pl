@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# File:    $Id: upgrade.pl,v 1.2 2006/10/30 18:56:24 vanidoso Stab $
 # Upgrade script for NagiosGraph, scans a directory to organize the .rrd files into
 # subdirectories named after the hosts they belong to
 # Changes layout from "Config(rrdir)/host_svc_db.rrd" to 
