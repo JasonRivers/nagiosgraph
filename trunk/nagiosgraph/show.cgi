@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.36 2006/10/30 13:05:04 vanidoso Exp $
+# File:    $Id: show.cgi,v 1.37 2006/10/30 20:04:11 vanidoso Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -9,6 +9,7 @@ use strict;
 use RRDs;
 use CGI qw/:standard/;
 use Fcntl ':flock';
+use File::Find;
 
 
 # Configuration
@@ -26,6 +27,7 @@ my $rrdopts = param('rrdopts') if param('rrdopts');
 my $fixedscale = defined(param('fixedscale')) ? 1 : 0; 
 
 my %Config;
+my %Navmenu;
 
 # Read in configuration data
 #
@@ -53,12 +55,12 @@ sub readconfig {
   open LOG, ">>$Config{logfile}" or (HTMLerror("Log: $Config{logfile} failed to open!") && return undef);
    }
    
-  # Make sure rrddir is readable and it holds rrd databases
+  # Make sure rrddir is readable and not empty
   if ( -r $Config{rrddir} ) {
     opendir RRDF, $Config{rrddir};
-    my @rrdfiles = grep /.rrd$/ , readdir RRDF;
-    if (@rrdfiles == 0) {
-      my $msg = "No RRD databases found in $Config{rrddir}";
+    my @rrdfiles = readdir(RRDF);
+    if (@rrdfiles < 3) {
+      my $msg = "Looks like $Config{rrddir} is empty!";
       HTMLerror($msg);
       return undef;
     }   
@@ -99,7 +101,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar localtime . ' $RCSfile: show.cgi,v $ $Revision: 1.36 $ '."$l - $text\n";
+      print LOG scalar localtime . ' $RCSfile: show.cgi,v $ $Revision: 1.37 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);
   }
 }
@@ -120,29 +122,33 @@ sub urldecode {
 #
 sub dbfilelist {
   my($host,$service) = @_;
-  my $hs = urlencode "${host}_${service}";
+  my $dir = $Config(rrddir) . "/" . $host;
+  my $hs = urlencode "$service";
   my @rrd;
-  opendir DH, $Config{rrddir};
-    @rrd = grep s/^${hs}_(.+)\.rrd$/$1/, readdir DH;
+  opendir DH, $dir;
+    @rrd = grep s/^${hs}___(.+)\.rrd$/$1/, readdir DH;
   closedir DH;
   return @rrd;
 }
 
 sub getgraphlist{
   # Builds a hash for available servers/services to graph
-  my %servers;
-  opendir RRDF, $Config{rrddir};
-  my @rrdfiles = grep /.rrd$/ , readdir RRDF;
-  # Iterate through all the .rrd files in the directory
-  for my $f ( @rrdfiles ) {
-    # Get the host and service name. Assumes _ separator (not in host/svc name!!)
-    my($host, $svc) = split(/_/, $f, 3);
-    $servers{$host}{'NAME'} = (urldecode($host));
-    push @{$servers{$host}{'SERVICES'}}, urldecode($svc);
-  }
-  return %servers;
-
+    my $current = $_;
+    # Directories are for hostnames
+    if ((-d $current) && ($current !~ /^\./)) {
+       $Navmenu{$current}{'NAME'}= $current;
+       }
+    # Files are for services
+    elsif (-f $current && $current=~/\.rrd$/) {
+       my ($h, $s);
+      ($h = $File::Find::dir) =~ s|^/$Config{rrddir}/||;
+      # We got the server to associate with and now
+      # we get the service name by splitting on separator
+      ($s) = split(/___/,$current);
+      push @{$Navmenu{$h}{'SERVICES'}}, urldecode($s);
+    }
 }
+
 
 sub servmenu{
   # Create server menu and associated service submenu skel
@@ -350,7 +356,7 @@ if ( $graph ) {
     @style = ( -style => {-src => "$Config{stylesheet}"} );
   }
 # GET LIST OF SERVERS/SERVICES
-  my %navmenu = getgraphlist;
+  find(\&getgraphlist,$Config{rrddir});
 
   print header, start_html(-id=>"nagiosgraph", -title => "nagiosgraph: $host-$service",
     -head => meta({ -http_equiv => "Refresh", -content => "300" }),
@@ -358,11 +364,11 @@ if ( $graph ) {
     );
 # Create Javascript Arrays for client-side menu navigation
   print '<script type="text/javascript">'. "\n";
-  foreach my $system (sort keys %navmenu) {
-    my $crname = $navmenu{$system}{'NAME'};
+  foreach my $system (sort keys %Navmenu) {
+    my $crname = $Navmenu{$system}{'NAME'};
     # Javascript doesn't like "-" characters in variable names
     $crname =~s/-/_/g;
-    print "var ". $crname." = new Array(\"" . join ('","', sort(@{$navmenu{$system}{'SERVICES'}})) . "\");" ;
+    print "var ". $crname." = new Array(\"" . join ('","', sort(@{$Navmenu{$system}{'SERVICES'}})) . "\");" ;
     print "\n";
   }
 
@@ -443,7 +449,7 @@ END
   print '</script>'."\n";
 
   # CREATE SERVER MENU
-  servmenu(keys %navmenu);
+  servmenu(keys %Navmenu);
   # Preload selected host services
   print '<script type="text/javascript">'. "\n";
   print 'var prtHost="' . $host . '";' ;
