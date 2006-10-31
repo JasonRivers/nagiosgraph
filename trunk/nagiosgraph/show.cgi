@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.37 2006/10/30 20:04:11 vanidoso Exp $
+# File:    $Id: show.cgi,v 1.38 2006/10/31 07:31:37 vanidoso Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -101,7 +101,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar localtime . ' $RCSfile: show.cgi,v $ $Revision: 1.37 $ '."$l - $text\n";
+      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.38 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);
   }
 }
@@ -122,7 +122,7 @@ sub urldecode {
 #
 sub dbfilelist {
   my($host,$service) = @_;
-  my $dir = $Config(rrddir) . "/" . $host;
+  my $dir = $Config{rrddir} . "/" . $host;
   my $hs = urlencode "$service";
   my @rrd;
   opendir DH, $dir;
@@ -137,11 +137,11 @@ sub getgraphlist{
     # Directories are for hostnames
     if ((-d $current) && ($current !~ /^\./)) {
        $Navmenu{$current}{'NAME'}= $current;
-       }
+    }
     # Files are for services
     elsif (-f $current && $current=~/\.rrd$/) {
        my ($h, $s);
-      ($h = $File::Find::dir) =~ s|^/$Config{rrddir}/||;
+      ($h = $File::Find::dir) =~ s|^$Config{rrddir}/||;
       # We got the server to associate with and now
       # we get the service name by splitting on separator
       ($s) = split(/___/,$current);
@@ -176,7 +176,8 @@ sub graphinfo {
   my($host,$service,@db) = @_;
   my(@rrd,$ds,$f,$dsout,@values,$hs,%H,%R);
 
-  $hs = urlencode "${host}_${service}";
+  $hs = $host . "/";
+  $hs .= urlencode "$service";
 
   debug(5, '@db=' . join '&', @db);
 
@@ -185,7 +186,7 @@ sub graphinfo {
     my $n = 0;
     for my $d ( @db ) {
       my($db,@lines) = split ',', $d;
-      $rrd[$n]{file} = $hs . urlencode("_$db") . '.rrd';
+      $rrd[$n]{file} = $hs . urlencode("___$db") . '.rrd';
       for my $l ( @lines ) {
         my($line,$unit) = split '~', $l;
         if ( $unit ) {
@@ -200,7 +201,7 @@ sub graphinfo {
            . join ', ', map { $_->{file} } @rrd);
   } else {
     @rrd = map {{ file=>$_ }}
-           map { "${hs}_${_}.rrd" }
+           map { "${hs}___${_}.rrd" }
            dbfilelist($host,$service);
     debug(4, "Listing $hs db files in $Config{rrddir}: "
            . join ', ', map { $_->{file} } @rrd);
