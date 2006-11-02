@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.38 2006/10/31 07:31:37 vanidoso Exp $
+# File:    $Id: show.cgi,v 1.39 2006/11/02 10:13:24 vanidoso Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -101,7 +101,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.38 $ '."$l - $text\n";
+      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.39 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);
   }
 }
@@ -335,35 +335,12 @@ sub page {
   }
 }
 
-exit unless readconfig();
+# Inserts the navigation menu (top of the page)
+sub printNavMenu {
 
-# Draw a graph or a page
-if ( $graph ) {
-  $| = 1; # Make sure headers arrive before image data
-  print header(-type => "image/png");
-  # Figure out db files and line labels
-  my $G = graphinfo($host,$service,@db);
-  my @ds = rrdline($host,$service,$geom,$rrdopts,$G,$graph);
-  debug(4, "RRDs::graph ". join ' ', @ds);
-  RRDs::graph(@ds);
-  debug(2, "RRDs::graph ERR " . RRDs::error) if RRDs::error;
-  if (fileno(LOG)) {
-     close LOG;
-  }
-  exit;
-} else {
-  my @style;
-  if ($Config{stylesheet}) {
-    @style = ( -style => {-src => "$Config{stylesheet}"} );
-  }
-# GET LIST OF SERVERS/SERVICES
+  # Get list of servers/services
   find(\&getgraphlist,$Config{rrddir});
-
-  print header, start_html(-id=>"nagiosgraph", -title => "nagiosgraph: $host-$service",
-    -head => meta({ -http_equiv => "Refresh", -content => "300" }),
-    @style
-    );
-# Create Javascript Arrays for client-side menu navigation
+  # Create Javascript Arrays for client-side menu navigation
   print '<script type="text/javascript">'. "\n";
   foreach my $system (sort keys %Navmenu) {
     my $crname = $Navmenu{$system}{'NAME'};
@@ -401,7 +378,6 @@ my $JSCRIPT=<<END;
     newURL += getURLparams();
     window.location.assign ( newURL ) ;
   }
-
   //Auxiliary URL builder function for "jumpto" keeping the params
   function getURLparams() {
      var query=this.location.search.substring(1);
@@ -414,7 +390,7 @@ my $JSCRIPT=<<END;
            var name = params[i].substring(0, pos);
            var value = params[i].substring(pos + 1);
 
-           //Append "safe" params (geom, rrdopts) 
+           //Append "safe" params (geom, rrdopts)
            if ( name == "geom" || name == "rrdopts") {
               myParams+= "&" + name + "=" + value;
            }
@@ -448,8 +424,7 @@ my $JSCRIPT=<<END;
 END
   print $JSCRIPT;
   print '</script>'."\n";
-
-  # CREATE SERVER MENU
+  # Create main form
   servmenu(keys %Navmenu);
   # Preload selected host services
   print '<script type="text/javascript">'. "\n";
@@ -457,6 +432,38 @@ END
   print 'preloadSVC(prtHost);' ;
   print '</script>'."\n";
 
+}
+
+
+exit unless readconfig();
+
+# Draw a graph or a page
+if ( $graph ) {
+  $| = 1; # Make sure headers arrive before image data
+  print header(-type => "image/png");
+  # Figure out db files and line labels
+  my $G = graphinfo($host,$service,@db);
+  my @ds = rrdline($host,$service,$geom,$rrdopts,$G,$graph);
+  debug(4, "RRDs::graph ". join ' ', @ds);
+  RRDs::graph(@ds);
+  debug(2, "RRDs::graph ERR " . RRDs::error) if RRDs::error;
+  if (fileno(LOG)) {
+     close LOG;
+  }
+  exit;
+} else {
+  my @style;
+  if ($Config{stylesheet}) {
+    @style = ( -style => {-src => "$Config{stylesheet}"} );
+  }
+
+  print header, start_html(-id=>"nagiosgraph", -title => "nagiosgraph: $host-$service",
+    -head => meta({ -http_equiv => "Refresh", -content => "300" }),
+    @style
+    );
+  # Print Navigation Menu if we have a separator set (that will allow navigation menu
+  # to correctly split the filenames/filepaths in host/service/db names
+  printNavMenu if ($Config{dbseparator});
   page($host,$service,$geom,$rrdopts,@db);
   print div({-id => "footer"}, hr(), small( "Created by ". a( {-href=>"http://nagiosgraph.sf.net/"}, "nagiosgraph"). "." ));
   print end_html();
