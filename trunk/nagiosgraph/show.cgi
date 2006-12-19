@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.39 2006/11/02 10:13:24 vanidoso Exp $
+# File:    $Id: show.cgi,v 1.40 2006/12/19 15:15:02 vanidoso Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -24,7 +24,12 @@ my @db = param('db') if param('db');
 my $graph = param('graph') if param('graph');
 my $geom = param('geom') if param('geom');
 my $rrdopts = param('rrdopts') if param('rrdopts');
-my $fixedscale = defined(param('fixedscale')) ? 1 : 0; 
+# Changed fixedscale checking since empty param was returning undef from CGI.pm
+my $fixedscale = 0;
+if (grep /fixedscale/, @paramlist) {
+   $fixedscale = 1;
+}
+
 
 my %Config;
 my %Navmenu;
@@ -101,7 +106,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.39 $ '."$l - $text\n";
+      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.40 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);
   }
 }
