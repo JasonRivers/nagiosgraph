@@ -1,5 +1,6 @@
 CVS
-
+* Patch to allow separation of rrd files in different directories (hostname/file.rrd)
+* Navigation menu patch
 * Graph history. Patch from Herve Nicol.
 * Decode all the encoded characters of the graph description. 
   Patch from Aurelien Degremont.
