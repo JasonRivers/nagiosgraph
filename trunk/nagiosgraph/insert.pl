@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.22 2006/10/28 10:24:56 vanidoso Exp $
+# File:    $Id: insert.pl,v 1.23 2006/12/20 07:23:43 vanidoso Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -66,7 +66,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar localtime . ' $RCSfile: insert.pl,v $ $Revision: 1.22 $ '."$l - $text\n";
+      print LOG scalar localtime . ' $RCSfile: insert.pl,v $ $Revision: 1.23 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);  #Unlock file
   }
 }
@@ -94,6 +94,7 @@ sub createrrd {
   my($f,$v,$t,$ds,$db);
   my($RRA_1min, $RRA_6min, $RRA_24min, $RRA_288min);
   my(@resolution);
+  my $directory = $Config{rrddir};
 
   if (defined $Config{resolution} ) {
     @resolution=split(/ /, $Config{resolution});
@@ -122,10 +123,26 @@ sub createrrd {
   }
 
   $db = shift @$labels;
-  $f = urlencode("${host}_${service}_${db}") . '.rrd';
-  debug(5, "Checking $Config{rrddir}/$f");
-  unless ( -e "$Config{rrddir}/$f" ) {
-    $ds = "$Config{rrddir}/$f --start $start";
+  # Check for separator ,  create filestructure
+  if ($Config{dbseparator} eq "subdir") {
+     $directory .=  "/" . $host;
+     unless -e ($directory) {
+        # Create host specific directories
+        mkdir $directory;
+        debug (4, "Creating directory $directory");
+	die "$directory not writable" unless -w $directory;
+     }
+     # RRD Filename
+     $f = urlencode("${service}___${db}")  . '.rrd';
+  }
+  else {
+     # Build filename for raditional separation
+     debug(5, "Files stored in single folder structure");
+     $f = urlencode("${host}_${service}_${db}") . '.rrd';
+  }
+  debug(5, "Checking $directory/$f");
+  unless ( -e "$directory/$f" ) {
+    $ds = "$directory/$f --start $start";
     for ( @$labels ) {
       ($v,$t) = ($_->[0],$_->[1]);
       my $u = $t eq 'DERIVE' ? '0' : 'U' ;
@@ -148,10 +165,16 @@ debug(1, "DS = $ds");
 # Use RRDs to update rrd file
 #
 sub rrdupdate {
-  my($file,$time,$values) = @_;
+  my($file,$time,$values,$host) = @_;
   my($ds,$c);
+  my $directory = $Config{rrddir};
 
-  $ds = "$Config{rrddir}/$file $time";
+  # Select target folder depending on config settings
+  if ($Config{dbseparator} eq "subdir") {
+    $directory .=  "/" . $host;
+  }
+
+  $ds = "$directory/$file $time";
   for ( @$values ) {
     $_->[2] ||= 0;
     $ds .= ":$_->[2]";
@@ -203,7 +226,7 @@ sub processdata {
     my $S = parseperfdata(%P);
     for my $s ( @$S ) {
       my $rrd = createrrd($P{hostname}, $P{servicedescr}, $P{lastcheck}-1, $s);
-      rrdupdate($rrd, $P{lastcheck}, $s);
+      rrdupdate($rrd, $P{lastcheck}, $s, $P{hostname});
     }
   }
 }
