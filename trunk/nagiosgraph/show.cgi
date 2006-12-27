@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.42 2006/12/20 08:33:15 vanidoso Exp $
+# File:    $Id: show.cgi,v 1.43 2006/12/27 14:37:06 blackraven1977 Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -56,6 +56,7 @@ sub readconfig {
       };
     }
   close FH;
+  if (!$Config{linewidth}) {$Config{linewidth} = 2};
 
   # If debug is set make sure we can append to logfile
    if ($Config{debug} > 0) {
@@ -108,7 +109,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.42 $ '."$l - $text\n";
+      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.43 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);
   }
 }
@@ -286,7 +287,7 @@ sub rrdline {
       my $sv = "$v";
       my $label = sprintf("%-${longest}s", $sv);
       push @ds , "DEF:$sv=$directory/$f:$v:AVERAGE"
-               , "LINE2:${sv}#$c:$label";
+               , "LINE$Config{linewidth}:${sv}#$c:$label";
       if ($fixedscale) {
         push @ds, "GPRINT:$sv:MAX:Max\\: %6.2lf"
                , "GPRINT:$sv:AVERAGE:Avg\\: %6.2lf"
