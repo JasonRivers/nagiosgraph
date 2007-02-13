@@ -1,4 +1,5 @@
 CVS
+* Change Olexandr Davydenko patch to allow for any valid form (line/area/etc). Patch from Adolfo Soto
 * Setup lines width on graphs via config file. Patch from Olexandr Davydenko.
 * Patch to allow separation of rrd files in different directories (hostname/file.rrd)
 * Navigation menu patch
