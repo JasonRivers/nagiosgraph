@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.44 2007/02/13 14:47:47 vanidoso Exp $
+# File:    $Id: show.cgi,v 1.45 2007/02/15 13:12:02 vanidoso Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -109,7 +109,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.44 $ '."$l - $text\n";
+      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.45 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);
   }
 }
@@ -289,7 +289,7 @@ sub rrdline {
       push @ds , "DEF:$sv=$directory/$f:$v:AVERAGE"
                , "$Config{plotas}:${sv}#$c:$label";
       my $format = '%6.2lf%s';
-      if ($fixedscale) { $format = '%3.0lf'; }
+      if ($fixedscale) { $format = '%6.2lf'; }
      
       # Graph labels
       push @ds, "GPRINT:$sv:MAX:Max\\: $format"
@@ -314,6 +314,43 @@ sub rrdline {
   return @ds;
 }
 
+# Determine the number of graphs that will be displayed on the page
+# and the time period they will cover
+sub graphsizes  {
+  # Pre-defined available graph sizes
+  #   Daily   =  33h =   118800s
+  #   Weekly  =   9d =   777600s
+  #   Monthly =   5w =  3024000s
+  #   Quarterly = 14w = 8467200s
+  #   Yearly  = 400d = 34560000s
+
+  # Values in config file
+  my @config_times = split(/ /,$Config{time});
+  my @final_t;
+
+  # [Label, period span, offset] (in seconds)
+  my @default_times=(['dai',118800,86400], ['week',777600,604800], ['month',3024000,2592000], ['year',34560000,31536000]);
+
+  # Configuration entry was absent or empty. Use default
+  if (! @config_times) {
+       @final_t= @default_times;
+  }
+  else{
+      # Try to match known entries from configuration file
+      grep(/^day$/, @config_times) and push @final_t , ['dai',118800,86400];
+      grep(/^week$/, @config_times) and push @final_t , ['week',777600,604800];
+      grep(/^month$/, @config_times) and push @final_t ,['month',3024000,2592000];
+      grep(/^quarter$/, @config_times) and push @final_t , ['quarter',8467200,7776000];
+      grep(/^year$/, @config_times) and push @final_t , ['year',34560000,31536000];
+  }
+
+ # Final check to see if we matched any known entry or use default otherwise
+ @final_t= @default_times if (! @final_t);
+
+  return @final_t;
+
+}
+
 # Write a pretty page with various graphs
 #
 sub page {
@@ -331,12 +368,7 @@ sub page {
   @db = dbfilelist($h,$s) unless @db;
   debug(5, "dbfilelist @db");
 
-  # Define graph sizes
-  #   Daily   =  33h =   118800s
-  #   Weekly  =   9d =   777600s
-  #   Monthly =   5w =  3024000s
-  #   Yearly  = 400d = 34560000s
-  my @T=(['dai',118800,86400], ['week',777600,604800], ['month',3024000,2592000], ['year',34560000,31536000]);
+  my @T=graphsizes;
   print h1("Nagiosgraph");
   print p("Performance data for ".strong("Host: ").tt($h).' &#183; '.strong("Service: ").tt($s));
   for my $l ( @T ) {
