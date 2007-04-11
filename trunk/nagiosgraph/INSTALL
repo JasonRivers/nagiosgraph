@@ -1,7 +1,7 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.17 2006/08/09 08:17:38 tonvoon Exp $
+File:    $Id: INSTALL,v 1.18 2007/04/11 15:05:14 durwin Exp $
 Author:  (c) Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
@@ -12,7 +12,7 @@ Nagios.
 
  - Check required packaged are installed: perl, CGI, nagios and rrdtool
 
- - Install nagiosgraph.conf, map, insert.pl and show.cgi somewhere, for 
+ - Install nagiosgraph.conf, map, insert.pl and show.cgi somewhere, for
    example in /usr/local/nagios/nagiosgraph/
 
  - Edit paths, debug level etc. in nagiosgraph.conf.
@@ -34,7 +34,7 @@ Nagios.
 
    Make sure that service_perfdata_command is not defined.
 
-   Make sure that location of perfdata_file matches definition in 
+   Make sure that location of perfdata_file matches definition in
    nagiosgraph.conf .
 
  - In checkcommands.cfg or misccommands.cfg:
@@ -51,15 +51,15 @@ Nagios.
 
      command_line /usr/bin/perl /etc/nagios/nagiosgraph/insert.pl
 
- - Alternative to the two points above: The old style is still possible. 
-   It uses far more CPU but inserts data in rrd files immediately for 
+ - Alternative to the two points above: The old style is still possible.
+   It uses far more CPU but inserts data in rrd files immediately for
    every service check.
 
    In nagios.cfg:
 
      service_perfdata_command=process-service-perfdata
 
-   Make sure that service_perfdata_file_processing_command is not 
+   Make sure that service_perfdata_file_processing_command is not
    defined.
 
    In misccommands.cfg:
@@ -74,9 +74,35 @@ Nagios.
 
  - Copy nagiosgraph.css to .../nagios/stylesheets/ .
 
+NOTE: Next step was used in some earlier version of Nagios.
+For Nagios version 2.6 and later, this step does nothing.
+Nagios seems to ignore it.  For Nagios version 2.6 and later,
+skip this step.
  - In cgi.cfg have:
 
      xedtemplate_config_file=/usr/local/etc/nagios/serviceextinfo.cfg
+
+ - For Nagios version 2.6 and later.
+     Note: This may also be what is required for earlier versions of Nagios.
+     It is uncertain as when Nagios started handling extended services differently.
+
+     If you have these lines in nagios.cfg, then this step is what you need to do
+     instead of the one above.
+
+     # Extended host/service info definitions are now stored along with
+     # other object definitions:
+     # cfg_file=/etc/nagios/hostextinfo.cfg
+     # cfg_file=/etc/nagios/serviceextinfo.cfg
+
+     Un-comment the 2 cfg_file= lines.
+
+ - Edit or create hostextinfo.cfg
+
+     define hostextinfo {
+       host_name  your-host
+     }
+
+     This must be the host you will use in serviceextinfo.cfg
 
  - Edit serviceextinfo.cfg
 
@@ -105,14 +131,14 @@ Nagios.
        icon_image_alt  View graphs
      }
 
- - Add for example &geom=350x100 to notes_url line for custom sizes of 
+ - Add for example &geom=350x100 to notes_url line for custom sizes of
    graphs.
 
- - Add for example &rrdopts=%2Dl%200%20%2Du%20100 (meaning: 
-   "-l 0 -u 100") to notes_url line for custom Y axis ranges. Any 
+ - Add for example &rrdopts=%2Dl%200%20%2Du%20100 (meaning:
+   "-l 0 -u 100") to notes_url line for custom Y axis ranges. Any
    rrdgraph options can be specified, but has to be url encoded.
 
- - Add &fixedscale to set the Y-axis to be in the same units as the 
+ - Add &fixedscale to set the Y-axis to be in the same units as the
    supplied perf data. Will also set the legends to be in same units
 
  - Configure Apache to point to show.cgi. For example:
@@ -120,8 +146,20 @@ Nagios.
      ScriptAlias /nagiosgraph/ /usr/local/nagios/nagiosgraph/
 
  - To add new service types, edit the map file. This contains regular
-   expression to identify service types, and defines how to store data in 
+   expression to identify service types, and defines how to store data in
    rrd files. Use testentry.pl for testing before inserting in map file.
+
+   You can also run the nagios check command from the command line to see
+   what is returned.
+
+   NOTE: The current entry in map file for HTTP does not work for Fedoracore 6
+   with Nagios 2.6 and later.  This is what did work.
+
+	# Service type: unix-www
+	#   ouput:OK - HTTP/1.1 302 Found - 0.002 second response time |time=0.001920s;;;0.000000 size=126B;;;0
+	/output:.*?HTTP.*?([.0-9]+) sec/
+	and push @s, [ http,
+		[ rt, GAUGE, $1 ] ];
 
  - Consider security.
 
