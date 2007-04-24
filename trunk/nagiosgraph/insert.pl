@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.23 2006/12/20 07:23:43 vanidoso Exp $
+# File:    $Id: insert.pl,v 1.24 2007/04/24 08:22:33 dsh Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -66,7 +66,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar localtime . ' $RCSfile: insert.pl,v $ $Revision: 1.23 $ '."$l - $text\n";
+      print LOG scalar localtime . ' $RCSfile: insert.pl,v $ $Revision: 1.24 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);  #Unlock file
   }
 }
@@ -202,9 +202,14 @@ sub inputdata {
   if ( $ARGV[0] ) {
     @inputlines = $ARGV[0];
   } elsif ( defined $Config{perflog} ) {
-    open PERFLOG, $Config{perflog};
-      @inputlines = <PERFLOG>;
-    close PERFLOG
+    if (-s $Config{perflog}) {
+      my $worklog = $Config{perflog} . ".nagiosgraph";
+      rename($Config{perflog}, $worklog);
+      open PERFLOG, $worklog;
+        @inputlines = <PERFLOG>;
+      close PERFLOG;
+      unlink($worklog);
+    }
   }
 
   # Quit if there are no data to process
