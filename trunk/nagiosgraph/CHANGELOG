@@ -1,4 +1,5 @@
 CVS
+* Bugfix. Patch for navigation menu, if the directory in rrd/ was empty, the script ended too fast.
 * Implement time parameter in config file so user can choose wich graphs will appear on page. Patch from Adolfo Soto
 * Change Olexandr Davydenko patch to allow for any valid form (line/area/etc). Patch from Adolfo Soto
 * Setup lines width on graphs via config file. Patch from Olexandr Davydenko.
