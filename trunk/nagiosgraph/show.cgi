@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.45 2007/02/15 13:12:02 vanidoso Exp $
+# File:    $Id: show.cgi,v 1.46 2007/06/11 17:37:46 toriniasty Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -109,7 +109,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.45 $ '."$l - $text\n";
+      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.46 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);
   }
 }
@@ -151,13 +151,26 @@ sub dbfilelist {
   return @rrd;
 }
 
+# Subrutine for checking that the directory with RRD
+# file is not empty
+sub checkdirempty{
+    my $directory = $_;
+    opendir(DIR, $directory ) or die "couldn't open: $!";
+        my @files = readdir DIR;
+        my $size = scalar @files;
+    closedir DIR;
+    if ( $size > 2 ) { return 0 } else { return 1 }
+}
+
 # Assumes subdir as separator
 sub getgraphlist{
   # Builds a hash for available servers/services to graph
     my $current = $_;
     # Directories are for hostnames
     if ((-d $current) && ($current !~ /^\./)) {
-       $Navmenu{$current}{'NAME'}= $current;
+		if ( checkdirempty($current) == 0) {
+	       $Navmenu{$current}{'NAME'}= $current;
+		}
     }
     # Files are for services
     elsif (-f $current && $current=~/\.rrd$/) {
