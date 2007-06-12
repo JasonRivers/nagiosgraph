@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: insert.pl,v 1.24 2007/04/24 08:22:33 dsh Exp $
+# File:    $Id: insert.pl,v 1.25 2007/06/12 19:00:06 toriniasty Stab $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -66,7 +66,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar localtime . ' $RCSfile: insert.pl,v $ $Revision: 1.24 $ '."$l - $text\n";
+      print LOG scalar localtime() . ' $RCSfile: insert.pl,v $ $Revision: 1.25 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);  #Unlock file
   }
 }
@@ -126,7 +126,7 @@ sub createrrd {
   # Check for separator ,  create filestructure
   if ($Config{dbseparator} eq "subdir") {
      $directory .=  "/" . $host;
-     unless -e ($directory) {
+     unless (-e $directory) {
         # Create host specific directories
         mkdir $directory;
         debug (4, "Creating directory $directory");
