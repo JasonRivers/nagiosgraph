@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.46 2007/06/11 17:37:46 toriniasty Exp $
+# File:    $Id: show.cgi,v 1.47 2007/06/18 04:04:38 sf-hlai Exp $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -109,7 +109,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.46 $ '."$l - $text\n";
+      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.47 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);
   }
 }
@@ -280,10 +280,6 @@ sub rrdline {
   my($host,$service,$geom,$rrdopts,$G,$time) = @_;
   my($g,$f,$v,$c,@ds);
   my $directory = $Config{rrddir};
-
-  if ($Config{dbseparator} eq "subdir") {
-     $directory .=  "/" . $host;
-  }
 
   @ds = ('-', '-a', 'PNG', '--start', "-$time");
   # Identify where to pull data from and what to call it
