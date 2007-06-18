@@ -1,4 +1,6 @@
 CVS
+* [Bugfix] show.cgi Patch for navigation menu, replace "." (subdomain separator) in hostname with "_" so javascript will work
+* [Bugfix] show.cgi In sub rrdline, skip appending $directory with $host for the new subdir structure, because $host presents in $f
 * Bugfix. insert.pl compilation errors
 * Bugfix. Patch for navigation menu, if the directory in rrd/ was empty, the script ended too fast.
 * Implement time parameter in config file so user can choose wich graphs will appear on page. Patch from Adolfo Soto
