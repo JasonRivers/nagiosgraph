@@ -1,13 +1,13 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.18 2007/04/11 15:05:14 durwin Exp $
+File:    $Id: INSTALL,v 1.19 2007/06/18 08:19:21 sf-hlai Stab $
 Author:  (c) Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
 
-Follow instructions below to install and use nagiosgraph. The
-instructions are for Nagios 2.0b4, and might differ in other versions of
+Follow instructions below to install and use nagiosgraph. They are 
+mainly for Nagios 2.9, and might differ in other versions of
 Nagios.
 
  - Check required packaged are installed: perl, CGI, nagios and rrdtool
@@ -17,13 +17,23 @@ Nagios.
 
  - Edit paths, debug level etc. in nagiosgraph.conf.
 
- - Check that nagios user can write to rrd dir, and www user can read.
+ - Check that nagios user can write to "rrddir" (location defined in 
+   nagiosgraph.conf), and www user can read.
 
- - Check that nagios and www user can write to log file.
+ - Check that nagios and www users can write to "logfile" (location 
+   defined in nagiosgraph.conf).
 
- - In insert.pl and show.cgi edit path to nagiosgraph.conf file.
+ - In insert.pl and show.cgi, update the line "my $configfile = '...' to
+   point to the full path of nagiosgraph.conf file.
 
- - In nagios.cfg set:
+
+NOTE: Two ways to define data processing -- the new style and the old style.
+
+[ Define data processing -- new style -- begin]
+In new style, all performance data append to a file,
+then, nagios invokes insert.pl at a regular interval to update rrd files.
+
+ - [New Style] In nagios.cfg set:
 
      process_performance_data=1
      service_perfdata_file=/var/spool/nagios/perfdata.log
@@ -32,12 +42,14 @@ Nagios.
      service_perfdata_file_processing_interval=30
      service_perfdata_file_processing_command=process-service-perfdata
 
-   Make sure that service_perfdata_command is not defined.
+   Make sure that service_perfdata_command is either commented out 
+   or not defined.
 
-   Make sure that location of perfdata_file matches definition in
-   nagiosgraph.conf .
+   Make sure that location of service_perfdata_file matches that of perflog
+   defined in nagiosgraph.conf.
 
- - In checkcommands.cfg or misccommands.cfg:
+ - [New Style] In checkcommands.cfg or misccommands.cfg, depending on which 
+   defined in nagios.cfg:
 
      define command {
        command_name  process-service-perfdata
@@ -51,25 +63,36 @@ Nagios.
 
      command_line /usr/bin/perl /etc/nagios/nagiosgraph/insert.pl
 
- - Alternative to the two points above: The old style is still possible.
-   It uses far more CPU but inserts data in rrd files immediately for
-   every service check.
+[ Define data processing -- new style -- end]
 
-   In nagios.cfg:
+[ Define data processing -- old style -- begin]
+The old style uses more CPU. Here nagios invokes insert.pl to update rrd files
+immediately for every service check.
 
+ - [Old Style] In nagios.cfg:
+
+     process_performance_data=1
      service_perfdata_command=process-service-perfdata
 
-   Make sure that service_perfdata_file_processing_command is not
-   defined.
+   Make sure that service_perfdata_file_processing_command is either
+   commented out or not defined.
 
-   In misccommands.cfg:
+ - [Old Style] In checkcommands.cfg or misccommands.cfg, depending on which 
+   defined in nagios.cfg:
 
      define command{
-       command_name    process-service-perfdata
+       command_name  process-service-perfdata
        command_line  /usr/local/nagios/nagiosgraph/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
      }
 
- - Put an icon approx. 40x40 in .../share/images/logos/ for nagios to link
+   Some installations of Nagios (with embedded perl) requires to specify
+   location of perl. Modify command_line to:
+
+     command_line /usr/bin/perl /etc/nagios/nagiosgraph/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
+
+[ Define data processing -- old style -- end]
+
+ - Put an icon approx. 40x40 in .../share/images/logos/graph.gif for nagios to link
    to graphs.
 
  - Copy nagiosgraph.css to .../nagios/stylesheets/ .
@@ -95,8 +118,9 @@ skip this step.
      # cfg_file=/etc/nagios/serviceextinfo.cfg
 
      Un-comment the 2 cfg_file= lines.
+     [NOTE: hostextinfo.cfg not required for Nagios 2.9]
 
- - Edit or create hostextinfo.cfg
+ - Edit or create hostextinfo.cfg [NOTE: For Nagios 2.9, skip this step.]
 
      define hostextinfo {
        host_name  your-host
@@ -116,12 +140,16 @@ skip this step.
        icon_image_alt  View graphs
      }
 
-   Instead of hostgroup line a host_name line with all hosts where this
-   type of data are being collected.
+ -- Instead of hostgroup line a host_name line with all hosts where this
+    type of data are being collected.
 
-   Some type of services have data values that have big differences in the
-   magnitude. In such cases it's good idea to split up into seperate
-   graphs. Here's an example for ntp:
+ -- For Nagios 2.9, delete or comment out the two lines of icon_image 
+    and icon_image_alt. And, replace nagios/images/notes.gif with your own
+    40x40 gif file.
+
+ -- Some type of services have data values that have big differences in the
+    magnitude. In such cases it's good idea to split up into seperate
+    graphs. Here's an example for ntp:
 
      define serviceextinfo {
        service_description  NTP
@@ -131,15 +159,16 @@ skip this step.
        icon_image_alt  View graphs
      }
 
- - Add for example &geom=350x100 to notes_url line for custom sizes of
-   graphs.
+ -- Add geom option (e.g. &geom=350x100) to notes_url line for custom sizes of
+    graphs.
 
- - Add for example &rrdopts=%2Dl%200%20%2Du%20100 (meaning:
-   "-l 0 -u 100") to notes_url line for custom Y axis ranges. Any
+ -- Add rrdopts option (e.g. &rrdopts=%2Dl%200%20%2Du%20100 (meaning:
+   "-l 0 -u 100")) to notes_url line for custom Y axis ranges. Any
    rrdgraph options can be specified, but has to be url encoded.
 
- - Add &fixedscale to set the Y-axis to be in the same units as the
+ -- Add &fixedscale to set the Y-axis to be in the same units as the
    supplied perf data. Will also set the legends to be in same units
+
 
  - Configure Apache to point to show.cgi. For example:
 
@@ -152,7 +181,7 @@ skip this step.
    You can also run the nagios check command from the command line to see
    what is returned.
 
-   NOTE: The current entry in map file for HTTP does not work for Fedoracore 6
+   NOTE: The current entry in map file for HTTP does not work for Fedora core 6
    with Nagios 2.6 and later.  This is what did work.
 
 	# Service type: unix-www
@@ -163,7 +192,7 @@ skip this step.
 
  - Consider security.
 
- - Start Nagios. Increase debug level in nagiosgraph.conf if things don't
+ - Restart Nagios. Increase debug level in nagiosgraph.conf if things don't
    work right away.
 
  - Keep an eye on the log file. It can grow big. Perhaps rotate it, or
