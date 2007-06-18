@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.47 2007/06/18 04:04:38 sf-hlai Exp $
+# File:    $Id: show.cgi,v 1.49 2007/06/18 05:26:50 sf-hlai Stab $
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
@@ -109,7 +109,7 @@ sub debug {
     $l = qw(none critical error warn info debug)[$l];
     # Get a lock on the LOG file (blocking call)
     flock(LOG,LOCK_EX);
-      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.47 $ '."$l - $text\n";
+      print LOG scalar (localtime) . ' $RCSfile: show.cgi,v $ $Revision: 1.49 $ '."$l - $text\n";
     flock(LOG,LOCK_UN);
   }
 }
@@ -416,6 +416,7 @@ sub printNavMenu {
     my $crname = $Navmenu{$system}{'NAME'};
     # Javascript doesn't like "-" characters in variable names
     $crname =~s/-/_/g;
+    $crname =~s/\./_/g;
     print "var ". $crname." = new Array(\"" . join ('","', sort(@{$Navmenu{$system}{'SERVICES'}})) . "\");" ;
     print "\n";
   }
@@ -428,6 +429,7 @@ my $JSCRIPT=<<END;
      var server = element.options[element.selectedIndex].text;
      //Converts - in hostnames to _ for matching array name
      server = server.replace(/-/g,"_");
+     server = server.replace(/\\./g,"_");
      var svchosen = window.document.menuform.services;
      var opciones = eval(server);
      // Adjust service dropdown menu length depending on host selected
