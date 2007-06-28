@@ -1,25 +1,29 @@
-Nagiosgraph
------------
+------------------
+Nagiosgraph README
+------------------
 
-File:    $Id: README,v 1.10 2006/04/05 12:37:11 sauber Stab $
+File:    $Id: README,v 1.11 2007/06/28 04:58:54 sf-hlai Exp $
 Author:  (c) Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
 
+Nagiosgraph is an add-on of Nagios. It collects service perfdata into rrd 
+format, and displays the resulting graphs via cgi.
 
-Summary:
-
-Collects perfdata from Nagios check scripts and inserts data into rrd
-files. Data in the rrdfiles can be displayed in html pages with cgi
-script.
+Note: Nagios is a registered trademark of Ethan Galstad.
 
 
-Note:
 
-Nagios is a registered trademark of Ethan Galstad.
+Usage
+------
+
+Follow the instructions in INSTALL for how to install and configure 
+nagiosgraph.
 
 
-Files:
+
+Files
+------
 
 CHANGELOG         - History of changes
 INSTALL           - Dcoument for how to install and use nagiosgraph
@@ -37,20 +41,17 @@ testcolor.cgi     - Preview of colors for keywords in each color scheme
 testentry.pl      - A script for testing new map file entries.
 
 
-Usage:
 
-Follow the instructions in INSTALL for how to install and configure 
-nagiosgraph.
+Getting Help
+------------
 
-
-Getting Help:
-
-Discussions related to nagiosgraph are located in a Sourceforge help
-forum; http://sourceforge.net/forum/forum.php?forum_id=394748 . A
-Sourceforge account is necessary for posting.
+Visit the help forum -- http://sourceforge.net/forum/forum.php?forum_id=394748
+See also the project wiki -- http://nagiosgraph.wiki.sourceforge.net
 
 
-Principles of Operation:
+
+Principles of Operations
+------------------------
 
 nagiosgraph is basically a simple interface between Nagios and rrd data
 files. Simplicity comes from three factors; it doesn't do much, behavior
@@ -67,25 +68,19 @@ it in the rrd files. Nagios passes all the service data collected to a
 nagiosgraph script called 'insert.pl'. This script will look up in
 'map', which rrd file to insert the data into, and how to name the data.
 
-In Nagios it's also possible to have extended service information pages.
-A nagiosgraph cgi script called 'show.cgi' can be used for such service
-information links. 'show.cgi' will look up in 'map' which performance
-data is stored in rrd files, and display graphs of this data. 
+In Nagios, it's possible to have extended service information pages.
+A nagiosgraph cgi script called 'show.cgi' is used for such service
+information links. 'show.cgi' looks up performance data stored in rrd file 
+directories, and generates line charts accordingly. 
 
-nagiosgraph will automatically detect when new hosts or services has
-been added in Nagios, so generally no configuration of nagiosgraph is
-necessary when configuration of Nagios changes.
-
-nagiosgraph is designed to only require very little configuration.
-Integrating with Nagios is a complicated process nevertheless. The
-'README' file describes how to configure nagiosgraph and integrate with
-Nagios.
+nagiosgraph automatically detects new hosts or services added in Nagios, 
+so generally no re-configuration of nagiosgraph is necessary.
 
 The 'map' configuration file is actually perl code, that will be eval'ed
 by 'insert.pl' and 'show.cgi'. Several examples of servicechecks are
 included in the distributed 'map' file, but generally it's necessary to
 make modifications or add entries to match the output of the particular
-nagiosplugins in use. Knowing perl is helpful when making modifications,
+nagios plugins in use. Knowing perl regular expression is helpful,
 but the examples supplied should cover most types of performance data.
 
 By default all available data for a servicecheck will be displayed in

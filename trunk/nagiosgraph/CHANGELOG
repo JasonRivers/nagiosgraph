@@ -1,8 +1,5 @@
-CVS
-* [Bugfix] show.cgi Patch for navigation menu, replace "." (subdomain separator) in hostname with "_" so javascript will work
-* [Bugfix] show.cgi In sub rrdline, skip appending $directory with $host for the new subdir structure, because $host presents in $f
-* Bugfix. insert.pl compilation errors
-* Bugfix. Patch for navigation menu, if the directory in rrd/ was empty, the script ended too fast.
+0.9.0 2007-06-28
+
 * Implement time parameter in config file so user can choose wich graphs will appear on page. Patch from Adolfo Soto
 * Change Olexandr Davydenko patch to allow for any valid form (line/area/etc). Patch from Adolfo Soto
 * Setup lines width on graphs via config file. Patch from Olexandr Davydenko.
@@ -15,6 +12,9 @@ CVS
 * INSTALL mentions to specify path to perl. Explaination by Doug Farley.
 * Added fixedscale as a CGI parameter to show.cgi to fix the Y axis 
   and legend units.
+* Fix show.cgi to check empty rrd directory
+* Fix insert.pl compilation errors.
+* Minor fix in show.cgi to allow "." in hostnames.
 
 0.8.2 2006-04-12
 

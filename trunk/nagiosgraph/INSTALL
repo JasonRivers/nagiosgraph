@@ -1,39 +1,56 @@
+------------------------
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.19 2007/06/18 08:19:21 sf-hlai Stab $
+File:    $Id: INSTALL,v 1.20 2007/06/28 04:58:54 sf-hlai Exp $
 Author:  (c) Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
 
-Follow instructions below to install and use nagiosgraph. They are 
-mainly for Nagios 2.9, and might differ in other versions of
-Nagios.
+The instructions below are mainly for latest stable versions of Nagios, 
+e.g. 2.9, and might differ in other versions of Nagios.
 
- - Check required packaged are installed: perl, CGI, nagios and rrdtool
 
- - Install nagiosgraph.conf, map, insert.pl and show.cgi somewhere, for
-   example in /usr/local/nagios/nagiosgraph/
+
+Installation Preliminaries
+--------------------------
+
+ - Check required packages: nagios, nagios-plugins, rrdtool, perl, 
+   perl-CGI, and perl-rrdtool
+
+ - Extract the nagiosgraph tarball into a temporary location:
+
+   tar xzvf nagiosgraph-0.9.0.tgz
+
+ - Copy nagiosgraph.conf, map, insert.pl and show.cgi to your preferred 
+   target locations, e.g. /usr/local/nagios/nagiosgraph/
 
  - Edit paths, debug level etc. in nagiosgraph.conf.
 
- - Check that nagios user can write to "rrddir" (location defined in 
-   nagiosgraph.conf), and www user can read.
+ - Update permissions of "rrddir" (as defined in nagiosgraph.conf), 
+   so that *nagios* user can write to it and *www* user can read it.
 
- - Check that nagios and www users can write to "logfile" (location 
-   defined in nagiosgraph.conf).
+ - Update permissions of "logfile" (as defined in nagiosgraph.conf) 
+   so that both *nagios* and *www* users can write to "logfile" 
 
- - In insert.pl and show.cgi, update the line "my $configfile = '...' to
+ - Update insert.pl and show.cgi for the line "my $configfile = '...' to
    point to the full path of nagiosgraph.conf file.
 
 
+
+Service Perfdata Processing Configuration
+-----------------------------------------
+
 NOTE: Two ways to define data processing -- the new style and the old style.
 
-[ Define data processing -- new style -- begin]
++-----------+
+| New Style |
++-----------+
+
 In new style, all performance data append to a file,
 then, nagios invokes insert.pl at a regular interval to update rrd files.
 
- - [New Style] In nagios.cfg set:
+ - In nagios.cfg set:
 
      process_performance_data=1
      service_perfdata_file=/var/spool/nagios/perfdata.log
@@ -48,7 +65,7 @@ then, nagios invokes insert.pl at a regular interval to update rrd files.
    Make sure that location of service_perfdata_file matches that of perflog
    defined in nagiosgraph.conf.
 
- - [New Style] In checkcommands.cfg or misccommands.cfg, depending on which 
+ - In checkcommands.cfg or misccommands.cfg, depending on which 
    defined in nagios.cfg:
 
      define command {
@@ -63,13 +80,15 @@ then, nagios invokes insert.pl at a regular interval to update rrd files.
 
      command_line /usr/bin/perl /etc/nagios/nagiosgraph/insert.pl
 
-[ Define data processing -- new style -- end]
 
-[ Define data processing -- old style -- begin]
-The old style uses more CPU. Here nagios invokes insert.pl to update rrd files
-immediately for every service check.
++-----------+
+| Old Style |
++-----------+
 
- - [Old Style] In nagios.cfg:
+The old style consumes more CPU. Nagios invokes insert.pl immediately after
+every service check, to update the corresponding rrd files.
+
+ - In nagios.cfg:
 
      process_performance_data=1
      service_perfdata_command=process-service-perfdata
@@ -77,7 +96,7 @@ immediately for every service check.
    Make sure that service_perfdata_file_processing_command is either
    commented out or not defined.
 
- - [Old Style] In checkcommands.cfg or misccommands.cfg, depending on which 
+ - In checkcommands.cfg or misccommands.cfg, depending on which one is
    defined in nagios.cfg:
 
      define command{
@@ -85,23 +104,23 @@ immediately for every service check.
        command_line  /usr/local/nagios/nagiosgraph/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
      }
 
-   Some installations of Nagios (with embedded perl) requires to specify
-   location of perl. Modify command_line to:
+
+   Those Nagios with embedded perl might need specifying the location of
+   perl so insert the full path to perl binary in the command_line, such as:
 
      command_line /usr/bin/perl /etc/nagios/nagiosgraph/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
 
-[ Define data processing -- old style -- end]
+
+
+Configuring Graphing and Display
+--------------------------------
 
  - Put an icon approx. 40x40 in .../share/images/logos/graph.gif for nagios to link
    to graphs.
 
  - Copy nagiosgraph.css to .../nagios/stylesheets/ .
 
-NOTE: Next step was used in some earlier version of Nagios.
-For Nagios version 2.6 and later, this step does nothing.
-Nagios seems to ignore it.  For Nagios version 2.6 and later,
-skip this step.
- - In cgi.cfg have:
+ - For Nagios versions < 2.6, define in cgi.cfg the following:
 
      xedtemplate_config_file=/usr/local/etc/nagios/serviceextinfo.cfg
 
@@ -119,6 +138,7 @@ skip this step.
 
      Un-comment the 2 cfg_file= lines.
      [NOTE: hostextinfo.cfg not required for Nagios 2.9]
+
 
  - Edit or create hostextinfo.cfg [NOTE: For Nagios 2.9, skip this step.]
 
@@ -174,6 +194,11 @@ skip this step.
 
      ScriptAlias /nagiosgraph/ /usr/local/nagios/nagiosgraph/
 
+
+
+Adding New Mapping and Troubleshooting
+--------------------------------------
+
  - To add new service types, edit the map file. This contains regular
    expression to identify service types, and defines how to store data in
    rrd files. Use testentry.pl for testing before inserting in map file.
@@ -189,8 +214,6 @@ skip this step.
 	/output:.*?HTTP.*?([.0-9]+) sec/
 	and push @s, [ http,
 		[ rt, GAUGE, $1 ] ];
-
- - Consider security.
 
  - Restart Nagios. Increase debug level in nagiosgraph.conf if things don't
    work right away.
