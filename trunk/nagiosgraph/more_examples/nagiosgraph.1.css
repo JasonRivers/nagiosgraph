@@ -1,0 +1,57 @@
+body#nagiosgraph {
+	width: 90%;
+	margin-left: 5%;
+	color: #000000;
+	background-color: #fff; /*#BBBBFF;*/
+	font: normal: verdana,'Bitstream Vera Sans',helvetica,arial,sans-serif;
+}
+:link, :visited {
+	color: rgb(152, 140, 101);
+}
+#mainnav {
+	color: rgb(152, 140, 101);
+	border: 1px solid rgb(200, 201, 184);
+	background: rgb(75, 75, 75);
+	padding: .2em 20px;
+	font: normal 14px verdana,'Bitstream Vera Sans',helvetica,arial,sans-serif;
+}
+h1, h2, h3, h4 {
+	font-family: Verdana,Lucida,Helvetica,Arial,sans-serif;
+	color: rgb(75, 75, 75);
+}
+h1 {
+	font-size: 15px;
+	color: rgb(152, 140, 101);
+}
+h1 *:link, h1 *:visited {
+	color: rgb(152, 140, 101);
+}
+h2 {
+	font-size: 13px;
+	padding-left: 4px;
+	padding-top: 1em;
+	margin-bottom: 0.5em;
+	clear: left;
+}
+h3 {
+	font-size: 11px;
+	padding-left: 8px;
+}
+h4 {
+	font-size: 9px;
+	padding-left: 12px;
+}
+div.graphs, div#footer {
+	clear: both;
+}
+img {
+	float: left;
+	margin-left: 15px;
+	margin-bottom: 1em;
+	padding-right: 10px;
+}
+div.graph_description {
+	/* to valign the text */
+	margin-top: 0;
+	padding-top: 70px;
+}
