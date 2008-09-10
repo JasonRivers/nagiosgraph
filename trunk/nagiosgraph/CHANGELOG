@@ -1,7 +1,18 @@
+1.0.0 2008-09-10
+
+* Add showhost.cgi (by Robert Teeter, shows graphs for all services on a host)
+  and showservice.cgi (shows graphs for one service on all hosts).
+* Move common subroutines into a perl library (ngshared.pm).
+* Add a user defined color scheme.
+* Add detailed debugging (by perl script, host and/or data set).
+* Added perldoc to most of the perl programs.
+
 0.9.0 2007-06-28
 
-* Implement time parameter in config file so user can choose wich graphs will appear on page. Patch from Adolfo Soto
-* Change Olexandr Davydenko patch to allow for any valid form (line/area/etc). Patch from Adolfo Soto
+* Implement time parameter in config file so user can choose which graphs will
+  appear on page. Patch from Adolfo Soto
+* Change Olexandr Davydenko patch to allow for any valid form (line/area/etc).
+  Patch from Adolfo Soto
 * Setup lines width on graphs via config file. Patch from Olexandr Davydenko.
 * Patch to allow separation of rrd files in different directories (hostname/file.rrd)
 * Navigation menu patch

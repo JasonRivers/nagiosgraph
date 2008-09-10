@@ -2,13 +2,13 @@
 nagiosgraph Installation
 ------------------------
 
-File:    $Id: INSTALL,v 1.20 2007/06/28 04:58:54 sf-hlai Exp $
-Author:  (c) Soren Dossing, 2005
+File:    $Id$
+Author:  (c) Alan Brenner, Ithaka Harbors, 2008; Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
 
 The instructions below are mainly for latest stable versions of Nagios, 
-e.g. 2.9, and might differ in other versions of Nagios.
+e.g. 2.12, and might differ in other versions of Nagios.
 
 
 
@@ -18,12 +18,27 @@ Installation Preliminaries
  - Check required packages: nagios, nagios-plugins, rrdtool, perl, 
    perl-CGI, and perl-rrdtool
 
- - Extract the nagiosgraph tarball into a temporary location:
+ - Extract the Nagiosgraph tarball into a temporary location:
 
-   tar xzvf nagiosgraph-0.9.0.tgz
+   tar xzvf nagiosgraph-1.0.0.tgz
 
- - Copy nagiosgraph.conf, map, insert.pl and show.cgi to your preferred 
-   target locations, e.g. /usr/local/nagios/nagiosgraph/
+ - Copy the contents of etc into your preferred configuration target location,
+   e.g. /etc/nagios/nagiosgraph
+
+ - Edit the perl scripts in the cgi and lib directories, modifying the "use lib"
+   lines to point to the directory in the previous step.
+
+ - Copy the contents of lib into a location Nagios can execute file in
+   e.g. /usr/lib/nagios
+
+ - Copy the contents of cgi into the Nagios cgi-bin directory,
+   e.g. /usr/lib/nagios/cgi-bin
+
+ - Copy the share/action.gif file into the Nagios image directory,
+   e.g. /usr/share/nagios/images
+
+ - Copty the share/nagiosgraph.css file into the Nagios stylesheets directory,
+   e.g. /usr/share/nagios/stylesheets
 
  - Edit paths, debug level etc. in nagiosgraph.conf.
 
@@ -32,9 +47,6 @@ Installation Preliminaries
 
  - Update permissions of "logfile" (as defined in nagiosgraph.conf) 
    so that both *nagios* and *www* users can write to "logfile" 
-
- - Update insert.pl and show.cgi for the line "my $configfile = '...' to
-   point to the full path of nagiosgraph.conf file.
 
 
 
@@ -114,11 +126,6 @@ every service check, to update the corresponding rrd files.
 
 Configuring Graphing and Display
 --------------------------------
-
- - Put an icon approx. 40x40 in .../share/images/logos/graph.gif for nagios to link
-   to graphs.
-
- - Copy nagiosgraph.css to .../nagios/stylesheets/ .
 
  - For Nagios versions < 2.6, define in cgi.cfg the following:
 

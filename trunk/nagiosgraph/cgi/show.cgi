@@ -1,10 +1,9 @@
 #!/usr/bin/perl
 
 # File:    $Id$
-# Author:  Soren Dossing, 2005
+# Author:  (c) Alan Brenner, Ithaka Harbors, 2008; Soren Dossing, 2005
 # License: OSI Artistic License
 #			http://www.opensource.org/licenses/artistic-license-2.0.php
-# Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 
 # The configuration file and ngshared.pm must be in this directory.
 use lib '/etc/nagios/nagiosgraph';

@@ -2,8 +2,8 @@
 Nagiosgraph README
 ------------------
 
-File:    $Id: README,v 1.11 2007/06/28 04:58:54 sf-hlai Exp $
-Author:  (c) Soren Dossing, 2005
+File:    $Id$
+Author:  (c) Alan Brenner, Ithaka Harbors, 2008; Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
 
@@ -29,17 +29,30 @@ CHANGELOG         - History of changes
 INSTALL           - Dcoument for how to install and use nagiosgraph
 README            - This file
 README.map        - Document for how to create map file entries
-insert.pl         - Reads perfdata log from nagios and insert into rrd 
+TODO              - A list of potential improvements to Nagiosgraph.
+lib/insert.pl     - Reads perfdata log from nagios and insert into rrd 
                     files.
-show.cgi          - Generates a html page for the host/sevice specified, 
+lib/insert.sh     - A shell script wrapper around insert.pl.
+cgi/show.cgi      - Generates an html page for the host/service specified, 
                     and generates graphs on-the-fly.
-nagiosgraph.conf  - paths and other configuration
-nagiosgraph.css   - CSS stylesheet
-map               - Regular expression to identify services and 
+cgi/showhost.cgi  - Generates an html page for the host specified, showing all
+                    available services on the host. Uses show.cgi to generate
+                    the graphs.
+cgi/showservices.cgi - Generates an html page for the service specified, showing
+                    all hosts with that service's data. Uses show.cgi to
+                    generate the graphs.
+cgi/testcolor.cgi - Preview of colors for keywords in each color scheme
+etc/nagiosgraph.conf - paths and other configuration
+etc/hostdb.conf   - Configuration specific to showhost.cgi
+etc/servdb.conf   - Configuration specific to showservices.cgi
+etc/map           - Regular expression to identify services and 
                     specification for how to create rrd files.
-testcolor.cgi     - Preview of colors for keywords in each color scheme
-testentry.pl      - A script for testing new map file entries.
-
+etc/ngshared.pm   - Shared library of common perl subroutines
+share/action.gif  - An icon for use in Nagios.
+share/nagiosgraph.css - CSS stylesheet
+utils/testentry.pl- A script for testing new map file entries.
+utils/upgrade.pl  - A script for upgrading from older releases of Nagiosgraph.
+more_examples/*   - Additional configuration examples.
 
 
 Getting Help
