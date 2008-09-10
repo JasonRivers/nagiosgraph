@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.49 2007/06/18 05:26:50 sf-hlai Stab $
+# File:    $Id$
 # Author:  Soren Dossing, 2005
 # License: OSI Artistic License
 #			http://www.opensource.org/licenses/artistic-license-2.0.php
@@ -63,14 +63,15 @@ PARTICULAR PURPOSE.
 require Exporter;
 our @ISA = ('Exporter');
 our @EXPORT = qw(%Config %Navmenu debug dumper urlencode urldecode HTMLerror
-	getgraphlist listtodict readconfig);
+	hashcolor getgraphlist listtodict readconfig);
 
 use strict;
 use Data::Dumper;
 use Fcntl ':flock';
 use File::Basename;
 
-use vars qw(%Config %Navmenu);
+use vars qw(%Config %Navmenu $colorsub);
+$colorsub = -1;
 
 # Debug/logging support ########################################################
 my $prog = basename($0);
@@ -144,6 +145,41 @@ sub HTMLerror {
 			  'Nagiosgraph has detected an error in the configuration file: '
 			  . $INC[0] . '/nagiosgraph.conf', br(), $msg);
 	print end_html();
+}
+
+# Color subroutines ############################################################
+# Choose a color for service
+sub hashcolor ($;$) {
+	my $label = shift;
+	my $color = shift;
+	$color ||= $Config{colorscheme};
+	debug(5, "hashcolor($color)");
+
+	# color 9 is user defined (or the default pastel rainbow from below).
+	if ($color == 9) {
+		# Wrap around, if we have more values than given colors
+		$colorsub++;
+		$colorsub = 0 if $colorsub >= scalar(@{$Config{color}});
+		debug(5, "color = " . $Config{color}[$colorsub]);
+		return $Config{color}[$colorsub];
+	}
+
+	my ($min, $max, $ii, @rgb) = (0, 0);
+	# generate a starting value
+	map { $color = (51 * $color + ord) % (216) } split //, $label;
+	# turn the starting value into a red, green, blue triplet
+	@rgb = (51 * int($color / 36), 51 * int($color / 6) % 6, 51 * ($color % 6));
+	for $ii (0..2) {
+		$min = $ii if $rgb[$ii] < $rgb[$min];
+		$max = $ii if $rgb[$ii] > $rgb[$max];
+	}
+	# expand the color range, if needed
+	$rgb[$min] = 102 if $rgb[$min] > 102;
+	$rgb[$max] = 153 if $rgb[$max] < 153;
+	# generate the hex color value
+	$color = sprintf "%06X", $rgb[0] * 16 ** 4 + $rgb[1] * 256 + $rgb[2];
+	debug(5, "color = $color");
+	return $color;
 }
 
 # Configuration subroutines ####################################################
@@ -223,6 +259,8 @@ sub readconfig ($;$) {
 	$Config{minimums} = listtodict('minimums') if defined $Config{minimums};
 	$Config{hostservvarsep} ||= ';';
 	$Config{hostservvar} = listtodict('hostservvar') if defined $Config{hostservvar};
+	$Config{color} ||= 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0';
+	$Config{color} = [split(/\s*,\s*/, $Config{color})];
 	# If debug is set make sure we can write to the log file
 	if ($Config{debug} > 0) {
 		open LOG, ">>$Config{logfile}" or

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: show.cgi,v 1.49 2007/06/18 05:26:50 sf-hlai Stab $
+# File:    $Id$
 # Author:  Soren Dossing, 2005
 # License: OSI Artistic License
 #			http://www.opensource.org/licenses/artistic-license-2.0.php
@@ -123,8 +123,6 @@ my $rrdopts = param('rrdopts') if param('rrdopts');
 my @paramlist = param();
 my $fixedscale = 0;
 $fixedscale = 1 if (grep /fixedscale/, @paramlist);
-
-my $colorsub = -1;
 
 my $JSCRPT = <<END;
 	//Swaps the secondary (services) menu content after a server is selected
@@ -265,29 +263,6 @@ sub graphinfo ($$@) { # TODO: clean up
 	}
 	dumper(5, 'rrd', \@rrd);
 	return \@rrd;
-}
-
-# Choose a color for service
-sub hashcolor {
-	my $color = $Config{colorscheme};
-	if ($color == 9) {
-		$colorsub = -1 if $colorsub > 8;
-		$colorsub++;
-		return ("D05050", "D08050", "D0D050", "50D050",
-			"50D0D0", "5050D0", "D050D0", "505050")[$colorsub];
-	}
-	map { $color = (51 * $color + ord) % (216) } split //, "$_[0]x";
-	my ($ii, $n, $m, @rgb);
-	@rgb = (51 * int($color / 36), 51 * int($color / 6) % 6, 51 * ($color % 6));
-	for $ii (0..2) {
-		$m = $ii if $rgb[$ii] < $rgb[$m];
-		$n = $ii if $rgb[$ii] > $rgb[$n];
-	}
-	$rgb[$m] = 102 if $rgb[$m] > 102;
-	$rgb[$n] = 153 if $rgb[$n] < 153;
-	$color = sprintf "%06X", $rgb[2] + $rgb[1] * 256 + $rgb[0] * 16 ** 4;
-	#print "<!--$color-->\n";
-	return $color;
 }
 
 # Generate all the parameters for rrd to produce a graph

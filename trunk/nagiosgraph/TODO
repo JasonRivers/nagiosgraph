@@ -8,7 +8,6 @@ Desired features.
   - This is partially addressed by showhost.cgi (all graphs for one host on a
     page) and showservice.cgi (all graphs for one service on a page).
 * Customize rrd options for split graphs.
-* User defined colors.
 * Red bar in graph to indicate missing data.
 * Installer - that can configure Nagios (must work with Nagios 2.12 and 3.0).
 * Stacked area graphs like http://oss.oetiker.ch/rrdtool/gallery/ramUsage.png.
