@@ -1,0 +1,15 @@
+Bugs
+
+* None currently known
+
+Desired features.
+
+* Custom reports - combine graphs of various types on one page.
+  - This is partially addressed by showhost.cgi (all graphs for one host on a
+    page) and showservice.cgi (all graphs for one service on a page).
+* Customize rrd options for split graphs.
+* Red bar in graph to indicate missing data.
+* Installer - that can configure Nagios (must work with Nagios 2.12 and 3.0).
+* Stacked area graphs like http://oss.oetiker.ch/rrdtool/gallery/ramUsage.png.
+  - This requires configuring a custom graph type for a specific data set,
+    since other data sets may not work well with an area graph type.
