@@ -8,7 +8,8 @@ License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
 
 The instructions below are mainly for latest stable versions of Nagios, 
-e.g. 2.12, and might differ in other versions of Nagios.
+e.g. 2.12, and might differ in other versions of Nagios. See the end of this
+document for platform specific notes.
 
 
 
@@ -227,3 +228,34 @@ Adding New Mapping and Troubleshooting
 
  - Keep an eye on the log file. It can grow big. Perhaps rotate it, or
    decrease log level when everything works fine.
+
+
+Platform Specific Notes
+-----------------------
+
+CentOS 5 and Nagiosgraph 0.9:
+-----------------------------
+
+  wget 'http://dag.wieers.com/rpm/packages/rrdtool/rrdtool-1.2.18-1.el5.rf.i386.rpm'
+  wget 'http://dag.wieers.com/rpm/packages/rrdtool/perl-rrdtool-1.2.18-1.el5.rf.i386.rpm'
+  wget 'http://dag.wieers.com/rpm/packages/rrdtool/rrdtool-devel-1.2.18-1.el5.rf.i386.rpm'
+  wget 'http://mesh.dl.sourceforge.net/sourceforge/nagiosgraph/nagiosgraph-0.9.0.tgz'
+  yum install -y libart_lgpl.i386
+  rpm -hiv *rrdtool*.rpm
+
+  tar xzvf nagiosgraph-0.9.0.tgz
+  cd nagiosgraph-0.9.0
+  mkdir /usr/local/nagios/nagiosgraph
+  cp -r . /usr/local/nagios/nagiosgraph/
+  mkdir /usr/local/nagios/nagiosgraph/rrd
+  chmod go+rX /usr/local/nagios/nagiosgraph
+  chown nagios /usr/local/nagios/nagiosgraph/rrd
+  mkdir -p /var/spool/nagios
+  touch /var/log/nagiosgraph.log /var/spool/nagios/perfdata.log
+  chown nagios.apache /var/log/nagiosgraph.log /var/spool/nagios/perfdata.log
+  chmod 664 /var/log/nagiosgraph.log
+  chmod 644 /var/spool/nagios/perfdata.log
+
+  ln -s /usr/local/nagios/nagiosgraph/nagiosgraph.conf /usr/local/etc/nagiosgraph.conf
+
+  cp nagiosgraph.css /usr/local/nagios/share/stylesheets
