@@ -1,0 +1,34 @@
+# $Id$
+
+# The format of this file was inspired by the Linux kernel CREDITS file.
+# Authors are listed alphabetically.
+
+# Also, please see the CHANGELOG for patch credits.
+
+# The fields are: name (N), email (E), web-address (W), SVN account login (C),
+# PGP key ID and fingerprint (P), description (D), and snail-mail address (S).
+
+N: Alan Brenner
+E: alan (dot) brenner (at) me (dot) com
+E: alan (dot) brenner (at) ithaka (dot) org
+W: http://www.abcompcons.com/ (home)
+W: http://tid.ithaka.org/ (work)
+C: abbrenner
+D: Current maintainer and SourceForge project admin.
+D: Added showhost.cgi (by Robert Teeter, shows graphs for all services on a host)
+D: Added showservice.cgi (shows graphs for one service on all hosts).
+D: Moved common subroutines into a perl library (ngshared.pm).
+D: Add a user defined color scheme.
+D: Add detailed debugging (by perl script, host and/or data set).
+D: Added perldoc to most of the perl programs.
+S: New Jersey, US
+
+N: S¿ren D¿ssing
+E: sauber (at) users (dot) sourceforge (dot) net
+C: sauber
+D: Original author and SourceForge project admin.
+
+N: Herve Nicol
+E: hervenicol (at) users (dot) sourceforge (dot) net
+C: hervenicol
+D: Second maintainer and SourceForge project admin.
