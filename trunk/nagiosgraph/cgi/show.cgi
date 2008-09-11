@@ -126,19 +126,20 @@ $fixedscale = 1 if (grep /fixedscale/, @paramlist);
 my $JSCRPT = <<END;
 	//Swaps the secondary (services) menu content after a server is selected
 	function setOptionText(element) {
-		 var server = element.options[element.selectedIndex].text;
-		 //Converts - in hostnames to _ for matching array name
-		 server = server.replace(/-/g,"_");
-		 server = server.replace(/\\./g,"_");
-		 var svchosen = window.document.menuform.services;
-		 var opciones = eval(server);
-		 // Adjust service dropdown menu length depending on host selected
-		 svchosen.length=opciones.length + 1;
-		 // Hosts with only 1 service couldn't fire onChange() so we add a blank entry
-		 svchosen.options[0].text = "--";
-		 for (i=0; i < opciones.length; i++){
-				 svchosen.options[i+1].text = opciones[i];
-		 }
+		var server = element.options[element.selectedIndex].text;
+		//Converts - in hostnames to _ for matching array name
+		server = server.replace(/-/g,"_");
+		server = server.replace(/\\./g,"_");
+		var svchosen = window.document.menuform.services;
+		var opciones = eval(server);
+		// Adjust service dropdown menu length depending on host selected
+		svchosen.length = opciones.length;
+		for (i = 0; i < opciones.length; i++) {
+			svchosen.options[i].text = opciones[i];
+		}
+		if (opciones.length == 1 && arguments.length == 1) {
+			jumpto(svchosen);
+		}
 	}
 	//Once a service is selected this function loads the new page
 	function jumpto(element) {
@@ -151,45 +152,45 @@ my $JSCRPT = <<END;
 	}
 	//Auxiliary URL builder function for "jumpto" keeping the params
 	function getURLparams() {
-		 var query=this.location.search.substring(1);
-		 var myParams="";
-		 if (query.length > 0){
-			 var params = query.split("&");
+		var query=this.location.search.substring(1);
+		var myParams="";
+		if (query.length > 0){
+			var params = query.split("&");
 
-			 for (var i=0 ; i<params.length ; i++){
-					 var pos = params[i].indexOf("=");
-					 var name = params[i].substring(0, pos);
-					 var value = params[i].substring(pos + 1);
+			for (var i=0 ; i<params.length ; i++){
+				var pos = params[i].indexOf("=");
+				var name = params[i].substring(0, pos);
+				var value = params[i].substring(pos + 1);
 
-					 //Append "safe" params (geom, rrdopts)
-					 if ( name == "geom" || name == "rrdopts") {
-							myParams+= "&" + name + "=" + value;
-					 }
-					// Jumpto defines host & service, checkbox selects fixedscale and
-				 //	we can't determine db from JS so we discard it (enter manually)
-			 }
+				//Append "safe" params (geom, rrdopts)
+				if ( name == "geom" || name == "rrdopts") {
+					myParams+= "&" + name + "=" + value;
+				}
+				// Jumpto defines host & service, checkbox selects fixedscale and
+				//	we can't determine db from JS so we discard it (enter manually)
+			}
 
-		 }
-		 // Keep track of fixedscale parameter
-		 if ( document.menuform.FixedScale.checked) {
-				myParams+= "&" + "fixedscale";
-		 }
-		 return (myParams);
-	 }
+		}
+		// Keep track of fixedscale parameter
+		if ( document.menuform.FixedScale.checked) {
+			myParams+= "&" + "fixedscale";
+		}
+		return (myParams);
+	}
 
 	//Forces the service menu to be filled with the correct entries
 	//when the page loads
 	function preloadSVC(name) {
-			var notfound = true;
-			var i = 0;
-			while (notfound && i < document.menuform.servidors.length) {
-					if (document.menuform.servidors.options[i].text == name) {
-						 notfound = false;
-						 document.menuform.servidors.selectedIndex = i;
-					}
-					i++;
+		var notfound = true;
+		var i = 0;
+		while (notfound && i < document.menuform.servidors.length) {
+			if (document.menuform.servidors.options[i].text == name) {
+				notfound = false;
+				document.menuform.servidors.selectedIndex = i;
 			}
-			setOptionText(document.menuform.servidors);
+			i++;
+		}
+		setOptionText(document.menuform.servidors, 1);
 	}
 END
 
@@ -330,14 +331,15 @@ sub servmenu {
 	# Selecting a new server shows the associated services menu
 	# Selecting a new service reloads the page with the new graphs
 	my @svrlist = sort (@_);
+	my @ServiceNames = sort keys %{$Navmenu{$host}{'SERVICES'}};
 	print div({-id=>'mainnav'}, "\n",
 		start_form(-name=>'menuform'),
 		"Select server: ",
 		popup_menu(-name=>'servidors', -value=>\@svrlist,
 				   -default=>"$host", -onChange=>"setOptionText(this)"),
 		"\nSelect service: ",
-		popup_menu(-name=>'services', -value=>["--"],
-				   -onChange=>"jumpto(this)"), "\n",
+		popup_menu(-name=>'services', -value=>\@ServiceNames,
+				   -onChange=>"jumpto(this)", default=>$service), "\n",
 		checkbox(-name=>'FixedScale', -checked=>$fixedscale), "\n",
 		end_form);
 }
@@ -350,9 +352,10 @@ sub printNavMenu {
 	print '<script type="text/javascript">'. "\n";
 	foreach my $system (sort keys %Navmenu) {
 		my $crname = $Navmenu{$system}{'NAME'};
-		# Javascript doesn't like "-" characters in variable names
-		$crname =~s/-/_/g;
-		$crname =~s/\./_/g;
+		# JavaScript doesn't like "-" characters in variable names
+		$crname =~s/\W/_/g;
+		# JavaScript names can't start with digits
+		$crname =~s/^(\d)/_$1/;
 		print "var ". $crname . " = new Array(\"" .
 			join('","', sort(keys(%{$Navmenu{$system}{'SERVICES'}}))) . "\");\n";
 	}
