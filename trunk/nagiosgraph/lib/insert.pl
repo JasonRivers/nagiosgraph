@@ -266,6 +266,10 @@ sub processdata (@) {
 	my (@data, $S, $s, $rrds, $sets, $ii);
 	for my $line (@_) {
 		@data = split(/\|\|/, $line);
+		# Suggested by Andrew McGill for 0.9.0, but I'm (Alan Brenner) not sure
+		# it is still needed due to urlencoding in file names by getfilename.
+		# replace spaces with - in the description so rrd doesn't choke
+		# $data[2] =~ s/\W+/-/g;
 		# All this allows debugging one service, or one server,
 		# or one service on one server
 		if (defined $Config{debug_insert}) {
