@@ -101,18 +101,21 @@ sub dumper ($$$) {
 # HTTP support #################################################################
 # URL encode a string
 sub urlencode ($) {
-	$_[0] =~ s/([\W])/"%" . uc(sprintf("%2.2x",ord($1)))/eg;
-	return $_[0];
+	my $rval = shift;
+	$rval =~ s/([\W])/"%" . uc(sprintf("%2.2x",ord($1)))/eg;
+	return $rval;
 }
 
 sub urldecode ($) {
-	$_[0] =~ s/\+/ /g;
-	$_[0] =~ s/%([0-9A-F]{2})/chr(hex($1))/eg;
-	return $_[0];
+	my $rval = shift;
+	$rval =~ s/\+/ /g;
+	$rval =~ s/%([0-9A-F]{2})/chr(hex($1))/eg;
+	return $rval;
 }
 
 sub getfilename ($$;$) {
 	my ($host, $service, $db) = @_;
+	$db ||= '';
 	debug(5, "getfilename($host, $service, $db)");
 	my $directory = $Config{rrddir};
 	if ($Config{dbseparator} eq "subdir") {
@@ -124,9 +127,8 @@ sub getfilename ($$;$) {
 		die "$directory not writable" unless -w $directory;
 		if ($db) {
 			return $directory, urlencode("${service}___${db}") . '.rrd';
-		} else {
-			return $directory, urlencode("${service}___");
 		}
+		return $directory, urlencode("${service}___");
 	}
 	# Build filename for traditional separation
 	debug(5, "Files stored in single folder structure");
@@ -164,7 +166,7 @@ sub hashcolor ($;$) {
 		return $Config{color}[$colorsub];
 	}
 
-	my ($min, $max, $ii, @rgb) = (0, 0);
+	my ($min, $max, $rval, $ii, @rgb) = (0, 0);
 	# generate a starting value
 	map { $color = (51 * $color + ord) % (216) } split //, $label;
 	# turn the starting value into a red, green, blue triplet
@@ -184,7 +186,7 @@ sub hashcolor ($;$) {
 
 # Configuration subroutines ####################################################
 # Assumes subdir as separator
-sub getgraphlist ($) {
+sub getgraphlist {
 	# Builds a hash for available servers/services to graph
 	my $current = $_;
 	if (-d $current and $current !~ /^\./) { # Directories are for hostnames
