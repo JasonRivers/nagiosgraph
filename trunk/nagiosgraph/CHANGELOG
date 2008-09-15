@@ -1,3 +1,12 @@
+1.0.1 2008-09-15
+
+* Add test directory and tests for the ngshared.pm library routines.
+* Add AUTHORS file (suggested by Andrew McGill)
+* Add install notes for 0.9.0 on CentOS 5 (from Andrew McGill)
+* Remove use of -- in services drop down list (idea from Andrew McGill)
+* Add a commented change from Andrew McGill about handling spaces in service
+  name in 0.9.0. I (Alan Brenner) haven't had a problem with this in 1.0.0.
+
 1.0.0 2008-09-10
 
 * Add showhost.cgi (by Robert Teeter, shows graphs for all services on a host)
