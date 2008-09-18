@@ -131,7 +131,7 @@ $Config{debug} = $Config{debug_insert} if defined $Config{debug_insert} and
 # Read the map file and define a subroutine that parses performance data
 getrules($Config{mapfile}) and exit;
 
-if ($Config{perflog}) {			# perflog is written by Nagios
+if ($Config{perfloop}) {
 	while (1) {					# check the file every 30 seconds and load data
 		@perfdata = inputdata();
 		processdata(@perfdata) if @perfdata;
