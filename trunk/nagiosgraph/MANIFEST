@@ -6,6 +6,7 @@ README
 README.map
 TODO
 cgi/show.cgi
+cgi/showgraph.cgi
 cgi/showhost.cgi
 cgi/showservice.cgi
 cgi/testcolor.cgi
