@@ -111,414 +111,104 @@ use RRDs;
 use CGI qw/:standard/;
 use File::Find;
 
-# Expect host, service and db input
-my $host = param('host') if param('host');
-my $service = param('service') if param('service');
-my @db = param('db') if param('db');
-my $graph = param('graph') if param('graph');
-my $geom = param('geom') if param('geom');
-my $rrdopts = param('rrdopts') if param('rrdopts');
-# Changed fixedscale checking since empty param was returning undef from CGI.pm
-my @paramlist = param();
-my $fixedscale = 0;
-$fixedscale = 1 if (grep /fixedscale/, @paramlist);
+my ($host,						# Required hostname to show data for
+	$service,					# Required service to show data for
+	@style,						# CSS, if so configured
+	@db,
+	$graph,
+	$geom,
+	$rrdopts,
+	$fixedscale,
+	$offset,
+	@periods,
+	$period,
+	$label,
+	$url,
+	$db,
+	$ii,						# temporary and for loop variable
+	$labels);					# data labels from nagiosgraph.conf
 
-my $JSCRPT = <<END;
-	//Swaps the secondary (services) menu content after a server is selected
-	function setOptionText(element) {
-		var server = element.options[element.selectedIndex].text;
-		//Converts - in hostnames to _ for matching array name
-		server = server.replace(/-/g,"_");
-		server = server.replace(/\\./g,"_");
-		var svchosen = window.document.menuform.services;
-		var opciones = eval(server);
-		// Adjust service dropdown menu length depending on host selected
-		svchosen.length = opciones.length;
-		for (i = 0; i < opciones.length; i++) {
-			svchosen.options[i].text = opciones[i];
-		}
-		if (opciones.length == 1 && arguments.length == 1) {
-			jumpto(svchosen);
-		}
-	}
-	//Once a service is selected this function loads the new page
-	function jumpto(element) {
-		var svr = escape (document.menuform.servidors.value);
-		var svc = escape (element.options[element.selectedIndex].text);
-		var newURL = location.pathname + "?host=";
-		newURL += svr + "&" + "service=" + svc;
-		newURL += getURLparams();
-		window.location.assign ( newURL ) ;
-	}
-	//Auxiliary URL builder function for "jumpto" keeping the params
-	function getURLparams() {
-		var query=this.location.search.substring(1);
-		var myParams="";
-		if (query.length > 0){
-			var params = query.split("&");
-
-			for (var i=0 ; i<params.length ; i++){
-				var pos = params[i].indexOf("=");
-				var name = params[i].substring(0, pos);
-				var value = params[i].substring(pos + 1);
-
-				//Append "safe" params (geom, rrdopts)
-				if ( name == "geom" || name == "rrdopts") {
-					myParams+= "&" + name + "=" + value;
-				}
-				// Jumpto defines host & service, checkbox selects fixedscale and
-				//	we can't determine db from JS so we discard it (enter manually)
-			}
-
-		}
-		// Keep track of fixedscale parameter
-		if ( document.menuform.FixedScale.checked) {
-			myParams+= "&" + "fixedscale";
-		}
-		return (myParams);
-	}
-
-	//Forces the service menu to be filled with the correct entries
-	//when the page loads
-	function preloadSVC(name) {
-		var notfound = true;
-		var i = 0;
-		while (notfound && i < document.menuform.servidors.length) {
-			if (document.menuform.servidors.options[i].text == name) {
-				notfound = false;
-				document.menuform.servidors.selectedIndex = i;
-			}
-			i++;
-		}
-		setOptionText(document.menuform.servidors, 1);
-	}
-END
-
-# Shared routines ##############################################################
-# Get list of matching rrd files
-sub dbfilelist ($$) {
-	my ($host, $serv) = @_;
-	my ($directory, $filename) = (getfilename($host, $serv));
-	opendir DH, $directory;
-	my @rrd = grep s/^${filename}(.+)\.rrd$/$1/, readdir DH;
-	closedir DH;
-	dumper(5, 'dbfilelist', \@rrd);
-	return @rrd;
-}
-
-# Graphing routines ############################################################
-# Find graphs and values
-sub graphinfo ($$@) { # TODO: clean up
-	my ($host, $service, @db) = @_;
-	debug(5, "graphinfo($host, $service)");
-	my ($hs, @rrd, $rrd, $ds, $dsout, @values, %H, %R);
-
-	if ($Config{dbseparator} eq "subdir") {
-		$hs = $host . "/" . urlencode("$service") . "___";
-	} else {
-		$hs = urlencode("${host}_${service}") . "_";
-	}
-
-	# Determine which files to read lines from
-	dumper(5, 'db', \@db);
-	if (@db) {
-		my ($nn, $dd, $db, @lines, $ll, $line, $unit) = (0);
-		for $dd (@db) {
-			($db, @lines) = split ',', $dd;
-			$rrd[$nn]{file} = $hs . urlencode("$db") . '.rrd';
-			for $ll (@lines) {
-				($line, $unit) = split '~', $ll;
-				if ($unit) {
-					$rrd[$nn]{line}{$line}{unit} = $unit if $unit;
-				} else {
-					$rrd[$nn]{line}{$line} = 1;
-				}
-			}
-			$nn++;
-		}
-		debug(4, "Specified $hs db files in $Config{rrddir}: "
-					 . join ', ', map { $_->{file} } @rrd);
-	} else {
-		@rrd = map {{ file=>$_ }}
-					 map { "${hs}${_}.rrd" }
-					 dbfilelist($host,$service);
-		debug(4, "Listing $hs db files in $Config{rrddir}: "
-					 . join ', ', map { $_->{file} } @rrd);
-	}
-
-	for $rrd ( @rrd ) {
-		unless ( $rrd->{line} ) {
-			$ds = RRDs::info("$Config{rrddir}/$rrd->{file}");
-			if (RRDs::error) {
-				debug(2, "RRDs::info ERR " . RRDs::error);
-				dumper(2, 'rrd', $rrd);
-			}
-			map { $rrd->{line}{$_} = 1 }
-				grep { ! $H{$_}++ }
-					map { /ds\[(.*)\]/; $1 }
-						grep /ds\[(.*)\]/, keys %$ds;
-		}
-		debug(5, "DS $rrd->{file} lines: "
-					 . join ', ', keys %{$rrd->{line}});
-	}
-	dumper(5, 'rrd', \@rrd);
-	return \@rrd;
-}
-
-# Generate all the parameters for rrd to produce a graph
-sub rrdline {
-	my ($host, $service, $geom, $rrdopts, $G, $time) = @_;
-	debug(5, "rrdline($host, $service, $geom, $rrdopts, $time)");
-	my ($g, $f, $v, $c, @ds);
-	my $directory = $Config{rrddir};
-
-	@ds = ('-', '-a', 'PNG', '--start', "-$time");
-	# Identify where to pull data from and what to call it
-	for $g ( @$G ) {
-		$f = $g->{file};
-		dumper(5, 'g', $g);
-
-		# Compute the longest label length
-		my $longest = (sort map(length,keys(%{ $g->{line} })))[-1];
-
-		for $v ( sort keys %{ $g->{line} } ) {
-			$c = hashcolor($v);
-			debug(5, "file=$f line=$v color=$c");
-			my ($sv, $serv, $pos) = ($v, $service, length($service) - length($v));
-			$serv = substr($service, 0, $pos) if (substr($service, $pos) eq $v);
-			my $label = sprintf("%-${longest}s", $sv);
-			if (defined $Config{maximums}->{$serv}) {
-				push @ds , "DEF:$sv=$directory/$f:$v:MAX"
-								 , "$Config{plotas}:${sv}#$c:$label";
-			} elsif (defined $Config{minimums}->{$serv}) {
-				push @ds , "DEF:$sv=$directory/$f:$v:MIN"
-								 , "$Config{plotas}:${sv}#$c:$label";
-			} else {
-				push @ds , "DEF:$sv=$directory/$f:$v:AVERAGE"
-								 , "$Config{plotas}:${sv}#$c:$label";
-			}
-			my $format = '%6.2lf%s';
-			if ($fixedscale) { $format = '%6.2lf'; }
-
-			# Graph labels
-			push @ds, "GPRINT:$sv:MAX:Max\\: $format"
-							, "GPRINT:$sv:AVERAGE:Avg\\: $format"
-							, "GPRINT:$sv:MIN:Min\\: $format"
-							, "GPRINT:$sv:LAST:Cur\\: ${format}\\n";
-		}
-	}
-
-	# Dimensions of graph if geom is specified
-	if ( $geom ) {
-		my ($w, $h) = split 'x', $geom;
-		push @ds, '-w', $w, '-h', $h;
-	} else {
-		push @ds, '-w', 600; # just make the graph wider than default
-	}
-	# Additional parameters to rrd graph, if specified
-	if ( $rrdopts ) {
-		push @ds, split /\s+/, $rrdopts;
-	}
-	if ( $fixedscale ) {
-		push @ds, "-X", "0";
-	}
-	return @ds;
-}
-
-# Server/service menu routines #################################################
-# Create server menu and associated service submenu skel
-sub servmenu {
-	# Selecting a new server shows the associated services menu
-	# Selecting a new service reloads the page with the new graphs
-	my @svrlist = sort (@_);
-	my @ServiceNames = sort keys %{$Navmenu{$host}{'SERVICES'}};
-	print div({-id=>'mainnav'}, "\n",
-		start_form(-name=>'menuform'),
-		"Select server: ",
-		popup_menu(-name=>'servidors', -value=>\@svrlist,
-				   -default=>"$host", -onChange=>"setOptionText(this)"),
-		"\nSelect service: ",
-		popup_menu(-name=>'services', -value=>\@ServiceNames,
-				   -onChange=>"jumpto(this)", default=>$service), "\n",
-		checkbox(-name=>'FixedScale', -checked=>$fixedscale), "\n",
-		end_form);
-}
-
-# Inserts the navigation menu (top of the page)
-sub printNavMenu {
-	# Get list of servers/services
-	find(\&getgraphlist, $Config{rrddir});
-	# Create Javascript Arrays for client-side menu navigation
-	print '<script type="text/javascript">'. "\n";
-	foreach my $system (sort keys %Navmenu) {
-		my $crname = $Navmenu{$system}{'NAME'};
-		# JavaScript doesn't like "-" characters in variable names
-		$crname =~s/\W/_/g;
-		# JavaScript names can't start with digits
-		$crname =~s/^(\d)/_$1/;
-		print "var ". $crname . " = new Array(\"" .
-			join('","', sort(keys(%{$Navmenu{$system}{'SERVICES'}}))) . "\");\n";
-	}
-
-	# Bulk Javascript code
-	print "$JSCRPT</script>\n";
-	# Create main form
-	servmenu(keys %Navmenu);
-	# Preload selected host services
-	print "<script type=\"text/javascript\">var prtHost=\"$host\";" .
-		"preloadSVC(prtHost);</script>\n";
-}
-
-# Full page routine ############################################################
-# Determine the number of graphs that will be displayed on the page
-# and the time period they will cover.
-sub graphsizes {
-	# Pre-defined available graph sizes
-	#	 Daily		=  33h = 118800s
-	#	 Weekly		=   9d = 777600s
-	#	 Monthly	=   5w = 3024000s
-	#	 Quarterly	=  14w = 8467200s
-	#	 Yearly		= 400d = 34560000s
-
-	# Values in config file
-	my @config_times = split(/ /, $Config{time});
-	my @final_t;
-
-	# [Label, period span, offset] (in seconds)
-	my @default_times = (['dai', 118800, 86400], ['week', 777600, 604800],
-		['month', 3024000, 2592000], ['year', 34560000, 31536000]);
-
-	# Configuration entry was absent or empty. Use default
-	if (! @config_times) {
-		@final_t = @default_times;
-	} else {
-		# Try to match known entries from configuration file
-		grep(/^day$/, @config_times) and push @final_t, $default_times[0];
-		grep(/^week$/, @config_times) and push @final_t, $default_times[1];
-		grep(/^month$/, @config_times) and push @final_t, $default_times[2];
-		grep(/^quarter$/, @config_times) and push @final_t,
-			['quarter', 8467200, 7776000];
-		grep(/^year$/, @config_times) and push @final_t, $default_times[3];
-
-		# Final check to see if we matched any known entry or use default
-		@final_t = @default_times unless @final_t;
-	}
-
-	return @final_t;
-}
-
-# Write a pretty page with various graphs
-sub page {
-	my ($host, $service, $geom, $rrdopts, @db) = @_;
-
-	my $offset = 0;
-	$offset = int(param('offset')) if param('offset');
-	$offset = 0 if $offset <= 0;
-
-	# Reencode rrdopts
-	$rrdopts = urlencode $rrdopts;
-	$rrdopts .= ' ' if $rrdopts;
-
-	# Detect available db files
-	@db = dbfilelist($host, $service) unless @db;
-
-	my (@periods, $arg, $period, $label, $span, $url, $db) = (graphsizes());
-	print h1("Nagiosgraph") . "\n" .
-		p("Performance data for host: " . strong(tt(
-			a({href => $Config{nagioscgiurl} . '/showhost.cgi?host=' .
-					urlencode($host)}, urldecode($host)))) . ', service: ' .
-			strong(tt(a({href => $Config{nagioscgiurl} . '/showservice.cgi?service=' .
-					urlencode($service)}, urldecode($service)))) .
-			' as of: ' . strong(scalar(localtime))) . "\n";
-	for $period (@periods) {
-		($label, $span) = ($period->[0], $period->[1]);
-		print a({-id=>$label});
-		print h2(ucfirst $label . "ly");
-		$url = join '&', "host=$host", "service=$service",
-			 "geom=$geom", "rrdopts=$rrdopts", map { "db=$_" } @db;
-		print a({-href=>"?$url&offset=" .
-				($offset + $period->[2]) . "#" . $label}, "previous") . " / " .
-			  a({-href=>"?$url&offset=" .
-				($offset - $period->[2] . "#" . $label) }, "next") . "<BR>\n";
-		if (@db) {
-			for $db (@db) {
-				$arg = join '&', "host=$host", "service=$service", "db=$db",
-					"graph=$span", "geom=$geom", "rrdopts=$rrdopts";
-				$arg .= "&fixedscale" if ($fixedscale);
-				print div({-class => "graphs"},
-					img({-src => "?$arg%2Dsnow%2D$span%2D$offset%20%2Denow%2D$offset",
-						-alt => "Graph"})) . "\n";
-				#my (@gl) = split(',', $db);
-				#print div({-class => "graph_description"},
-				#	cite(strong(urldecode($gl[0])) .
-				#	br() . small(join(", ", @gl)))) . "\n";
-			}
-		} else {
-			$arg = join '&', "host=$host", "service=$service", "graph=$span",
-				"geom=$geom", "rrdopts=$rrdopts";
-			print div({-class => "graphs"},
-				img({-src => "?$arg", -alt => "Graph"})) . "\n";
-		}
-	}
-}
-
-# Main #########################################################################
 readconfig('read');
 if (defined $Config{ngshared}) {
 	debug(1, $Config{ngshared});
 	HTMLerror($Config{ngshared});
 	exit;
 }
-# All this allows debugging one service, or one server,
-# or one service on one server
-if (defined $Config{debug_show}) {
-	if (defined $Config{debug_show_host}) {
-		if ($Config{debug_show_host} eq $host) {
-			if (defined $Config{debug_show_service}) {
-				if ($Config{debug_show_service} eq $service) {
-					$Config{debug} = $Config{debug_show};
-				}
-			} else {
-				$Config{debug} = $Config{debug_show};
-			}
-		}
-	} elsif (defined $Config{debug_show_service} and
-			 $Config{debug_show_service} eq $service) {
-		$Config{debug} = $Config{debug_show};
-	} else {
-		$Config{debug} = $Config{debug_show};
-	}		
-}
+
+# Expect host, service and db input
+$host = param('host') if param('host');
+$service = param('service') if param('service');
+getdebug('show', $host, $service); # See if we have custom debug level
+@db = param('db') if param('db');
+# Detect available db files
+@db = dbfilelist($host, $service) unless @db;
+$graph = param('graph') if param('graph');
+$geom = param('geom') if param('geom');
+$rrdopts = param('rrdopts') if param('rrdopts');
+# Reencode rrdopts
+$rrdopts = urlencode $rrdopts;
+$rrdopts .= ' ' if $rrdopts;
+# Changed fixedscale checking since empty param was returning undef from CGI.pm
+$fixedscale = 0;
+$fixedscale = 1 if (grep /fixedscale/, param());
+$offset = int(param('offset')) if param('offset');
+$offset = 0 if not $offset or $offset <= 0;
+@periods = (graphsizes($Config{time}));
 $Config{linewidth} = 2 unless $Config{linewidth};
+dumper(5, 'Config', \%Config);
+# Draw the full page
+@style = ( -style => {-src => "$Config{stylesheet}"} ) if ($Config{stylesheet});
+print header, start_html(-id => "nagiosgraph",
+	-title => "nagiosgraph: $host-$service",
+	-head => meta({ -http_equiv => "Refresh", -content => "300" }),
+	@style) . "\n";
+# Print Navigation Menu if we have a separator set (that will allow navigation menu
+# to correctly split the filenames/filepaths in host/service/db names
+printNavMenu($host, $service, $fixedscale) if ($Config{dbseparator} eq "subdir");
 
-# Draw a graph or a page
-if ( $graph ) {
-	$| = 1; # Make sure headers arrive before image data
-	print header(-type => "image/png");
-	# Figure out db files and line labels
-	my $G = graphinfo($host, $service, @db);
-	my @ds = rrdline($host, $service, $geom, $rrdopts, $G, $graph);
-	dumper(4, "RRDs::graph", \@ds);
-	RRDs::graph(@ds);
-	if (RRDs::error) {
-		debug(2, "RRDs::graph ERR " . RRDs::error);
-		dumper(2, "RRDs::graph", \@ds) if $Config{debug} < 4;
+print h1("Nagiosgraph") . "\n" .
+	p(trans('perfforhost') . ': ' . strong(tt(
+		a({href => $Config{nagioscgiurl} . '/showhost.cgi?host=' .
+				urlencode($host)}, urldecode($host)))) . ', ' .
+		trans('service') . ': ' .
+		strong(tt(a({href => $Config{nagioscgiurl} . '/showservice.cgi?service=' .
+				urlencode($service)}, urldecode($service)))) . ' ' .
+		trans('asof') . ': ' . strong(scalar(localtime))) . "\n";
+
+for $period (@periods) {
+	print a({-id => trans($period->[0])});
+	print h2(trans($period->[0] . 'ly'));
+	$url = join '&', "host=$host", "service=$service",
+		 "geom=$geom", "rrdopts=$rrdopts", map { "db=$_" } @db;
+	print a({-href=>"?$url&offset=" .
+			($offset + $period->[2]) . "#" . $period->[0]},
+		trans('previous')) . " / " . a({-href=>"?$url&offset=" .
+		($offset - $period->[2] . "#" . $period->[0]) }, trans('next')) .
+		br() . "\n";
+	dumper(5, 'db', \@db);
+	if (@db) {
+		for $db (@db) {
+			debug(5, $db);
+			$labels = getlabels($service, $db);
+			$ii = join '&', "host=$host", "service=$service", "db=$db",
+				'graph=' . $period->[1], "geom=$geom", "rrdopts=$rrdopts";
+			$ii .= "&fixedscale" if ($fixedscale);
+			print div({-class => "graphs"},
+				img({-src => 'showgraph.cgi?' . $ii . "%2Dsnow%2D" .
+						$period->[1] . "%2D$offset%20%2Denow%2D$offset",
+					-alt => join(', ', @$labels)})) . "\n";
+			printlabels($labels);
+		}
+	} else {
+		$ii = join '&', "host=$host", "service=$service", 'graph=' .
+			$period->[1], "geom=$geom", "rrdopts=$rrdopts";
+		print div({-class => "graphs"},
+			img({-src => "showgraph.cgi?$ii", -alt => "Graph"})) . "\n";
 	}
-} else {
-	my @style;
-	@style = ( -style => {-src => "$Config{stylesheet}"} )
-		if ($Config{stylesheet});
-
-	print header, start_html(-id => "nagiosgraph",
-		-title => "nagiosgraph: $host-$service",
-		-head => meta({ -http_equiv => "Refresh", -content => "300" }),
-		@style) . "\n";
-	# Print Navigation Menu if we have a separator set (that will allow navigation menu
-	# to correctly split the filenames/filepaths in host/service/db names
-	printNavMenu if ($Config{dbseparator} eq "subdir");
-	page($host, $service, $geom, $rrdopts, @db);
-	print div({-id => "footer"}, hr(),
-		small( "Created by " . a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
-		"Nagiosgraph") . "." ));
-	print end_html();
 }
+
+print div({-id => "footer"}, hr(),
+	small(trans('createdby') . ' ' .
+	a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
+	"Nagiosgraph") . "." ));
+print end_html();
