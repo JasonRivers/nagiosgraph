@@ -56,7 +56,7 @@ Copy the images/action.gif file to the nagios/images directory, if desired.
 
 Soren Dossing, the original author of show.cgi in 2004.
 
-Robert Teeter, the original author of showhost.cgi in 2005
+Robert Teeter, the original author of showhost.cgi in 2005.
 
 Alan Brenner - alan.brenner@ithaka.org; I've written this based on Robert
 Teeter's showhost.cgi.
@@ -92,100 +92,20 @@ use strict;
 use CGI qw/:standard/;
 use File::Find;
 
-# Main program - change nothing below
-
-# Write a pretty page with various graphs
-sub page ($;){
-	my ($service) = @_;
-	debug(5, "page($service)");
-
-	# Define graph sizes
-	#   Daily   =  33h =   118800s
-	my @times = (['daily', 118800]);
-	my (@hdb,
-		@sdb,
-		$time,
-		$host,
-		%dbinfo,
-		%dbtmp,
-		@gl,
-		$imgprm,
-		$directory,
-		$filename
-		);
-
-	# Read service/database data
-	open SD, "$Config{servdb}" or die "cannot open $Config{servdb}";
-	while (<SD>) {
-		chomp($_);
-		s/\s*#.*//;    # Strip comments
-		if ($_) {
-			debug(5, "CGI ServDB $_");
-			if (substr($_, 0, 4) eq 'host') {
-				@hdb = split(/\s*,\s*/, (split('=', $_))[1]);
-			} else {
-				%dbtmp = ($_ =~ /([^=&]+)=([^&]*)/g);
-				#dumper(5, 'dbtmp', \%dbtmp);
-				$dbtmp{service} = urldecode($dbtmp{service});
-				push @sdb, $dbtmp{service};
-				debug(5, "$dbtmp{service} eq $service");
-				if ($dbtmp{service} eq $service) {
-					%dbinfo = ($_ =~ /([^=&]+)=([^&]*)/g);
-				}
-			}
-		}
-	}
-	close SD;
-	dumper(5, 'hdb', \@hdb);
-	$dbinfo{db} = param('db') if param('db');
-	dumper(5, 'dbinfo', \%dbinfo);
-
-	print "<script type=\"text/javascript\">\n" .
-		"function jumpto(element) {\n" .
-		"	var svr = escape(document.menuform.servidors.value);\n" .
-		"	window.location.assign(location.pathname + \"?service=\" + svr);\n" .
-		"}\n</script>\n";
-	find(\&getgraphlist, $Config{rrddir});
-	my @svrlist = sort(@sdb);
-	dumper(5, 'srvlist', \@svrlist);
-	print div({-id=>'mainnav'}, "\n",
-		start_form(-name=>'menuform'),
-		"Select service: ",
-		popup_menu(-name=>'servidors', -value=>\@svrlist,
-				   -default=>"$service", -onChange=>"jumpto(this)"),
-		end_form);
-
-	my $label = $service;
-	$label = $dbinfo{label} if exists $dbinfo{label};
-	print h1("Nagiosgraph") . "\n" . 
-		p('Performance data for service: ' . strong(tt(urldecode($label))) .
-			' for today: ' . strong(scalar(localtime))) . "\n";
-	if (@hdb) {
-		for $time ( @times ) {
-			dumper(5, 'time', $time);
-			for $host ( @hdb ) {
-				debug(5, "host = $host");
-				$imgprm = join('&', "host=$host", "service=$service",
-					"db=$dbinfo{db}", "graph=$time->[1]");
-				@gl = split ',', $dbinfo{db};
-				($directory, $filename) = getfilename($host, urldecode($service), $gl[0]);
-				$filename = $directory . '/' . $filename;
-				debug(5, "checkfile $filename");
-				if ( -f "$filename") {
-					debug (5, "checkfile using $filename");
-					print h2(a({href => $Config{nagioscgiurl} .
-							'/show.cgi?host=' . urlencode($host) .
-							'&service=' . urlencode($service)}, $host));
-					print img({src=>"show.cgi?$imgprm"}) . "\n";
-				} else {
-					debug(5, "$filename not found");
-				}
-			}
-		}
-	} else {
-		debug(5, "no servdb array in nagiosgraph configuration");
-	}
-}
+my ($service,					# Required service to show data for
+	@style,						# CSS, if so configured
+	@times,						# time periods to show
+	@hdb,
+	@sdb,
+	$time,
+	$host,
+	%dbinfo,
+	%dbtmp,
+	@gl,
+	$ii,						# temporary value for directory and for loops
+	$filename,
+	$label, $labels				# data labels from nagiosgraph.conf
+	);
 
 readconfig('read');
 if (defined $Config{ngshared}) {
@@ -194,24 +114,134 @@ if (defined $Config{ngshared}) {
 	exit;
 }
 
-# Expect host, service and db input
-my $service;
-$service = param('service') if param('service');
-$Config{debug} = $Config{debug_showservice}
-	if (defined $Config{debug_showservice} and
-		(not defined $Config{debug_showservice_service} or
-		 $Config{debug_showservice_service} eq $service));
-debug (5, "service = $service");
-my @style;
+# Expect service input
+if (param('service')) {
+	$service = param('service');
+} else {
+	HTMLerror(trans('noservicegiven'), 1);
+	exit;
+}
+
+getdebug('showservice', '', $service); # See if we have custom debug level
+
+# Define graph sizes
+@times = graphsizes($Config{timeservice});
+
+# Read service/database data
+if (not open SD, "$Config{servdb}") {
+	debug(5, "cannot open $Config{servdb} from nagiosgraph configuration");
+	HTMLerror(trans('configerror'));
+	exit;
+}
+while (<SD>) {
+	chomp($_);
+	s/\s*#.*//;    # Strip comments
+	if ($_) {
+		debug(5, "CGI ServDB $_");
+		if (substr($_, 0, 4) eq 'host') {
+			@hdb = split(/\s*,\s*/, (split('=', $_))[1]);
+		} else {
+			%dbtmp = ($_ =~ /([^=&]+)=([^&]*)/g);
+			#dumper(5, 'dbtmp', \%dbtmp);
+			$dbtmp{service} = urldecode($dbtmp{service});
+			push @sdb, $dbtmp{service};
+			debug(5, "$dbtmp{service} eq $service");
+			if ($dbtmp{service} eq $service) {
+				%dbinfo = ($_ =~ /([^=&]+)=([^&]*)/g);
+			}
+		}
+	}
+}
+close SD;
+dumper(5, 'hdb', \@hdb);
+$dbinfo{db} = param('db') if param('db');
+dumper(5, 'dbinfo', \%dbinfo);
+if (not @hdb) {
+	debug(5, "no hostdb array in $Config{hostdb}");
+	HTMLerror(trans('configerror'));
+	exit;
+}
+if (not @sdb) {
+	debug(5, "no servdb array in $Config{hostdb}");
+	HTMLerror(trans('configerror'));
+	exit;
+}
+
 @style = (-style => {-src => "$Config{stylesheet}"}) if ($Config{stylesheet});
+
 # Draw a page
 print header, start_html(-id => "nagiosgraph",
 	-title => "nagiosgraph: $service",
 	#-head => meta({ -http_equiv => "Refresh", -content => "300" }),
 	@style) . "\n";
-page($service);
+
+print "<script type=\"text/javascript\">\n" .
+	"function jumpto(element) {\n" .
+	"	var svr = escape(document.menuform.servidors.value);\n" .
+	"	window.location.assign(location.pathname + \"?service=\" + svr);\n" .
+	"}\n</script>\n";
+find(\&getgraphlist, $Config{rrddir});
+my @svrlist = sort(@sdb);
+dumper(5, 'srvlist', \@svrlist);
+foreach $ii (@svrlist) {
+	debug(5, "checking $ii vs $service and " . urldecode($service));
+	if ($ii eq $service) {
+		$label = $service;
+		last;
+	}
+	$label = urldecode($service);
+	if ($ii eq $label) {
+		last;
+	}
+	undef $label;
+}
+debug(5, "default = $label");
+print div({-id=>'mainnav'}, "\n",
+	start_form(-name=>'menuform'), trans('selectserv') . ': ',
+	popup_menu(-name=>'servidors', -value=>\@svrlist,
+			   -default=>"$label", -onChange=>'jumpto(this)'),
+	end_form);
+
+if (exists $dbinfo{label}) {
+	$label = $dbinfo{label};
+} else {
+	$label = $service;
+}
+print h1("Nagiosgraph") . "\n" . 
+	p(trans('perfforserv') . ': ' . strong(tt(urldecode($label))) . ' ' .
+		trans('asof') . ': ' . strong(scalar(localtime))) . "\n";
+
+foreach $time ( @times ) {
+	dumper(5, 'time', $time);
+	print h2(trans($time->[0]));
+	foreach $host ( @hdb ) {
+		debug(5, "host = $host");
+		@gl = split ',', $dbinfo{db};
+		($ii, $filename) = getfilename($host, urldecode($service), $gl[0]);
+		$filename = $ii . '/' . $filename;
+		debug(5, "checkfile $filename");
+		if ( -f "$filename") {
+			# file found, so generate a heading and graph URL
+			debug (5, "checkfile using $filename");
+			$labels = getlabels($service, $dbinfo{db});
+			print h2(a({href => $Config{nagioscgiurl} .
+					'/show.cgi?host=' . urlencode($host) .
+					'&service=' . urlencode($service)}, $host)) . "\n" .
+				# URL to showgraph.cgi generated graph
+				div({-class => "graphs"}, img({src => 'showgraph.cgi?' .
+					join('&', "host=$host", "service=$service",
+						"db=$dbinfo{db}", "graph=$time->[1]"),
+					alt => join(', ', @$labels)})) . "\n";
+			printlabels($labels);
+		} else {
+			debug(5, "$filename not found");
+		}
+	}
+}
+
 print div({-id => "footer"}, hr(),
-	small( "Created by " . a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
-		"Nagiosgraph") . "." ));
+	small(trans('createdby') . ' ' .
+	a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
+	"Nagiosgraph") . "." ));
 print end_html();
 
