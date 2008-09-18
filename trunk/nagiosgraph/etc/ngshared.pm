@@ -863,11 +863,13 @@ sub processdata (@) {
 	# These come from Nagios, so are just from what I use.
 	apcupsd => 'Uninterruptible Power Supply Status', 
 	bps => 'Bits Per Second',
+	clamdb => 'Clam Database',
 	diskgb => 'Disk Usage in GigaBytes',
 	http => 'Bits Per Second',
 	load => 'System Load Average',
 	losspct => 'Loss Percentage',
 	'Mem: swap' => 'Swap Utilization',
+	mailq => 'Pending Output E-mail Messages',
 	memory => 'Memory Usage',
 	ping => 'Ping Loss Percentage and Round Trip Average',
 	PLW => 'Perl Log Watcher Events',
