@@ -76,6 +76,7 @@ if (defined $Config{ngshared}) {
 	HTMLerror($Config{ngshared});
 	exit;
 }
+getdebug('testcolor');			# See if we have custom debug level
 
 # Suggest some commonly used keywords
 my $w = param('words') ? join ' ', param('words') : 'response rta pctfree';
@@ -84,11 +85,9 @@ my $w = param('words') ? join ' ', param('words') : 'response rta pctfree';
 my @style;
 @style = ( -style => {-src => "$Config{stylesheet}"} ) if ($Config{stylesheet});
 print header, start_html(-id => "nagiosgraph",
-	-title => "nagiosgraph: testcolor",
-	@style) . "\n" .
-	start_form .
-	p('Type some space seperated nagiosgraph line names here:') .
-	textfield({name => 'words', size => '80', value => $w}) .
+	-title => 'nagiosgraph: ' . trans('testcolor'), @style) . "\n" .
+	start_form . p(trans('typesome') . ':') .
+	textfield({name => 'words', size => '80', value => $w}) . ' ' .
 	submit . end_form . br . "\n";
 
 # Render a table of colors of all schemes for each keyword
@@ -110,6 +109,7 @@ if ( param('words') ) {
 
 # End of page
 print div({-id => "footer"}, hr(),
-	small( "Created by " . a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
+	small(trans('createdby') . ' ' .
+	a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
 	"Nagiosgraph") . "." ));
 print end_html();
