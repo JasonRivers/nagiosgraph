@@ -8,6 +8,8 @@
 
 # The configuration file and ngshared.pm must be in this directory.
 use lib '/etc/nagios/nagiosgraph';
+# The configuration loader will look for nagiosgraph.conf in this directory.
+# So take note upgraders, there is no $configfile = '....' line anymore.
 
 =head1 NAME
 
