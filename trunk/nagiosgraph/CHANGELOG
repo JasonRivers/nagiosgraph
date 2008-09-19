@@ -1,3 +1,13 @@
+1.1.0 2008-09-19
+
+* Fix only process one line bug when used via service_perfdata_file.
+* Move all subroutines into ngshared.pm and add more tests.
+* Separate graph creation from show.cgi into showgraph.cgi (now show.cgi,
+  showhost.cgi and showservice.cgi just build HTML and call showgraph.cgi).
+* Update configuration documentation for upgrades to hopefully clarify that
+  the only configuration change in the executable scripts is done via the
+  'use lib ....' line at the beginning of each script.
+
 1.0.1 2008-09-15
 
 * Add test directory and tests for the ngshared.pm library routines.
