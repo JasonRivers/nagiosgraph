@@ -137,6 +137,7 @@ if ($Config{perfloop}) {
 	while (1) {					# check the file every 30 seconds and load data
 		@perfdata = inputdata();
 		processdata(@perfdata) if @perfdata;
+		debug(5, 'insert.pl waiting for more input');
 		sleep 30;
 	}
 } else {						# run once with the line at $ARGV[0]
@@ -144,4 +145,4 @@ if ($Config{perfloop}) {
 	processdata(@perfdata) if @perfdata;
 }
 
-debug(5, 'nagiosgraph exited');
+debug(5, 'insert.pl exited');
