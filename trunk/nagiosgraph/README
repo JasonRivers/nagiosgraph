@@ -7,8 +7,8 @@ Author:  (c) Alan Brenner, Ithaka Harbors, 2008; Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
 
-Nagiosgraph is an add-on of Nagios. It collects service perfdata into rrd 
-format, and displays the resulting graphs via cgi.
+Nagiosgraph is an add-on of Nagios. It collects service performance data into
+rrd format, and displays the resulting graphs via cgi.
 
 Note: Nagios is a registered trademark of Ethan Galstad.
 
