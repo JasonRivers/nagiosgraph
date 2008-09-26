@@ -15,3 +15,7 @@ WriteMakefile(
     'realclean'     => { 'FILES' => '' },
     'clean'         => { 'FILES' => 'test.*' },
 );
+
+sub MY::install {
+	"install :: all pure_install doc_install\n\t./install.pl";
+}
