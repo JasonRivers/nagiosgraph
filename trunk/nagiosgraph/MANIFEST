@@ -27,6 +27,6 @@ t/01required_modules.t
 t/02ngshared.t
 t/97pod.t
 t/98podcoverage.t
-7/99kwalitee.t
+t/99kwalitee.t
 utils/testentry.pl
 utils/upgrade.pl
