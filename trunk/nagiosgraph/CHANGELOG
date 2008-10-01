@@ -1,3 +1,9 @@
+1.1.1 2008-10-01
+
+* Change the calls to RRDs::error to RRDs::error() to maybe fix a bareword error
+  that was reported on the help forum.
+* Add more tests (pod and kwalitee checks).
+
 1.1.0 2008-09-19
 
 * Fix only process one line bug when used via service_perfdata_file.
