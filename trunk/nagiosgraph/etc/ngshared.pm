@@ -390,8 +390,9 @@ sub graphinfo ($$@) {
 	for $rrd ( @rrd ) {
 		unless ( $rrd->{line} ) {
 			$ds = RRDs::info("$Config{rrddir}/$rrd->{file}");
-			if (RRDs::error) {
-				debug(2, "RRDs::info ERR " . RRDs::error);
+			my $ERR = RRDs::error();
+			if ($ERR) {
+				debug(2, "RRDs::info ERR " . $ERR);
 				dumper(2, 'rrd', $rrd);
 			}
 			map { $rrd->{line}{$_} = 1 }
@@ -737,8 +738,9 @@ sub createrrd ($$$$) {
 			dumper(5, 'createrrd DSub', \@dsub);
 			unless (-e "$directory/$filename") {
 				RRDs::create(@dsub);
-				if (RRDs::error) {
-					debug(2, 'createrrd RRDs::create ERR ' . RRDs::error);
+				my $ERR = RRDs::error();
+				if ($ERR) {
+					debug(2, 'createrrd RRDs::create ERR ' . $ERR);
 					dumper(2, 'createrrd dsub', \@dsub) if $Config{debug} < 5;
 				}
 			}
@@ -759,8 +761,9 @@ sub createrrd ($$$$) {
 		push @ds, getRRAs($service, @RRAs);
 		dumper(5, 'createrrd DS', \@ds);
 		RRDs::create(@ds);
-		if (RRDs::error) {
-			debug(2, 'createrrd RRDs::create ERR ' . RRDs::error);
+		my $ERR = RRDs::error();
+		if ($ERR) {
+			debug(2, 'createrrd RRDs::create ERR ' . $ERR);
 			dumper(2, 'createrrd ds', \@ds) if $Config{debug} < 5;
 		}
 	}
@@ -791,8 +794,9 @@ sub rrdupdate ($$$$$;) {
 
 	dumper(4, "rrdupdate RRDs::update", \@dataset);
 	RRDs::update(@dataset);
-	if (RRDs::error) {
-		debug(2, "rrdupdate RRDs::update ERR " . RRDs::error);
+	my $ERR = RRDs::error();
+	if ($ERR) {
+		debug(2, "rrdupdate RRDs::update ERR " . $ERR);
 		dumper(2, 'rrdupdate dataset', \@dataset) if $Config{debug} < 4;
 	}
 }
