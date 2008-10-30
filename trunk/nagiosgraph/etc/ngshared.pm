@@ -474,16 +474,25 @@ sub printNavMenu ($$$;) {
 	# Get list of servers/services
 	find(\&getgraphlist, $Config{rrddir});
 	# Create Javascript Arrays for client-side menu navigation
-	print '<script type="text/javascript">'. "\n";
+	print "<script type=\"text/javascript\">\n";
+	print "	function newOpt(serv) {\n"; 
+	print "		switch (serv) {\n";
 	foreach my $system (sort keys %Navmenu) {
 		my $crname = $Navmenu{$system}{'NAME'};
 		# JavaScript doesn't like "-" characters in variable names
 		$crname =~s/\W/_/g;
 		# JavaScript names can't start with digits
 		$crname =~s/^(\d)/_$1/;
-		print "var ". $crname . " = new Array(\"" .
-			join('","', sort(keys(%{$Navmenu{$system}{'SERVICES'}}))) . "\");\n";
+		print "			case \"$crname\":\n"; 
+		#print "var ". $crname . " = new Array(\"" .
+		print "				var aa = new Array(\"" .
+			join('","', sort(keys(%{$Navmenu{$system}{'SERVICES'}}))) . "\");\n"; 
+		print "				break;\n"; 
 	}
+	print "			default:\n\n"; 
+	print "			}\n"; 
+	print "		return aa;\n"; 
+	print "	}\n";
 
 	# Bulk Javascript code
 	print <<END;
@@ -494,7 +503,7 @@ sub printNavMenu ($$$;) {
 		server = server.replace(/-/g,"_");
 		server = server.replace(/\\./g,"_");
 		var svchosen = window.document.menuform.services;
-		var opciones = eval(server);
+		var opciones = newOpt(server);
 		// Adjust service dropdown menu length depending on host selected
 		svchosen.length = opciones.length;
 		for (i = 0; i < opciones.length; i++) {
