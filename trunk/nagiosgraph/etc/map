@@ -25,7 +25,22 @@
 # data structure is correct.
 # 
 ########################################################################
+# skip these quickly since Nagios will already notice (from Eric Gerbier)
 
+# avoid unuseful timeout and errors 
+/output:CHECK_NRPE: Socket timeout/ 
+and return; 
+ 
+/output:NRPE: Unable to read output/ 
+and return; 
+ 
+/output:CRITICAL - Socket timeout after/ 
+and return; 
+ 
+/output:Connection refused by host/ 
+and return;
+
+########################################################################
 # Service type: ping
 #   output:PING OK - Packet loss = 0%, RTA = 0.00 ms
 /output:PING.*?(\d+)%.+?([.\d]+)\sms/
