@@ -1,3 +1,9 @@
+1.1.2 2008-11-06
+
+* Update ngshared.pm to fix JavaScript navigation menu problem reported (and
+  fix provided) by Alex Semenov.
+* Add map entries to avoid unuseful timeouts, etc. from Eric Gerbier.
+
 1.1.1 2008-10-01
 
 * Change the calls to RRDs::error to RRDs::error() to maybe fix a bareword error
