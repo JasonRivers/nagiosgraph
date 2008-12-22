@@ -66,7 +66,7 @@ use RRDs;
 
 use vars qw(%Config %Navmenu $colorsub $VERSION %Ctrans);
 $colorsub = -1;
-$VERSION = '1.1.2';
+$VERSION = '1.1.3';
 
 # Debug/logging support ########################################################
 my $prog = basename($0);
