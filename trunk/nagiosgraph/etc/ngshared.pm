@@ -150,13 +150,11 @@ sub getfilename ($$;$) {
 	if ($Config{dbseparator} eq "subdir") {
 		$directory .=	"/" . $host;
 		unless (-e $directory) { # Create host specific directories
-			mkdir $directory;
 			debug(4, "getfilename creating directory $directory");
+			mkdir $directory, 0775;
+			die "$directory not writable" unless -w $directory;
 		}
-		die "$directory not writable" unless -w $directory;
-		if ($db) {
-			return $directory, urlencode("${service}___${db}") . '.rrd';
-		}
+		return $directory, urlencode("${service}___${db}") . '.rrd' if ($db);
 		return $directory, urlencode("${service}___");
 	}
 	# Build filename for traditional separation
