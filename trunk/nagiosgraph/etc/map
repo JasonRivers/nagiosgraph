@@ -199,3 +199,15 @@ and push @s, [ "tcp_$1",
                [ 'critical_time',  GAUGE, $4 ],
                [ 'socket_timeout', GAUGE, $6 ],
              ];
+
+# Example for handling variable number of input items in one entry (from a
+# request from Mathias Waack to handle tracking Oracle tablespace usage):
+#/output:.*tbs.*usage is/ and do { 
+#	my @order = /tbs ([A-Z0-9]+) usage/g; 
+#	my %data = /tbs ([A-Z0-9]+) usage is ([0-9.]+)%/g; 
+#	my @rval; 
+#	foreach my $key (@order) { 
+#		push @rval, [$key, 'GAUGE', $data{$key}]; 
+#	} 
+#	push @s, ['tablespaces', @rval]; 
+#};
