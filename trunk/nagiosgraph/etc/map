@@ -44,9 +44,10 @@ and return;
 # Service type: ping
 #   output:PING OK - Packet loss = 0%, RTA = 0.00 ms
 /output:PING.*?(\d+)%.+?([.\d]+)\sms/
-and push @s, [ 'ping',
-               [ 'losspct', GAUGE, $1      ],
-               [ 'rta',     GAUGE, $2/1000 ] ];
+and push @s, [ 'pingloss',
+               [ 'losspct', GAUGE, $1 ]]
+and push @s, [ 'pingrta',
+               [ 'rta', GAUGE, $2/1000 ]];
 
 # Service type: single disk
 #  output:DISK OK - free space: /tmp 663 MB (90%):
