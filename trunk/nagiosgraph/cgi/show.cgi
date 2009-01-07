@@ -119,14 +119,13 @@ my ($host,						# Required hostname to show data for
 	@db,
 	$graph,
 	$geom,
-	$rrdopts,
+	@rrdopts,
 	$fixedscale,
 	$offset,
 	@periods,
 	$period,
 	$label,
 	$url,
-	$db,
 	$ii,						# temporary and for loop variable
 	$labels);					# data labels from nagiosgraph.conf
 
@@ -146,10 +145,12 @@ getdebug('show', $host, $service); # See if we have custom debug level
 @db = dbfilelist($host, $service) unless @db;
 $graph = param('graph') if param('graph');
 $geom = param('geom') if param('geom');
-$rrdopts = param('rrdopts') if param('rrdopts');
+@rrdopts = param('rrdopts') if param('rrdopts');
 # Reencode rrdopts
-$rrdopts = urlencode $rrdopts;
-$rrdopts .= ' ' if $rrdopts;
+for ($ii = 0; $ii < @rrdopts; $ii++) {
+	$rrdopts[$ii] = urlencode $rrdopts[$ii];
+	$rrdopts[$ii] .= ' ' if $rrdopts[$ii];
+}
 # Changed fixedscale checking since empty param was returning undef from CGI.pm
 $fixedscale = 0;
 $fixedscale = 1 if (grep /fixedscale/, param());
@@ -181,7 +182,7 @@ for $period (@periods) {
 	print a({-id => trans($period->[0])});
 	print h2(trans($period->[0] . 'ly'));
 	$url = join '&', "host=$host", "service=$service",
-		 "geom=$geom", "rrdopts=$rrdopts", map { "db=$_" } @db;
+		"geom=$geom", map {"rrdopts=$_" } @rrdopts, map { "db=$_" } @db;
 	print a({-href=>"?$url&offset=" .
 			($offset + $period->[2]) . "#" . $period->[0]},
 		trans('previous')) . " / " . a({-href=>"?$url&offset=" .
@@ -189,23 +190,22 @@ for $period (@periods) {
 		br() . "\n";
 	dumper(5, 'db', \@db);
 	if (@db) {
-		for $db (@db) {
-			debug(5, $db);
-			$labels = getlabels($service, $db);
-			$ii = join '&', "host=$host", "service=$service", "db=$db",
-				'graph=' . $period->[1], "geom=$geom", "rrdopts=$rrdopts";
-			$ii .= "&fixedscale" if ($fixedscale);
+		for ($ii = 0; $ii < @db; $ii++) {
+			$labels = getlabels($service, $db[$ii]);
+			$url = join '&', "host=$host", "service=$service", "db=$db[$ii]",
+				'graph=' . $period->[1], "geom=$geom", "rrdopts=$rrdopts[$ii]";
+			$url .= "&fixedscale" if ($fixedscale);
 			print div({-class => "graphs"},
-				img({-src => 'showgraph.cgi?' . $ii . "%2Dsnow%2D" .
+				img({-src => 'showgraph.cgi?' . $url . "%2Dsnow%2D" .
 						$period->[1] . "%2D$offset%20%2Denow%2D$offset",
 					-alt => join(', ', @$labels)})) . "\n";
 			printlabels($labels);
 		}
 	} else {
-		$ii = join '&', "host=$host", "service=$service", 'graph=' .
-			$period->[1], "geom=$geom", "rrdopts=$rrdopts";
+		$url = join '&', "host=$host", "service=$service", 'graph=' .
+			$period->[1], "geom=$geom", "rrdopts=$rrdopts[0]";
 		print div({-class => "graphs"},
-			img({-src => "showgraph.cgi?$ii", -alt => "Graph"})) . "\n";
+			img({-src => "showgraph.cgi?$url", -alt => "Graph"})) . "\n";
 	}
 }
 
