@@ -109,6 +109,7 @@ if (defined $Config{ngshared}) {
 	exit;
 }
 getdebug('showgraph', $host, $service); # See if we have custom debug level
+debug(5, "showgraph: $host, $service, $rrdopts");
 
 $Config{linewidth} = 2 unless $Config{linewidth};
 
@@ -116,8 +117,9 @@ $Config{linewidth} = 2 unless $Config{linewidth};
 $| = 1; # Make sure headers arrive before image data
 print header(-type => "image/png");
 # Figure out db files and line labels
-my $G = graphinfo($host, $service, @db);
-my @ds = rrdline($host, $service, $geom, $rrdopts, $G, $graph, $fixedscale);
+my $graphinfo = graphinfo($host, $service, @db);
+my @ds = rrdline($host, $service, $geom, $rrdopts, $graphinfo, $graph,
+	$fixedscale);
 dumper(4, "RRDs::graph", \@ds);
 RRDs::graph(@ds);
 if (RRDs::error) {
