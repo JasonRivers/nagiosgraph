@@ -148,7 +148,7 @@ $geom = param('geom') if param('geom');
 @rrdopts = param('rrdopts') if param('rrdopts');
 # Reencode rrdopts
 for ($ii = 0; $ii < @rrdopts; $ii++) {
-	$rrdopts[$ii] = urlencode $rrdopts[$ii];
+	$rrdopts[$ii] = urlencode($rrdopts[$ii]);
 	$rrdopts[$ii] .= ' ' if $rrdopts[$ii];
 }
 # Changed fixedscale checking since empty param was returning undef from CGI.pm
@@ -190,16 +190,32 @@ for $period (@periods) {
 		br() . "\n";
 	dumper(5, 'db', \@db);
 	if (@db) {
+		my ($title) = 0;
+		$title = 1
+			if (exists $Config{graphlabels} and not exists $Config{nolabels});
 		for ($ii = 0; $ii < @db; $ii++) {
 			$labels = getlabels($service, $db[$ii]);
 			$url = join '&', "host=$host", "service=$service", "db=$db[$ii]",
-				'graph=' . $period->[1], "geom=$geom", "rrdopts=$rrdopts[$ii]";
+				'graph=' . $period->[1], "geom=$geom";
 			$url .= "&fixedscale" if ($fixedscale);
+			$url .= "&rrdopts=$rrdopts[$ii]";
+			if ($title == 1 and
+				urldecode($rrdopts[$ii]) !~ /(-t|--title)/ and @$labels) {
+				$url .= '%20' if (substr($url, -1, 1) ne '=');
+				$url .= '-t%20';
+				my ($start, $ii) = (0);
+				$start = 1 if (@$labels > 1);
+				for ($ii = $start; $ii < @$labels; $ii++) {
+					$url .= urlencode($labels->[$ii]);
+					$url .= ",%20" if ($ii + 1 < @$labels);
+				}
+				$url .= '%20' if (substr($url, -1, 1) ne '=');
+			}
 			print div({-class => "graphs"},
 				img({-src => 'showgraph.cgi?' . $url . "%2Dsnow%2D" .
 						$period->[1] . "%2D$offset%20%2Denow%2D$offset",
 					-alt => join(', ', @$labels)})) . "\n";
-			printlabels($labels);
+			printlabels($labels) unless $title;
 		}
 	} else {
 		$url = join '&', "host=$host", "service=$service", 'graph=' .
