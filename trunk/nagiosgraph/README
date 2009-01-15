@@ -30,17 +30,17 @@ INSTALL           - Dcoument for how to install and use nagiosgraph
 README            - This file
 README.map        - Document for how to create map file entries
 TODO              - A list of potential improvements to Nagiosgraph.
+install.pl        - an initial stab at an installer (for the brave only).
 lib/insert.pl     - Reads perfdata log from nagios and insert into rrd 
                     files.
 lib/insert.sh     - A shell script wrapper around insert.pl.
-cgi/show.cgi      - Generates an html page for the host/service specified, 
-                    and generates graphs on-the-fly.
+lib/nagiosgraph.js - JavaScript used by show.cgi for menus.
+cgi/show.cgi      - Generates an html page for the host/service specified.
+cgi/showgraph.cgi - Generates graphs for show, showhost and showservices.
 cgi/showhost.cgi  - Generates an html page for the host specified, showing all
-                    available services on the host. Uses show.cgi to generate
-                    the graphs.
+                    available services on the host.
 cgi/showservices.cgi - Generates an html page for the service specified, showing
-                    all hosts with that service's data. Uses show.cgi to
-                    generate the graphs.
+                    all hosts with that service's data.
 cgi/testcolor.cgi - Preview of colors for keywords in each color scheme
 etc/nagiosgraph.conf - paths and other configuration
 etc/hostdb.conf   - Configuration specific to showhost.cgi
@@ -48,11 +48,12 @@ etc/servdb.conf   - Configuration specific to showservices.cgi
 etc/map           - Regular expression to identify services and 
                     specification for how to create rrd files.
 etc/ngshared.pm   - Shared library of common perl subroutines
+more_examples/*   - Additional configuration examples.
 share/action.gif  - An icon for use in Nagios.
 share/nagiosgraph.css - CSS stylesheet
+t/*               - perl test scripts
 utils/testentry.pl- A script for testing new map file entries.
 utils/upgrade.pl  - A script for upgrading from older releases of Nagiosgraph.
-more_examples/*   - Additional configuration examples.
 
 
 Getting Help
