@@ -118,7 +118,9 @@ my ($host,						# Required hostname to show data for
 	$ii,						# temporary value for directory and for loops
 	$filename,
 	@svrlist,
-	$labels						# data labels from nagiosgraph.conf
+	$labels,					# data labels from nagiosgraph.conf
+	$title,						# boolean for when to print the labels
+	$url						# url parameters for showgraph.cgi
 );
 
 readconfig('read');
@@ -190,6 +192,11 @@ print h1("Nagiosgraph") . "\n" .
 			$host))) . ' ' . trans('asof') . ': ' .
 		strong(scalar(localtime))) . "\n";
 
+if (exists $Config{graphlabels} and not exists $Config{nolabels}) {
+	$title = 1;
+} else {
+	$title = 0;
+}
 foreach $time ( @times ) {
 	dumper(5, 'time', $time);
 	print h2(trans($time->[0]));
@@ -210,16 +217,17 @@ foreach $time ( @times ) {
 			} else {
 				$ii = urldecode($dbinfo{service});
 			}
-			$labels = getlabels($dbinfo{service}, $dbinfo{db});
+			$labels = getLabels($dbinfo{service}, $dbinfo{db});
+			# URL to showgraph.cgi generated graph
+			$url = join('&', "host=$host", "service=$dbinfo{service}",
+				"db=$dbinfo{db}", "graph=$time->[1]");
+			$url .= '&rrdopts=' . urlLabels($labels) if $title;
 			print h2(a({href => $Config{nagioscgiurl} .
 					'/showservice.cgi?service=' . urlencode($dbinfo{service}) .
 					'&db=' . $dbinfo{db}}, $ii)) . "\n" .
-				# URL to showgraph.cgi generated graph
-				div({-class => "graphs"}, img({src => 'showgraph.cgi?' .
-					join('&', "host=$host", "service=$dbinfo{service}",
-						"db=$dbinfo{db}", "graph=$time->[1]"),
+				div({-class => "graphs"}, img({src => 'showgraph.cgi?' . $url,
 					alt => join(', ', @$labels)})) . "\n";
-			printlabels($labels);
+			printLabels($labels) unless $title;
 		} else {
 			debug(5, "$filename not found");
 		}
