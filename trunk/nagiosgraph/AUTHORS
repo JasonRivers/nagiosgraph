@@ -21,6 +21,7 @@ D: Moved common subroutines into a perl library (ngshared.pm).
 D: Add a user defined color scheme.
 D: Add detailed debugging (by perl script, host and/or data set).
 D: Added perldoc to most of the perl programs.
+D. Added new functionality for 1.2.
 S: New Jersey, US
 
 N: S¿ren D¿ssing
