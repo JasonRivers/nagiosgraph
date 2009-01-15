@@ -106,7 +106,9 @@ my ($service,					# Required service to show data for
 	@gl,
 	$ii,						# temporary value for directory and for loops
 	$filename,
-	$label, $labels				# data labels from nagiosgraph.conf
+	$label, $labels,			# data labels from nagiosgraph.conf
+	$title,						# boolean for when to print the labels
+	$url						# url parameters for showgraph.cgi
 	);
 
 readconfig('read');
@@ -118,7 +120,7 @@ if (defined $Config{ngshared}) {
 
 # Expect service input
 if (param('service')) {
-	$service = param('service');
+	$service = urldecode(param('service'));
 } else {
 	HTMLerror(trans('noservicegiven'), 1);
 	exit;
@@ -213,6 +215,11 @@ print h1("Nagiosgraph") . "\n" .
 	p(trans('perfforserv') . ': ' . strong(tt(urldecode($label))) . ' ' .
 		trans('asof') . ': ' . strong(scalar(localtime))) . "\n";
 
+if (exists $Config{graphlabels} and not exists $Config{nolabels}) {
+	$title = 1;
+} else {
+	$title = 0;
+}
 foreach $time ( @times ) {
 	dumper(5, 'time', $time);
 	print h2(trans($time->[0]));
@@ -225,16 +232,18 @@ foreach $time ( @times ) {
 		if ( -f "$filename") {
 			# file found, so generate a heading and graph URL
 			debug (5, "checkfile using $filename");
-			$labels = getlabels($service, $dbinfo{db});
+			$labels = getLabels($service, $dbinfo{db});
+			# URL to showgraph.cgi generated graph
+			$url = join('&', "host=$host", "service=$dbinfo{service}",
+				"db=$dbinfo{db}", "graph=$time->[1]");
+			$url .= '&rrdopts=' . urlLabels($labels) if $title;
 			print h2(a({href => $Config{nagioscgiurl} .
 					'/show.cgi?host=' . urlencode($host) .
 					'&service=' . urlencode($service)}, $host)) . "\n" .
 				# URL to showgraph.cgi generated graph
-				div({-class => "graphs"}, img({src => 'showgraph.cgi?' .
-					join('&', "host=$host", "service=$service",
-						"db=$dbinfo{db}", "graph=$time->[1]"),
+				div({-class => "graphs"}, img({src => 'showgraph.cgi?' . $url,
 					alt => join(', ', @$labels)})) . "\n";
-			printlabels($labels);
+			printLabels($labels) unless $title;
 		} else {
 			debug(5, "$filename not found");
 		}
