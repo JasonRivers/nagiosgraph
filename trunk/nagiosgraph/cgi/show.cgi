@@ -141,8 +141,10 @@ $host = param('host') if param('host');
 $service = param('service') if param('service');
 getdebug('show', $host, $service); # See if we have custom debug level
 @db = param('db') if param('db');
+dumper(5, 'db1', \@db);
 # Detect available db files
 @db = dbfilelist($host, $service) unless @db;
+dumper(5, 'db2', \@db);
 $graph = param('graph') if param('graph');
 $geom = param('geom') if param('geom');
 @rrdopts = param('rrdopts') if param('rrdopts');
@@ -194,7 +196,7 @@ for $period (@periods) {
 		$title = 1
 			if (exists $Config{graphlabels} and not exists $Config{nolabels});
 		for ($ii = 0; $ii < @db; $ii++) {
-			$labels = getlabels($service, $db[$ii]);
+			$labels = getLabels($service, $db[$ii]);
 			$url = join '&', "host=$host", "service=$service", "db=$db[$ii]",
 				'graph=' . $period->[1], "geom=$geom";
 			$url .= "&fixedscale" if ($fixedscale);
@@ -202,20 +204,14 @@ for $period (@periods) {
 			if ($title == 1 and
 				urldecode($rrdopts[$ii]) !~ /(-t|--title)/ and @$labels) {
 				$url .= '%20' if (substr($url, -1, 1) ne '=');
-				$url .= '-t%20';
-				my ($start, $ii) = (0);
-				$start = 1 if (@$labels > 1);
-				for ($ii = $start; $ii < @$labels; $ii++) {
-					$url .= urlencode($labels->[$ii]);
-					$url .= ",%20" if ($ii + 1 < @$labels);
-				}
+				$url .= urlLabels($labels);
 				$url .= '%20' if (substr($url, -1, 1) ne '=');
 			}
 			print div({-class => "graphs"},
 				img({-src => 'showgraph.cgi?' . $url . "%2Dsnow%2D" .
 						$period->[1] . "%2D$offset%20%2Denow%2D$offset",
 					-alt => join(', ', @$labels)})) . "\n";
-			printlabels($labels) unless $title;
+			printLabels($labels) unless $title;
 		}
 	} else {
 		$url = join '&', "host=$host", "service=$service", 'graph=' .
