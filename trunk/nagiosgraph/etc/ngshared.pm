@@ -58,6 +58,7 @@ PARTICULAR PURPOSE.
 =cut
 
 use strict;
+use warnings;
 use CGI qw/:standard/;
 use Data::Dumper;
 use Fcntl ':flock';
@@ -66,7 +67,7 @@ use RRDs;
 
 use vars qw(%Config %Navmenu $colorsub $VERSION %Ctrans);
 $colorsub = -1;
-$VERSION = '1.1.3';
+$VERSION = '1.2.0';
 
 # Debug/logging support ########################################################
 my $prog = basename($0);
@@ -128,42 +129,51 @@ sub getdebug ($;$$) {
 
 # HTTP support #################################################################
 # URL encode a string
-sub urlencode ($) {
+sub urlencode ($;) {
 	my $rval = shift;
 	$rval =~ s/([\W])/"%" . uc(sprintf("%2.2x",ord($1)))/eg;
 	return $rval;
 }
 
-sub urldecode ($) {
+sub urldecode ($;) {
 	my $rval = shift;
+	return '' unless $rval;
 	$rval =~ s/\+/ /g;
 	$rval =~ s/%([0-9A-F]{2})/chr(hex($1))/eg;
 	return $rval;
 }
 
-sub getfilename ($$;$) {
+sub getfilename ($$;$;) {
 	my ($host, $service, $db) = @_;
 	$db ||= '';
 	debug(5, "getfilename($host, $service, $db)");
-	my $directory = $Config{rrddir};
-	debug(5, "getfilename dbseparator: '$Config{dbseparator}'");
+	my ($directory, $filename) = $Config{rrddir};
+	debug(5, "getfilename: dbseparator: '$Config{dbseparator}'");
 	if ($Config{dbseparator} eq "subdir") {
 		$directory .=	"/" . $host;
 		unless (-e $directory) { # Create host specific directories
-			debug(4, "getfilename creating directory $directory");
+			debug(4, "getfilename: creating directory $directory");
 			mkdir $directory, 0775;
 			die "$directory not writable" unless -w $directory;
 		}
-		return $directory, urlencode("${service}___${db}") . '.rrd' if ($db);
-		return $directory, urlencode("${service}___");
+		if ($db) {
+			$filename = urlencode("${service}___${db}") . '.rrd';
+		} else {
+			$filename = urlencode("${service}___");
+		}
+	} else {
+		# Build filename for traditional separation
+		if ($db) {
+			return $directory, urlencode("${host}_${service}_${db}") . '.rrd'
+		} else {
+			$filename = urlencode("${host}_${service}_");
+		}
 	}
-	# Build filename for traditional separation
-	debug(5, "getfilename files stored in single folder structure");
-	return $directory, urlencode("${host}_${service}_${db}") . '.rrd' if ($db);
-	return $directory, urlencode("${host}_${service}_");
+	debug(5, "getfilename: returning: $directory, $filename");
+	return $directory, $filename;
 }
 
-sub HTMLerror ($;$) {
+sub HTMLerror ($;$;) {
 	my ($msg, $bConf) = @_;
 	print header(-type => "text/html", -expires => 0);
 	print start_html(-id => "nagiosgraph", -title => 'NagiosGraph Error Page');
@@ -181,7 +191,7 @@ sub HTMLerror ($;$) {
 
 # Color subroutines ############################################################
 # Choose a color for service
-sub hashcolor ($;$) {
+sub hashcolor ($;$;) {
 	my $label = shift;
 	my $color = shift;
 	$color ||= $Config{colorscheme};
@@ -192,7 +202,7 @@ sub hashcolor ($;$) {
 		# Wrap around, if we have more values than given colors
 		$colorsub++;
 		$colorsub = 0 if $colorsub >= scalar(@{$Config{color}});
-		debug(5, "color = " . $Config{color}[$colorsub]);
+		debug(5, "hashcolor: returning color = " . $Config{color}[$colorsub]);
 		return $Config{color}[$colorsub];
 	}
 
@@ -210,36 +220,20 @@ sub hashcolor ($;$) {
 	$rgb[$max] = 153 if $rgb[$max] < 153;
 	# generate the hex color value
 	$color = sprintf "%06X", $rgb[0] * 16 ** 4 + $rgb[1] * 256 + $rgb[2];
-	debug(5, "color = $color");
+	debug(5, "hashcolor: returning color = $color");
 	return $color;
 }
 
 # Configuration subroutines ####################################################
-# Assumes subdir as separator
-sub getgraphlist {
-	# Builds a hash for available servers/services to graph
-	my $current = $_;
-	if (-d $current and $current !~ /^\./) { # Directories are for hostnames
-		$Navmenu{$current}{'NAME'} = $current unless checkdirempty($current);
-	} elsif (-f $current && $current =~ /\.rrd$/) { # Files are for services
-		my ($host, $service);
-		($host = $File::Find::dir) =~ s|^$Config{rrddir}/||;
-		# We got the server to associate with and now
-		# we get the service name by splitting on separator
-		($service) = split(/___/, $current);
-		${$Navmenu{$host}{'SERVICES'}{urldecode($service)}}++;
-	}
-}
-
 # parse the min/max list into a dictionary for quick lookup
-sub listtodict ($) {
-	my $val = shift;
+sub listtodict ($;$;) {
+	my ($val, $commasplit) = @_;
 	my ($ii, %rval);
 	debug(5, 'listtodict splitting on ' . $Config{$val . 'sep'});
 	foreach $ii (split $Config{$val . 'sep'}, $Config{$val}) {
 		if ($val eq 'hostservvar') {
 			my @data = split(',', $ii);
-			dumper(5, 'listtodict data', \@data);
+			dumper(5, 'listtodict hostservvar data', \@data);
 			if (defined $rval{$data[0]}) {
 				if (defined $rval{$data[0]}->{$data[1]}) {
 					$rval{$data[0]}->{$data[1]}->{$data[2]} = 1;
@@ -249,6 +243,10 @@ sub listtodict ($) {
 			} else {
 				$rval{$data[0]} = {$data[1] => {$data[2] => 1}};
 			}
+		} elsif ($commasplit) {
+			my @data = split(',', $ii);
+			dumper(5, 'listtodict commasplit data', \@data);
+			$rval{$data[0]} = $data[1];
 		} else {
 			$rval{$ii} = 1;
 		}
@@ -272,7 +270,7 @@ sub checkdirempty ($;) {
 }
 
 # Read in the config file, check the log file and rrd directory
-sub readconfig ($;$) {
+sub readconfig ($;$;) {
 	my ($rrdstate, $debug) = @_;
 	# Read configuration data
 	if ($debug) {
@@ -300,8 +298,30 @@ sub readconfig ($;$) {
 	$Config{maximums} = listtodict('maximums') if defined $Config{maximums};
 	$Config{minimumssep} ||= ',';
 	$Config{minimums} = listtodict('minimums') if defined $Config{minimums};
+	$Config{withmaximumssep} ||= ',';
+	$Config{withmaximums} = listtodict('withmaximums')
+		if defined $Config{withmaximums};
+	$Config{withminimumssep} ||= ',';
+	$Config{withminimums} = listtodict('withminimums')
+		if defined $Config{withminimums};
 	$Config{hostservvarsep} ||= ';';
-	$Config{hostservvar} = listtodict('hostservvar') if defined $Config{hostservvar};
+	$Config{hostservvar} = listtodict('hostservvar')
+		if defined $Config{hostservvar};
+	$Config{altautoscalesep} ||= ',';
+	$Config{altautoscale} = listtodict('altautoscale')
+		if defined $Config{altautoscale};
+	$Config{altautoscalemaxsep} ||= ';';
+	$Config{altautoscalemax} = listtodict('altautoscalemax', 1)
+		if defined $Config{altautoscalemax};
+	$Config{altautoscaleminsep} ||= ';';
+	$Config{altautoscalemin} = listtodict('altautoscalemin', 1)
+		if defined $Config{altautoscalemin};
+	$Config{nogridfitsep} ||= ',';
+	$Config{nogridfit} = listtodict('nogridfit')
+		if defined $Config{nogridfit};
+	$Config{logarithmicsep} ||= ',';
+	$Config{logarithmic} = listtodict('logarithmic')
+		if defined $Config{logarithmic};
 	$Config{color} ||= 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0';
 	$Config{color} = [split(/\s*,\s*/, $Config{color})];
 	# If debug is set make sure we can write to the log file
@@ -346,11 +366,35 @@ sub dbfilelist ($$) {
 }
 
 # Graphing routines ############################################################
+# Return a list of the data 'lines' in an rrd file
+sub getDataItems ($;) {
+	my ($file) = @_;
+	my ($ds,					# return value from RRDs::info
+		$ERR,					# RRDs error value
+		%dupes);				# temporary hash to filter duplicate values with
+	if (-f $file) {
+		$ds = RRDs::info($file);
+	} else {
+		$ds = RRDs::info("$Config{rrddir}/$file");
+	}
+	$ERR = RRDs::error();
+	if ($ERR) {
+		debug(2, "getDataItems: RRDs::info ERR " . $ERR);
+		dumper(2, 'getDataItems: ds', $ds);
+	}
+	return grep { ! $dupes{$_}++ }			# filters duplicate data set names
+		map { /ds\[(.*)\]/; $1 }			# returns just the data set names
+			grep /ds\[(.*)\]/, keys %$ds;	# gets just the data set fields
+}
+
 # Find graphs and values
 sub graphinfo ($$@) {
 	my ($host, $service, @db) = @_;
 	debug(5, "graphinfo($host, $service)");
-	my ($hs, @rrd, $rrd, $ds, $dsout, @values, %H, %R);
+	my ($hs,					# host/service
+		@rrd,					# the returned list of hashes
+		$rrd,					# for loop value for each entry in @rrd
+		$ds);					
 
 	if ($Config{dbseparator} eq "subdir") {
 		$hs = $host . "/" . urlencode("$service") . "___";
@@ -359,9 +403,15 @@ sub graphinfo ($$@) {
 	}
 
 	# Determine which files to read lines from
-	dumper(5, 'db', \@db);
+	dumper(5, 'graphinfo: db', \@db);
 	if (@db) {
-		my ($nn, $dd, $db, @lines, $ll, $line, $unit) = (0);
+		my ($nn,				# index of @rrd, for inserting entries
+			$dd,				# for loop value for each entry in given @db
+			$db,				# RRD file name, without extension
+			@lines,				# entries after file name from $db 
+			$ll,				# for loop value for each entry in @lines
+			$line,				# value split from $ll
+			$unit) = (0);		# value split from $ll
 		for $dd (@db) {
 			($db, @lines) = split ',', $dd;
 			$rrd[$nn]{file} = $hs . urlencode("$db") . '.rrd';
@@ -375,216 +425,277 @@ sub graphinfo ($$@) {
 			}
 			$nn++;
 		}
-		debug(4, "Specified $hs db files in $Config{rrddir}: "
+		debug(4, "graphinfo: Specified $hs db files in $Config{rrddir}: "
 					 . join ', ', map { $_->{file} } @rrd);
 	} else {
 		@rrd = map {{ file=>$_ }}
 					 map { "${hs}${_}.rrd" }
-					 dbfilelist($host,$service);
-		debug(4, "Listing $hs db files in $Config{rrddir}: "
+					 dbfilelist($host, $service);
+		debug(4, "graphinfo: Listing $hs db files in $Config{rrddir}: "
 					 . join ', ', map { $_->{file} } @rrd);
 	}
 
 	for $rrd ( @rrd ) {
 		unless ( $rrd->{line} ) {
-			$ds = RRDs::info("$Config{rrddir}/$rrd->{file}");
-			my $ERR = RRDs::error();
-			if ($ERR) {
-				debug(2, "RRDs::info ERR " . $ERR);
-				dumper(2, 'rrd', $rrd);
-			}
-			map { $rrd->{line}{$_} = 1 }
-				grep { ! $H{$_}++ }
-					map { /ds\[(.*)\]/; $1 }
-						grep /ds\[(.*)\]/, keys %$ds;
+			map { $rrd->{line}{$_} = 1 } getDataItems($rrd->{file});
 		}
-		debug(5, "DS $rrd->{file} lines: "
+		debug(5, "graphinfo: DS $rrd->{file} lines: "
 					 . join ', ', keys %{$rrd->{line}});
 	}
-	dumper(5, 'rrd', \@rrd);
+	dumper(5, 'graphinfo: rrd', \@rrd);
 	return \@rrd;
 }
 
 # Generate all the parameters for rrd to produce a graph
 sub rrdline ($$$$$$$;) {
-	my ($host, $service, $geom, $rrdopts, $G, $time, $fixedscale) = @_;
+	my ($host, $service, $geom, $rrdopts, $graphinfo, $time, $fixedscale) = @_;
 	debug(5, "rrdline($host, $service, $geom, $rrdopts, $time)");
-	my ($g, $f, $v, $c, @ds);
+	my ($ii,					# for loop counter
+		$file,					# current rrd data file
+		$dataset,				# current data item in the rrd file
+		$color,					# return value from hashcolor()
+		@ds);					# array of strings for use as the command line
 	my $directory = $Config{rrddir};
 
 	@ds = ('-', '-a', 'PNG', '--start', "-$time");
 	# Identify where to pull data from and what to call it
-	for $g ( @$G ) {
-		$f = $g->{file};
-		dumper(5, 'g', $g);
+	for $ii (@$graphinfo) {
+		$file = $ii->{file};
+		dumper(5, 'rrdline: this graphinfo entry', $ii);
 
 		# Compute the longest label length
-		my $longest = (sort map(length,keys(%{ $g->{line} })))[-1];
+		my $longest = (sort map(length,keys(%{$ii->{line}})))[-1];
 
-		for $v ( sort keys %{ $g->{line} } ) {
-			$c = hashcolor($v);
-			debug(5, "file=$f line=$v color=$c");
-			my ($sv, $serv, $pos) = ($v, $service, length($service) - length($v));
-			$serv = substr($service, 0, $pos) if (substr($service, $pos) eq $v);
-			my $label = sprintf("%-${longest}s", $sv);
+		for $dataset (sort keys %{$ii->{line}}) {
+			$color = hashcolor($dataset);
+			debug(5, "rrdline: file=$file dataset=$dataset color=$color");
+			my ($serv, $pos) = ($service, length($service) - length($dataset));
+			$serv = substr($service, 0, $pos) if (substr($service, $pos) eq $dataset);
+			my $label = sprintf("%-${longest}s", $dataset);
+			debug(5, "rrdline: label = $label");
 			if (defined $Config{maximums}->{$serv}) {
-				push @ds , "DEF:$sv=$directory/$f:$v:MAX"
-								 , "$Config{plotas}:${sv}#$c:$label";
+				push @ds, "DEF:$dataset=$directory/$file:$dataset:MAX"
+						, "CDEF:ceil$dataset=$dataset,CEIL"
+						, "$Config{plotas}:ceil${dataset}#$color:$label";
 			} elsif (defined $Config{minimums}->{$serv}) {
-				push @ds , "DEF:$sv=$directory/$f:$v:MIN"
-								 , "$Config{plotas}:${sv}#$c:$label";
+				push @ds, "DEF:$dataset=$directory/$file:$dataset:MIN"
+						, "CDEF:floor$dataset=$dataset,FLOOR"
+						, "$Config{plotas}:floor${dataset}#$color:$label";
 			} else {
-				push @ds , "DEF:$sv=$directory/$f:$v:AVERAGE"
-								 , "$Config{plotas}:${sv}#$c:$label";
+				push @ds, "DEF:$dataset=$directory/$file:$dataset:AVERAGE"
+						, "$Config{plotas}:${dataset}#$color:$label";
 			}
 			my $format = '%6.2lf%s';
-			if ($fixedscale) { $format = '%6.2lf'; }
-
-			# Graph labels
-			push @ds, "GPRINT:$sv:MAX:Max\\: $format"
-							, "GPRINT:$sv:AVERAGE:Avg\\: $format"
-							, "GPRINT:$sv:MIN:Min\\: $format"
-							, "GPRINT:$sv:LAST:Cur\\: ${format}\\n";
+			$format = '%6.2lf' if ($fixedscale);
+			debug(5, "rrdline: format = $format");
+			if ($time > 120000) {	# long enough to start getting summation
+				if (defined $Config{withmaximums}->{$serv}) {
+					my $maxcolor = '888888'; #$color;
+					push @ds, "DEF:${dataset}_max=$directory/${file}_max:$dataset:MAX"
+							, "LINE1:${dataset}_max#${maxcolor}:maximum";
+				}
+				if (defined $Config{withminimums}->{$serv}) {
+					my $mincolor = 'BBBBBB'; #color;
+					push @ds, "DEF:${dataset}_min=$directory/${file}_min:$dataset:MIN"
+							, "LINE1:${dataset}_min#${mincolor}:minimum";
+				}
+				if (defined $Config{withmaximums}->{$serv}) {
+					push @ds, "CDEF:${dataset}_maxif=${dataset}_max,UN",
+							, "CDEF:${dataset}_maxi=${dataset}_maxif,${dataset},${dataset}_max,IF"
+							, "GPRINT:${dataset}_maxi:MAX:Max\\: $format";
+				} else {
+					push @ds, "GPRINT:$dataset:MAX:Max\\: $format";
+				}
+				push @ds, "GPRINT:$dataset:AVERAGE:Avg\\: $format";
+				if (defined $Config{withminimums}->{$serv}) {
+					push @ds, "CDEF:${dataset}_minif=${dataset}_min,UN",
+							, "CDEF:${dataset}_mini=${dataset}_minif,${dataset},${dataset}_min,IF"
+							, "GPRINT:${dataset}_mini:MIN:Min\\: $format\\n"
+				} else {
+					push @ds, "GPRINT:$dataset:MIN:Min\\: $format\\n"
+				}
+			} else {
+				push @ds, "GPRINT:$dataset:MAX:Max\\: $format"
+						, "GPRINT:$dataset:AVERAGE:Avg\\: $format"
+						, "GPRINT:$dataset:MIN:Min\\: $format"
+						, "GPRINT:$dataset:LAST:Cur\\: ${format}\\n";
+			}
 		}
 	}
 
 	# Dimensions of graph if geom is specified
-	if ( $geom ) {
+	if ($geom) {
 		my ($w, $h) = split 'x', $geom;
 		push @ds, '-w', $w, '-h', $h;
 	} else {
 		push @ds, '-w', 600; # just make the graph wider than default
 	}
 	# Additional parameters to rrd graph, if specified
-	if ( $rrdopts ) {
-		push @ds, split /\s+/, $rrdopts;
+	if ($rrdopts) {
+		my $opt = '';
+		foreach $ii (split(/\s+/, $rrdopts)) {
+			if (substr($ii, 0, 1) eq '-') {
+				$opt = $ii;
+				push @ds, $opt;
+			} else {
+				if ($ds[-1] eq $opt) {
+					push @ds, $ii;
+				} else {
+					$ds[-1] .= " $ii";
+				}
+			}
+		}
 	}
-	if ( $fixedscale ) {
-		push @ds, "-X", "0";
-	}
+	push @ds, "-X", "0" if ($fixedscale);
+	push @ds, '-A' if (defined $Config{altautoscale} and
+					   exists $Config{altautoscale}{$service} and
+					   index($rrdopts, '-A') == -1);
+	push @ds, '-J', $Config{altautoscalemin}
+		if (defined $Config{altautoscalemin} and
+			exists $Config{altautoscalemin}{$service} and
+			index($rrdopts, '-J') == -1);
+	push @ds, '-M', $Config{altautoscalemax}
+		if (defined $Config{altautoscalemax} and
+			exists $Config{altautoscalemax}{$service} and
+			index($rrdopts, '-M') == -1);
+	push @ds, '-N' if (defined $Config{nogridfit} and
+					   exists $Config{nogridfit}{$service} and
+					   index($rrdopts, '-N') == -1);
+	push @ds, '-o' if (defined $Config{logarithmic} and
+					   exists $Config{logarithmic}{$service} and
+					   index($rrdopts, '-o') == -1);
+	debug(5, "rrdline: returning");
 	return @ds;
 }
 
 # Server/service menu routines #################################################
+# Assumes subdir as separator
+sub getgraphlist {
+	# Builds a hash for available servers/services to graph
+	my $current = $_;
+	if (-d $current and $current !~ /^\./) { # Directories are for hostnames
+		%{$Navmenu{$current}} = () unless checkdirempty($current);
+	} elsif (-f $current && $current =~ /\.rrd$/) { # Files are for services
+		my ($host, $service, $dataset);
+		($host = $File::Find::dir) =~ s|^$Config{rrddir}/||;
+		# We got the server to associate with and now
+		# we get the service name by splitting on separator
+		($service, $dataset) = split(/___/, $current);
+		$dataset = substr($dataset, 0, -4) if $dataset;
+		#debug(5, "getgraphlist: service = $service, dataset = $dataset");
+		if (not exists $Navmenu{$host}{urldecode($service)}) {
+			@{$Navmenu{$host}{urldecode($service)}} = ($dataset);
+		} else {
+			push @{$Navmenu{$host}{urldecode($service)}}, $dataset;
+		}
+	}
+}
+
+sub jsName ($;) {
+	my $jsname = shift;
+	# JavaScript doesn't like "-", ".", etc. characters in variable names
+	$jsname =~s/\W/_/g;
+	# JavaScript names can't start with digits
+	$jsname =~s/^(\d)/_$1/;
+	return $jsname;
+}
+
 # Inserts the navigation menu (top of the page)
 sub printNavMenu ($$$;) {
 	my ($host, $service, $fixedscale) = @_;
+	my (@servers, 				# server list in order
+		%servers,				# hash of servers -> list of services
+		@services,				# list of services on a server
+		@dataitems,				# list of values in the current data set
+		$com1, $com2,			# booleans for whether or a comma gets printed
+		$ii, $jj, $kk);			# for loop counters
 	# Get list of servers/services
 	find(\&getgraphlist, $Config{rrddir});
+	dumper(5, 'printNavMenu: Navmenu', \%Navmenu);
+	@servers = sort keys %Navmenu;
+
+	foreach $ii (@servers) {
+		@services = sort(keys(%{$Navmenu{$ii}}));
+		foreach $jj (@services) {
+			foreach $kk (@{$Navmenu{$ii}{$jj}}) {
+				@dataitems = getDataItems(join('/', getfilename($ii, $jj, $kk)));
+				if (not exists $servers{$ii}) {
+					$servers{$ii} = {};
+				}
+				if (not exists $servers{$ii}{$jj}) {
+					$servers{$ii}{$jj} = [];
+				}
+				push @{$servers{$ii}{$jj}}, [$kk, @dataitems];
+			}
+		}
+	}
+	dumper(5, 'servers', \%servers);
+
 	# Create Javascript Arrays for client-side menu navigation
 	print "<script type=\"text/javascript\">\n";
-	print "	function newOpt(serv) {\n"; 
-	print "		switch (serv) {\n";
-	foreach my $system (sort keys %Navmenu) {
-		my $crname = $Navmenu{$system}{'NAME'};
-		# JavaScript doesn't like "-" characters in variable names
-		$crname =~s/\W/_/g;
-		# JavaScript names can't start with digits
-		$crname =~s/^(\d)/_$1/;
-		print "			case \"$crname\":\n"; 
-		#print "var ". $crname . " = new Array(\"" .
-		print "				var aa = new Array(\"" .
-			join('","', sort(keys(%{$Navmenu{$system}{'SERVICES'}}))) . "\");\n"; 
-		print "				break;\n"; 
-	}
-	print "			default:\n\n"; 
-	print "			}\n"; 
-	print "		return aa;\n"; 
-	print "	}\n";
-
-	# Bulk Javascript code
-	print <<END;
-	//Swaps the secondary (services) menu content after a server is selected
-	function setOptionText(element) {
-		var server = element.options[element.selectedIndex].text;
-		//Converts - in hostnames to _ for matching array name
-		server = server.replace(/-/g,"_");
-		server = server.replace(/\\./g,"_");
-		var svchosen = window.document.menuform.services;
-		var opciones = newOpt(server);
-		// Adjust service dropdown menu length depending on host selected
-		svchosen.length = opciones.length;
-		for (i = 0; i < opciones.length; i++) {
-			svchosen.options[i].text = opciones[i];
-		}
-		if (opciones.length == 1 && arguments.length == 1) {
-			jumpto(svchosen);
-		}
-	}
-	//Once a service is selected this function loads the new page
-	function jumpto(element) {
-		var svr = escape (document.menuform.servidors.value);
-		var svc = escape (element.options[element.selectedIndex].text);
-		var newURL = location.pathname + "?host=";
-		newURL += svr + "&" + "service=" + svc;
-		newURL += getURLparams();
-		window.location.assign ( newURL ) ;
-	}
-	//Auxiliary URL builder function for "jumpto" keeping the params
-	function getURLparams() {
-		var query=this.location.search.substring(1);
-		var myParams="";
-		if (query.length > 0){
-			var params = query.split("&");
-
-			for (var i=0 ; i<params.length ; i++){
-				var pos = params[i].indexOf("=");
-				var name = params[i].substring(0, pos);
-				var value = params[i].substring(pos + 1);
-
-				//Append "safe" params (geom, rrdopts)
-				if ( name == "geom" || name == "rrdopts") {
-					myParams+= "&" + name + "=" + value;
-				}
-				// Jumpto defines host & service, checkbox selects fixedscale and
-				//	we can't determine db from JS so we discard it (enter manually)
+	# Create Javascript Arrays for client-side menu navigation
+	print "menudata = new Object();\n";
+	foreach $ii (@servers) {
+		$jj = jsName($ii);
+		print "menudata[\"$jj\"] = [\n";
+		@services = sort(keys(%{$Navmenu{$ii}}));
+		dumper(5, 'printNavMenu: keys', \@services);
+		$com1 = 0;
+		foreach $jj (@services) {
+			if ($com1) {
+				print "  ,"
+			} else {
+				print "   "
 			}
-
-		}
-		// Keep track of fixedscale parameter
-		if ( document.menuform.FixedScale.checked) {
-			myParams+= "&" + "fixedscale";
-		}
-		return (myParams);
-	}
-
-	//Forces the service menu to be filled with the correct entries
-	//when the page loads
-	function preloadSVC(name) {
-		var notfound = true;
-		var i = 0;
-		while (notfound && i < document.menuform.servidors.length) {
-			if (document.menuform.servidors.options[i].text == name) {
-				notfound = false;
-				document.menuform.servidors.selectedIndex = i;
+			print "[\"$jj\",";
+			$com2 = 0;
+			foreach $kk (@{$servers{$ii}{$jj}}) {
+				print ',' if $com2;
+				print "[\"" . join('","', @$kk) . "\"]";
+				$com2 = 1;
 			}
-			i++;
+			print "]\n";
+			$com1 = 1;
 		}
-		setOptionText(document.menuform.servidors, 1);
+		print "  ];\n";
 	}
-</script>
-END
+
+	# Bulk Javascript code, one step closer to cacheable
+	if (open IN, "<$Config{javascriptsource}") {
+		while (<IN>) {
+			print $_;
+		}
+		close IN;
+	} else {
+		debug(1, "Cannot open $Config{javascriptsource}: $!\n");
+	}
+	print "</script>\n";
+
 	# Create main form
-	my @svrlist = sort keys %Navmenu;
-	my @ServiceNames = sort keys %{$Navmenu{$host}{'SERVICES'}};
 	print div({-id=>'mainnav'}, "\n",
 		start_form(-method=>'GET', -name=>'menuform'),
 		# Selecting a new server shows the associated services menu
 		trans('selecthost') . ': ',
-		popup_menu(-name=>'servidors', -value=>\@svrlist,
-				   -default=>"$host", -onChange=>"setOptionText(this)"),
+		popup_menu(-name=>'servidors', -values=>[$host],
+				   -onChange=>"setService(this)", -default=>"$host"), "\n",
 		# Selecting a new service reloads the page with the new graphs
-		"\n" . trans('selectserv') . ': ',
-		popup_menu(-name=>'services', -value=>\@ServiceNames,
-				   -onChange=>"jumpto(this)", default=>"$service"), "\n",
+        trans('selectserv') . ': ',
+		popup_menu(-name=>'services', -values=>[$service],
+				   -onChange=>"setDb(this)", default=>"$service"), "\n",
 		checkbox(-name=>'FixedScale', -label=>trans('fixedscale'),
 			-checked=>$fixedscale), "\n",
-		button(-name=>'go', -value=>trans('submit'),
-			-onClick=>'jumpto(document.menuform.services)'),
-		end_form . "\n") .
+		button(-name=>'go', -label=>trans('submit'), -onClick=>'jumpto()'),
+		"\n",
+		div({-id=>'subnav'}, br(), #, -style=>'visibility: visible'
+			"\n", trans('selectitems'), "\n",
+			popup_menu(-name=>'db', -values=>[],
+				-size=>2, -multiple=>1), "\n",
+			button(-name=>'clear', -label=>trans('clear'),
+				-onClick=>'clearitems()')),
+		end_form), "\n",
 		# Preload selected host services
-		"<script type=\"text/javascript\">var prtHost=\"$host\";" .
-		"preloadSVC(prtHost);</script>\n";
+		"<script type=\"text/javascript\">preloadSVC(\"$host\",", 
+		"\"$service\");</script>\n";
 }
 
 # Full page routine ############################################################
@@ -627,9 +738,9 @@ sub graphsizes ($;) {
 }
 
 # Graph labels, if so configured
-sub getlabels ($$) {
+sub getLabels ($$) {
 	my ($service, $db) = @_;
-	debug(5, "getlabels($service, $db)");
+	debug(5, "getLabels($service, $db)");
 	my $val = trans($service, 1);
 	if ($val ne $service) {
 		debug(5, "returning [$val]");
@@ -647,7 +758,17 @@ sub getlabels ($$) {
 	return \@labels;
 }
 
-sub printlabels ($;) {
+sub urlLabels ($;) {
+	my $labels = shift;
+	my ($start, @url, $ii) = (0);
+	$start = 1 if (@$labels > 1);
+	for ($ii = $start; $ii < @$labels; $ii++) {
+		push @url, urlencode($labels->[$ii]);
+	}
+	return '-t%20' . join(",%20", @url);
+}
+
+sub printLabels ($;) {
 	my ($labels) = @_;
 	return if $Config{nolabels};
 	unless (scalar @$labels == 1 and $labels->[0] eq trans('graph')) {
@@ -685,35 +806,59 @@ sub inputdata () {
 }
 
 # Process received data
-sub getRRAs ($@) {
-	my ($service, @RRAs) = @_;
-	my $choice;
-	if (defined $Config{maximums}->{$service}) {
-		$choice = 'MAX';
-	} elsif (defined $Config{minimums}->{$service}) {
-		$choice = 'MIN';
-	} else {
-		$choice = 'AVERAGE';
+sub getRRAs ($$;$;) {
+	my ($service, $RRAs, $choice) = @_;
+	unless ($choice) {
+		if (defined $Config{maximums}->{$service}) {
+			$choice = 'MAX';
+		} elsif (defined $Config{minimums}->{$service}) {
+			$choice = 'MIN';
+		} else {
+			$choice = 'AVERAGE';
+		}
 	}
-	return "RRA:$choice:0.5:1:$RRAs[0]", "RRA:$choice:0.5:6:$RRAs[1]",
-		   "RRA:$choice:0.5:24:$RRAs[2]", "RRA:$choice:0.5:288:$RRAs[3]";
+	return "RRA:$choice:0.5:1:$RRAs->[0]", "RRA:$choice:0.5:6:$RRAs->[1]",
+		   "RRA:$choice:0.5:24:$RRAs->[2]", "RRA:$choice:0.5:288:$RRAs->[3]";
 }
 
 # Create new rrd databases if necessary
+sub runCreate ($;) {
+	my $ds = shift;
+	dumper(5, 'runCreate DS', $ds);
+	RRDs::create(@$ds);
+	my $ERR = RRDs::error();
+	if ($ERR) {
+		debug(2, 'runCreate RRDs::create ERR ' . $ERR);
+		dumper(2, 'runCreate ds', $ds) if $Config{debug} < 5;
+	}
+}
+
+sub checkDataSources ($$$$) {
+	my ($dsmin, $directory, $filenames, $labels) = @_;
+	if (scalar @$dsmin == 3 and scalar @$filenames == 1) {
+		debug(1, "createrrd no data sources defined for $directory/$filenames->[0]");
+		dumper(1, 'createrrd labels', $labels);
+		return 0;
+	}
+	return 1;
+}
+
 sub createrrd ($$$$) {
 	my ($host, $service, $start, $labels) = @_;
 	debug(5, "createrrd($host, $service, $start, $labels->[0])");
 	my ($directory,				# modifiable directory name for rrd database
 		@filenames,				# rrd file name(s)
 		@datasets,
-		$db,
-		@RRAs,
-		@resolution,
-		@ds,
-		$ii,
-		$v,
-		$t,
-		$u);
+		$db,					# value of $labels->[0]
+		@RRAs,					# number of rows of data kept in each data set
+		@resolution,			# temporary hold for configuration values
+		@ds,					# rrd create options for regular data
+		@dsmin,					# rrd create options for minimum points
+		@dsmax,					# rrd create options for maximum points
+		$ii,					# for loop counter
+		$dsname,				# data set name
+		$dstype,				# data set type
+		$min);					# expected data set minimum
 
 	if (defined $Config{resolution}) {
 		@resolution = split(/ /, $Config{resolution});
@@ -729,64 +874,89 @@ sub createrrd ($$$$) {
 	($directory, $filenames[0]) = getfilename($host, $service, $db);
 	debug(5, "createrrd checking $directory/$filenames[0]");
 	@ds = ("$directory/$filenames[0]", '--start', $start);
+	@dsmin = ("$directory/$filenames[0]_min", '--start', $start);
+	@dsmax = ("$directory/$filenames[0]_max", '--start', $start);
 	push @datasets, [];
 	for ($ii = 0; $ii < @$labels; $ii++) {
-		($v, $t) = ($labels->[$ii]->[0], $labels->[$ii]->[1]);
-		$u = $t eq 'DERIVE' ? '0' : 'U' ;
+		($dsname, $dstype) = ($labels->[$ii]->[0], $labels->[$ii]->[1]);
+		$min = $dstype eq 'DERIVE' ? '0' : 'U' ;
 		if (defined $Config{hostservvar}->{$host} and
 			defined $Config{hostservvar}->{$host}->{$service} and
-			defined $Config{hostservvar}->{$host}->{$service}->{$v}) {
-			my $filename = (getfilename($host, $service . $v, $db))[1];
+			defined $Config{hostservvar}->{$host}->{$service}->{$dsname}) {
+			my $filename = (getfilename($host, $service . $dsname, $db))[1];
 			push @filenames, $filename;
 			push @datasets, [$ii];
-			my @dsub = ("$directory/$filename", '--start', $start);
-			push @dsub, "DS:$v:$t:$Config{heartbeat}:$u:U";
-			push @dsub, getRRAs($service, @RRAs);
-			dumper(5, 'createrrd DSub', \@dsub);
-			unless (-e "$directory/$filename") {
-				RRDs::create(@dsub);
-				my $ERR = RRDs::error();
-				if ($ERR) {
-					debug(2, 'createrrd RRDs::create ERR ' . $ERR);
-					dumper(2, 'createrrd dsub', \@dsub) if $Config{debug} < 5;
-				}
+			if (not -e "$directory/$filename") {
+				runCreate(["$directory/$filename", '--start', $start,
+					"DS:$dsname:$dstype:$Config{heartbeat}:$min:U",
+					getRRAs($service, \@RRAs)]);
+			}
+			if (defined $Config{withminimums}->{$service} and
+				not -e "$directory/${filename}_min") {
+				runCreate(["$directory/${filename}_min", '--start', $start,
+					"DS:$dsname:$dstype:$Config{heartbeat}:$min:U",
+					getRRAs($service, \@RRAs, 'MIN')]);
+			}
+			if (defined $Config{withmaximums}->{$service} and
+				not -e "$directory/${filename}_max") {
+				runCreate(["$directory/${filename}_max", '--start', $start,
+					"DS:$dsname:$dstype:$Config{heartbeat}:$min:U",
+					getRRAs($service, \@RRAs, 'MAX')]);
 			}
 			next;
 		} else {
-			push @ds, "DS:$v:$t:$Config{heartbeat}:$u:U";
+			push @ds, "DS:$dsname:$dstype:$Config{heartbeat}:$min:U";
 			push @{$datasets[0]}, $ii;
-		}
-	}
-	unless (-e "$directory/$filenames[0]") {
-		if (scalar @ds == 3) {
-			if (scalar @filenames == 1) {
-				debug(1, "createrrd no data sources defined for $directory/$filenames[0]");
-				dumper(1, 'createrrd labels', $labels);
-				return;
+			if (defined $Config{withminimums}->{$service}) {
+				push @dsmin, "DS:$dsname:$dstype:$Config{heartbeat}:$min:U";
+			}
+			if (defined $Config{withmaximums}->{$service}) {
+				push @dsmax, "DS:$dsname:$dstype:$Config{heartbeat}:$min:U";
 			}
 		}
-		push @ds, getRRAs($service, @RRAs);
-		dumper(5, 'createrrd DS', \@ds);
-		RRDs::create(@ds);
-		my $ERR = RRDs::error();
-		if ($ERR) {
-			debug(2, 'createrrd RRDs::create ERR ' . $ERR);
-			dumper(2, 'createrrd ds', \@ds) if $Config{debug} < 5;
-		}
+	}
+	if (not -e "$directory/$filenames[0]" and
+		checkDataSources(\@ds, $directory, \@filenames, $labels)) {
+		push @ds, getRRAs($service, \@RRAs);
+		runCreate(\@ds);
 	}
 	dumper(5, 'createrrd filenames', \@filenames);
 	dumper(5, 'createrrd datasets', \@datasets);
+	if (defined $Config{withminimums}->{$service} and
+		not -e "$directory/$filenames[0]_min" and
+		checkDataSources(\@dsmin, $directory, \@filenames, $labels)) {
+		push @dsmin, getRRAs($service, \@RRAs, 'MIN');
+		runCreate(\@dsmin);
+	}
+	if (defined $Config{withmaximums}->{$service} and
+		not -e "$directory/$filenames[0]_max" and
+		checkDataSources(\@dsmax, $directory, \@filenames, $labels)) {
+		push @dsmax, getRRAs($service, \@RRAs, 'MAX');
+		runCreate(\@dsmax);
+	}
 	return \@filenames, \@datasets;
 }
 
 # Use RRDs to update rrd file
-sub rrdupdate ($$$$$;) {
+sub runUpdate ($;) {
+	my $dataset = shift;
+	dumper(4, "runUpdate dataset", $dataset);
+	RRDs::update(@$dataset);
+	my $ERR = RRDs::error();
+	if ($ERR) {
+		debug(2, "runUpdate RRDs::update ERR " . $ERR);
+		dumper(2, 'runUpdate dataset', $dataset) if $Config{debug} < 4;
+	}
+}
+
+sub rrdUpdate ($$$$$;) {
 	my ($file, $time, $values, $host, $set) = @_;
-	debug(5, "rrdupdate($file, $time, $values, $host, $set)");
-	my ($directory, @dataset, $ii) = ($Config{rrddir});
+	debug(5, "rrdUpdate($file, $time, " . join(' ', @$values) . ", $host, " .
+		join(' ', @$set) . ")");
+	my ($directory, @dataset, $ii, $service) = ($Config{rrddir});
 
 	# Select target folder depending on config settings
-	$directory .= "/" . $host if ($Config{dbseparator} eq "subdir");
+	$directory .= "/$host" if ($Config{dbseparator} eq "subdir");
 
 	push @dataset, "$directory/$file",  $time;
 	for ($ii = 0; $ii < @$values; $ii++) {
@@ -798,13 +968,16 @@ sub rrdupdate ($$$$$;) {
 			}
 		}
 	}
+	runUpdate(\@dataset);
 
-	dumper(4, "rrdupdate RRDs::update", \@dataset);
-	RRDs::update(@dataset);
-	my $ERR = RRDs::error();
-	if ($ERR) {
-		debug(2, "rrdupdate RRDs::update ERR " . $ERR);
-		dumper(2, 'rrdupdate dataset', \@dataset) if $Config{debug} < 4;
+	$service = (split('_', $file))[0];
+	if (defined $Config{withminimums}->{$service}) {
+		$dataset[0] = "$directory/${file}_min";
+		runUpdate(\@dataset);
+	}
+	if (defined $Config{withmaximums}->{$service}) {
+		$dataset[0] = "$directory/${file}_max";
+		runUpdate(\@dataset);
 	}
 }
 
@@ -850,7 +1023,7 @@ sub processdata (@) {
 			($rrds, $sets) = createrrd($data[1], $data[2], $data[0] - 1, $s);
 			next unless $rrds;
 			for ($ii = 0; $ii < @$rrds; $ii++) {
-				rrdupdate($rrds->[$ii], $data[0], $s, $data[1], $sets->[$ii]);
+				rrdUpdate($rrds->[$ii], $data[0], $s, $data[1], $sets->[$ii]);
 			}
 		}
 		$Config{debug} = $debug;
@@ -876,6 +1049,7 @@ sub processdata (@) {
 	bps => 'Bits Per Second',
 	clamdb => 'Clam Database',
 	diskgb => 'Disk Usage in GigaBytes',
+	diskpct => 'Disk Usage in Percent',
 	http => 'Bits Per Second',
 	load => 'System Load Average',
 	losspct => 'Loss Percentage',
@@ -883,6 +1057,8 @@ sub processdata (@) {
 	mailq => 'Pending Output E-mail Messages',
 	memory => 'Memory Usage',
 	ping => 'Ping Loss Percentage and Round Trip Average',
+	pingloss => 'Ping Loss Percentage',
+	pingrta => 'Ping Round Trip Average',
 	PLW => 'Perl Log Watcher Events',
 	procs => 'Processes',
 	qsize => 'Messages in Outbound Queue',
@@ -892,6 +1068,7 @@ sub processdata (@) {
 	# These are used as is, in the source. Verify with:
 	# grep trans cgi/* etc/* | sed -e 's/^.*trans(\([^)]*\).*/\1/' | sort -u
 	asof => 'as of',
+	clear => 'clear the list',
 	configerror => 'Configuration Error',
 	createdby => 'Created by',
 	fixedscale => 'Fixed Scale',
@@ -902,7 +1079,9 @@ sub processdata (@) {
 	perfforhost => 'Performance data for host',
 	perfforserv => 'Performance data for service',
 	previous => 'previous',
+	selectall => 'select all items',
 	selecthost => 'Select server',
+	selectitems => 'Optionally, select the data set(s) to graph:',
 	selectserv => 'Select service',
 	service => 'service',
 	submit => 'Update Graphs',
@@ -912,6 +1091,7 @@ sub processdata (@) {
 
 sub trans ($;$;) {
 	my ($text, $quiet) = @_;
+	return urldecode($text) if substr($text, 0, 3) eq '%2F';
 	return $Config{$text} if $Config{$text};
 	return $Config{urlencode($text)} if $Config{urlencode($text)};
 	unless ($Config{warned} or $quiet) {
