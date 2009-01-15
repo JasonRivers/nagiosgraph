@@ -89,17 +89,34 @@ use RRDs;
 use CGI qw/:standard/;
 use File::Find;
 
+my ($host,
+	$service,
+	@db, 
+	$graph,
+	$geom,
+	$rrdopts,
+	$fixedscale,
+	$graphinfo,
+	@ds);
+
 # Expect host, service and db input
-my $host = param('host') if param('host');
-my $service = param('service') if param('service');
-my @db = param('db') if param('db');
-my $graph = param('graph') if param('graph');
-my $geom = param('geom') if param('geom');
-my $rrdopts = param('rrdopts') if param('rrdopts');
+$host = param('host');
+unless ($host) {
+	debug(1, "no host parameter in CGI call");
+	exit;
+}
+$service = param('service');
+unless ($service) {
+	debug(1, "no service parameter in CGI call");
+	exit;
+}
+@db = param('db') if param('db');
+$graph = param('graph') if param('graph');
+$geom = param('geom') if param('geom');
+$rrdopts = param('rrdopts') if param('rrdopts');
 # Changed fixedscale checking since empty param was returning undef from CGI.pm
-my @paramlist = param();
-my $fixedscale = 0;
-$fixedscale = 1 if (grep /fixedscale/, @paramlist);
+$fixedscale = 0;
+$fixedscale = 1 if (grep /fixedscale/, param());
 
 # Main #########################################################################
 readconfig('read');
@@ -117,8 +134,8 @@ $Config{linewidth} = 2 unless $Config{linewidth};
 $| = 1; # Make sure headers arrive before image data
 print header(-type => "image/png");
 # Figure out db files and line labels
-my $graphinfo = graphinfo($host, $service, @db);
-my @ds = rrdline($host, $service, $geom, $rrdopts, $graphinfo, $graph,
+$graphinfo = graphinfo($host, $service, @db);
+@ds = rrdline($host, $service, $geom, $rrdopts, $graphinfo, $graph,
 	$fixedscale);
 dumper(4, "RRDs::graph", \@ds);
 RRDs::graph(@ds);
