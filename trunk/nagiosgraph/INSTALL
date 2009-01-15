@@ -21,7 +21,7 @@ Installation Preliminaries
 
  - Extract the Nagiosgraph tarball into a temporary location:
 
-   tar xzvf nagiosgraph-1.0.0.tgz
+   tar xzvf nagiosgraph-1.2.0.tgz
 
  - Copy the contents of etc into your preferred configuration target location,
    e.g. /etc/nagios/nagiosgraph
@@ -44,10 +44,23 @@ Installation Preliminaries
  - Edit paths, debug level etc. in nagiosgraph.conf.
 
  - Update permissions of "rrddir" (as defined in nagiosgraph.conf), 
-   so that *nagios* user can write to it and *www* user can read it.
+   so that the *nagios* user can write to it and the *www* user can read it.
 
  - Update permissions of "logfile" (as defined in nagiosgraph.conf) 
-   so that both *nagios* and *www* users can write to "logfile" 
+   so that both the *nagios* and *www* users can write to "logfile".
+
+
+Upgrade Notes
+-------------
+
+ - Follow the above steps, except only copy the etc/ngshared.pm file to your
+   configuration target location.
+
+ - Use diff, or a similar tool, to update your nagiosgraph.conf with new fields
+   from etc/nagiosgraph.conf.
+
+ - You may want to look at etc/map to see if there are any new examples that you
+   may find useful.
 
 
 
@@ -228,6 +241,7 @@ Adding New Mapping and Troubleshooting
 
  - Keep an eye on the log file. It can grow big. Perhaps rotate it, or
    decrease log level when everything works fine.
+
 
 
 Platform Specific Notes
