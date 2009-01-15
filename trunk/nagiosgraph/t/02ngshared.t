@@ -10,7 +10,7 @@ use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
 BEGIN {
-    plan tests => 94;
+    plan tests => 105;
 }
 
 sub testdebug { # Test the logger.
@@ -158,35 +158,6 @@ sub testhashcolor { # With 16 generated colors, the default rainbow and one cust
 	}
 }
 
-sub testgetgraphlist { # Does two things: verifies directores and .rrd files.
-	$_ = '..';
-	getgraphlist();
-	ok(%Navmenu, 0, 'Nothing should be set yet');
-	$_ = 'test';
-	mkdir($_, 0755);
-	getgraphlist();
-	ok(%Navmenu, 0, 'Nothing should be set yet');
-	$_ = 'test/test1';
-	open TMP, ">$_";
-	print TMP "test1\n";
-	close TMP;
-	getgraphlist();
-	ok(%Navmenu, 0, 'Nothing should be set yet');
-	$_ = 'test';
-	getgraphlist();
-	ok($Navmenu{$_}{NAME}, 'test');
-	$_ = 'test/test1.rrd';
-	open TMP, ">$_";
-	print TMP "test1\n";
-	close TMP;
-	$File::Find::dir = $FindBin::Bin;
-	getgraphlist();
-	ok(Dumper($Navmenu{$FindBin::Bin}{SERVICES}), qr"'test/test1.rrd' => \\1"); 
-	unlink 'test/test1';
-	unlink 'test/test1.rrd';
-	rmdir 'test';
-}
-
 sub testlisttodict { # Split a string separated by a configured value into hash.
 	$Config{testsep} = ',';
 	$Config{test} = 'Current Load,PLW,Procs: total,User Count';
@@ -233,6 +204,17 @@ sub testdbfilelist { # Check getting a list of rrd files
 	$Config{debug} = 0;
 }
 
+sub testgetDataItems { # Depends on testcreaterrd making files
+	$Config{debug} = 5;
+	open LOG, '+>', \$log;
+	$result = getLabels('diskgb', 'test,junk');
+	ok($result->[0], 'Disk Usage');
+	$result = getLabels('testing', 'tested,Mem%3A%20swap,junk');
+	ok($result->[0], 'Swap Utilization');
+	close LOG;
+	$Config{debug} = 0;
+}
+
 sub testgraphinfo { # Depends on testcreaterrd making files
 	$Config{debug} = 5;
 	open LOG, '+>', \$log;
@@ -244,6 +226,8 @@ sub testgraphinfo { # Depends on testcreaterrd making files
 	skip(! -f $file, $result->[0]->{line}->{uwarn}, 1);
 	unlink $file if -f $file;
 	$file = $FindBin::Bin . '/testbox_procs_procs.rrd';
+	unlink  $file if -f $file;
+	$file = $FindBin::Bin . '/testbox_procsusers_procs.rrd';
 	unlink  $file if -f $file;
 	close LOG;
 	open LOG, '+>', \$log;
@@ -257,6 +241,58 @@ sub testgraphinfo { # Depends on testcreaterrd making files
 }
 
 sub testrrdline { # TODO: rrdline
+	$Config{debug} = 5;
+	open LOG, '+>', \$log;
+	$result = getLabels('diskgb', 'test,junk');
+	ok($result->[0], 'Disk Usage');
+	$result = getLabels('testing', 'tested,Mem%3A%20swap,junk');
+	ok($result->[0], 'Swap Utilization');
+	close LOG;
+	$Config{debug} = 0;
+}
+
+sub testgetgraphlist { # Does two things: verifies directores and .rrd files.
+	$_ = '..';
+	getgraphlist();
+	ok(%Navmenu, 0, 'Nothing should be set yet');
+	$_ = 'test';
+	mkdir($_, 0755);
+	getgraphlist();
+	ok(%Navmenu, 0, 'Nothing should be set yet');
+	$_ = 'test/test1';
+	open TMP, ">$_";
+	print TMP "test1\n";
+	close TMP;
+	getgraphlist();
+	ok(%Navmenu, 0, 'Nothing should be set yet');
+	$_ = 'test';
+	getgraphlist();
+	ok(Dumper($Navmenu{$_}), qr'{}');
+	$_ = 'test/test1.rrd';
+	open TMP, ">$_";
+	print TMP "test1\n";
+	close TMP;
+	$File::Find::dir = $FindBin::Bin;
+	getgraphlist();
+	ok(Dumper($Navmenu{$FindBin::Bin}), qr"undef"); 
+	unlink 'test/test1';
+	unlink 'test/test1.rrd';
+	rmdir 'test';
+}
+
+sub testjsName {
+	$Config{debug} = 5;
+	open LOG, '+>', \$log;
+	$result = jsName('unchanged');
+	ok($result, 'unchanged');
+	$result = jsName('Mem: swap');
+	ok($result, 'Mem__swap');
+	$result = jsName('3name');
+	ok($result, '_3name');
+	$result = jsName('4Mem: swap');
+	ok($result, '_4Mem__swap');
+	close LOG;
+	$Config{debug} = 0;
 }
 
 sub testprintNavMenu { # printNavMenu is like HTMLerror--not really testable.
@@ -277,18 +313,29 @@ sub testgraphsizes {
 	$Config{debug} = 0;
 }
 
-sub testgetlabels {
+sub testgetLabels {
 	$Config{debug} = 5;
 	open LOG, '+>', \$log;
-	$result = getlabels('diskgb', 'test,junk');
+	$result = getLabels('diskgb', 'test,junk');
 	ok($result->[0], 'Disk Usage');
-	$result = getlabels('testing', 'tested,Mem%3A%20swap,junk');
+	$result = getLabels('testing', 'tested,Mem%3A%20swap,junk');
 	ok($result->[0], 'Swap Utilization');
 	close LOG;
 	$Config{debug} = 0;
 }
 
-sub testprintlabels { # printlabels isn't testable either.
+sub testurlLabels {
+	$Config{debug} = 5;
+	open LOG, '+>', \$log;
+	$result = urlLabels(['unchanged']);
+	ok($result, '-t%20unchanged');
+	$result = urlLabels(['ignored', 'unchanged', 'Mem: swap']);
+	ok($result, '-t%20unchanged,%20Mem%3A%20swap'); # XXX: not sure about this
+	close LOG;
+	$Config{debug} = 0;
+}
+
+sub testprintlabels { # printLabels isn't testable either.
 }
 
 sub testinputdata {
@@ -324,14 +371,30 @@ sub testinputdata {
 sub testgetRRAs {
 	@testdata = (1, 2, 3, 4);
 	# $Config{maximums}
-	@result = main::getRRAs('Current Load', @testdata);
+	@result = main::getRRAs('Current Load', \@testdata);
 	ok(Dumper(\@result), "\$VAR1 = [\n          'RRA:MAX:0.5:1:1',\n          'RRA:MAX:0.5:6:2',\n          'RRA:MAX:0.5:24:3',\n          'RRA:MAX:0.5:288:4'\n        ];\n");
 	# $Config{minimums}
-	@result = main::getRRAs('APCUPSD', @testdata);
+	@result = main::getRRAs('APCUPSD', \@testdata);
 	ok(Dumper(\@result), "\$VAR1 = [\n          'RRA:MIN:0.5:1:1',\n          'RRA:MIN:0.5:6:2',\n          'RRA:MIN:0.5:24:3',\n          'RRA:MIN:0.5:288:4'\n        ];\n");
 	# default
-	@result = main::getRRAs('other value', @testdata);
+	@result = main::getRRAs('other value', \@testdata);
 	ok(Dumper(\@result), "\$VAR1 = [\n          'RRA:AVERAGE:0.5:1:1',\n          'RRA:AVERAGE:0.5:6:2',\n          'RRA:AVERAGE:0.5:24:3',\n          'RRA:AVERAGE:0.5:288:4'\n        ];\n");
+}
+
+sub testrunCreate {				# runCreate tested as part of createrrd
+}
+
+sub testcheckDataSources {
+	$Config{debug} = 5;
+	open LOG, '+>', \$log;
+	$result = checkDataSources([0], 'test', [0], 'junk');
+	ok($result, 1);
+	$result = checkDataSources([0,1,2], 'test', [0, 1], 'junk');
+	ok($result, 1);
+	$result = checkDataSources([0,1,2], 'test', [0], 'junk');
+	ok($result, 0);
+	close LOG;
+	$Config{debug} = 0;
 }
 
 sub testcreaterrd {
@@ -358,10 +421,13 @@ sub testcreaterrd {
 	close LOG;
 }
 
-sub testrrdupdate { # depends on testcreaterrd making a file
+sub testrunUpdate {				# like runCreate, it doesn't do much
+}
+
+sub testrrdUpdate { # depends on testcreaterrd making a file
 	$Config{debug} = 3;
 	open LOG, '+>', \$log;
-	rrdupdate($result[0]->[0], 1221495633, $testvar, 'testbox', $result[1]->[0]);
+	rrdUpdate($result[0]->[0], 1221495635, $testvar, 'testbox', $result[1]->[0]);
 	skip(! -f $FindBin::Bin . '/testbox/PING___ping.rrd', $log, "");
 	close LOG;
 }
@@ -378,12 +444,11 @@ sub testgetrules {
 sub testprocessdata { # depends on testcreatedd and testgetrules
 	$Config{debug} = 3;
 	open LOG, '+>', \$log;
-	my @perfdata = ('1221495634||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||losspct: 0%, rta: 37.06');
+	my @perfdata = ('1221495636||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||losspct: 0%, rta: 37.06');
 	processdata(@perfdata);
 	skip(! -f $FindBin::Bin . '/testbox/PING___ping.rrd', $log, "");
 	close LOG;
-	unlink $FindBin::Bin . '/testbox/PING___ping.rrd';
-	rmdir $FindBin::Bin . '/testbox';
+	system 'rm -rf ' . $FindBin::Bin . '/testbox';
 }
 
 sub testtrans {
@@ -401,17 +466,21 @@ testurl();
 testgetfilename();
 testhashcolor();
 testgetgraphlist();
+testjsName();
+testurlLabels();
 testlisttodict();
 testcheckdirempty();
 testreadconfig();
 testdbfilelist();
 testgraphsizes();
-testgetlabels();
+testgetLabels();
 testinputdata();
 testgetRRAs();
+testcheckDataSources();
 testcreaterrd();
-testrrdupdate();
+testrrdUpdate();
 testgetrules();
-testgraphinfo();
+testgetDataItems();		# must be after testcreaterrd and before testgraphinfo
+testgraphinfo();		# must be after testcreaterrd
 testprocessdata();
 testtrans();
