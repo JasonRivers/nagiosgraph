@@ -1,8 +1,8 @@
 1.2.0 2009-01-10
 
 * Add support for tracking and graphing minimum and maximum values. This should
-  be good for things link ping round trip time. Per request from Jay Anderson.
-* Add support for RRD scaling (altautoscale, altautoscalemine, altautoscalemax,
+  be good for things like ping round trip time. Per request from Jay Anderson.
+* Add support for RRD scaling (altautoscale, altautoscalemin, altautoscalemax,
   notgridfit, logarithmic). Per request from Oskar Hajek.
 * Add support for selecting a particular data item for graphing via a menu
   item in show.cgi. Per request from Mathias Waack.
