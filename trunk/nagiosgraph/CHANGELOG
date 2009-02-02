@@ -1,3 +1,7 @@
+1.2.1 2009-0202
+
+* Add a db names coding bug reported and fix provided by Eric Gerbier.
+
 1.2.0 2009-01-10
 
 * Add support for tracking and graphing minimum and maximum values. This should

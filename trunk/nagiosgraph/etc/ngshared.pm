@@ -67,7 +67,7 @@ use RRDs;
 
 use vars qw(%Config %Navmenu $colorsub $VERSION %Ctrans);
 $colorsub = -1;
-$VERSION = '1.2.0';
+$VERSION = '1.2.1';
 
 # Debug/logging support ########################################################
 my $prog = basename($0);
@@ -584,9 +584,9 @@ sub getgraphlist {
 		$dataset = substr($dataset, 0, -4) if $dataset;
 		#debug(5, "getgraphlist: service = $service, dataset = $dataset");
 		if (not exists $Navmenu{$host}{urldecode($service)}) {
-			@{$Navmenu{$host}{urldecode($service)}} = ($dataset);
+			@{$Navmenu{$host}{urldecode($service)}} = (urldecode($dataset));
 		} else {
-			push @{$Navmenu{$host}{urldecode($service)}}, $dataset;
+			push @{$Navmenu{$host}{urldecode($service)}}, urldecode($dataset);
 		}
 	}
 }
