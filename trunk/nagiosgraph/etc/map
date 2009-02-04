@@ -40,6 +40,9 @@ and return;
 /output:Connection refused by host/ 
 and return;
 
+/output:CRITICAL - Plugin timed out after/
+and return;
+
 ########################################################################
 # Service type: ping
 #   output:PING OK - Packet loss = 0%, RTA = 0.00 ms
