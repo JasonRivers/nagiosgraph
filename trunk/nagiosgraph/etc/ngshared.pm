@@ -324,6 +324,9 @@ sub readconfig ($;$;) {
 		if defined $Config{logarithmic};
 	$Config{color} ||= 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0';
 	$Config{color} = [split(/\s*,\s*/, $Config{color})];
+	$Config{time} ||= 'day week month';
+	$Config{timehost} ||= 'day';
+	$Config{timeserver} ||= 'day';
 	# If debug is set make sure we can write to the log file
 	if ($Config{debug} > 0) {
 		if (not open LOG, ">>$Config{logfile}") {
