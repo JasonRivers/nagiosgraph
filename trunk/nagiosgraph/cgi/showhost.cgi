@@ -186,7 +186,7 @@ print div({-id=>'mainnav'}, "\n",
 			   -default=>"$host", -onChange=>"jumpto(this)"),
 	end_form);
 
-print h1("Nagiosgraph") . "\n" . 
+print h1("Nagiosgraph") . "\n" .
 	p(trans('perfforhost') . ': ' . strong(tt(
 		a({href => "$Config{nagioscgiurl}/extinfo.cgi?type=1&host=$host"},
 			$host))) . ' ' . trans('asof') . ': ' .
@@ -202,7 +202,7 @@ foreach $time ( @times ) {
 	print h2(trans($time->[0]));
 	foreach $dbinfo ( @sdb ) {
 		chomp $dbinfo;
-		# split each line by '&' into a hash with key before = and val after 
+		# split each line by '&' into a hash with key before = and val after
 		%dbinfo = ($dbinfo =~ /([^=&]+)=([^&]*)/g);
 		dumper(5, 'dbinfo', \%dbinfo);
 		@gl = split ',', $dbinfo{db};
@@ -237,6 +237,6 @@ foreach $time ( @times ) {
 print div({-id => "footer"}, hr(),
 	small(trans('createdby') . ' ' .
 	a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
-	"Nagiosgraph") . "." ));
+	"Nagiosgraph " . $VERSION) . "." ));
 print end_html();
 

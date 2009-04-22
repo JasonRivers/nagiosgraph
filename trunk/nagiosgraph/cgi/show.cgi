@@ -167,9 +167,10 @@ print header, start_html(-id => "nagiosgraph",
 	-title => "nagiosgraph: $host-$service",
 	-head => meta({ -http_equiv => "Refresh", -content => "300" }),
 	@style) . "\n";
-# Print Navigation Menu if we have a separator set (that will allow navigation menu
-# to correctly split the filenames/filepaths in host/service/db names
-printNavMenu($host, $service, $fixedscale) if ($Config{dbseparator} eq "subdir");
+# Print Navigation Menu if we have a separator set (that will allow navigation
+# menu to correctly split the filenames/filepaths in host/service/db names.
+printNavMenu($host, $service, $fixedscale)
+	if ($Config{dbseparator} eq "subdir");
 
 print h1("Nagiosgraph") . "\n" .
 	p(trans('perfforhost') . ': ' . strong(tt(
@@ -224,5 +225,5 @@ for $period (@periods) {
 print div({-id => "footer"}, hr(),
 	small(trans('createdby') . ' ' .
 	a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
-	"Nagiosgraph") . "." ));
+	"Nagiosgraph " . $VERSION) . "." ));
 print end_html();

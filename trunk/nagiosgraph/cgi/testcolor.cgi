@@ -113,5 +113,5 @@ if ( param('words') ) {
 print div({-id => "footer"}, hr(),
 	small(trans('createdby') . ' ' .
 	a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
-	"Nagiosgraph") . "." ));
+	"Nagiosgraph " . $VERSION) . "." ));
 print end_html();

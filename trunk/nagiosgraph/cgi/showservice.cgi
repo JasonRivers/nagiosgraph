@@ -211,7 +211,7 @@ if (exists $dbinfo{label}) {
 } else {
 	$label = $service;
 }
-print h1("Nagiosgraph") . "\n" . 
+print h1("Nagiosgraph") . "\n" .
 	p(trans('perfforserv') . ': ' . strong(tt(urldecode($label))) . ' ' .
 		trans('asof') . ': ' . strong(scalar(localtime))) . "\n";
 
@@ -253,6 +253,6 @@ foreach $time ( @times ) {
 print div({-id => "footer"}, hr(),
 	small(trans('createdby') . ' ' .
 	a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
-	"Nagiosgraph") . "." ));
+	"Nagiosgraph " . $VERSION) . "." ));
 print end_html();
 
