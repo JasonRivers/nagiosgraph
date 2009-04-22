@@ -7,23 +7,23 @@
 #
 # INSTRUCTIONS:
 #
-# This file contains several example of service types. Edit this file to 
-# add more service types. The data string from Nagios is in $_ . Use 
+# This file contains several example of service types. Edit this file to
+# add more service types. The data string from Nagios is in $_ . Use
 # regular expressions to identify and extract data like the examples below
-# below.  Match on either output: or perfdata: . The code is pure perl, 
+# below.  Match on either output: or perfdata: . The code is pure perl,
 # that will be run inside an eval{}. Results are expected in @s. The
 # general format is:
-# 
+#
 # /output|perfdata:<servicetype> <key>=<value> <key2=value2> .../
 # and push @s, [ <databasename>,
 #                [ <key>,  GAUGE|DERIVE, <value>  ],
 #                [ <key2>, GAUGE|DERIVE, <value2> ],
 #                [ .       .              .        ],
 #                [ .       .              .        ] ];
-# 
-# But more advanced code is possible, as long as the resulting 
+#
+# But more advanced code is possible, as long as the resulting
 # data structure is correct.
-# 
+#
 ########################################################################
 
 # Network-ish stuff ############################################################
@@ -36,9 +36,9 @@ and push @s, [ 'ping',
 
 # Service type: unix-netstat
 #   output:OK
-#   perfdata:udpInDatagrams=46517147, udpOutDatagrams=46192507, udpInErrors=0, 
-#   tcpActiveOpens=1451583, tcpPassiveOpens=1076181, tcpAttemptFails=1909, 
-#   tcpEstabResets=5045, tcpCurrEstab=6, tcpOutDataBytes=3162434373, 
+#   perfdata:udpInDatagrams=46517147, udpOutDatagrams=46192507, udpInErrors=0,
+#   tcpActiveOpens=1451583, tcpPassiveOpens=1076181, tcpAttemptFails=1909,
+#   tcpEstabResets=5045, tcpCurrEstab=6, tcpOutDataBytes=3162434373,
 #   tcpInDataBytes=1942718261, tcpRetransBytes=215439
 #/perfdata:.*udpInDatagrams=(\d+), udpOutDatagrams=(\d+), udpInErrors=(\d+), tcpActiveOpens=(\d+), tcpPassiveOpens=(\d+), tcpAttemptFails=(\d+), tcpEstabResets=(\d+), tcpCurrEstab=(\d+), tcpOutDataBytes=(\d+), tcpInDataBytes=(\d+), tcpRetransBytes=(\d+)/
 #and push @s, [ udp,
@@ -117,7 +117,7 @@ and push @s, [ 'memory',
 
 # Service type: unix-users
 #   output:USERS OK - 4 users currently logged in
-#   perfdata:users=4;5;10;0 
+#   perfdata:users=4;5;10;0
 /perfdata:users=(\d+);(\d+);(\d+)/
 and push @s, [ 'users',
                [ 'users', GAUGE, $1 ]];
@@ -265,7 +265,7 @@ and push @s, [ 'http',
 #	output: ZAPTEL OK: WCFXO/0
 /output:ZAPTEL OK/ and push @s, 'ignore';
 
-/output:APCUPSD/and do {
+/output:APCUPSD/ and do {
   my %_s = ($_ =~ /(\w+)=(\d+)\S+/g);
   dumper(5, '_s', \%_s);
   my ($_k, @_r);
