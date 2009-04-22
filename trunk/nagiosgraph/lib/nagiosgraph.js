@@ -7,21 +7,30 @@ function clearitems() {
 function setvis(state) {
   elem = document.getElementById('subnav')
   if (state == 'visible') {
-    elem.style.display = "inline"; 
+    elem.style.display = "inline";
   } else {
     elem.style.display = "none";
   }
 }
 //Converts -, etc in input to _ for matching array name
-function fixName(entry) {
-  entry = entry.replace(/-/g,"_").replace(/\\./g,"_");
-  if (entry.match("^[0-9]"))
-    entry = "_" + entry;
-  return entry;
+function findName(entry) {
+  for (var ii = 0; ii < menudata.length; ii++) {
+    if (menudata[ii][0] == entry) {
+      return ii;
+    }
+  }
+  throw entry + " not found in the configured systems"
 }
 //Swaps the secondary (services) menu content after a server is selected
 function setService(element, service) {
-  var opts = menudata[fixName(element.options[element.selectedIndex].text)];
+  var opts;
+  try {
+    opts = menudata[findName(element.options[element.selectedIndex].text)];
+  }
+  catch (e) {
+    alert(e);
+    return;
+  }
   var elem = window.document.menuform.services;
   if (typeof(service) == 'undefined') {
     var query = this.location.search.substring(1);
@@ -30,7 +39,6 @@ function setService(element, service) {
       for (var ii = 0; ii < params.length ; ii++) {
         var pos = params[ii].indexOf("=");
         var name = params[ii].substring(0, pos);
-        //Append "safe" params (geom, rrdopts)
         if (name == "service") {
           service = params[ii].substring(pos + 1);
           break;
@@ -38,21 +46,28 @@ function setService(element, service) {
       }
     }
   }
-  elem.length = opts.length;
-  for (var ii = 0; ii < opts.length; ii++) {
-    elem.options[ii].text = opts[ii][0];
+  elem.length = opts.length - 1;
+  for (var ii = 1; ii < opts.length; ii++) {
+    elem.options[ii - 1].text = opts[ii][0];
     if (opts[ii][0] == service)
-      elem.options[ii].selected = true;
+      elem.options[ii - 1].selected = true;
   }
   setDb(window.document.menuform.services, 1);
 }
 //Once a service is selected this function updates the lines list
 function setDb(element) {
-  var opts = menudata[fixName(window.document.menuform.servidors.value)];
+  var opts;
+  try {
+    opts = menudata[findName(window.document.menuform.servidors.value)];
+  }
+  catch (e) {
+    alert(e);
+    return;
+  }
   var elem = window.document.menuform.db;
   var service = element.options[element.selectedIndex].text;
   var count = 0
-  for (var ii = 0; ii < opts.length; ii++) {
+  for (var ii = 1; ii < opts.length; ii++) {
     if (opts[ii][0] == service) {
       for (var jj = 1; jj < opts[ii].length; jj++) {
         for (var kk = 1; kk < opts[ii][jj].length; kk++) {
@@ -64,7 +79,7 @@ function setDb(element) {
   }
   elem.length = count;
   count = 0;
-  for (var ii = 0; ii < opts.length; ii++) {
+  for (var ii = 1; ii < opts.length; ii++) {
     if (opts[ii][0] == service) {
       for (var jj = 1; jj < opts[ii].length; jj++) {
         for (var kk = 1; kk < opts[ii][jj].length; kk++) {
@@ -132,17 +147,10 @@ function preloadSVC(server, service) {
   var elem = document.menuform.servidors;
   var params = this.location.search.substring(1).split("&");
   var ii, jj, kk, pos, items;
-  pos = 0;
-  for (ii in menudata) {
-    pos++;
-  }
-  elem.length = pos;
-  pos = 0;
-  for (ii in menudata) {
-    elem.options[pos].text = ii;
-    if (ii == server)
-      elem.options[pos].selected = true;
-    pos++;
+  elem.length = menudata.length;
+  for (ii = 0; ii < menudata.length; ii++) {
+    elem.options[ii].text = menudata[ii][0];
+    if (menudata[ii][0] == server) elem.options[ii].selected = true;
   }
   setService(elem, service);
   clearitems();
@@ -153,7 +161,7 @@ function preloadSVC(server, service) {
       items = unescape(params[ii].substring(pos + 1)).split(',');
       for (jj = 1; jj < items.length; jj++) {
         for (kk = 0; kk < elem.length; kk++) {
-          if (items[0] + ',' + items[jj] == elem.options[kk].value) { 
+          if (items[0] + ',' + items[jj] == elem.options[kk].value) {
             elem.options[kk].selected = true;
             break;
           }
