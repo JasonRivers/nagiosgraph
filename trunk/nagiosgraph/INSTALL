@@ -7,7 +7,7 @@ Author:  (c) Alan Brenner, Ithaka Harbors, 2008; Soren Dossing, 2005
 License: OSI Artistic License
          http://www.opensource.org/licenses/artistic-license.php
 
-The instructions below are mainly for latest stable versions of Nagios, 
+The instructions below are mainly for latest stable versions of Nagios,
 e.g. 2.12, and might differ in other versions of Nagios. See the end of this
 document for platform specific notes.
 
@@ -16,7 +16,7 @@ document for platform specific notes.
 Installation Preliminaries
 --------------------------
 
- - Check required packages: nagios, nagios-plugins, rrdtool, perl, 
+ - Check required packages: nagios, nagios-plugins, rrdtool, perl,
    perl-CGI, and perl-rrdtool
 
  - Extract the Nagiosgraph tarball into a temporary location:
@@ -38,23 +38,27 @@ Installation Preliminaries
  - Copy the share/action.gif file into the Nagios image directory,
    e.g. /usr/share/nagios/images
 
- - Copty the share/nagiosgraph.css file into the Nagios stylesheets directory,
+ - Copy the share/nagiosgraph.css file into the Nagios stylesheets directory,
    e.g. /usr/share/nagios/stylesheets
+
+ - Copy the share/nagiosgraph.js file into a directory servable by your web
+   server, and configure the "javascript = /nagios/nagiosgraph.js" in the
+   nagiosgraph.conf to point to URL for nagiosgraph.sh.
 
  - Edit paths, debug level etc. in nagiosgraph.conf.
 
- - Update permissions of "rrddir" (as defined in nagiosgraph.conf), 
+ - Update permissions of "rrddir" (as defined in nagiosgraph.conf),
    so that the *nagios* user can write to it and the *www* user can read it.
 
- - Update permissions of "logfile" (as defined in nagiosgraph.conf) 
+ - Update permissions of "logfile" (as defined in nagiosgraph.conf)
    so that both the *nagios* and *www* users can write to "logfile".
 
 
 Upgrade Notes
 -------------
 
- - Follow the above steps, except only copy the etc/ngshared.pm file to your
-   configuration target location.
+ - Follow the above steps, except only copy the etc/ngshared.pm file from the
+   etc directory to your configuration target location.
 
  - Use diff, or a similar tool, to update your nagiosgraph.conf with new fields
    from etc/nagiosgraph.conf.
@@ -85,13 +89,13 @@ then, nagios invokes insert.pl at a regular interval to update rrd files.
      service_perfdata_file_processing_interval=30
      service_perfdata_file_processing_command=process-service-perfdata
 
-   Make sure that service_perfdata_command is either commented out 
+   Make sure that service_perfdata_command is either commented out
    or not defined.
 
    Make sure that location of service_perfdata_file matches that of perflog
    defined in nagiosgraph.conf.
 
- - In checkcommands.cfg or misccommands.cfg, depending on which 
+ - In checkcommands.cfg or misccommands.cfg, depending on which
    defined in nagios.cfg:
 
      define command {
@@ -184,7 +188,7 @@ Configuring Graphing and Display
  -- Instead of hostgroup line a host_name line with all hosts where this
     type of data are being collected.
 
- -- For Nagios 2.9, delete or comment out the two lines of icon_image 
+ -- For Nagios 2.9, delete or comment out the two lines of icon_image
     and icon_image_alt. And, replace nagios/images/notes.gif with your own
     40x40 gif file.
 
