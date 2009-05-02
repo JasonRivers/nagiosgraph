@@ -194,7 +194,7 @@ Configuring Graphing and Display
 
  -- Some type of services have data values that have big differences in the
     magnitude. In such cases it's good idea to split up into seperate
-    graphs. Here's an example for ntp:
+    graphs. Here's an example for ntp for Nagios 2:
 
      define serviceextinfo {
        service_description  NTP
@@ -203,6 +203,8 @@ Configuring Graphing and Display
        icon_image      graph.gif
        icon_image_alt  View graphs
      }
+
+    For Nagios 3, just add the notes_url to the existing service definition.
 
  -- Add geom option (e.g. &geom=350x100) to notes_url line for custom sizes of
     graphs.
