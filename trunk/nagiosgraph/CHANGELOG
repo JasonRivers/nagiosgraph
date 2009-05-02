@@ -1,3 +1,12 @@
+1.3.0 2009-0326
+
+* Modify the JavaScript (mostly) and ngshared.pm to use an array of arrays
+  with the first entry in the subarray as the hostname, rather than using
+  JavaScript object as a hash of arrays. This eliminates the restrictions
+  on host names ('-', etc. are OK now), but could cause performance issues
+  with large server name lists.
+* Add version numbers in the "Create by" at the bottom of each page.
+
 1.2.1 2009-0202
 
 * Add a db names coding bug reported and fix provided by Eric Gerbier.
@@ -71,11 +80,11 @@
 * Patch to allow separation of rrd files in different directories (hostname/file.rrd)
 * Navigation menu patch
 * Graph history. Patch from Herve Nicol.
-* Decode all the encoded characters of the graph description. 
+* Decode all the encoded characters of the graph description.
   Patch from Aurelien Degremont.
 * Align graph labels. Patch from Aurelien Degremont.
 * INSTALL mentions to specify path to perl. Explaination by Doug Farley.
-* Added fixedscale as a CGI parameter to show.cgi to fix the Y axis 
+* Added fixedscale as a CGI parameter to show.cgi to fix the Y axis
   and legend units.
 * Fix show.cgi to check empty rrd directory
 * Fix insert.pl compilation errors.
@@ -101,9 +110,9 @@
 
 0.6 2005-10-18
 
-* Only using RRD perl modules is supported. Removed binary rrdtool 
+* Only using RRD perl modules is supported. Removed binary rrdtool
   dependency.
-* Added support for perfdata log file for performance increase.  
+* Added support for perfdata log file for performance increase.
   Contribution from Alex.
 
 0.5 2005-06-22
