@@ -61,13 +61,13 @@ use strict;
 use warnings;
 use CGI qw/:standard/;
 use Data::Dumper;
-use Fcntl ':flock';
+use Fcntl qw(:DEFAULT :flock);
 use File::Basename;
 use RRDs;
 
 use vars qw(%Config %Navmenu $colorsub $VERSION %Ctrans);
 $colorsub = -1;
-$VERSION = '1.2.1';
+$VERSION = '1.3.0';
 
 # Debug/logging support ########################################################
 my $prog = basename($0);
@@ -75,7 +75,10 @@ my $prog = basename($0);
 # Write debug information to log file
 sub debug ($$) {
 	my ($level, $text) = @_;
-	return if ($level > $Config{debug});
+	eval {
+		return if ($level > $Config{debug});
+	};
+	return if $@;
 	$level = qw(none critical error warn info debug)[$level];
 	# Get a lock on the LOG file (blocking call)
 	flock(LOG, LOCK_EX);
@@ -352,6 +355,10 @@ sub readconfig ($;$;) {
 		}
 		$Config{ngshared} = "rrd dir $Config{rrddir} not readable";
 	}
+	if ($Config{dbfile}) {
+		require $Config{dbfile};
+		$Config{userdb} = $Config{rrddir} . '/users';
+	}
 }
 
 # show.cgi subroutines here for unit testability ###############################
@@ -397,7 +404,7 @@ sub graphinfo ($$@) {
 	my ($hs,					# host/service
 		@rrd,					# the returned list of hashes
 		$rrd,					# for loop value for each entry in @rrd
-		$ds);					
+		$ds);
 
 	if ($Config{dbseparator} eq "subdir") {
 		$hs = $host . "/" . urlencode("$service") . "___";
@@ -411,7 +418,7 @@ sub graphinfo ($$@) {
 		my ($nn,				# index of @rrd, for inserting entries
 			$dd,				# for loop value for each entry in given @db
 			$db,				# RRD file name, without extension
-			@lines,				# entries after file name from $db 
+			@lines,				# entries after file name from $db
 			$ll,				# for loop value for each entry in @lines
 			$line,				# value split from $ll
 			$unit) = (0);		# value split from $ll
@@ -594,18 +601,27 @@ sub getgraphlist {
 	}
 }
 
-sub jsName ($;) {
-	my $jsname = shift;
-	# JavaScript doesn't like "-", ".", etc. characters in variable names
-	$jsname =~s/\W/_/g;
-	# JavaScript names can't start with digits
-	$jsname =~s/^(\d)/_$1/;
-	return $jsname;
+# If configured, check to see if this user is allowed to see this host.
+sub checkPerms ($$;$) {
+	my ($host, $user, $authz) = @_;
+	return 1 unless $Config{userdb}; # not configured = yes
+	my $untie = 1;
+	if ($authz) {
+		$untie = 0;
+	} else {
+		tie(%$authz, $Config{dbfile}, $Config{userdb}, O_RDONLY) or return;
+	}
+	if ($authz->{$host} and $authz->{$host}{$user}) {
+		untie %$authz if $untie;
+		return 1;
+	}
+	untie %$authz if $untie;
+	return 0;
 }
 
 # Inserts the navigation menu (top of the page)
-sub printNavMenu ($$$;) {
-	my ($host, $service, $fixedscale) = @_;
+sub printNavMenu ($$$$) {
+	my ($host, $service, $fixedscale, $userid) = @_;
 	my (@servers, 				# server list in order
 		%servers,				# hash of servers -> list of services
 		@services,				# list of services on a server
@@ -615,7 +631,18 @@ sub printNavMenu ($$$;) {
 	# Get list of servers/services
 	find(\&getgraphlist, $Config{rrddir});
 	dumper(5, 'printNavMenu: Navmenu', \%Navmenu);
-	@servers = sort keys %Navmenu;
+
+	# Verify the connected user is allowed to see this host.
+	if ($Config{userdb}) {
+		my %authz;
+		tie(%authz, $Config{dbfile}, $Config{userdb}, O_RDONLY) or return;
+		foreach $ii (sort keys %Navmenu) {
+			push(@servers, $ii) if checkPerms($ii, $userid, \%authz);
+		}
+		untie %authz;
+	} else {
+		@servers = sort keys %Navmenu;
+	}
 
 	foreach $ii (@servers) {
 		@services = sort(keys(%{$Navmenu{$ii}}));
@@ -637,22 +664,21 @@ sub printNavMenu ($$$;) {
 	# Create Javascript Arrays for client-side menu navigation
 	print "<script type=\"text/javascript\">\n";
 	# Create Javascript Arrays for client-side menu navigation
-	print "menudata = new Object();\n";
-	foreach $ii (@servers) {
-		$jj = jsName($ii);
-		print "menudata[\"$jj\"] = [\n";
-		@services = sort(keys(%{$Navmenu{$ii}}));
+	print "menudata = new Array();\n";
+	for ($ii = 0; $ii < @servers; $ii++) {
+		print "menudata[$ii] = [\"$servers[$ii]\", \n";
+		@services = sort(keys(%{$Navmenu{$servers[$ii]}}));
 		dumper(5, 'printNavMenu: keys', \@services);
 		$com1 = 0;
 		foreach $jj (@services) {
 			if ($com1) {
-				print "  ,"
+				print " ,"
 			} else {
-				print "   "
+				print "  "
 			}
 			print "[\"$jj\",";
 			$com2 = 0;
-			foreach $kk (@{$servers{$ii}{$jj}}) {
+			foreach $kk (@{$servers{$servers[$ii]}{$jj}}) {
 				print ',' if $com2;
 				print "[\"" . join('","', @$kk) . "\"]";
 				$com2 = 1;
@@ -660,19 +686,11 @@ sub printNavMenu ($$$;) {
 			print "]\n";
 			$com1 = 1;
 		}
-		print "  ];\n";
-	}
-
-	# Bulk Javascript code, one step closer to cacheable
-	if (open IN, "<$Config{javascriptsource}") {
-		while (<IN>) {
-			print $_;
-		}
-		close IN;
-	} else {
-		debug(1, "Cannot open $Config{javascriptsource}: $!\n");
+		print "];\n";
 	}
 	print "</script>\n";
+	print "<script type=\"text/javascript\" src=\"" .
+		$Config{javascript} . "\"></script>\n";
 
 	# Create main form
 	print div({-id=>'mainnav'}, "\n",
@@ -697,7 +715,7 @@ sub printNavMenu ($$$;) {
 				-onClick=>'clearitems()')),
 		end_form), "\n",
 		# Preload selected host services
-		"<script type=\"text/javascript\">preloadSVC(\"$host\",", 
+		"<script type=\"text/javascript\">preloadSVC(\"$host\",",
 		"\"$service\");</script>\n";
 }
 
@@ -1048,7 +1066,7 @@ sub processdata (@) {
 	yearly => 'Yearly',
 
 	# These come from Nagios, so are just from what I use.
-	apcupsd => 'Uninterruptible Power Supply Status', 
+	apcupsd => 'Uninterruptible Power Supply Status',
 	bps => 'Bits Per Second',
 	clamdb => 'Clam Database',
 	diskgb => 'Disk Usage in GigaBytes',
