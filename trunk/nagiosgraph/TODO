@@ -13,3 +13,5 @@ Desired features.
 * Stacked area graphs like http://oss.oetiker.ch/rrdtool/gallery/ramUsage.png.
   - This requires configuring a custom graph type for a specific data set,
     since other data sets may not work well with an area graph type.
+* Custom unit labels on the graphs.
+* Units specification beyond what Fixed Scale does.
