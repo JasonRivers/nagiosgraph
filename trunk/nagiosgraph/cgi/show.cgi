@@ -169,7 +169,7 @@ print header, start_html(-id => "nagiosgraph",
 	@style) . "\n";
 # Print Navigation Menu if we have a separator set (that will allow navigation
 # menu to correctly split the filenames/filepaths in host/service/db names.
-printNavMenu($host, $service, $fixedscale)
+printNavMenu($host, $service, $fixedscale, remote_user())
 	if ($Config{dbseparator} eq "subdir");
 
 print h1("Nagiosgraph") . "\n" .
