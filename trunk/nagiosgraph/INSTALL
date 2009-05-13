@@ -21,7 +21,7 @@ Installation Preliminaries
 
  - Extract the Nagiosgraph tarball into a temporary location:
 
-   tar xzvf nagiosgraph-1.2.0.tgz
+   tar xzvf nagiosgraph-1.3.0.tgz
 
  - Copy the contents of etc into your preferred configuration target location,
    e.g. /etc/nagios/nagiosgraph
@@ -61,7 +61,10 @@ Upgrade Notes
    etc directory to your configuration target location.
 
  - Use diff, or a similar tool, to update your nagiosgraph.conf with new fields
-   from etc/nagiosgraph.conf.
+   from etc/nagiosgraph.conf, and in particular, note the JavaScript change.
+   The majority of the JavaScript used in each web page is now a separate file
+   that gets sent seperately to the browser, and as such needs to go where the
+   web server can send it.
 
  - You may want to look at etc/map to see if there are any new examples that you
    may find useful.
