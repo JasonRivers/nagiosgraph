@@ -58,7 +58,7 @@ function setService(element, service) {
 function setDb(element) {
   var opts;
   try {
-    opts = menudata[findName(window.document.menuform.servidors.value)];
+    opts = menudata[window.document.menuform.servidors.selectedIndex];
   }
   catch (e) {
     alert(e);
