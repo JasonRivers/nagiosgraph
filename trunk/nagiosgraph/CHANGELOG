@@ -4,7 +4,8 @@
   with the first entry in the subarray as the hostname, rather than using
   JavaScript object as a hash of arrays. This eliminates the restrictions
   on host names ('-', etc. are OK now), but could cause performance issues
-  with large server name lists.
+  with large server name lists. Thanks to Susan Wilson at Emerson for patches,
+  testing and debugging.
 * Add version numbers in the "Create by" at the bottom of each page.
 
 1.2.1 2009-0202
