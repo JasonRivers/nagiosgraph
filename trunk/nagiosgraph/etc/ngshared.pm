@@ -283,7 +283,8 @@ sub readconfig ($;$;) {
 		debug(5, "opening $INC[0]/nagiosgraph.conf'");
 	}
 	open FH, $INC[0] . '/nagiosgraph.conf' or
-		($Config{ngshared} = "$INC[0]/nagiosgraph.conf not found") and return;
+		($Config{ngshared} = "$INC[0]/nagiosgraph.conf not found") and
+		print $Config{ngshared} and return;
 	my ($key, $val);
 	while (<FH>) {
 		s/\s*#.*//;				# Strip comments
