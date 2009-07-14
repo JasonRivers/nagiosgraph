@@ -10,7 +10,7 @@ use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
 BEGIN {
-    plan tests => 105;
+    plan tests => 101;
 }
 
 sub testdebug { # Test the logger.
@@ -208,7 +208,7 @@ sub testgetDataItems { # Depends on testcreaterrd making files
 	$Config{debug} = 5;
 	open LOG, '+>', \$log;
 	$result = getLabels('diskgb', 'test,junk');
-	ok($result->[0], 'Disk Usage');
+	ok($result->[0], 'Disk Usage in Gigabytes');
 	$result = getLabels('testing', 'tested,Mem%3A%20swap,junk');
 	ok($result->[0], 'Swap Utilization');
 	close LOG;
@@ -244,7 +244,7 @@ sub testrrdline { # TODO: rrdline
 	$Config{debug} = 5;
 	open LOG, '+>', \$log;
 	$result = getLabels('diskgb', 'test,junk');
-	ok($result->[0], 'Disk Usage');
+	ok($result->[0], 'Disk Usage in Gigabytes');
 	$result = getLabels('testing', 'tested,Mem%3A%20swap,junk');
 	ok($result->[0], 'Swap Utilization');
 	close LOG;
@@ -274,25 +274,10 @@ sub testgetgraphlist { # Does two things: verifies directores and .rrd files.
 	close TMP;
 	$File::Find::dir = $FindBin::Bin;
 	getgraphlist();
-	ok(Dumper($Navmenu{$FindBin::Bin}), qr"undef"); 
+	ok($Navmenu{$FindBin::Bin}{'test/test1.rrd'}[0], "");
 	unlink 'test/test1';
 	unlink 'test/test1.rrd';
 	rmdir 'test';
-}
-
-sub testjsName {
-	$Config{debug} = 5;
-	open LOG, '+>', \$log;
-	$result = jsName('unchanged');
-	ok($result, 'unchanged');
-	$result = jsName('Mem: swap');
-	ok($result, 'Mem__swap');
-	$result = jsName('3name');
-	ok($result, '_3name');
-	$result = jsName('4Mem: swap');
-	ok($result, '_4Mem__swap');
-	close LOG;
-	$Config{debug} = 0;
 }
 
 sub testprintNavMenu { # printNavMenu is like HTMLerror--not really testable.
@@ -317,7 +302,7 @@ sub testgetLabels {
 	$Config{debug} = 5;
 	open LOG, '+>', \$log;
 	$result = getLabels('diskgb', 'test,junk');
-	ok($result->[0], 'Disk Usage');
+	ok($result->[0], 'Disk Usage in Gigabytes');
 	$result = getLabels('testing', 'tested,Mem%3A%20swap,junk');
 	ok($result->[0], 'Swap Utilization');
 	close LOG;
@@ -357,7 +342,7 @@ sub testinputdata {
 	# $Config{perflog} input test
 	open LOG, ">$Config{perflog}";
 	foreach $ii (@testdata) {
-		print LOG "$ii\n"; 
+		print LOG "$ii\n";
 	}
 	close LOG;
 	@result = main::inputdata();
@@ -466,7 +451,6 @@ testurl();
 testgetfilename();
 testhashcolor();
 testgetgraphlist();
-testjsName();
 testurlLabels();
 testlisttodict();
 testcheckdirempty();
