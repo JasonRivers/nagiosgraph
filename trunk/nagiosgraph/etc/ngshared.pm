@@ -59,6 +59,7 @@ PARTICULAR PURPOSE.
 
 use strict;
 use warnings;
+use Carp;
 use CGI qw/:standard/;
 use Data::Dumper;
 use Fcntl qw(:DEFAULT :flock);
@@ -72,18 +73,40 @@ $VERSION = '1.3.1';
 # Debug/logging support ########################################################
 my $prog = basename($0);
 
+# Write information to STDERR
+sub stacktrace ($;) {
+    my $msg = shift;
+    warn "$msg\n";
+    my $max_depth = 30;
+    my $ii = 1;
+    warn "--- Begin stack trace ---\n";
+    while ((my @call_details = (caller($ii++))) && ($ii < $max_depth)) {
+      warn "$call_details[1] line $call_details[2] in function $call_details[3]\n";
+    }
+    warn "--- End stack trace ---\n";
+}
+
 # Write debug information to log file
 sub debug ($$) {
 	my ($level, $text) = @_;
 	eval {
-		return if ($level > $Config{debug});
+        die "$level > $Config{debug}" if ($level > $Config{debug});
 	};
 	return if $@;
 	$level = qw(none critical error warn info debug)[$level];
 	# Get a lock on the LOG file (blocking call)
-	flock(LOG, LOCK_EX);
-	print LOG scalar (localtime) . " $prog $level - $text\n";
-	flock(LOG, LOCK_UN);
+    unless (fileno LOG) {
+        stacktrace(scalar (localtime) . " $prog $level - $text");
+        return;
+    }
+    eval {
+        flock(LOG, LOCK_EX);
+        print LOG scalar (localtime) . " $prog $level - $text\n";
+        flock(LOG, LOCK_UN);
+    };
+    if ($@) {
+        stacktrace(scalar (localtime) . " $prog $level - $text");
+    }
 }
 
 # Dump to log the files read from Nagios
