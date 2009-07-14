@@ -41,7 +41,7 @@ Installation Preliminaries
  - Copy the share/nagiosgraph.css file into the Nagios stylesheets directory,
    e.g. /usr/share/nagios/stylesheets
 
- - Copy the share/nagiosgraph.js file into a directory servable by your web
+ - Copy the share/nagiosgraph.js file into a directory serve-able by your web
    server, and configure the "javascript = /nagios/nagiosgraph.js" in the
    nagiosgraph.conf to point to URL for nagiosgraph.sh.
 
