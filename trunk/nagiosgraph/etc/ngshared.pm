@@ -67,7 +67,7 @@ use RRDs;
 
 use vars qw(%Config %Navmenu $colorsub $VERSION %Ctrans);
 $colorsub = -1;
-$VERSION = '1.3.0';
+$VERSION = '1.3.1';
 
 # Debug/logging support ########################################################
 my $prog = basename($0);
@@ -487,11 +487,11 @@ sub rrdline ($$$$$$$;) {
 			if (defined $Config{maximums}->{$serv}) {
 				push @ds, "DEF:$dataset=$directory/$file:$dataset:MAX"
 						, "CDEF:ceil$dataset=$dataset,CEIL"
-						, "$Config{plotas}:ceil${dataset}#$color:$label";
+						, "$Config{plotas}:${dataset}#$color:$label";
 			} elsif (defined $Config{minimums}->{$serv}) {
 				push @ds, "DEF:$dataset=$directory/$file:$dataset:MIN"
 						, "CDEF:floor$dataset=$dataset,FLOOR"
-						, "$Config{plotas}:floor${dataset}#$color:$label";
+						, "$Config{plotas}:${dataset}#$color:$label";
 			} else {
 				push @ds, "DEF:$dataset=$directory/$file:$dataset:AVERAGE"
 						, "$Config{plotas}:${dataset}#$color:$label";
