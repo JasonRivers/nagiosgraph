@@ -1,3 +1,9 @@
+1.3.2 2009-11-17
+
+* Add support for service based graph options provided by Craig Dunn
+* Update RPM .spec file from Craig Dunn
+* Add zoom buttons based on an update from Brook Harty (ironwolve)
+
 1.3.1 2009-07-14
 
 * Fix for 'maximums'/'minimums' graphing integers only reported by Simon Lang
