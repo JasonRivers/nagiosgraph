@@ -175,3 +175,12 @@ function preloadSVC(server, service) {
     setvis('visible');
   }
 }
+//Resize the graphs, developed from ironwolve's patch
+function setresize(size) {
+	button = document.getElementById(size);
+	if (window.location.href.indexOf('geom') > -1) {
+		window.location.href = window.location.href.replace(/geom=[^&]+/, 'geom=' + button.value);
+	} else {
+		window.location.href += '&geom=' + button.value;
+	}
+}
