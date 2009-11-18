@@ -321,6 +321,28 @@ sub readconfig ($;$;) {
 		};
 	}
 	close FH;
+
+	# From Craig Dunn, with modifications by Alan Brenner to use an eval, to
+	# allow continuing on failure to open the file, while logging the error
+	if ( defined $Config{rrdoptsfile} ) {
+		eval {
+	 		open FH, $Config{rrdoptsfile} or die $Config{rrdoptsfile} . " not found";
+	 		while (<FH>) { 
+	 			s/\s*#.*//;		# Strip comments
+	 			s/^\s+//;
+	 			/^([^=]+)=(.*)$/ and do { # removes leading whitespace
+		 			$key = $1;
+		 			$val = $2;
+	 				$val =~ s/\s+$//;
+	 				$Config{rrdopts}{$key} = $val;
+	 				debug(5, "Service $key has rrdopts $val");
+	 			}
+	 		}
+	 		close FH;
+		};
+		debug(1, $@) if ($@);
+ 	}
+
 	$Config{maximumssep} ||= ',';
 	$Config{maximums} = listtodict('maximums') if defined $Config{maximums};
 	$Config{minimumssep} ||= ',';
@@ -354,6 +376,9 @@ sub readconfig ($;$;) {
 	$Config{time} ||= 'day week month';
 	$Config{timehost} ||= 'day';
 	$Config{timeserver} ||= 'day';
+	$Config{small} ||= '600x100'; # matches rrdline width
+	$Config{large} ||= '2000x200';
+
 	# If debug is set make sure we can write to the log file
 	if ($Config{debug} > 0) {
 		if (not open LOG, ">>$Config{logfile}") {
@@ -611,6 +636,7 @@ sub getgraphlist {
 		%{$Navmenu{$current}} = () unless checkdirempty($current);
 	} elsif (-f $current && $current =~ /\.rrd$/) { # Files are for services
 		my ($host, $service, $dataset);
+		$dataset = $File::Find::dir; # this stops the only used once message
 		($host = $File::Find::dir) =~ s|^$Config{rrddir}/||;
 		# We got the server to associate with and now
 		# we get the service name by splitting on separator
@@ -720,23 +746,26 @@ sub printNavMenu ($$$$) {
 	print div({-id=>'mainnav'}, "\n",
 		start_form(-method=>'GET', -name=>'menuform'),
 		# Selecting a new server shows the associated services menu
-		trans('selecthost') . ': ',
-		popup_menu(-name=>'servidors', -values=>[$host],
-				   -onChange=>"setService(this)", -default=>"$host"), "\n",
-		# Selecting a new service reloads the page with the new graphs
-        trans('selectserv') . ': ',
-		popup_menu(-name=>'services', -values=>[$service],
-				   -onChange=>"setDb(this)", default=>"$service"), "\n",
-		checkbox(-name=>'FixedScale', -label=>trans('fixedscale'),
-			-checked=>$fixedscale), "\n",
-		button(-name=>'go', -label=>trans('submit'), -onClick=>'jumpto()'),
-		"\n",
+		span(trans('selecthost') . ': ',
+			popup_menu(-name=>'servidors', -values=>[$host],
+					   -onChange=>"setService(this)", -default=>"$host"), "\n",
+			# Selecting a new service reloads the page with the new graphs
+	        trans('selectserv') . ': ',
+			popup_menu(-name=>'services', -values=>[$service],
+					   -onChange=>"setDb(this)", default=>"$service"), "\n",
+			checkbox(-name=>'FixedScale', -label=>trans('fixedscale'),
+				-checked=>$fixedscale), "\n",
+			button(-name=>'go', -label=>trans('submit'), -onClick=>'jumpto()')),
+		span({-style=>'float: right; text-align: right; vertial-align: top;'},
+			trans('zoom'), 
+			button(-id=>'small', -value=>$Config{'small'}, -onClick=>"setresize('small')"),
+			button(-id=>'large', -value=>$Config{'large'}, -onClick=>"setresize('large')")),
 		div({-id=>'subnav'}, br(), #, -style=>'visibility: visible'
-			"\n", trans('selectitems'), "\n",
-			popup_menu(-name=>'db', -values=>[],
-				-size=>2, -multiple=>1), "\n",
-			button(-name=>'clear', -label=>trans('clear'),
-				-onClick=>'clearitems()')),
+			trans('selectitems'), "\n",
+			popup_menu(-name=>'db', -values=>[], -size=>2, -multiple=>1), "\n",
+			button(-name=>'clear', -label=>trans('clear'), -onClick=>'clearitems()')),
+		br(), "\n",
+		div({-style=>'space'}, ' '),
 		end_form), "\n",
 		# Preload selected host services
 		"<script type=\"text/javascript\">preloadSVC(\"$host\",",
@@ -1041,11 +1070,10 @@ sub getrules ($;) {
 		no strict "subs";' . join('', @rules) . '
 		use strict "subs";
 		return () if ($s[0] eq "ignore");
-		debug(3, "perfdata not recognized:\ndate||host||desc||out||data for:\n" .
-			$d) unless @s;
+		debug(3, "perfdata not recognized: " . $d) unless @s;
 		return @s;
 	}';
-	undef $@;
+	undef $@; # TODO: is more info available to put in the above debug line?
 	eval $rules;
 	debug(2, "Map file eval error: $@ in: $rules") if $@;
 }
@@ -1132,6 +1160,7 @@ sub processdata (@) {
 	submit => 'Update Graphs',
 	testcolor => 'Show Colors',
 	typesome => 'Type some space seperated nagiosgraph line names here',
+	zoom => 'Resize the graphs:'
 );
 
 sub trans ($;$;) {
