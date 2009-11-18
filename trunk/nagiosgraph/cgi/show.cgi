@@ -81,6 +81,8 @@ at http://nagiosgraph.wiki.sourceforge.net/ by moving some subroutines into a
 shared file (ngshared.pm), adding color number nine, and adding support for
 showhost.cgi and showservice.cgi.
 
+Craig Dunn: support for service based graph options via rrdopts.conf file
+
 =head1 BUGS
 
 Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
@@ -147,7 +149,13 @@ dumper(5, 'db1', \@db);
 dumper(5, 'db2', \@db);
 $graph = param('graph') if param('graph');
 $geom = param('geom') if param('geom');
-@rrdopts = param('rrdopts') if param('rrdopts');
+debug(5, 'service: ' . $service);
+if ( defined $Config{rrdopts}{$service} ) { 
+	@rrdopts =  $Config{rrdopts}{$service};
+} else {
+	@rrdopts = param('rrdopts') if param('rrdopts');
+}
+debug(5, 'rrdopts: ' . Dumper(@rrdopts));
 # Reencode rrdopts
 for ($ii = 0; $ii < @rrdopts; $ii++) {
 	$rrdopts[$ii] = urlencode($rrdopts[$ii]);
@@ -182,8 +190,7 @@ print h1("Nagiosgraph") . "\n" .
 		trans('asof') . ': ' . strong(scalar(localtime))) . "\n";
 
 for $period (@periods) {
-	print a({-id => trans($period->[0])});
-	print h2(trans($period->[0] . 'ly'));
+	print a({-id => trans($period->[0])}, h2(trans($period->[0] . 'ly')));
 	$url = join '&', "host=$host", "service=$service",
 		"geom=$geom", map {"rrdopts=$_" } @rrdopts, map { "db=$_" } @db;
 	print a({-href=>"?$url&offset=" .
