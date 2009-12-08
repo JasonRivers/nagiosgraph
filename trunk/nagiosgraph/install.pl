@@ -1,21 +1,242 @@
 #!/usr/bin/perl
-# File:		$Id$
+# File:    $Id$
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
-# License:	OSI Artistic License
-#			http://www.opensource.org/licenses/artistic-license.php
+# License: OSI Artistic License
+#          http://www.opensource.org/licenses/artistic-license.php
+
+# Main program - change nothing below
+
+use lib 'etc';
+use ngshared;
+use English qw(-no_match_vars);
+use File::Copy;
+use File::Path;
+use strict;
+use warnings;
+
+use constant RWPATH => oct 755; ## no critic (ProhibitConstantPragma) -- nevermind that perlcritic says both 'use constant' and don't
+
+use vars qw($VERSION);
+$VERSION = '0.2';
+
+sub searchdirs {
+    my ($base, $subs, $default, $val, $conf) = @_;
+    return $conf->{$val} if -d $conf->{$val};
+    foreach my $sub (@{$subs}) {
+        foreach my $dir (@{$base}) {
+            return "$dir$sub" if -d "$dir$sub";
+        }
+    }
+    return $default;
+}
+
+sub getpreviousconfig {
+    my ($conf) = @_;
+    my $inst = "$conf->{etc}/.install";
+    if (-f $inst) {
+        my ($key, $val);
+        open my $CONF, '<', $inst or croak "cannot open $inst: $OS_ERROR\n";  ## no critic (RequireBriefOpen) -- yes perlcritic is drainbamaged
+        while (<$CONF>) {
+            ## no critic (RegularExpressions)
+            s/\s*#.*//;             # Strip comments
+            /^(\S+) \s* = \s* (.*)$/x and do { # removes leading whitespace
+                $key = $1;
+                $val = $2;
+                $val =~ s/\s+$//;   # removes trailing whitespace
+                $conf->{$key} = $val;
+            };
+        }
+        close $CONF or carp "cannot close $inst: $OS_ERROR";
+    }
+    return;
+}
+
+sub getanswer {
+    my ($question, $default) = @_;
+    print $question . '? [' . $default . "]\n"; ## no critic (RequireCheckedSyscalls) -- because perlcritic thinks an error printing to the terminal isn't a serious OS problem
+    my $answer = readline *STDIN;
+    chomp $answer;
+    return $default if ($answer =~ /^\s*$/); ## no critic (RegularExpressions) -- because perlcritic doesn't get that some regex's really are simple
+    return $answer;
+}
+
+sub getfiles {
+    my $directory = shift;
+    opendir DH, $directory;
+    my @files = grep { !/^\./ } readdir DH; ## no critic (RegularExpressions)
+    closedir DH;
+    return @files;
+}
+
+sub backup {
+    my ($src, $ext) = @_;
+    return if not -f $src;
+    print "backing up $src to $src.$ext\n"; ## no critic (RequireCheckedSyscalls)
+    #link $src, "$src.$PID";
+    #unlink "$src";
+    return;
+}
+
+sub copyfiles {
+    my ($source, $destdir, $conf) = @_;
+    if (not $conf->{$source}) {
+        print "No destination given.\n"; ## no critic (RequireCheckedSyscalls)
+        return;
+    }
+    my ($destd, $file);
+    $file = $destdir . $conf->{$source};
+    if (not -d $file) { mkpath $file , 0, RWPATH; }
+    foreach my $ii (getfiles($source)) {
+        if ($source eq 'share') {
+            if (substr($ii, - length 'gif') eq 'gif') {
+                # Don't copy images when RPM packaging, since they will conflict
+                next if $destdir;
+                $destd = $conf->{share} . '/images';
+                if (not -d $destd) { mkpath $destd, 0, RWPATH; }
+                # Only backup the Nagios provided image.
+                if (not -f "$destd/$ii.orig") { backup("$destd/$ii", 'orig'); }
+            } elsif (substr($ii, - length 'css') eq 'css') {
+                $destd = $conf->{share} . '/stylesheets';
+                $file = "$destdir$destd";
+                if (not -d $file) { mkpath $file, 0, RWPATH; }
+                # Stylesheets may be modified by the end user.
+                backup("$destdir$destd/$ii", $PID);
+            }
+        } elsif ($source eq 'etc') {
+            # Configuration files better be modified by the end user.
+            backup($destdir . $conf->{$source} . "/$ii", $PID);
+            $destd = $conf->{$source};
+        } else {
+            $destd = $conf->{$source};
+        }
+        print "installing $source/$ii to $destdir$destd/$ii\n"; ## no critic (RequireCheckedSyscalls)
+        copy("$source/$ii", "$destdir$destd/$ii");
+    }
+    return;
+}
+
+sub getconf {
+    my ($destdir) = @_;
+    my %conf;
+    my @conf = (
+        (env => 'NGETC', conf => 'etc',
+         base => ['/etc', '/usr/local/etc', '/opt'],
+         subd => ['/nagios/nagiosgraph', '/nagiosgraph', '/nagios'],
+         def => '/etc/nagios/nagiosgraph',
+         msg => 'Where should the configuration files go'),
+        (env => 'NCGI', conf => 'cgi',
+         base => ['/usr/local/lib64', '/usr/local/lib', '/usr/lib64', '/usr/lib'],
+         subd => ['/nagios/cgi'], def => '/usr/local/lib/nagios/cgi',
+         msg => 'Where should the cgi files go'),
+        (env => 'NLIB', conf => 'lib',
+         base => ['/usr/local/lib64', '/usr/local/lib', '/usr/lib64', '/usr/lib', '/usr/libexec'],
+         subd => ['/nagios'], def => '/usr/local/lib/nagios',
+         msg => 'Where should the data loading files go'),
+        (env => 'NSHARE', conf => 'share',
+         base => ['/usr/local/share', '/usr/share', '/opt'],
+         subd => ['/nagios'], def => '/usr/local/share/nagios',
+         msg => 'Where should the CSS and GIF files go'),
+        (env => 'NGSHARE', conf => 'ngshare',
+         base => ['/usr/local/share', '/usr/share', '/opt'],
+         subd => ['/nagiosgraph'], def => '/usr/local/share/nagiosgraph',
+         msg => 'Where should the nagiosgraph documentation go'),);
+    foreach my $ii (@conf) {
+        if ($ENV{$ii->{env}}) {
+            $conf{$ii->{conf}} = $ENV{$ii->{env}};
+        } else {
+            $conf{$ii->{conf}} = searchdirs($ii->{base}, $ii->{subd}, $ii->{def}, $ii->{conf}, \%conf);
+            $conf{$ii->{conf}} = getanswer($ii->{msg}, $conf{$ii->{conf}});
+            if ($ii->{conf} eq 'etc') { getpreviousconfig(\%conf); }
+        }
+    }
+
+    if (not $destdir and
+        getanswer('Modify the Nagios configuration', 'N') =~ /^\s*y/xism) {
+        $conf{nagios} = searchdirs(['/usr/local/etc', '/usr/local', '/etc', '/opt'],
+            ['/nagios'], '/etc/nagios', 'nagios', \%conf);
+        $conf{nagios} = getanswer('Where are the Nagios configuration files',
+            $conf{nagios});
+    } else {
+        $conf{nag} = 'N';
+    }
+
+    return \%conf;
+}
+
+# I'm doing this this way in case .deb packaging uses a similar mechanism.
+my $destdir;
+if ($ENV{DESTDIR}) {
+    $destdir = $ENV{DESTDIR};
+} else {
+    $destdir = q();
+}
+
+my $conf = getconf($destdir);
+
+copyfiles('etc', $destdir, $conf);
+copyfiles('cgi', $destdir, $conf);
+copyfiles('lib', $destdir, $conf);
+copyfiles('share', $destdir, $conf);
+
+my $file = $destdir . $conf->{ngshare};
+if (not -d $file) { mkpath $file, 0, RWPATH; }
+foreach my $ii (qw(AUTHORS CHANGELOG INSTALL README README.map TODO)) {
+    print "installing $ii to $file/$ii\n"; ## no critic (RequireCheckedSyscalls)
+    copy($ii, "$file/$ii");
+}
+foreach my $ii (qw(more_examples utils)) {
+    $file = $destdir . $conf-> {ngshare} . "/$ii";
+    if (not -d $file) { mkpath $file, 0, RWPATH; }
+    foreach my $jj (getfiles($ii)) {
+        print "installing $ii/$jj to $$file/$jj\n"; ## no critic (RequireCheckedSyscalls)
+        copy("$ii/$jj", "$file/$jj");
+    }
+}
+if ($destdir) { # We need to copy the images in share
+    $file = $destdir . $conf->{ngshare};
+    foreach my $ii (getfiles('share')) {
+        if (substr($ii, - length 'gif') eq 'gif') {
+            print "installing share/$ii to $file/$ii\n"; ## no critic (RequireCheckedSyscalls)
+            copy("share/$ii", "$file/$ii");
+        }
+    }
+}
+
+if (not defined $conf->{nag}) {
+    print "updating Nagios configuration\n"; ## no critic (RequireCheckedSyscalls)
+} else {
+    delete $conf->{nag};
+}
+
+$conf->{version} = $VERSION;
+$file = $destdir . $conf->{etc} . '/.install';
+if (open my $FH, '>', $file) {
+    foreach my $ii (sort keys %{$conf}) {
+        print ${FH} "$ii = $conf->{$ii}\n" or carp "cannot write to $file: $OS_ERROR\n";
+    }
+    close $FH or carp "cannot close $file: $OS_ERROR\n";
+}
+
+__END__
 
 =head1 NAME
 
 install.pl - Install nagiosgraph.
 
-=head1 SYNOPSIS
-
-B<install.pl>
-
 =head1 DESCRIPTION
 
 Run this directly or via `make install`. This copies the contents of the cgi,
 etc, lib and share directories into a user configurable set of destinations.
+
+=head1 USAGE
+
+B<install.pl>
+
+=head1 CONFIGURATION
+
+=head1 REQUIRED ARGUMENTS
+
+=head1 OPTIONS
 
 Automate this script for use in rpmbuild, etc., by setting these environment
 variables:
@@ -33,7 +254,11 @@ B<DESTDIR> - RPM packaging directory
 
 =back
 
-=head1 REQUIREMENTS
+=head1 EXIT STATUS
+
+=head1 DIAGNOSTICS
+
+=head1 DEPENDENCIES
 
 =over 4
 
@@ -43,16 +268,18 @@ This provides the data collection system.
 
 =back
 
-=head1 AUTHOR
+=head1 INCOMPATIBILITIES
 
-Alan Brenner - alan.brenner@ithaka.org, the original author in 2008.
-
-=head1 BUGS
+=head1 BUGS AND LIMITATIONS
 
 Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
 simple and tested.
 
-=head1 COPYRIGHT
+=head1 AUTHOR
+
+Alan Brenner - alan.brenner@ithaka.org, the original author in 2008.
+
+=head1 LICENSE AND COPYRIGHT
 
 Copyright (C) 2008 Ithaka Harbors, Inc.
 
@@ -63,207 +290,3 @@ http://www.opensource.org/licenses/artistic-license-2.0.php
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE.
-
-=cut
-
-# Main program - change nothing below
-
-use lib 'etc';
-use ngshared;
-use File::Copy;
-use File::Path;
-use strict;
-use vars qw (%conf $ii $destdir);
-
-sub searchdirs ($$$$) {
-	my ($base, $subs, $default, $val) = @_;
-	return $conf{$val} if -d $conf{$val};
-	my ($sub, $dir);
-	foreach $sub (@$subs) {
-		foreach $dir (@$base) {
-			return "$dir$sub" if -d "$dir$sub";
-		}
-	}
-	return $default;
-}
-
-sub getpreviousconfig () {
-	if (-f "$conf{etc}/.install" and open CONF, "<$conf{etc}/.install") {
-		my ($key, $val);
-		while (<CONF>) {
-			s/\s*#.*//;				# Strip comments
-			/^(\S+)\s*=\s*(.*)$/ and do { # removes leading whitespace
-				$key = $1;
-				$val = $2;
-				$val =~ s/\s+$//;	# removes trailing whitespace
-				$conf{$key} = $val;
-			};
-		}
-		close CONF;
-	}
-}
-
-sub getanswer ($$) {
-	my ($question, $default) = @_;
-	print $question . '? [' . $default . "]\n";
-	my $answer = readline *STDIN;
-	chomp $answer;
-	return $default if ($answer =~ /^\s*$/);
-	return $answer;
-}
-
-sub getfiles ($;) {
-	my $directory = shift;
-	opendir DH, $directory;
-	my @files = grep !/^\./, readdir DH;
-	closedir DH;
-	return @files;
-}
-
-sub backup ($$) {
-	my ($src, $ext) = @_;
-	return unless -f $src;
-	print "backing up $src to $src.$ext\n";
-	#link $src, "$src.$$";
-	#unlink "$src";
-}
-
-sub copyfiles ($;) {
-	my ($source) = @_;
-	if (not $conf{$source}) {
-		print "No destination given.\n";
-		return;
-	}
-	my ($ii, $destd);
-	mkpath("$destdir$conf{$source}", 0, 0755) unless -d "$destdir$conf{$source}";
-	foreach $ii (getfiles($source)) {
-		if ($source eq 'share') {
-			if (substr($ii, -3) eq 'gif') {
-				# Don't copy images when RPM packaging, since they will conflict
-				next if $destdir;
-				$destd = "$conf{share}/images";
-				mkpath($destd, 0, 0755) unless -d $destd;
-				# Only backup the Nagios provided image.
-				backup("$destd/$ii", 'orig') if not -f "$destd/$ii.orig";
-			} elsif (substr($ii, -3) eq 'css') {
-				$destd = "$conf{share}/stylesheets";
-				mkpath("$destdir$destd", 0, 0755) unless -d "$destdir$destd";
-				# Stylesheets may be modified by the end user.
-				backup("$destdir$destd/$ii", $$);
-			}
-		} elsif ($source eq 'etc') {
-			# Configuration files better be modified by the end user.
-			backup("$destdir$conf{$source}/$ii", $$);
-			$destd = $conf{$source};
-		} else {
-			$destd = $conf{$source};
-		}
-		print "installing $source/$ii to $destdir$destd/$ii\n";
-		copy("$source/$ii", "$destdir$destd/$ii");
-	}
-}
-
-# I'm doing this this way in case .deb packaging uses a similar mechanism.
-if ($ENV{DESTDIR}) {
-	$destdir = $ENV{DESTDIR};
-} else {
-	$destdir = '';
-}
-
-if ($ENV{NGETC}) {
-	$conf{etc} = $ENV{NGETC};
-} else {
-	$conf{etc} = searchdirs(['/etc', '/usr/local/etc', '/opt'],
-		['/nagios/nagiosgraph', '/nagiosgraph', '/nagios'], 
-		'/etc/nagios/nagiosgraph', 'conf');
-	$conf{etc} = getanswer('Where should the configuration files go',
-		$conf{etc});
-	getpreviousconfig();
-}
-
-if ($ENV{NCGI}) {
-	$conf{cgi} = $ENV{NCGI};
-} else {
-	$conf{cgi} = searchdirs(['/usr/local/lib64', '/usr/local/lib', '/usr/lib64',
-		'/usr/lib'], ['/nagios/cgi'], '/usr/local/lib/nagios/cgi', 'cgi');
-	$conf{cgi} = getanswer('Where should the cgi files go', $conf{cgi});
-}
-
-if ($ENV{NLIB}) {
-	$conf{lib} = $ENV{NLIB};
-} else {
-	$conf{lib} = searchdirs(['/usr/local/lib64', '/usr/local/lib', '/usr/lib64',
-		'/usr/lib', '/usr/libexec'], ['/nagios'],
-		'/usr/local/lib/nagios', 'lib');
-	$conf{lib} = getanswer('Where should the data loading files go',
-		$conf{lib});
-}
-
-if ($ENV{NSHARE}) {
-	$conf{share} = $ENV{NSHARE};
-} else {
-	$conf{share} = searchdirs(['/usr/local/share', '/usr/share', '/opt'],
-		['/nagios'], '/usr/local/share/nagios', 'share');
-	$conf{share} = getanswer('Where should the CSS and GIF files go',
-		$conf{share});
-}
-
-if ($ENV{NGSHARE}) {
-	$conf{ngshare} = $ENV{NGSHARE};
-} else {
-	$conf{ngshare} = searchdirs(['/usr/local/share', '/usr/share', '/opt'],
-		['/nagiosgraph'], '/usr/local/share/nagiosgraph', 'ngshare');
-	$conf{ngshare} = getanswer('Where should the nagiosgraph documentation go',
-		$conf{ngshare});
-}
-
-if (not $destdir and
-	getanswer('Modify the Nagios configuration', 'N') =~ /^\s*y/i) {
-	$conf{nagios} = searchdirs(['/usr/local/etc', '/usr/local', '/etc', '/opt'],
-		['/nagios'], '/etc/nagios', 'nagios');
-	$conf{nagios} = getanswer('Where are the Nagios configuration files',
-		$conf{nagios});
-} else {
-	$conf{nag} = 'N'; 
-}
-
-copyfiles('etc');
-copyfiles('cgi');
-copyfiles('lib');
-copyfiles('share');
-
-mkpath("$destdir$conf{ngshare}", 0, 0755) unless -d "$destdir$conf{ngshare}";
-foreach $ii (qw(AUTHORS CHANGELOG INSTALL README README.map TODO)) {
-	print "installing $ii to $destdir$conf{ngshare}/$ii\n";
-	copy($ii, "$destdir$conf{ngshare}/$ii");
-}
-foreach $ii (qw(more_examples utils)) {
-	mkpath("$destdir$conf{ngshare}/$ii", 0, 0755)
-		unless -d "$destdir$conf{ngshare}/$ii";
-	foreach my $jj (getfiles($ii)) {
-		print "installing $ii/$jj to $destdir$conf{ngshare}/$ii/$jj\n";
-		copy("$ii/$jj", "$destdir$conf{ngshare}/$ii/$jj");
-	}
-}
-if ($destdir) { # We need to copy the images in share
-	foreach $ii (getfiles('share')) {
-		if (substr($ii, -3) eq 'gif') {
-			print "installing share/$ii to $destdir$conf{ngshare}/$ii\n";
-			copy("share/$ii", "$destdir$conf{ngshare}/$ii");
-		}
-	}
-}
-
-if (not defined $conf{nag}) {
-	print "updating Nagios configuration\n";
-} else {
-	delete $conf{nag};
-}
-
-$conf{version} = $VERSION;
-if (open CONF, ">$destdir$conf{etc}/.install") {
-	foreach $ii (sort keys %conf) {
-		print CONF "$ii = $conf{$ii}\n";
-	}
-	close CONF;
-}
