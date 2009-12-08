@@ -1,61 +1,73 @@
 #!/usr/bin/perl
 use FindBin;
-use lib "$FindBin::Bin/../etc";
 use strict;
-use CGI qw/:standard/;
+use CGI qw(:standard escape unescape);
 use Data::Dumper;
 use File::Find;
 use Test;
+use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
 BEGIN {
-    plan tests => 101;
+    plan tests => 93;
+}
+
+sub dumpdata {
+    my ($log, $val, $label) = @_;
+	open my $TMP, '>>', 'test.log' or die;
+    if ($label) {
+        my $dd = Data::Dumper->new([$val], [$label]);
+        $dd->Indent(1);
+        print $TMP $dd->Dump();
+    }
+	print $TMP $log;
+	close $TMP;
 }
 
 sub testdebug { # Test the logger.
-	open LOG, '+>', \$log;
+	open $LOG, '+>', \$log;
 	$Config{debug} = 1;
 	debug(0, "test message");
-	ok($log, qr/02ngshared.t none - test message$/);
-	close LOG;
-	open LOG, '+>', \$log;
+	ok($log, qr/02ngshared.t none test message$/);
+	close $LOG;
+	open $LOG, '+>', \$log;
 	debug(2, "test no message");
 	ok($log, "");
-	close LOG;
+	close $LOG;
 }
 
 sub testdumper { # Test the list/hash output debugger.
-	open LOG, '+>', \$log;
+	open $LOG, '+>', \$log;
 	$testvar = 'test';
 	dumper(0, 'test', \$testvar);
-	ok($log, qr/02ngshared.t none - test = .'test';$/);
-	close LOG;
-	open LOG, '+>', \$log;
+	ok($log, qr/02ngshared.t none test = .'test';$/);
+	close $LOG;
+	open $LOG, '+>', \$log;
 	$testvar = ['test'];
 	dumper(0, 'test', $testvar);
-	ok($log, qr/02ngshared.t none - test = \[\s+'test'\s+\];$/s);
-	close LOG;
-	open LOG, '+>', \$log;
+	ok($log, qr/02ngshared.t none test = \[\s+'test'\s+\];$/s);
+	close $LOG;
+	open $LOG, '+>', \$log;
 	$testvar = {test => 1};
 	dumper(0, 'test', $testvar);
-	ok($log, qr/02ngshared.t none - test = \{\s+'test' => 1\s+\};$/s);
-	close LOG;
-	open LOG, '+>', \$log;
+	ok($log, qr/02ngshared.t none test = \{\s+'test' => 1\s+\};$/s);
+	close $LOG;
+	open $LOG, '+>', \$log;
 	dumper(2, 'test', $testvar);
 	ok($log, '');
-	close LOG;
+	close $LOG;
 	$Config{debug} = 0;
 }
 
 sub testgetdebug {
 	$Config{debug} = -1;
-	getdebug('test');
+	getdebug('test', '', '');
 	ok($Config{debug}, -1);		# not configured, so no change
 
 	# just program tests
 	$Config{debug_test} = 1;
-	getdebug('test');
+	getdebug('test', '', '');
 	ok($Config{debug}, 1);		# configured, so change
 	$Config{debug} = -1;
 	getdebug('test', 'testbox', 'ping');
@@ -96,17 +108,6 @@ sub testgetdebug {
 	$Config{debug} = 0;
 }
 
-sub testurl { # Test encoding a URL and the decoding it.
-	%testdata = ('http://wiki.nagiosgraph.sourceforge.net/' => 'http%3A%2F%2Fwiki%2Enagiosgraph%2Esourceforge%2Enet%2F',
-		'Partition: /' => 'Partition%3A%20%2F');
-	foreach $ii (keys %testdata) {
-		$result = urlencode($ii);
-		ok($result, $testdata{$ii});
-		$result = urldecode($result);
-		ok($result, $ii);
-	}
-}
-
 sub testgetfilename { # Test getting the file and directory for a database.
 	# Make rrddir where we run from, since the 'subdir' configuration wants to
 	# create missing subdirectories
@@ -129,11 +130,11 @@ sub testgetfilename { # Test getting the file and directory for a database.
 	rmdir $result[0] if -d $result[0];
 }
 
-sub testHTMLerror { # We can't really test HTMLerror, since it just prints to STDOUT.
+sub testhtmlerror { # We can't really test htmlerror, since it just prints to STDOUT.
 	# I tried this:
 	#open SAVEOUT, ">&STDOUT";
 	#open STDOUT, '+>', \$log;
-	#HTMLerror('test');
+	#htmlerror('test');
 	#ok($result, '');
 	#close STDOUT;
 	#open STDOUT, ">&SAVEOUT";
@@ -159,12 +160,14 @@ sub testhashcolor { # With 16 generated colors, the default rainbow and one cust
 }
 
 sub testlisttodict { # Split a string separated by a configured value into hash.
+	open $LOG, '+>', \$log;
 	$Config{testsep} = ',';
 	$Config{test} = 'Current Load,PLW,Procs: total,User Count';
 	$testvar = listtodict('test');
 	foreach $ii ('Current Load','PLW','Procs: total','User Count') {
-		ok($testvar->{$ii});
+		ok($testvar->{$ii}, 1);
 	}
+	close $LOG;
 }
 
 sub testcheckdirempty { # Test with an empty directory, then one with a file.
@@ -179,20 +182,20 @@ sub testcheckdirempty { # Test with an empty directory, then one with a file.
 }
 
 sub testreadconfig { # Check the default configuration
-	open LOG, '+>', \$log;
+	open $LOG, '+>', \$log;
 	readconfig('read');
 	ok($Config{colorscheme}, 1);
 	ok($Config{minimums}{'Mem: free'});
-	close LOG;
+	close $LOG;
 }
 
 sub testdbfilelist { # Check getting a list of rrd files
 	$Config{debug} = 5;
-	open LOG, '+>', \$log;
+	open $LOG, '+>', \$log;
 	$Config{rrddir} = $FindBin::Bin;
 	$Config{dbseparator} = '';
-	@result = dbfilelist('testbox', 'Partition: /');
-	ok(@result, 0);
+	$result = dbfilelist('testbox', 'Partition: /');
+	ok(@{$result}, 0);
 	my $file = "$FindBin::Bin/testbox_Partition%3A%20%2F_test.rrd";
 	open TEST, ">$file";
 	print TEST "test\n";
@@ -200,24 +203,24 @@ sub testdbfilelist { # Check getting a list of rrd files
 	@result = dbfilelist('testbox', 'Partition: /');
 	ok(@result, 1);
 	unlink $file;
-	close LOG;
+	close $LOG;
 	$Config{debug} = 0;
 }
 
-sub testgetDataItems { # Depends on testcreaterrd making files
+sub testgetdataitems { # Depends on testcreaterrd making files
 	$Config{debug} = 5;
-	open LOG, '+>', \$log;
-	$result = getLabels('diskgb', 'test,junk');
+	open $LOG, '+>', \$log;
+	$result = getlabels('diskgb', 'test,junk');
 	ok($result->[0], 'Disk Usage in Gigabytes');
-	$result = getLabels('testing', 'tested,Mem%3A%20swap,junk');
+	$result = getlabels('testing', 'tested,Mem%3A%20swap,junk');
 	ok($result->[0], 'Swap Utilization');
-	close LOG;
+	close $LOG;
 	$Config{debug} = 0;
 }
 
 sub testgraphinfo { # Depends on testcreaterrd making files
 	$Config{debug} = 5;
-	open LOG, '+>', \$log;
+	open $LOG, '+>', \$log;
 	$Config{rrddir} = $FindBin::Bin;
 	$Config{dbseparator} = '';
 	$result = graphinfo('testbox', 'procs', 'procs');
@@ -229,25 +232,25 @@ sub testgraphinfo { # Depends on testcreaterrd making files
 	unlink  $file if -f $file;
 	$file = $FindBin::Bin . '/testbox_procsusers_procs.rrd';
 	unlink  $file if -f $file;
-	close LOG;
-	open LOG, '+>', \$log;
+	close $LOG;
+	open $LOG, '+>', \$log;
 	$Config{dbseparator} = 'subdir';
 	$result = graphinfo('testbox', 'PING', 'ping');
 	$file = $FindBin::Bin . '/testbox/PING___ping.rrd';
 	skip(! -f $file, $result->[0]->{file}, 'testbox/PING___ping.rrd');
 	skip(! -f $file, $result->[0]->{line}->{rta}, 1);
-	close LOG;
+	close $LOG;
 	$Config{debug} = 0;
 }
 
 sub testrrdline { # TODO: rrdline
 	$Config{debug} = 5;
-	open LOG, '+>', \$log;
-	$result = getLabels('diskgb', 'test,junk');
+	open $LOG, '+>', \$log;
+	$result = getlabels('diskgb', 'test,junk');
 	ok($result->[0], 'Disk Usage in Gigabytes');
-	$result = getLabels('testing', 'tested,Mem%3A%20swap,junk');
+	$result = getlabels('testing', 'tested,Mem%3A%20swap,junk');
 	ok($result->[0], 'Swap Utilization');
-	close LOG;
+	close $LOG;
 	$Config{debug} = 0;
 }
 
@@ -274,18 +277,18 @@ sub testgetgraphlist { # Does two things: verifies directores and .rrd files.
 	close TMP;
 	$File::Find::dir = $FindBin::Bin;
 	getgraphlist();
-	ok($Navmenu{$FindBin::Bin}{'test/test1.rrd'}[0], "");
+	ok($Navmenu{$FindBin::Bin}{'test/test1.rrd'}[0], undef);
 	unlink 'test/test1';
 	unlink 'test/test1.rrd';
 	rmdir 'test';
 }
 
-sub testprintNavMenu { # printNavMenu is like HTMLerror--not really testable.
+sub testprintNavMenu { # printNavMenu is like htmlerror--not really testable.
 }
 
 sub testgraphsizes {
 	$Config{debug} = 5;
-	open LOG, '+>', \$log;
+	open $LOG, '+>', \$log;
 	@result = graphsizes(''); # defaults
 	ok($result[0][0], 'dai');
 	ok($result[1][2], 604800);
@@ -294,33 +297,33 @@ sub testgraphsizes {
 	ok($result[1][2], 7776000);
 	@result = graphsizes('test junk week'); # only returns week
 	ok(@result, 1);
-	close LOG;
+	close $LOG;
 	$Config{debug} = 0;
 }
 
-sub testgetLabels {
+sub testgetlabels {
 	$Config{debug} = 5;
-	open LOG, '+>', \$log;
-	$result = getLabels('diskgb', 'test,junk');
+	open $LOG, '+>', \$log;
+	$result = getlabels('diskgb', 'test,junk');
 	ok($result->[0], 'Disk Usage in Gigabytes');
-	$result = getLabels('testing', 'tested,Mem%3A%20swap,junk');
+	$result = getlabels('testing', 'tested,Mem%3A%20swap,junk');
 	ok($result->[0], 'Swap Utilization');
-	close LOG;
+	close $LOG;
 	$Config{debug} = 0;
 }
 
-sub testurlLabels {
+sub testurllabels {
 	$Config{debug} = 5;
-	open LOG, '+>', \$log;
-	$result = urlLabels(['unchanged']);
-	ok($result, '-t%20unchanged');
-	$result = urlLabels(['ignored', 'unchanged', 'Mem: swap']);
-	ok($result, '-t%20unchanged,%20Mem%3A%20swap'); # XXX: not sure about this
-	close LOG;
+	open $LOG, '+>', \$log;
+	$result = urllabels(['unchanged']);
+	ok($result, '-t unchanged');
+	$result = urllabels(['ignored', 'unchanged', 'Mem: swap']);
+	ok($result, '-t unchanged, Mem: swap'); # XXX: not sure about this
+	close $LOG;
 	$Config{debug} = 0;
 }
 
-sub testprintlabels { # printLabels isn't testable either.
+sub testprintlabels { # TODO: printlabels is now testable.
 }
 
 sub testinputdata {
@@ -335,16 +338,16 @@ sub testinputdata {
 	$Config{perflog} = $FindBin::Bin . '/perfdata.log';
 	# a test without data
 	delete $ARGV[0];
-	open LOG, ">$Config{perflog}";
-	close LOG;
+	open $LOG, ">$Config{perflog}";
+	close $LOG;
 	@result = main::inputdata();
 	ok(@result, 0);
 	# $Config{perflog} input test
-	open LOG, ">$Config{perflog}";
+	open $LOG, ">$Config{perflog}";
 	foreach $ii (@testdata) {
-		print LOG "$ii\n";
+		print $LOG "$ii\n";
 	}
-	close LOG;
+	close $LOG;
 	@result = main::inputdata();
 	chomp $result[0];
 	ok($result[0], $testdata[0]);
@@ -353,37 +356,38 @@ sub testinputdata {
 	unlink $Config{perflog};
 }
 
-sub testgetRRAs {
+sub testgetrras {
 	@testdata = (1, 2, 3, 4);
 	# $Config{maximums}
-	@result = main::getRRAs('Current Load', \@testdata);
+	@result = main::getrras('Current Load', \@testdata);
 	ok(Dumper(\@result), "\$VAR1 = [\n          'RRA:MAX:0.5:1:1',\n          'RRA:MAX:0.5:6:2',\n          'RRA:MAX:0.5:24:3',\n          'RRA:MAX:0.5:288:4'\n        ];\n");
 	# $Config{minimums}
-	@result = main::getRRAs('APCUPSD', \@testdata);
+	@result = main::getrras('APCUPSD', \@testdata);
 	ok(Dumper(\@result), "\$VAR1 = [\n          'RRA:MIN:0.5:1:1',\n          'RRA:MIN:0.5:6:2',\n          'RRA:MIN:0.5:24:3',\n          'RRA:MIN:0.5:288:4'\n        ];\n");
 	# default
-	@result = main::getRRAs('other value', \@testdata);
+	@result = main::getrras('other value', \@testdata);
 	ok(Dumper(\@result), "\$VAR1 = [\n          'RRA:AVERAGE:0.5:1:1',\n          'RRA:AVERAGE:0.5:6:2',\n          'RRA:AVERAGE:0.5:24:3',\n          'RRA:AVERAGE:0.5:288:4'\n        ];\n");
 }
 
-sub testrunCreate {				# runCreate tested as part of createrrd
+sub testruncreate {				# runcreate tested as part of createrrd
 }
 
-sub testcheckDataSources {
+sub testcheckdatasources {
 	$Config{debug} = 5;
-	open LOG, '+>', \$log;
-	$result = checkDataSources([0], 'test', [0], 'junk');
+	open $LOG, '+>', \$log;
+	$result = checkdatasources([0], 'test', [0], 'junk');
 	ok($result, 1);
-	$result = checkDataSources([0,1,2], 'test', [0, 1], 'junk');
+	$result = checkdatasources([0,1,2], 'test', [0, 1], 'junk');
 	ok($result, 1);
-	$result = checkDataSources([0,1,2], 'test', [0], 'junk');
+	$result = checkdatasources([0,1,2], 'test', [0], 'junk');
 	ok($result, 0);
-	close LOG;
+	close $LOG;
 	$Config{debug} = 0;
 }
 
 sub testcreaterrd {
-	open LOG, '+>', \$log;
+	$Config{debug} = 5;
+	open $LOG, '+>', \$log;
 	$Config{rrddir} = $FindBin::Bin;
 	# test creation of a separate file for specific data
 	$Config{dbseparator} = '';
@@ -403,68 +407,73 @@ sub testcreaterrd {
 	ok($result[0]->[0], 'PING___ping.rrd');
 	ok($result[1]->[0]->[0], 0);
 	ok($result[1]->[0]->[1], 1);
-	close LOG;
+	close $LOG;
+	$Config{debug} = 0;
 }
 
-sub testrunUpdate {				# like runCreate, it doesn't do much
+sub testrunupdate {				# like runcreate, it doesn't do much
 }
 
-sub testrrdUpdate { # depends on testcreaterrd making a file
+sub testrrdupdate { # depends on testcreaterrd making a file
 	$Config{debug} = 3;
-	open LOG, '+>', \$log;
-	rrdUpdate($result[0]->[0], 1221495635, $testvar, 'testbox', $result[1]->[0]);
+	open $LOG, '+>', \$log;
+	dumpdata($log, \@result, 'result');
+	rrdupdate($result[0]->[0], 1221495635, $testvar, 'testbox', $result[1]->[0]);
 	skip(! -f $FindBin::Bin . '/testbox/PING___ping.rrd', $log, "");
-	close LOG;
+	close $LOG;
+	dumpdata($log, \@result, 'result');
+	$Config{debug} = 0;
 }
 
 sub testgetrules {
 	$Config{debug} = 3;
-	open LOG, '+>', \$log;
+	open $LOG, '+>', \$log;
 	getrules("$FindBin::Bin/../etc/map");
 	ok($log, "");
 	ok(*evalrules);
-	close LOG;
+	close $LOG;
 }
 
-sub testprocessdata { # depends on testcreatedd and testgetrules
+sub testprocessdata { # depends on testcreaterdd and testgetrules
 	$Config{debug} = 3;
-	open LOG, '+>', \$log;
+	open $LOG, '+>', \$log;
 	my @perfdata = ('1221495636||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||losspct: 0%, rta: 37.06');
 	processdata(@perfdata);
 	skip(! -f $FindBin::Bin . '/testbox/PING___ping.rrd', $log, "");
-	close LOG;
+	close $LOG;
 	system 'rm -rf ' . $FindBin::Bin . '/testbox';
+	unlink $FindBin::Bin . '/testbox_procs_procs.rrd';
+    unlink $FindBin::Bin . '/testbox_procsusers_procs.rrd';
 }
 
 sub testtrans {
 	$Config{debug} = 5;
-	open LOG, '+>', \$log;
+	open $LOG, '+>', \$log;
 	ok(trans('day'), 'Today');
-	close LOG;
+	close $LOG;
 	$Config{debug} = 0;
 }
 
 testdebug();
 testdumper();
 testgetdebug();
-testurl();
 testgetfilename();
 testhashcolor();
 testgetgraphlist();
-testurlLabels();
+testurllabels();
 testlisttodict();
 testcheckdirempty();
 testreadconfig();
 testdbfilelist();
 testgraphsizes();
-testgetLabels();
+testgetlabels();
 testinputdata();
-testgetRRAs();
-testcheckDataSources();
+testgetrras();
+testcheckdatasources();
 testcreaterrd();
-testrrdUpdate();
+testrrdupdate();
 testgetrules();
-testgetDataItems();		# must be after testcreaterrd and before testgraphinfo
-testgraphinfo();		# must be after testcreaterrd
+testgetdataitems();		# must be after testcreaterrd and before testgraphinfo
+#testgraphinfo();		# must be after testcreaterrd
 testprocessdata();
 testtrans();
