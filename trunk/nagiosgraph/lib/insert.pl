@@ -1,9 +1,9 @@
 #!/usr/bin/perl
 
-# File:		$Id: insert.pl,v 1.25 2007/06/12 19:00:06 toriniasty Stab $
-# Author:	(c) Soren Dossing, 2005
-# License:	OSI Artistic License
-#			http://www.opensource.org/licenses/artistic-license.php
+# File:        $Id: insert.pl,v 1.25 2007/06/12 19:00:06 toriniasty Stab $
+# Author:    (c) Soren Dossing, 2005
+# License:    OSI Artistic License
+#            http://www.opensource.org/licenses/artistic-license.php
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 
 # The configuration file and ngshared.pm must be in this directory.
@@ -11,19 +11,71 @@ use lib '/etc/nagios/nagiosgraph';
 # The configuration loader will look for nagiosgraph.conf in this directory.
 # So take note upgraders, there is no $configfile = '....' line anymore.
 
+# Main program - change nothing below
+
+use ngshared;
+use RRDs;
+use strict;
+use warnings;
+
+use constant SLEEP => 30; ## no critic (ProhibitConstantPragma)
+
+use vars qw($VERSION);
+$VERSION = '2.0';
+
+my (@perfdata);                 # data returned by inputdata for processdata
+
+readconfig('write');            # specify 'write' to check creation of RRD files
+if (defined $Config{ngshared}) { # ngshared is set on an error
+    debug(DBCRT, $Config{ngshared});
+    exit;
+}
+if (defined $Config{debug_insert}) {
+    $Config{debug} = $Config{debug_insert};
+}                               # processdata sets debug for specific hosts, etc
+
+# Read the map file and define a subroutine that parses performance data
+getrules($Config{mapfile}) and exit;
+
+if ($Config{perfloop}) {
+    while (1) {                 # check the file every 30 seconds and load data
+        @perfdata = inputdata();
+         if (@perfdata) { processdata(@perfdata); }
+        debug(DBDEB, 'insert.pl waiting for more input');
+        sleep SLEEP;
+    }
+} else {                        # run once with the line at $ARGV[0]
+    @perfdata = inputdata();
+    if (@perfdata) { processdata(@perfdata); }
+}
+
+debug(DBDEB, 'insert.pl exited');
+
+__END__
+
 =head1 NAME
 
 insert.pl - Store performance data returned by Nagios plugins in rrdtool.
-
-=head1 SYNOPSIS
-
-B<insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$">
 
 =head1 DESCRIPTION
 
 Run this via Nagios (using insert.sh, if needed).
 
-=head1 REQUIREMENTS
+=head1 USAGE
+
+B<insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$">
+
+=head1 CONFIGURATION
+
+=head1 REQUIRED ARGUMENTS
+
+=head1 OPTIONS
+
+=head1 EXIT STATUS
+
+=head1 DIAGNOSTICS
+
+=head1 DEPENDENCIES
 
 =over 4
 
@@ -80,6 +132,17 @@ define command {
 Other configurations may be possible, but this works for me (Alan Brenner) with
 Nagios 2.12 on Mac OS 10.5.
 
+=head1 INCOMPATIBILITIES
+
+=head1 BUGS AND LIMITATIONS
+
+Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
+simple and tested.
+
+=head1 SEE ALSO
+
+B<nagiosgraph.conf> B<ngshared.pm>
+
 =head1 AUTHOR
 
 Soren Dossing, the original author in 2005.
@@ -89,16 +152,7 @@ at http://nagiosgraph.wiki.sourceforge.net/ by moving all subroutines into a
 shared file (ngshared.pm) for unit testing and sharing code, tweaking logging,
 etc.
 
-=head1 BUGS
-
-Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
-simple and tested.
-
-=head1 SEE ALSO
-
-B<nagiosgraph.conf> B<ngshared.pm>
-
-=head1 COPYRIGHT
+=head1 LICENSE AND COPYRIGHT
 
 Copyright (C) 2005 Soren Dossing, 2008 Ithaka Harbors, Inc.
 
@@ -109,40 +163,3 @@ http://www.opensource.org/licenses/artistic-license-2.0.php
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE.
-
-=cut
-
-# Main program - change nothing below
-
-use ngshared;
-
-use strict;
-use RRDs;
-
-my (@perfdata);					# data returned by inputdata for processdata
-
-readconfig('write');			# specify 'write' to check creation of RRD files
-if (defined $Config{ngshared}) { # ngshared is set on an error
-	debug(1, $Config{ngshared});
-	exit;
-}
-$Config{debug} = $Config{debug_insert} if defined $Config{debug_insert} and
-	not defined $Config{debug_insert_host} and
-	not defined $Config{debug_insert_service};
-
-# Read the map file and define a subroutine that parses performance data
-getrules($Config{mapfile}) and exit;
-
-if ($Config{perfloop}) {
-	while (1) {					# check the file every 30 seconds and load data
-		@perfdata = inputdata();
-		processdata(@perfdata) if @perfdata;
-		debug(5, 'insert.pl waiting for more input');
-		sleep 30;
-	}
-} else {						# run once with the line at $ARGV[0]
-	@perfdata = inputdata();
-	processdata(@perfdata) if @perfdata;
-}
-
-debug(5, 'insert.pl exited');
