@@ -1,5 +1,6 @@
-#!/usr/bin/perl
+#!/usr/bin/perl ## no critic (RequireVersionVar)
 
+# File:    $Id$
 # This program is based upon show.cgi
 # Author:  (c) Soren Dossing, 2004
 # License: OSI Artistic License
@@ -12,20 +13,118 @@ use lib '/etc/nagios/nagiosgraph';
 # The configuration loader will look for nagiosgraph.conf in this directory.
 # So take note upgraders, there is no $configfile = '....' line anymore.
 
+# Main program - change nothing below
+
+use ngshared qw(:SHOWHOST);
+
+use CGI;
+use English qw(-no_match_vars);
+use File::Find;
+use strict;
+use warnings;
+
+my ($params,                    # Required hostname to show data for
+    @style,                     # CSS, if so configured
+    $hdb,                       # array ref of service to list for the host
+    @svrlist,
+    $title,                     # boolean for when to print the labels
+    $cgi,
+    $url
+);
+
+$cgi = new CGI;
+$cgi->autoEscape(0);
+readconfig('read');
+if (defined $Config{ngshared}) {
+    debug(1, $Config{ngshared});
+    htmlerror($cgi, $Config{ngshared});
+    exit;
+}
+# Expect host input
+$params = getparams($cgi, 'showhost', ['host', ]);
+dumper(DBDEB, 'params', $params);
+if (not defined $params->{host} or not $params->{host}) {
+    htmlerror(trans('nohostgiven'), 1);
+    exit;
+}
+getdebug('showhost', $params->{host}, q()); # See if we have custom debug level
+if ($Config{stylesheet}) { @style = (-style => {-src => "$Config{stylesheet}"}); }
+
+# Draw a page
+find(\&getgraphlist, $Config{rrddir});
+@svrlist = sort keys %Navmenu;
+dumper(DBDEB, 'srvlist', \@svrlist);
+print printheader($cgi, {title => $params->{host}, style => \@style,
+    call => 'host', svrlist => \@svrlist, default => $params->{host},
+    label => $cgi->a({href => "$Config{nagioscgiurl}/extinfo.cgi?type=1&host=$params->{host}"},
+            $params->{host})}) or
+    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+
+$hdb = readdb('hostdb', $params->{host});
+if (exists $Config{graphlabels} and not exists $Config{nolabels}) {
+    $title = 1;
+} else {
+    $title = 0;
+}
+foreach my $period (graphsizes($Config{timehost})) {
+    dumper(DBDEB, 'period', $period);
+    print $cgi->h2(trans($period->[0])) or
+        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+    foreach my $dbinfo (@{$hdb}) {
+        debug(DBDEB, "service $dbinfo->{service}");
+        if (defined $Config{rrdopts}{$params->{service}}) {
+            $dbinfo->{rrdopts} = $Config{rrdopts}{$params->{service}};
+        } else {
+            $dbinfo->{rrdopts} = $params->{rrdopts};
+        }
+        $dbinfo->{host} = $params->{host};
+        $dbinfo->{geom} = $params->{geom};
+        $dbinfo->{fixedscale} = $params->{fixedscale};
+        $dbinfo->{offset} = 0;
+        $url = $Config{nagioscgiurl} .
+            '/showservice.cgi?service=' . $dbinfo->{service} .
+            join('&db=' . @{$dbinfo->{db}});
+        $url =~ tr/ /+/;
+        print $cgi->h2($cgi->a({href => $url}, defined $dbinfo->{label} ?
+                $dbinfo->{label} : $dbinfo->{service})) . "\n" .
+                printgraphlinks($cgi, $dbinfo, $period). "\n" or
+            debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+        if (not $title) {
+            print printlabels(getlabels($dbinfo->{service}, $dbinfo->{db})) or
+                debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+        }
+    }
+}
+
+print printfooter($cgi) or
+    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+
+__END__
+
 =head1 NAME
 
 showhost.cgi - Graph Nagios data for a given host
-
-=head1 SYNOPSIS
-
-B<showhost.cgi>
 
 =head1 DESCRIPTION
 
 Run this via a web server cgi to generate an HTML page of data stored by
 insert.pl. The showgraph.cgi script generates the graphs themselves.
 
-=head1 REQUIREMENTS
+=head1 USAGE
+
+B<showhost.cgi>
+
+=head1 CONFIGURATION
+
+=head1 REQUIRED ARGUMENTS
+
+=head1 OPTIONS
+
+=head1 EXIT STATUS
+
+=head1 DIAGNOSTICS
+
+=head1 DEPENDENCIES
 
 =over 4
 
@@ -65,6 +164,17 @@ to the B<define host> (Nagios 3) or B<define hostextinfo> (Nagios 2.12) stanza
 
 Copy the images/action.gif file to the nagios/images directory, if desired.
 
+=head1 INCOMPATIBILITIES
+
+=head1 BUGS AND LIMITATIONS
+
+Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
+simple and tested.
+
+=head1 SEE ALSO
+
+B<hostdb.conf> B<nagiosgraph.conf> B<showservice.cgi> B<ngshared.pm>
+
 =head1 AUTHOR
 
 Soren Dossing, the original author of show.cgi in 2004.
@@ -76,16 +186,7 @@ at http://nagiosgraph.wiki.sourceforge.net/ by moving some subroutines into a
 shared file (ngshared.pm), using showgraph.cgi, and adding links for show.cgi
 and showservice.cgi.
 
-=head1 BUGS
-
-Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
-simple and tested.
-
-=head1 SEE ALSO
-
-B<hostdb.conf> B<nagiosgraph.conf> B<showservice.cgi> B<ngshared.pm>
-
-=head1 COPYRIGHT
+=head1 LICENSE AND COPYRIGHT
 
 Copyright (C) 2005 Soren Dossing, 2008 Ithaka Harbors, Inc.
 
@@ -96,147 +197,3 @@ http://www.opensource.org/licenses/artistic-license-2.0.php
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE.
-
-=cut
-
-# Main program - change nothing below
-
-use ngshared qw(:SHOWHOST);
-
-use strict;
-use CGI qw/:standard/;
-use File::Find;
-
-my ($host,						# Required hostname to show data for
-	@style,						# CSS, if so configured
-	@times,						# time periods to show
-	@sdb,
-	$time,
-	$dbinfo,
-	%dbinfo,
-	@gl,
-	$ii,						# temporary value for directory and for loops
-	$filename,
-	@svrlist,
-	$labels,					# data labels from nagiosgraph.conf
-	$title,						# boolean for when to print the labels
-	$url						# url parameters for showgraph.cgi
-);
-
-readconfig('read');
-if (defined $Config{ngshared}) {
-	debug(1, $Config{ngshared});
-	HTMLerror($Config{ngshared});
-	exit;
-}
-
-# Expect host input
-if (param('host')) {
-	$host = param('host');
-} else {
-	HTMLerror(trans('nohostgiven'), 1);
-	exit;
-}
-
-getdebug('showhost', $host, ''); # See if we have custom debug level
-
-# Define graph sizes
-@times = graphsizes($Config{timehost});
-
-# Read host/database data
-if (not open DB, $Config{hostdb}) {
-	debug(5, "cannot open $Config{hostdb} from nagiosgraph configuration");
-	HTMLerror(trans('configerror'));
-	exit;
-}
-while (<DB>) {
-	chomp($_);
-	s/\s*#.*//;    # Strip comments
-	if ($_) {
-		debug(5, "readdb $_");
-		push @sdb, $_;
-	}
-}
-close DB;
-if (not @sdb) {
-	debug(5, "no servdb array in $Config{hostdb}");
-	HTMLerror(trans('configerror'));
-	exit;
-}
-
-@style = (-style => {-src => "$Config{stylesheet}"}) if ($Config{stylesheet});
-
-# Draw a page
-print header, start_html(-id => "nagiosgraph",
-	-title => "nagiosgraph: $host",
-	#-head => meta({ -http_equiv => "Refresh", -content => "300" }),
-	@style) . "\n";
-
-print "<script type=\"text/javascript\">\n" .
-	"function jumpto(element) {\n" .
-	"	var svr = escape(document.menuform.servidors.value);\n" .
-	"	window.location.assign(location.pathname + \"?host=\" + svr);\n" .
-	"}\n</script>\n";
-find(\&getgraphlist, $Config{rrddir});
-@svrlist = sort(keys(%Navmenu));
-dumper(5, 'srvlist', \@svrlist);
-print div({-id=>'mainnav'}, "\n",
-	start_form(-name=>'menuform'), trans('selecthost') . ': ',
-	popup_menu(-name=>'servidors', -value=>\@svrlist,
-			   -default=>"$host", -onChange=>"jumpto(this)"),
-	end_form);
-
-print h1("Nagiosgraph") . "\n" .
-	p(trans('perfforhost') . ': ' . strong(tt(
-		a({href => "$Config{nagioscgiurl}/extinfo.cgi?type=1&host=$host"},
-			$host))) . ' ' . trans('asof') . ': ' .
-		strong(scalar(localtime))) . "\n";
-
-if (exists $Config{graphlabels} and not exists $Config{nolabels}) {
-	$title = 1;
-} else {
-	$title = 0;
-}
-foreach $time ( @times ) {
-	dumper(5, 'time', $time);
-	print h2(trans($time->[0]));
-	foreach $dbinfo ( @sdb ) {
-		chomp $dbinfo;
-		# split each line by '&' into a hash with key before = and val after
-		%dbinfo = ($dbinfo =~ /([^=&]+)=([^&]*)/g);
-		dumper(5, 'dbinfo', \%dbinfo);
-		@gl = split ',', $dbinfo{db};
-		($ii, $filename) = getfilename($host, urldecode($dbinfo{service}), $gl[0]);
-		$filename = $ii . '/' . $filename;
-		debug(5, "checkfile $filename");
-		if ( -f "$filename") {
-			# file found, so generate a heading and graph URL
-			debug(5, "checkfile using $filename");
-			if (defined $dbinfo{label}) {
-				$ii = urldecode($dbinfo{label});
-			} else {
-				$ii = urldecode($dbinfo{service});
-			}
-			$labels = getLabels($dbinfo{service}, $dbinfo{db});
-			# URL to showgraph.cgi generated graph
-			$url = join('&', "host=$host", "service=$dbinfo{service}",
-				"db=$dbinfo{db}", "graph=$time->[1]");
-			$url .= '&rrdopts=' . urlLabels($labels) if $title;
-			print h2(a({href => $Config{nagioscgiurl} .
-					'/showservice.cgi?service=' . urlencode($dbinfo{service}) .
-					'&db=' . $dbinfo{db}}, $ii)) . "\n" .
-				div({-class => "graphs"}, img({src => 'showgraph.cgi?' . $url,
-					alt => join(', ', @$labels)})) . "\n";
-			printLabels($labels) unless $title;
-		} else {
-			debug(5, "$filename not found");
-		}
-	}
-}
-
-print div({-id => "footer"}, hr(),
-	small(trans('createdby') . ' ' .
-	a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
-	"Nagiosgraph " . $VERSION) . "." ));
-print end_html();
-

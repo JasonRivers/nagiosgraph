@@ -1,29 +1,112 @@
-#!/usr/bin/perl
+#!/usr/bin/perl ## no critic (RequireVersionVar)
 
 # File:    $Id$
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008; Soren Dossing, 2005
 # License: OSI Artistic License
-#			http://www.opensource.org/licenses/artistic-license-2.0.php
+#            http://www.opensource.org/licenses/artistic-license-2.0.php
 
 # The configuration file and ngshared.pm must be in this directory.
 use lib '/etc/nagios/nagiosgraph';
 # The configuration loader will look for nagiosgraph.conf in this directory.
 # So take note upgraders, there is no $configfile = '....' line anymore.
 
+# Main program - change nothing below
+
+use ngshared;
+use CGI;
+use File::Find;
+use English qw(-no_match_vars);
+use RRDs;
+use strict;
+use warnings;
+
+my ($params,                    # Required hostname to show data for
+    @style,                     # CSS, if so configured
+    $cgi,
+    $url);
+
+$cgi = new CGI;
+$cgi->autoEscape(0);
+readconfig('read');
+if (defined $Config{ngshared}) {
+    debug(DBCRT, $Config{ngshared});
+    htmlerror($cgi, $Config{ngshared});
+    exit;
+}
+if (not $Config{linewidth}) { $Config{linewidth} = 2; }
+dumper(DBDEB, 'config', \%Config); # comment this out, if running readconfig with a DBDEB second parameter
+
+# Expect host and service
+$params = getparams($cgi, 'show', ['host', 'service']);
+if (defined $Config{rrdopts}{$params->{service}}) {
+    $params->{rrdopts} = $Config{rrdopts}{$params->{service}};
+}
+dumper(DBDEB, 'params', $params);
+
+# Draw the full page
+if ($Config{stylesheet}) {
+    @style = ( -style => {-src => "$Config{stylesheet}"} );
+}
+print $cgi->header, $cgi->start_html(-id => 'nagiosgraph',
+    -title => "nagiosgraph: $params->{host}-$params->{service}",
+    -head => $cgi->meta({ -http_equiv => 'Refresh', -content => '300' }),
+    @style) . "\n" . printnavmenu($cgi, $params->{host}, $params->{service},
+                                  $params->{fixedscale}, $cgi->remote_user()) .
+    $cgi->h1('Nagiosgraph') . "\n" .
+    $cgi->p(trans('perfforhost') . ': ' . $cgi->strong($cgi->tt(
+        $cgi->a({href => $Config{nagioscgiurl} . '/showhost.cgi?host=' .
+                $cgi->escape($params->{host})}, $params->{host}))) . ', ' .
+        trans('service') . ': ' .
+        $cgi->strong($cgi->tt($cgi->a({href => $Config{nagioscgiurl} .
+                '/showservice.cgi?service=' .
+                $cgi->escape($params->{service})}, $params->{service}))) .
+        q( ) . trans('asof') . ': ' . $cgi->strong(scalar localtime)) . "\n" or
+    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+
+for my $period (graphsizes($Config{time})) {
+    print $cgi->a({-id => trans($period->[0])},
+        $cgi->h2(trans($period->[0] . 'ly'))) or
+        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+    $url = buildurl($params->{host}, $params->{service}, {geom => $params->{geom},
+        rrdopts => $params->{rrdopts}, db => $params->{db}});
+    print $cgi->a({-href=>"?$url&offset=" .
+            ($params->{offset} + $period->[2]) . q(#) . $period->[0]},
+            trans('previous')) . ' / ' .
+        $cgi->a({-href=>"?$url&offset=" .
+          ($params->{offset} - $period->[2] . q(#) . $period->[0]) }, trans('next')) .
+        $cgi->br() . "\n" . printgraphlinks($cgi, $params, $period) or
+        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+}
+
+print printfooter($cgi) or
+    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+
+__END__
+
 =head1 NAME
 
 show.cgi - Graph Nagios data
-
-=head1 SYNOPSIS
-
-B<show.cgi>
 
 =head1 DESCRIPTION
 
 Run this via a web server cgi to generate an HTML page of data stored by
 insert.pl (including the graphs).
 
-=head1 REQUIREMENTS
+=head1 USAGE
+
+B<show.cgi>
+
+=head1 CONFIGURATION
+
+=head1 REQUIRED ARGUMENTS
+
+=head1 OPTIONS
+
+=head1 EXIT STATUS
+
+=head1 DIAGNOSTICS
+
+=head1 DEPENDENCIES
 
 =over 4
 
@@ -72,6 +155,17 @@ next to the service name on a detail page.
 
 Copy the images/action.gif file to the nagios/images directory, if desired.
 
+=head1 INCOMPATIBILITIES
+
+=head1 BUGS AND LIMITATIONS
+
+Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
+simple and tested.
+
+=head1 SEE ALSO
+
+B<nagiosgraph.conf> B<showhost.cgi> B<showservice.cgi> B<ngshared.pm>
+
 =head1 AUTHOR
 
 Soren Dossing, the original author in 2005.
@@ -83,16 +177,7 @@ showhost.cgi and showservice.cgi.
 
 Craig Dunn: support for service based graph options via rrdopts.conf file
 
-=head1 BUGS
-
-Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
-simple and tested.
-
-=head1 SEE ALSO
-
-B<nagiosgraph.conf> B<showhost.cgi> B<showservice.cgi> B<ngshared.pm>
-
-=head1 COPYRIGHT
+=head1 LICENSE AND COPYRIGHT
 
 Copyright (C) 2005 Soren Dossing, 2008 Ithaka Harbors, Inc.
 
@@ -103,134 +188,3 @@ http://www.opensource.org/licenses/artistic-license-2.0.php
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE.
-
-=cut
-
-# Main program - change nothing below
-
-use ngshared;
-
-use strict;
-use RRDs;
-use CGI qw/:standard/;
-use File::Find;
-
-my ($host,						# Required hostname to show data for
-	$service,					# Required service to show data for
-	@style,						# CSS, if so configured
-	@db,
-	$graph,
-	$geom,
-	@rrdopts,
-	$fixedscale,
-	$offset,
-	@periods,
-	$period,
-	$label,
-	$url,
-	$ii,						# temporary and for loop variable
-	$labels);					# data labels from nagiosgraph.conf
-
-readconfig('read');
-if (defined $Config{ngshared}) {
-	debug(1, $Config{ngshared});
-	HTMLerror($Config{ngshared});
-	exit;
-}
-
-# Expect host, service and db input
-$host = param('host') if param('host');
-$service = param('service') if param('service');
-getdebug('show', $host, $service); # See if we have custom debug level
-@db = param('db') if param('db');
-dumper(5, 'db1', \@db);
-# Detect available db files
-@db = dbfilelist($host, $service) unless @db;
-dumper(5, 'db2', \@db);
-$graph = param('graph') if param('graph');
-$geom = param('geom') if param('geom');
-debug(5, 'service: ' . $service);
-if ( defined $Config{rrdopts}{$service} ) { 
-	@rrdopts =  $Config{rrdopts}{$service};
-} else {
-	@rrdopts = param('rrdopts') if param('rrdopts');
-}
-debug(5, 'rrdopts: ' . Dumper(@rrdopts));
-# Reencode rrdopts
-for ($ii = 0; $ii < @rrdopts; $ii++) {
-	$rrdopts[$ii] = urlencode($rrdopts[$ii]);
-	$rrdopts[$ii] .= ' ' if $rrdopts[$ii];
-}
-# Changed fixedscale checking since empty param was returning undef from CGI.pm
-$fixedscale = 0;
-$fixedscale = 1 if (grep /fixedscale/, param());
-$offset = int(param('offset')) if param('offset');
-$offset = 0 if not $offset or $offset <= 0;
-@periods = (graphsizes($Config{time}));
-$Config{linewidth} = 2 unless $Config{linewidth};
-dumper(5, 'Config', \%Config);
-# Draw the full page
-@style = ( -style => {-src => "$Config{stylesheet}"} ) if ($Config{stylesheet});
-print header, start_html(-id => "nagiosgraph",
-	-title => "nagiosgraph: $host-$service",
-	-head => meta({ -http_equiv => "Refresh", -content => "300" }),
-	@style) . "\n";
-# Print Navigation Menu if we have a separator set (that will allow navigation
-# menu to correctly split the filenames/filepaths in host/service/db names.
-printNavMenu($host, $service, $fixedscale, remote_user())
-	if ($Config{dbseparator} eq "subdir");
-
-print h1("Nagiosgraph") . "\n" .
-	p(trans('perfforhost') . ': ' . strong(tt(
-		a({href => $Config{nagioscgiurl} . '/showhost.cgi?host=' .
-				urlencode($host)}, urldecode($host)))) . ', ' .
-		trans('service') . ': ' .
-		strong(tt(a({href => $Config{nagioscgiurl} . '/showservice.cgi?service=' .
-				urlencode($service)}, urldecode($service)))) . ' ' .
-		trans('asof') . ': ' . strong(scalar(localtime))) . "\n";
-
-for $period (@periods) {
-	print a({-id => trans($period->[0])}, h2(trans($period->[0] . 'ly')));
-	$url = join '&', "host=$host", "service=$service",
-		"geom=$geom", map {"rrdopts=$_" } @rrdopts, map { "db=$_" } @db;
-	print a({-href=>"?$url&offset=" .
-			($offset + $period->[2]) . "#" . $period->[0]},
-		trans('previous')) . " / " . a({-href=>"?$url&offset=" .
-		($offset - $period->[2] . "#" . $period->[0]) }, trans('next')) .
-		br() . "\n";
-	dumper(5, 'db', \@db);
-	if (@db) {
-		my ($title) = 0;
-		$title = 1
-			if (exists $Config{graphlabels} and not exists $Config{nolabels});
-		for ($ii = 0; $ii < @db; $ii++) {
-			$labels = getLabels($service, $db[$ii]);
-			$url = join '&', "host=$host", "service=$service", "db=$db[$ii]",
-				'graph=' . $period->[1], "geom=$geom";
-			$url .= "&fixedscale" if ($fixedscale);
-			$url .= "&rrdopts=$rrdopts[$ii]";
-			if ($title == 1 and
-				urldecode($rrdopts[$ii]) !~ /(-t|--title)/ and @$labels) {
-				$url .= '%20' if (substr($url, -1, 1) ne '=');
-				$url .= urlLabels($labels);
-				$url .= '%20' if (substr($url, -1, 1) ne '=');
-			}
-			print div({-class => "graphs"},
-				img({-src => 'showgraph.cgi?' . $url . "%2Dsnow%2D" .
-						$period->[1] . "%2D$offset%20%2Denow%2D$offset",
-					-alt => join(', ', @$labels)})) . "\n";
-			printLabels($labels) unless $title;
-		}
-	} else {
-		$url = join '&', "host=$host", "service=$service", 'graph=' .
-			$period->[1], "geom=$geom", "rrdopts=$rrdopts[0]";
-		print div({-class => "graphs"},
-			img({-src => "showgraph.cgi?$url", -alt => "Graph"})) . "\n";
-	}
-}
-
-print div({-id => "footer"}, hr(),
-	small(trans('createdby') . ' ' .
-	a({href => "http://nagiosgraph.wiki.sourceforge.net/"},
-	"Nagiosgraph " . $VERSION) . "." ));
-print end_html();
