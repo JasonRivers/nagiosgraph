@@ -1,3 +1,32 @@
+1.4.0 2010-01-14
+* Most changes from Matthew Wall
+* deal with undefined db in getlabels
+* code formatting to make 80 col editing a bit easier (e.g. my netbook)
+* strings in ctrans for i18n, specified in nagiosgraph.conf
+* punt the hr at pagebottom
+* distinguish between nagios cgi and nagiosgraph cgi in the config file
+* fixed use of 'performance data for (host|service)' label
+* deal with uninitialized time* settings
+* do not overwrite settings from config file
+* pass cgi object when printing footer in showservice.cgi
+* sort datasets naturally (thanks to tye at perlmonks for the algorithm)
+* added 'negate' option to negate specific datasets (e.g. network receive)
+* added 'plotas*' options to specify line weights by dataset
+* added 'lineformat' option to specify line weight and color by dataset
+* fixed quoting of setresize for button 'onclick'
+* use 'GET' rather than 'POST' in printheader (for consistency)
+* use classes/ids for time period headers so we can stylize them
+* be less finicky about whitespace surrounding = in servdb and hostdb
+* fixed the showservice.cgi script
+* unescape filenames when reading from disk in dbfilelist
+* found bug in javascript?  will not accept first item in select menu
+* graphlabels/nolabels logic was all messed up, so refactored it
+* split readdb into readhostdb and readservdb to disambiguate it
+* provide list of hosts at top of showservices.cgi page
+* update documentation in each of the .cgi and .pm files
+* added cgi option 'period' to show, showgraph, showservice
+* put sizes into list rather than as 2 buttons
+
 1.3.2 2009-11-17
 
 * Add support for service based graph options provided by Craig Dunn

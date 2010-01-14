@@ -15,3 +15,6 @@ Desired features.
     since other data sets may not work well with an area graph type.
 * Custom unit labels on the graphs.
 * Units specification beyond what Fixed Scale does.
+* Either do it all with javascript, or do it all without. Right now there is a
+  mix of stuff, specifically the 'update graphs' button does not need to be
+  done with javascript.

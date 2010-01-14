@@ -1,18 +1,52 @@
-body#nagiosgraph {
-	color: #000000;
+body {
+	color: #black;
 	background-color: #BBBBFF;
+    font-family: arial, verdana, serif;
+    font-weight: normal;
+    font-size: 10pt;
 }
 h1 {
-	font-size: x-large;
+	font-size: 12pt;
 }
-div.graphs, div#footer {
+div.period_title {
 	clear: both;
+	font-size: 10pt;
+	font-weight: bold;
+	margin-top: 30px;
+	padding-top: 0.5em;
+	padding-left: 0.5em;
+	padding-bottom: 0.5em;
+	background-color: #efefef;
+	border: 1px solid #dddddd;
 }
-h2 {
-	font-size: large;
-	padding-top: 1em;
-	margin-bottom: 0.5em;
-	clear: left;
+div.graph_title {
+	clear: both;
+	float: right;
+	font-size: 10pt;
+	font-weight: bold;
+	padding-top: 0.5em;
+}
+div.graphs {
+	padding: 2px 0 0 0;
+}
+div#footer {
+	clear: both;
+	padding-top: 20px;
+}
+#primary_controls {
+	background-color: #efefef;
+	border: 1px solid #dddddd;
+	padding: 4px 10px 4px 10px;
+	float: left;
+}
+#secondary_controls {
+	background-color: #efefef;
+	border: 1px solid #dddddd;
+	padding: 4px 10px 4px 10px;
+	float: right;
+}
+#update_controls {
+    padding: 4px 10px 4px 10px;
 }
 img {
 	float: left;

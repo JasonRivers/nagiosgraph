@@ -27,14 +27,13 @@ my ($params,                    # Required service to show data for
     $hdb,                       # host database
     $sdb,                       # service database
     $dbinfo,                    # showgraph.cgi parameters
-    @svrlist,
-    $label, $labels,            # data labels from nagiosgraph.conf
+    $label,                     # data labels from nagiosgraph.conf
     $title,                     # boolean for when to print the labels
-    $url,                        # url parameters for showgraph.cgi
-    $cgi
-    );
+    $cgi,                       # CGI.pm instance
+    $url,                       # url parameters for showgraph.cgi
+    $periods);                  # time periods to graph
 
-$cgi = new CGI;
+$cgi = new CGI;                 ## no critic (ProhibitIndirectSyntax)
 $cgi->autoEscape(0);
 readconfig('read');
 if (defined $Config{ngshared}) {
@@ -49,64 +48,62 @@ if (not defined $params->{service} or not $params->{service}) {
     htmlerror(trans('noservicegiven'), 1);
     exit;
 }
-getdebug('showservice', q(), $params->{service}); # See if we have custom debug level
+
+# See if we have custom debug level
+getdebug('showservice', q(), $params->{service});
+
+# see if the time periods were specified.  ensure list is space-delimited.
+$periods = (defined $params->{period} && $params->{period} ne q())
+    ? $params->{period} : $Config{timeservice};
+$periods =~ s/,/ /g;            ## no critic (RegularExpressions)
+
+# use stylesheet if specified
 if ($Config{stylesheet}) { @style = (-style => {-src => "$Config{stylesheet}"}); }
 
-# Draw a page
 find(\&getgraphlist, $Config{rrddir});
-($hdb, $sdb, $dbinfo) = readdb('servdb', $params->{service});
+($hdb, $sdb, $dbinfo) = readservdb($params->{service});
 dumper(DBDEB, 'hdb', $hdb);
 if ($params->{db}) { $dbinfo->{db} = $params->{db}; }
 dumper(DBDEB, 'dbinfo', $dbinfo);
-if (exists $dbinfo->{label}) {
-    $label = $dbinfo->{label};
-} else {
-    $label = $params->{service};
-}
-@svrlist = sort @{$sdb};
-dumper(DBDEB, 'srvlist', \@svrlist);
-foreach my $ii (@svrlist) {
-    debug(DBDEB, "checking $ii vs $params->{service} and " . $cgi->unescape($params->{service}));
-    if ($ii eq $params->{service}) {
-        $label = $params->{service};
-        last;
-    }
-    $label = $cgi->unescape($params->{service});
-    if ($ii eq $label) {
-        last;
-    }
-}
+$label = (exists $dbinfo->{label}) ? $dbinfo->{label} : $params->{service};
 debug(DBDEB, "default = $label");
-print printheader($cgi, {title => $params->{service}, style => \@style,
-    call => 'service', svrlist => \@svrlist, default => $label,
-    label => $cgi->unescape($label)}) or
-    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+
+$dbinfo->{rrdopts} = (defined $Config{rrdopts}{$params->{service}})
+    ? $Config{rrdopts}{$params->{service}}
+    : $dbinfo->{rrdopts} = $params->{rrdopts};
 
 if (exists $Config{graphlabels} and not exists $Config{nolabels}) {
     $title = 1;
 } else {
     $title = 0;
 }
-if (defined $Config{rrdopts}{$params->{service}}) {
-    $dbinfo->{rrdopts} = $Config{rrdopts}{$params->{service}};
-} else {
-    $dbinfo->{rrdopts} = $params->{rrdopts};
-}
 $dbinfo->{geom} = $params->{geom};
 $dbinfo->{fixedscale} = $params->{fixedscale};
 $dbinfo->{offset} = 0;
-foreach my $period (graphsizes($Config{timeservice})) {
+
+# Draw a page
+print printheader($cgi,
+                  {title => $params->{service},
+                   style => \@style,
+                   call => 'service',
+                   default => $label,
+                   fixedscale => $params->{fixedscale},
+                   label => $cgi->unescape($label)}) or
+    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+
+foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
-    print $cgi->h2(trans($period->[0])) or
+    print $cgi->div({-class=>'period_title'}, trans($period->[0])) . "\n" or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
-    foreach my $host (@${hdb}) {
+    foreach my $host (@{$hdb}) {
         debug(DBDEB, "host = $host");
         $dbinfo->{host} = $host;
-        $url = $Config{nagioscgiurl} .
+        $url = $Config{nagiosgraphcgiurl} .
             '/show.cgi?host=' . $cgi->escape($host) .
             '&service=' . $cgi->escape($params->{service});
         $url =~ tr/ /+/;
-        print $cgi->h2($cgi->a({href => $url}, $host)) . "\n" .
+        print $cgi->div({-class=>'graph_title'},
+                        $cgi->a({href => $url}, $host)) . "\n" .
                 printgraphlinks($cgi, $dbinfo, $period) or
             debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
         if (not $title) {
@@ -116,33 +113,46 @@ foreach my $period (graphsizes($Config{timeservice})) {
     }
 }
 
-print printfooter() or
+print printfooter($cgi) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 __END__
 
 =head1 NAME
 
-showhost.cgi - Graph Nagios data for a given host
+showservice.cgi - Graph Nagios data for a given service
 
 =head1 DESCRIPTION
 
-Run this via a web server cgi to generate an HTML page of data stored by
-insert.pl. The show.cgi script generates the graphs themselves.
+This is a CGI script that is designed to be run on a web server.  It generates
+a page of HTML that displays a list of graphs for a single service on multiple
+hosts.  The graph data are retrieved from RRD files and are typically captured
+by insert.pl.
+
+The showgraph.cgi script generates the graphs themselves.
 
 =head1 USAGE
 
-B<showhost.cgi>
+B<showservice.cgi>?service=service_description
 
 =head1 CONFIGURATION
 
 =head1 REQUIRED ARGUMENTS
 
+A service description must be specified.
+
 =head1 OPTIONS
+
+service=service_description
+
+period=(day week month quarter year)
 
 =head1 EXIT STATUS
 
 =head1 DIAGNOSTICS
+
+Use the debug_showservice setting from B<nagiosgraph.conf> to control the
+amount of debug information that will be emitted by this script.
 
 =head1 DEPENDENCIES
 
@@ -153,7 +163,7 @@ B<showhost.cgi>
 While this could probably run without Nagios, as long as RRD databases exist,
 it is intended to work along side Nagios.
 
-=item B<show.cgi>
+=item B<showgraph.cgi>
 
 This generates the graphs shown in the HTML generated here.
 
@@ -165,13 +175,11 @@ Copy this file into Nagios' cgi directory (for the Apache web server, see where
 the ScriptAlias for /nagios/cgi-bin points), and make sure it is executable by
 the web server.
 
-Install the B<ngshared.pm> file and edit this file to change the B<use lib> line
-(line 11) to point to the directory containing B<ngshared.pm>.
+Install the B<ngshared.pm> file and edit this file to change the B<use lib>
+line (line 12) to point to the directory containing B<ngshared.pm>.
 
 Create or edit the example B<servdb.conf>, which must reside in the same
 directory as B<ngshared.pm>.
-
-Copy the images/action.gif file to the nagios/images directory, if desired.
 
 =head1 INCOMPATIBILITIES
 
@@ -182,7 +190,7 @@ simple and tested.
 
 =head1 SEE ALSO
 
-B<servdb.conf> B<nagiosgraph.conf> B<showhost.cgi> B<ngshared.pm>
+B<servdb.conf> B<nagiosgraph.conf> B<showgraph.cgi> B<showhost.cgi> B<ngshared.pm>
 
 =head1 AUTHOR
 
@@ -193,14 +201,16 @@ Robert Teeter, the original author of showhost.cgi in 2005.
 Alan Brenner - alan.brenner@ithaka.org; I've written this based on Robert
 Teeter's showhost.cgi.
 
+Matthew Wall, minor feature additions, bug fixing and refactoring in 2010.
+
 =head1 LICENSE AND COPYRIGHT
 
 Copyright (C) 2008 Ithaka Harbors, Inc.
 
-This program is free software; you can redistribute it and/or modify it under
-the terms of the OSI Artistic License see:
+This program is free software; you can redistribute it and/or modify it
+under the terms of the OSI Artistic License:
 http://www.opensource.org/licenses/artistic-license-2.0.php
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.

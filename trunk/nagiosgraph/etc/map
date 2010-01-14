@@ -7,37 +7,37 @@
 #
 # INSTRUCTIONS:
 #
-# This file contains several example of service types. Edit this file to 
-# add more service types. The data string from Nagios is in $_ . Use 
+# This file contains several example of service types. Edit this file to
+# add more service types. The data string from Nagios is in $_ . Use
 # regular expressions to identify and extract data like the examples below
-# below.  Match on either output: or perfdata: . The code is pure perl, 
+# below.  Match on either output: or perfdata: . The code is pure perl,
 # that will be run inside an eval{}. Results are expected in @s. The
 # general format is:
-# 
+#
 # /output|perfdata:<servicetype> <key>=<value> <key2=value2> .../
 # and push @s, [ <databasename>,
 #                [ <key>,  GAUGE|DERIVE, <value>  ],
 #                [ <key2>, GAUGE|DERIVE, <value2> ],
 #                [ .       .              .        ],
 #                [ .       .              .        ] ];
-# 
-# But more advanced code is possible, as long as the resulting 
+#
+# But more advanced code is possible, as long as the resulting
 # data structure is correct.
-# 
+#
 ########################################################################
 # skip these quickly since Nagios will already notice (from Eric Gerbier)
 
-# avoid unuseful timeout and errors 
-/output:CHECK_NRPE: Socket timeout/ 
-and return; 
- 
-/output:NRPE: Unable to read output/ 
-and return; 
- 
-/output:CRITICAL - Socket timeout after/ 
-and return; 
- 
-/output:Connection refused by host/ 
+# avoid unuseful timeout and errors
+/output:CHECK_NRPE: Socket timeout/
+and return;
+
+/output:NRPE: Unable to read output/
+and return;
+
+/output:CRITICAL - Socket timeout after/
+and return;
+
+/output:Connection refused by host/
 and return;
 
 /output:CRITICAL - Plugin timed out after/
@@ -51,6 +51,17 @@ and push @s, [ 'pingloss',
                [ 'losspct', GAUGE, $1 ]]
 and push @s, [ 'pingrta',
                [ 'rta', GAUGE, $2/1000 ]];
+
+# or for more detail (from Matthew Wall):
+#/output:PING.*?(\d+)%.+?([.\d]+)\sms\s*perfdata:rta=([.\d]+)ms;([.\d]+);([.\d]+);([.\d]+)\s+pl=([.\d]+)%;([.\d]+);([.\d]+);([.\d]+)/
+#and push @s, [ 'loss',
+#               [ 'losspct', GAUGE, $1 ],
+#               [ 'losswarn', GAUGE, $8 ],
+#               [ 'losscrit', GAUGE, $9 ]]
+#and push @s, [ 'rta',
+#               [ 'rta', GAUGE, $2/1000 ],
+#               [ 'rtawarn', GAUGE, $4/1000 ],
+#               [ 'rtacrit', GAUGE, $5/1000 ] ];
 
 # Service type: single disk
 #  output:DISK OK - free space: /tmp 663 MB (90%):
@@ -116,12 +127,16 @@ and push @s, [ 'mailq',
                [ 'qsize', GAUGE, $1 ],
                [ 'qwarn', GAUGE, $2 ],
                [ 'qcrit', GAUGE, $3 ] ];
+# or, if you prefer (from Matthew Wall):
+#               [ 'qsize', GAUGE, $1 ],
+#               [ 'qwarn', GAUGE, $2 ],
+#               [ 'qcrit', GAUGE, $3 ] ];
 
 # Service type: unix-netstat
 #   output:OK
-#   perfdata:udpInDatagrams=46517147, udpOutDatagrams=46192507, udpInErrors=0, 
-#   tcpActiveOpens=1451583, tcpPassiveOpens=1076181, tcpAttemptFails=1909, 
-#   tcpEstabResets=5045, tcpCurrEstab=6, tcpOutDataBytes=3162434373, 
+#   perfdata:udpInDatagrams=46517147, udpOutDatagrams=46192507, udpInErrors=0,
+#   tcpActiveOpens=1451583, tcpPassiveOpens=1076181, tcpAttemptFails=1909,
+#   tcpEstabResets=5045, tcpCurrEstab=6, tcpOutDataBytes=3162434373,
 #   tcpInDataBytes=1942718261, tcpRetransBytes=215439
 /perfdata:.*udpInDatagrams=(\d+), udpOutDatagrams=(\d+), udpInErrors=(\d+), tcpActiveOpens=(\d+), tcpPassiveOpens=(\d+), tcpAttemptFails=(\d+), tcpEstabResets=(\d+), tcpCurrEstab=(\d+), tcpOutDataBytes=(\d+), tcpInDataBytes=(\d+), tcpRetransBytes=(\d+)/
 and push @s, [ 'udp',
@@ -170,15 +185,25 @@ and push @s, [ 'swap',
                [ 'swapwarn', GAUGE, $2*1024**2 ],
                [ 'swapcrit', GAUGE, $3*1024**2 ],
                [ 'swapmax',  GAUGE, $4*1024**2 ] ];
+# or, if you prefer (from Matthew Wall):
+#               [ 'free', GAUGE, $1*1024**2 ],
+#               [ 'max',  GAUGE, $4*1024**2 ],
+#               [ 'warn', GAUGE, $2*1024**2 ],
+#               [ 'crit', GAUGE, $3*1024**2 ] ];
 
 # Service type: unix-users
 #   output:USERS OK - 4 users currently logged in
-#   perfdata:users=4;5;10;0 
+#   perfdata:users=4;5;10;0
 /perfdata:users=(\d+);(\d+);(\d+)/
 and push @s, [ 'procs',
                [ 'users', GAUGE, $1 ],
                [ 'uwarn',  GAUGE, $2 ],
                [ 'ucrit',  GAUGE, $3 ] ];
+# or, if you prefer (from Matthew Wall):
+#and push @s, [ 'procs',
+#               [ 'users', GAUGE, $1 ],
+#               [ 'warn',  GAUGE, $2 ],
+#               [ 'crit',  GAUGE, $3 ] ];
 
 # Service type: unix-zombies
 #   ouput:PROCS OK: 0 processes with STATE = Z
@@ -203,14 +228,126 @@ and push @s, [ "tcp_$1",
                [ 'socket_timeout', GAUGE, $6 ],
              ];
 
+# more examples from Matthew Wall:
+
+# Service type: apcupsd
+#   output:Battery Charge: 100.0%
+#   perfdata:charge=100.0;50;10
+/output:.*Charge.*?([.\d]+)%/
+and push @s, [ 'charge',
+               [ 'charge', GAUGE, $1 ] ];
+
+# Service type: apcupsd
+#   output:OK - Time Left: 42.0 Minutes
+#   perfdata:42.0;20;10
+#/output:.*Time.*?([.\d]+)\sMinutes/
+/perfdata:timeleft=([.\d]+);([.\d]+);([.\d]+)/
+and push @s, [ 'time',
+               [ 'timeleft', GAUGE, $1 ],
+               [ 'warn',  GAUGE, $2 ],
+               [ 'crit',  GAUGE, $3 ] ];
+
+# Service type: apcupsd
+#   output:OK - Load: 5.2%
+#   perfdata:load=3.6;30;40
+#/output:.*Load.*?([.\d]+)%/
+/perfdata:load=([.\d]+);([.\d]+);([.\d]+)/
+and push @s, [ 'load',
+               [ 'load', GAUGE, $1 ],
+               [ 'warn',  GAUGE, $2 ],
+               [ 'crit',  GAUGE, $3 ] ];
+
+# Service type: apcupsd
+#   output:OK - Internal Temperature: 25.6 C
+#   perfdata:25.6;30;40
+#/output:.*Temperature.*?([.\d]+)\sC/
+/perfdata:temperature=([.\d]+);([.\d]+);([.\d]+)/
+and push @s, [ 'temp',
+               [ 'temperature', GAUGE, $1 ],
+               [ 'warn',  GAUGE, $2 ],
+               [ 'crit',  GAUGE, $3 ] ];
+
+# Service type: unix uptime
+#   output:OK - uptime is 36 Days, 2 Hours, 42 Minutes
+#   perfdata:
+/output:.*uptime is.*?([.\d]+)\sDays/
+and push @s, [ 'data',
+               [ 'days', GAUGE, $1 ] ]
+or (/output:.*uptime is.*?([.\d]+)\sHours/
+    and push @s, [ 'data',
+               [ 'days', GAUGE, $1/24 ] ])
+or (/output:.*uptime is.*?([.\d]+)\sMinutes/
+    and push @s, [ 'data',
+               [ 'days', GAUGE, $1/1440 ] ]);
+
+# Service type: macosx-ntp
+#   output:NTP OK: Offset 0.001083 secs
+/output:NTP.*Offset ([-.0-9]+)/
+and push @s, [ 'ntp',
+               [ 'offset',  GAUGE, $1 ] ];
+
+# Service type: unix-ntp-client
+#   output:NTP OK: Offset 0.001083 secs
+# perfdata:offset=1032.98;60.00000; 120.00000;
+/perfdata: offset=([-.0-9]+)s;(.\d+);(.\d+);/
+and push @s, [ 'data',
+               [ 'offset',  GAUGE, $1 ],
+               [ 'warn',  GAUGE, $2 ],
+               [ 'crit', GAUGE, $3 ] ];
+
+# Service type: unix total processes
+#   output:OK: Total: 90, Zombie: 0, RSDT: 23
+# perfdata:total=90 zombie=0 rsdt=23
+/perfdata:total=(\d+) zombie=(\d+) rsdt=(\d+)/
+and push @s, [ 'data',
+               [ 'total', GAUGE, $1 ],
+               [ 'zombie', GAUGE, $2 ],
+               [ 'rsdt', GAUGE, $3 ] ];
+
+# Service type: unix cpu
+#   output: User: 14%, Nice: 0%, System: 1%, Idle: 83%
+# perfdata: user=14.17 nice=0 sys=1.9488 idle=83.87
+/perfdata:user=([.\d]+) nice=([.\d]+) sys=([.\d]+) idle=([.\d]+)/
+and push @s, [ 'cpu',
+               [ 'user', GAUGE, $1 ],
+               [ 'nice', GAUGE, $2 ],
+               [ 'system', GAUGE, $3 ],
+               [ 'idle', GAUGE, $4 ]];
+
+# Service type: unix memory
+#   output: Real Free: 25924 kB, Swap Free: 1505472 kb
+#   perfdata: total=514560 free=25924 swaptot=1506172 swapfree=1505472
+/perfdata:total=([\d]+) free=([\d]+) swaptot=([\d]+) swapfree=([\d]+)/
+and push @s, [ 'data',
+               [ 'real-total', GAUGE, $1 ],
+               [ 'real-free', GAUGE, $2 ],
+               [ 'swap-total', GAUGE, $3 ],
+               [ 'swap-free', GAUGE, $4 ]];
+
+# Service type: unix network
+#   output: Received 3956221475, Transmitted = 571374458
+# perfdata: rbyte=3956221475 rpacket=36097353 rerr=0 rdrop=0 rmult=0 tbyte=571374458 tpacket=62062295 terr=6 tdrop=0 tmult=0
+/perfdata:rbyte=([\d]+) rpacket=([\d]+) rerr=([\d]+) rdrop=([\d]+) rmult=([\d]+) tbyte=([\d]+) tpacket=([\d]+) terr=([\d]+) tdrop=([\d]+) tmult=([\d]+)/
+and push @s, [ 'data',
+               [ 'byte-received', COUNTER, $1 ],
+               [ 'byte-transmitted', COUNTER, $6 ],
+               [ 'packet-received', COUNTER, $2 ],
+               [ 'packet-transmitted', COUNTER, $7 ],
+               [ 'error-received', COUNTER, $3 ],
+               [ 'error-transmitted', COUNTER, $8 ],
+               [ 'drop-received', COUNTER, $4 ],
+               [ 'drop-transmitted', COUNTER, $9 ],
+               [ 'multi-received', COUNTER, $5 ],
+               [ 'multi-transmitted', COUNTER, $10 ]];
+
 # Example for handling variable number of input items in one entry (from a
 # request from Mathias Waack to handle tracking Oracle tablespace usage):
-#/output:.*tbs.*usage is/ and do { 
-#	my @order = /tbs ([A-Z0-9]+) usage/g; 
-#	my %data = /tbs ([A-Z0-9]+) usage is ([0-9.]+)%/g; 
-#	my @rval; 
-#	foreach my $key (@order) { 
-#		push @rval, [$key, 'GAUGE', $data{$key}]; 
-#	} 
-#	push @s, ['tablespaces', @rval]; 
+#/output:.*tbs.*usage is/ and do {
+#	my @order = /tbs ([A-Z0-9]+) usage/g;
+#	my %data = /tbs ([A-Z0-9]+) usage is ([0-9.]+)%/g;
+#	my @rval;
+#	foreach my $key (@order) {
+#		push @rval, [$key, 'GAUGE', $data{$key}];
+#	}
+#	push @s, ['tablespaces', @rval];
 #};
