@@ -26,8 +26,8 @@ Installation Preliminaries
  - Copy the contents of etc into your preferred configuration target location,
    e.g. /etc/nagios/nagiosgraph
 
- - Edit the perl scripts in the cgi and lib directories, modifying the "use lib"
-   lines to point to the directory in the previous step.
+ - Edit the perl scripts in the cgi and lib directories, modifying the
+   "use lib" lines to point to the directory in the previous step.
 
  - Copy the contents of lib into a location Nagios can execute file in
    e.g. /usr/lib/nagios
@@ -57,8 +57,10 @@ Installation Preliminaries
 Upgrade Notes
 -------------
 
- - Follow the above steps, except only copy the etc/ngshared.pm file from the
-   etc directory to your configuration target location.
+ - Follow the steps above, but keep your customizations.  Your changes should
+   be limited to the configuration files (nagiosgraph.conf, servdb.conf,
+   hostdb.conf, rrdopts.conf, and map).  You may also have modifications to
+   the stylesheet (nagiosgraph.css).
 
  - Use diff, or a similar tool, to update your nagiosgraph.conf with new fields
    from etc/nagiosgraph.conf, and in particular, note the JavaScript change.
@@ -66,9 +68,32 @@ Upgrade Notes
    that gets sent seperately to the browser, and as such needs to go where the
    web server can send it.
 
- - You may want to look at etc/map to see if there are any new examples that you
-   may find useful.
+ - You may want to look at etc/map to see if there are any new examples that
+   you may find useful.
 
+
+Displaying Graphs Directly in Nagios
+------------------------------------
+
+To embed nagiosgraph graphs directly into nagios, do the following:
+
+  - Modify side.php (e.g. /opt/nagios/share/side.php) by inserting two
+    bullets under the 'Trends' heading, one for showing hosts and the
+    other for showing services:
+
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/trends.cgi" target="<?php echo $link_target;?>">Trends</a>
+<ul>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/showhost.cgi" target="<?php echo $link_target;?>">Hosts</a></li>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/showservice.cgi" target="<?php echo $link_target;?>">Services</a></li>
+</ul>
+</li>
+
+  - If you keep the nagiosgraph cgi scripts in a location different than
+    the nagios cgi scripts, then use 'ng_cgi_base_url' rather than
+    'cgi_base_url' and make an entry in config.inc.php like this:
+
+$cfg['cgi_base_url']='/nagios/cgi-bin';
+$cfg['ng_cgi_base_url']='/nagiosgraph/cgi-bin';
 
 
 Service Perfdata Processing Configuration
