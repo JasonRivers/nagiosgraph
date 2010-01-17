@@ -17,7 +17,7 @@ Note: Nagios is a registered trademark of Ethan Galstad.
 Usage
 ------
 
-Follow the instructions in INSTALL for how to install and configure 
+Follow the instructions in INSTALL for how to install and configure
 nagiosgraph.
 
 
@@ -31,7 +31,7 @@ README            - This file
 README.map        - Document for how to create map file entries
 TODO              - A list of potential improvements to Nagiosgraph.
 install.pl        - an initial stab at an installer (for the brave only).
-lib/insert.pl     - Reads perfdata log from nagios and insert into rrd 
+lib/insert.pl     - Reads perfdata log from nagios and insert into rrd
                     files.
 lib/insert.sh     - A shell script wrapper around insert.pl.
 lib/nagiosgraph.js - JavaScript used by show.cgi for menus.
@@ -39,13 +39,13 @@ cgi/show.cgi      - Generates an html page for the host/service specified.
 cgi/showgraph.cgi - Generates graphs for show, showhost and showservices.
 cgi/showhost.cgi  - Generates an html page for the host specified, showing all
                     available services on the host.
-cgi/showservices.cgi - Generates an html page for the service specified, showing
-                    all hosts with that service's data.
+cgi/showservices.cgi - Generates an html page for the service specified,
+                    showing all hosts with that service.
 cgi/testcolor.cgi - Preview of colors for keywords in each color scheme
 etc/nagiosgraph.conf - paths and other configuration
 etc/hostdb.conf   - Configuration specific to showhost.cgi
 etc/servdb.conf   - Configuration specific to showservices.cgi
-etc/map           - Regular expression to identify services and 
+etc/map           - Regular expression to identify services and
                     specification for how to create rrd files.
 etc/ngshared.pm   - Shared library of common perl subroutines
 more_examples/*   - Additional configuration examples.
@@ -84,10 +84,10 @@ nagiosgraph script called 'insert.pl'. This script will look up in
 
 In Nagios, it's possible to have extended service information pages.
 A nagiosgraph cgi script called 'show.cgi' is used for such service
-information links. 'show.cgi' looks up performance data stored in rrd file 
-directories, and generates line charts accordingly. 
+information links. 'show.cgi' looks up performance data stored in rrd file
+directories, and generates line charts accordingly.
 
-nagiosgraph automatically detects new hosts or services added in Nagios, 
+nagiosgraph automatically detects new hosts or services added in Nagios,
 so generally no re-configuration of nagiosgraph is necessary.
 
 The 'map' configuration file is actually perl code, that will be eval'ed
