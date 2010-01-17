@@ -1,61 +1,94 @@
+/* nagiosgraph stylesheet
+
+ License: OSI Artistic License
+		  http://www.opensource.org/licenses/artistic-license-2.0.php
+ Author:  (c) 2008 Alan Brenner, Ithaka
+		  (c) 2010 Matthew Wall
+*/
+
 body {
-	color: #black;
-	background-color: #BBBBFF;
-    font-family: arial, verdana, serif;
-    font-weight: normal;
-    font-size: 10pt;
+	color: black;
+	background-color: white;
+	font-family: arial, verdana, serif;
+	font-weight: normal;
+	font-size: 10pt;
 }
 h1 {
 	font-size: 12pt;
-}
-div.period_title {
-	clear: both;
-	font-size: 10pt;
 	font-weight: bold;
-	margin-top: 30px;
+}
+.period_title {
+	clear: both;
 	padding-top: 0.5em;
 	padding-left: 0.5em;
-	padding-bottom: 0.5em;
+	padding-bottom: 1.5em;
 	background-color: #efefef;
 	border: 1px solid #dddddd;
 }
-div.graph_title {
-	clear: both;
-	float: right;
-	font-size: 10pt;
+.period_anchor {
+	float: left;
 	font-weight: bold;
-	padding-top: 0.5em;
 }
-div.graphs {
-	padding: 2px 0 0 0;
+.period_controls {
+	float: right;
+	font-weight: bold;
 }
-div#footer {
+.period_detail {
+	font-size: 9pt;
+	font-weight: normal;
+}
+.graph {
+	clear: both;
+	float: left;
+	padding-top: 2px;
+	padding-bottom: 2px;
+}
+.graph_details {
+	float: right;
+	text-align: right;
+}
+.graph_title {
+	font-weight: bold;
+}
+.graph_link {
+	font-weight: bold;
+}
+.graph_description {
+	font-size: 9pt;
+}
+.primary_controls {
+	background-color: #efefef;
+	border: 1px solid #dddddd;
+	padding: 4px 10px 4px 10px;
+	float: left;
+}
+.secondary_controls {
+	background-color: #efefef;
+	border: 1px solid #dddddd;
+	padding: 4px 10px 4px 10px;
+	float: right;
+}
+#secondary_controls_box {
+}
+#db_controls {
+}
+.update_controls {
+	padding: 4px 20px 4px 20px;
+}
+.control_label {
+	text-align: right;
+}
+.controls_toggle {
+	text-align: right;
+	margin: 0px 0px 0px 0px;
+}
+.item_label {
+	font-weight: bold;
+}
+.timestamp {
+	font-weight: bold;
+}
+.footer {
 	clear: both;
 	padding-top: 20px;
-}
-#primary_controls {
-	background-color: #efefef;
-	border: 1px solid #dddddd;
-	padding: 4px 10px 4px 10px;
-	float: left;
-}
-#secondary_controls {
-	background-color: #efefef;
-	border: 1px solid #dddddd;
-	padding: 4px 10px 4px 10px;
-	float: right;
-}
-#update_controls {
-    padding: 4px 10px 4px 10px;
-}
-img {
-	float: left;
-	margin-left: 15px;
-	margin-bottom: 1em;
-	padding-right: 10px;
-}
-div.graph_description {
-	/* to valign the text */
-	margin-top: 0;
-	padding-top: 70px;
 }

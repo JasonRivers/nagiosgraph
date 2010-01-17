@@ -1,4 +1,4 @@
-#!/usr/bin/perl ## no critic (RequireVersionVar)
+#!/usr/bin/perl
 
 # File:    $Id$
 # This program is based upon show.cgi, and showhost.cgi
@@ -22,18 +22,7 @@ use File::Find;
 use strict;
 use warnings;
 
-my ($params,                    # Required service to show data for
-    @style,                     # CSS, if so configured
-    $hdb,                       # host database
-    $sdb,                       # service database
-    $dbinfo,                    # showgraph.cgi parameters
-    $label,                     # data labels from nagiosgraph.conf
-    $title,                     # boolean for when to print the labels
-    $cgi,                       # CGI.pm instance
-    $url,                       # url parameters for showgraph.cgi
-    $periods);                  # time periods to graph
-
-$cgi = new CGI;                 ## no critic (ProhibitIndirectSyntax)
+my $cgi = new CGI;              ## no critic (ProhibitIndirectSyntax)
 $cgi->autoEscape(0);
 readconfig('read');
 if (defined $Config{ngshared}) {
@@ -42,46 +31,40 @@ if (defined $Config{ngshared}) {
     exit;
 }
 # Expect service input
-$params = getparams($cgi, 'showservice', ['service', ]);
+my $params = getparams($cgi, 'showservice', ['service', ]);
 dumper(DBDEB, 'params', $params);
-if (not defined $params->{service} or not $params->{service}) {
-    htmlerror(trans('noservicegiven'), 1);
-    exit;
-}
 
 # See if we have custom debug level
 getdebug('showservice', q(), $params->{service});
 
 # see if the time periods were specified.  ensure list is space-delimited.
-$periods = (defined $params->{period} && $params->{period} ne q())
+my $periods = (defined $params->{period} && $params->{period} ne q())
     ? $params->{period} : $Config{timeservice};
 $periods =~ s/,/ /g;            ## no critic (RegularExpressions)
 
 # use stylesheet if specified
-if ($Config{stylesheet}) { @style = (-style => {-src => "$Config{stylesheet}"}); }
+my @style;
+if ($Config{stylesheet}) {
+    @style = (-style => {-src => "$Config{stylesheet}"});
+}
 
 find(\&getgraphlist, $Config{rrddir});
-($hdb, $sdb, $dbinfo) = readservdb($params->{service});
+my ($hdb, $sdb, $dbinfo) = readservdb($params->{service});
 dumper(DBDEB, 'hdb', $hdb);
 if ($params->{db}) { $dbinfo->{db} = $params->{db}; }
 dumper(DBDEB, 'dbinfo', $dbinfo);
-$label = (exists $dbinfo->{label}) ? $dbinfo->{label} : $params->{service};
+my $label = (exists $dbinfo->{label}) ? $dbinfo->{label} : $params->{service};
 debug(DBDEB, "default = $label");
 
 $dbinfo->{rrdopts} = (defined $Config{rrdopts}{$params->{service}})
     ? $Config{rrdopts}{$params->{service}}
-    : $dbinfo->{rrdopts} = $params->{rrdopts};
+    : $params->{rrdopts};
 
-if (exists $Config{graphlabels} and not exists $Config{nolabels}) {
-    $title = 1;
-} else {
-    $title = 0;
-}
 $dbinfo->{geom} = $params->{geom};
 $dbinfo->{fixedscale} = $params->{fixedscale};
 $dbinfo->{offset} = 0;
 
-# Draw a page
+# Draw the page
 print printheader($cgi,
                   {title => $params->{service},
                    style => \@style,
@@ -91,25 +74,21 @@ print printheader($cgi,
                    label => $cgi->unescape($label)}) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
+my $now = time;
 foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
-    print $cgi->div({-class=>'period_title'}, trans($period->[0])) . "\n" or
+    print printperiodlinks($cgi, $params, $period, $now) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
     foreach my $host (@{$hdb}) {
         debug(DBDEB, "host = $host");
         $dbinfo->{host} = $host;
-        $url = $Config{nagiosgraphcgiurl} .
+        my $url = $Config{nagiosgraphcgiurl} .
             '/show.cgi?host=' . $cgi->escape($host) .
             '&service=' . $cgi->escape($params->{service});
         $url =~ tr/ /+/;
-        print $cgi->div({-class=>'graph_title'},
-                        $cgi->a({href => $url}, $host)) . "\n" .
-                printgraphlinks($cgi, $dbinfo, $period) or
+        my $link = $cgi->a({href => $url}, $host);
+        print printgraphlinks($cgi, $dbinfo, $period) . "\n" or
             debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
-        if (not $title) {
-            print printlabels(getlabels($params->{service}, $dbinfo->{db})) or
-                debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
-        }
     }
 }
 
@@ -185,9 +164,6 @@ directory as B<ngshared.pm>.
 
 =head1 BUGS AND LIMITATIONS
 
-Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
-simple and tested.
-
 =head1 SEE ALSO
 
 B<servdb.conf> B<nagiosgraph.conf> B<showgraph.cgi> B<showhost.cgi> B<ngshared.pm>
@@ -201,7 +177,7 @@ Robert Teeter, the original author of showhost.cgi in 2005.
 Alan Brenner - alan.brenner@ithaka.org; I've written this based on Robert
 Teeter's showhost.cgi.
 
-Matthew Wall, minor feature additions, bug fixing and refactoring in 2010.
+Matthew Wall, added features, bug fixes and refactoring in 2010.
 
 =head1 LICENSE AND COPYRIGHT
 

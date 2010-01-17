@@ -1,4 +1,4 @@
-#!/usr/bin/perl ## no critic (RequireVersionVar)
+#!/usr/bin/perl
 
 # File:    $Id$
 # This program is based upon show.cgi
@@ -23,15 +23,7 @@ use File::Find;
 use strict;
 use warnings;
 
-my ($params,                    # Required hostname to show data for
-    @style,                     # CSS, if so configured
-    $hdb,                       # array ref of service to list for the host
-    $title,                     # boolean for when to print the labels
-    $cgi,                       # CGI.pm instance
-    $url,                       # link to showservice.cgi
-    $periods);                  # time periods to graph
-
-$cgi = new CGI;                 ## no critic (ProhibitIndirectSyntax)
+my $cgi = new CGI;              ## no critic (ProhibitIndirectSyntax)
 $cgi->autoEscape(0);
 readconfig('read');
 if (defined $Config{ngshared}) {
@@ -40,27 +32,26 @@ if (defined $Config{ngshared}) {
     exit;
 }
 # Expect host input
-$params = getparams($cgi, 'showhost', ['host', ]);
+my $params = getparams($cgi, 'showhost', ['host', ]);
 dumper(DBDEB, 'params', $params);
-if (not defined $params->{host} or not $params->{host}) {
-    htmlerror(trans('nohostgiven'), 1);
-    exit;
-}
 
 # See if we have custom debug level
 getdebug('showhost', $params->{host}, q());
 
 # see if the time periods were specified.  ensure list is space-delimited.
-$periods = (defined $params->{period} && $params->{period} ne q())
+my $periods = (defined $params->{period} && $params->{period} ne q())
     ? $params->{period} : $Config{timehost};
 $periods =~ s/,/ /g;            ## no critic (RegularExpressions)
 
 # use stylesheet if specified
-if ($Config{stylesheet}) { @style = (-style => {-src => "$Config{stylesheet}"}); }
+my @style;
+if ($Config{stylesheet}) {
+    @style = (-style => {-src => "$Config{stylesheet}"});
+}
 
 find(\&getgraphlist, $Config{rrddir});
 
-$hdb = readhostdb($params->{host});
+my $hdb = readhostdb($params->{host});
 
 # Draw a page
 print printheader($cgi,
@@ -73,40 +64,29 @@ print printheader($cgi,
                                     $params->{host})}) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
-if (exists $Config{graphlabels} and not exists $Config{nolabels}) {
-    $title = 1;
-} else {
-    $title = 0;
-}
+my $now = time;
 foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
-    print $cgi->div({-class=>'period_title'}, trans($period->[0])) . "\n" or
+    print printperiodlinks($cgi, $params, $period, $now) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
     foreach my $dbinfo (@{$hdb}) {
-        debug(DBDEB, "service $dbinfo->{service}");
-        if (defined $Config{rrdopts}{$params->{service}}) {
-            $dbinfo->{rrdopts} = $Config{rrdopts}{$params->{service}};
-        } else {
-            $dbinfo->{rrdopts} = $params->{rrdopts};
-        }
+         $dbinfo->{rrdopts} = (defined $Config{rrdopts}{$dbinfo->{service}})
+            ? $Config{rrdopts}{$dbinfo->{service}}
+            : $params->{rrdopts};
         $dbinfo->{host} = $params->{host};
         $dbinfo->{geom} = $params->{geom};
         $dbinfo->{fixedscale} = $params->{fixedscale};
         $dbinfo->{offset} = 0;
-        $url = $Config{nagiosgraphcgiurl} .
+        dumper(DBDEB, 'dbinfo', $dbinfo);
+        my $url = $Config{nagiosgraphcgiurl} .
             '/showservice.cgi?service=' . $dbinfo->{service} .
             join '&db=' . @{$dbinfo->{db}};
         $url =~ tr/ /+/;
-        print $cgi->div({-class=>'graph_title'},
-                        $cgi->a({href => $url},
-                                defined $dbinfo->{label} ? $dbinfo->{label} :
-                                $dbinfo->{service})) . "\n" .
-            printgraphlinks($cgi, $dbinfo, $period) . "\n" or
+        my $link = $cgi->a({href => $url},
+                           defined $dbinfo->{label} ? $dbinfo->{label} :
+                               $dbinfo->{service});
+        print printgraphlinks($cgi, $dbinfo, $period, $link) . "\n" or
             debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
-        if (not $title) {
-            print printlabels(getlabels($dbinfo->{service}, $dbinfo->{db})) or
-                debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
-        }
     }
 }
 
@@ -197,9 +177,6 @@ Copy the images/action.gif file to the nagios/images directory, if desired.
 
 =head1 BUGS AND LIMITATIONS
 
-Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
-simple and tested.
-
 =head1 SEE ALSO
 
 B<hostdb.conf> B<nagiosgraph.conf> B<showgraph.cgi> B<showservice.cgi> B<ngshared.pm>
@@ -215,7 +192,7 @@ at http://nagiosgraph.wiki.sourceforge.net/ by moving some subroutines into a
 shared file (ngshared.pm), using showgraph.cgi, and adding links for show.cgi
 and showservice.cgi.
 
-Matthew Wall, minor feature additions, bug fixing and refactoring in 2010.
+Matthew Wall, added features, bug fixes and refactoring in 2010.
 
 =head1 LICENSE AND COPYRIGHT
 

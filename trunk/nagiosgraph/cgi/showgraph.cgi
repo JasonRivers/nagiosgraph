@@ -1,4 +1,5 @@
-#!/usr/bin/perl ## no critic (RequireVersionVar)
+#!/usr/bin/perl
+## no critic (RequireVersionVar)
 
 # File:    $Id$
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008; Soren Dossing, 2005

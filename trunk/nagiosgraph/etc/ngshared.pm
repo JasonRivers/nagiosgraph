@@ -1,10 +1,12 @@
-#!/usr/bin/perl ## no critic (RequirePodSections)
+#!/usr/bin/perl
+## no critic (RegularExpressions)
 
 # File:    $Id$
-# Author:  Soren Dossing, 2005
 # License: OSI Artistic License
-#            http://www.opensource.org/licenses/artistic-license-2.0.php
+#          http://www.opensource.org/licenses/artistic-license-2.0.php
+# Author:  Soren Dossing, 2005
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
+# Author:  Matthew Wall, 2010
 
 use strict;
 use warnings;
@@ -25,15 +27,18 @@ use constant DBDEB => 5;
 
 use constant GRAPHWIDTH => 600;
 use constant PROG => basename($PROGRAM_NAME);
+use constant NAGIOSGRAPHURL => 'http://nagiosgraph.wiki.sourceforge.net/';
+use constant ERRSTYLE => '.error { padding: 0.75em; background-color: #fff6f3; border: solid 1px #cc3333; }';
+use constant ERRMSG => 'Nagiosgraph has detected an error in the configuration file: ';
 
+# default geometries
+use constant GEOMETRIES => 'default,650x150,1000x200';
 
 use vars qw(%Config %Navmenu $colorsub $VERSION %Ctrans $LOG); ## no critic (ProhibitPackageVars)
 $colorsub = -1; ## no critic (ProhibitMagicNumbers)
 $VERSION = '1.4.0';
 
-# default geometries
-use constant GEOMETRIES => 'default,650x150,1000x200';
-
+my $CFGNAME = 'nagiosgraph.conf';
 my @PERIODS = qw(day week month quarter year);
 
 # Debug/logging support #######################################################
@@ -127,11 +132,12 @@ sub getdebug {
 }
 
 # HTTP support ################################################################
-# URL encode a string
+# get parameters from CGI
 sub getparams {
     my ($cgi, $cgiprog, $reqs) = @_;
     my %rval;
-    for my $ii ('host', 'service', 'db', 'graph', 'geom', 'rrdopts', 'offset', 'period') {
+    for my $ii ('host', 'service', 'db', 'graph', 'geom',
+                'rrdopts', 'offset', 'period') {
         if ($cgi->param($ii)) {
             if (ref($cgi->param($ii)) eq 'ARRAY') {
                 my @rval = $cgi->param($ii);
@@ -239,21 +245,24 @@ sub getfilename {
     return $directory, $filename;
 }
 
+# this is completely self-contained so that it can be called no matter what
+# error we encounter.  stylesheet is hard-coded so no dependencies on anything
+# external.
 sub htmlerror {
     my ($msg, $bconf) = @_;
     my $cgi = new CGI;          ## no critic (ProhibitIndirectSyntax)
     print $cgi->header(-type => 'text/html', -expires => 0) .
-        $cgi->start_html(-id => 'nagiosgraph', -title => 'NagiosGraph Error Page') .
-        '<STYLE TYPE="text/css">div.error { border: solid 1px #cc3333;' .
-        ' background-color: #fff6f3; padding: 0.75em; }</STYLE>' or
+        $cgi->start_html(-id => 'nagiosgraph',
+                         -title => 'NagiosGraph Error',
+                         -head => $cgi->style({-type => 'text/css'},
+                                    ERRSTYLE)) or
         debug(DBCRT, "could not write to STDOUT: $OS_ERROR");
     if (not $bconf) {
         print $cgi->div({-class => 'error'},
-                  'Nagiosgraph has detected an error in the configuration file: '
-                  . $INC[0] . '/nagiosgraph.conf.') or
+                        ERRMSG . $INC[0] . q(/) . $CFGNAME) . "\n" or
             debug(DBCRT, "could not write to STDOUT: $OS_ERROR");
     }
-    print $cgi->div($msg) . $cgi->end_html() or
+    print $cgi->div({-class=>'error'}, $msg) . "\n" . $cgi->end_html() or
         debug(DBCRT, "could not write to STDOUT: $OS_ERROR");
     return;
 }
@@ -278,7 +287,7 @@ sub hashcolor {
     ## no critic (ProhibitMagicNumbers)
     my ($min, $max, $rval, @rgb) = (0, 0);
     # generate a starting value
-    map { $color = (51 * $color + ord) % (216) } split //, $label; ## no critic (RegularExpressions)
+    map { $color = (51 * $color + ord) % (216) } split //, $label;
     # turn the starting value into a red, green, blue triplet
     @rgb = (51 * int($color / 36), 51 * int($color / 6) % 6, 51 * ($color % 6));
     for my $ii (0 .. 2) {
@@ -311,7 +320,7 @@ sub listtodict {
     debug(DBDEB, 'listtodict splitting "' . $Config{$val} . '" on "' . $Config{$val . 'sep'} . q(")); # "
     foreach my $ii (split $Config{$val . 'sep'}, $Config{$val}) {
         if ($val eq 'hostservvar') {
-            my @data = split /,/, $ii; ## no critic (RegularExpressions)
+            my @data = split /,/, $ii;
             dumper(DBDEB, 'listtodict hostservvar data', \@data);
             if (defined $rval{$data[0]}) {
                 if (defined $rval{$data[0]}->{$data[1]}) {
@@ -323,7 +332,7 @@ sub listtodict {
                 $rval{$data[0]} = {$data[1] => {$data[2] => 1}};
             }
         } elsif ($commasplit) {
-            my @data = split /,/, $ii; ## no critic (RegularExpressions)
+            my @data = split /,/, $ii;
             dumper(DBDEB, 'listtodict commasplit data', \@data);
             $rval{$data[0]} = $data[1];
         } else {
@@ -358,7 +367,6 @@ sub readfile {
         ($Config{ngshared} = "$filename not found") and
         carp $Config{ngshared};
     my ($key, $val);
-    ## no critic (RegularExpressions)
     while (<$FH>) {
         s/\s*#.*//;             # Strip comments
         s/^\s+//;               # removes leading whitespace
@@ -372,7 +380,7 @@ sub readfile {
             debug(DBDEB, "$filename $key:$val");
         };
     }
-    close $FH or debug(DBCRT, "Error closing $INC[0]/nagiosgraph.conf: $OS_ERROR");
+    close $FH or debug(DBCRT, "Error closing $INC[0]/$CFGNAME: $OS_ERROR");
     return;
 }
 
@@ -407,11 +415,11 @@ sub readconfig {
         open $LOG, '>&=STDERR' or carp "$OS_ERROR\n"; ## no critic (RequireBriefOpen)
         $Config{debug} = $debug;
         dumper(DBDEB, 'INC', \@INC);
-        debug(DBDEB, "readconfig opening $INC[0]/nagiosgraph.conf'");
+        debug(DBDEB, "readconfig opening $INC[0]/$CFGNAME");
     } else {
         $debug = 1;
     }
-    readfile($INC[0] . '/nagiosgraph.conf', \%Config, $debug);
+    readfile($INC[0] . q(/) . $CFGNAME, \%Config, $debug);
 
     # From Craig Dunn, with modifications by Alan Brenner to use an eval, to
     # allow continuing on failure to open the file, while logging the error
@@ -443,14 +451,12 @@ sub readconfig {
                     ['timeservice', 'day'],
                     ['geometries', GEOMETRIES],
                     ['color', 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0'],) {
-        if (not $Config{$ii->[0]}) {
-            $Config{$ii->[0]} = $ii->[1];
-        }
+        if (not $Config{$ii->[0]}) { $Config{$ii->[0]} = $ii->[1]; }
     }
-    if ($Config{geometries} !~ /default/) { ## no critic (RegularExpressions)
+    if ($Config{geometries} !~ /default/) {
         $Config{geometries} = 'default,' . $Config{geometries};
     }
-    $Config{color} = [split /\s*,\s*/, $Config{color}]; ## no critic (RegularExpressions)
+    $Config{color} = [split /\s*,\s*/, $Config{color}];
 
     # If debug is set make sure we can write to the log file
     if ($Config{debug} > 0) {
@@ -486,13 +492,13 @@ sub readhostdb {
     }
     while ($line = <$DB>) {
         chomp $line;
-        $line =~ s/\s*#.*//;    ## no critic (RegularExpressions) Strip comments
+        $line =~ s/\s*#.*//;
         next if ! $line;
         $line =~ tr/+/ /;
         chomp $line;
         debug(DBDEB, "readhostdb $line");
-        my %dbtmp = ($line =~ /([^=&]+)\s*=\s*([^&]*)/g); ## no critic (RegularExpressions)
-        my @dbtmp = split /,/, $dbtmp{db}; ## no critic (RegularExpressions)
+        my %dbtmp = ($line =~ /([^=&]+)\s*=\s*([^&]*)/g);
+        my @dbtmp = split /,/, $dbtmp{db};
         $dbtmp{db} = \@dbtmp;
         my ($dir, $file) = getfilename($val, $dbtmp{service}, $dbtmp[0]);
         $dbtmp{filename} = $dir . q(/) . $file;
@@ -525,16 +531,16 @@ sub readservdb {
     my @hosts;
     while ($line = <$DB>) {
         chomp $line;
-        $line =~ s/\s*#.*//; ## no critic (RegularExpressions)
+        $line =~ s/\s*#.*//;
         next if ! $line;
         $line =~ tr/+/ /;
         chomp $line;
         debug(DBDEB, "readservdb $line");
         if (index($line, 'host') == 0) {
             debug(DBDEB, 'readservdb found service host list');
-            push @hosts, split /\s*,\s*/, (split /=/, $line)[1]; ## no critic (RegularExpressions)
+            push @hosts, split /\s*,\s*/, (split /=/, $line)[1];
         } else {
-            my %dbtmp = ($line =~ /([^=&]+)\s*=\s*([^&]*)/g); ## no critic (RegularExpressions)
+            my %dbtmp = ($line =~ /([^=&]+)\s*=\s*([^&]*)/g);
             dumper(DBDEB, 'readservdb dbtmp', \%dbtmp);
             push @sdb, $dbtmp{service};
             debug(DBDEB, "readservdb $dbtmp{service} eq $val");
@@ -550,7 +556,7 @@ sub readservdb {
     dumper(DBDEB, 'candidate hosts', \@hosts);
     if ($dbinfo{db}) {
         foreach my $host (@hosts) {
-            my @dbtmp = split /,/, $dbinfo{db}; ## no critic (RegularExpressions)
+            my @dbtmp = split /,/, $dbinfo{db};
             my($dir,$file) = getfilename($host, $dbinfo{service}, $dbtmp[0]);
             my $fn = $dir . q(/) . $file;
             if (not -f $fn) {
@@ -576,7 +582,7 @@ sub dbfilelist {
     my ($entry, $DH, @rrd);
     opendir $DH, $directory;
     while ($entry = readdir $DH) {
-        if ($entry =~ /^${filename}(.+)\.rrd$/) { ## no critic (RegularExpressions)
+        if ($entry =~ /^${filename}(.+)\.rrd$/) {
             push @rrd, unescape($1);
         }
     }
@@ -602,7 +608,6 @@ sub getdataitems {
         debug(DBERR, 'getdataitems: RRDs::info ERR ' . $ERR);
         dumper(DBERR, 'getdataitems: ds', $ds);
     }
-    ## no critic (RegularExpressions)
     return grep { ! $dupes{$_}++ }             # filters duplicate data set names
         map { /ds\[(.*)\]/ and $1 }            # returns just the data set names
             grep { /ds\[(.*)\]/ } keys %{$ds}; # gets just the data set fields
@@ -631,10 +636,10 @@ sub graphinfo {
             $line,              # value split from $ll
             $unit) = (0);       # value split from $ll
         for my $dd (@{$db}) {
-            ($dbname, @lines) = split /,/, $dd; ## no critic (RegularExpressions)
+            ($dbname, @lines) = split /,/, $dd;
             $rrd[$nn]{file} = $hs . escape("$dbname") . '.rrd';
             for my $ll (@lines) {
-                ($line, $unit) = split /~/, $ll; ## no critic (RegularExpressions)
+                ($line, $unit) = split /~/, $ll;
                 if ($unit) {
                     $rrd[$nn]{line}{$line}{unit} = $unit;
                 } else {
@@ -666,13 +671,12 @@ sub graphinfo {
     return \@rrd;
 }
 
-my @linestyle = qw(LINE1 LINE2 LINE3 AREA TICK);
 sub setlabels { ## no critic (ProhibitManyArgs)
     my ($dataset, $longest, $color, $serv, $file, $ds) = @_;
     my $label = sprintf "%-${longest}s", $dataset;
     debug(DBDEB, "setlabels($label)");
     my $linestyle = $Config{plotas};
-    foreach my $ii (@linestyle) {
+    foreach my $ii (qw(LINE1 LINE2 LINE3 AREA TICK)) {
         if (defined($Config{'plotas' . $ii}->{$dataset})) {
             $linestyle = $ii;
             last;
@@ -681,7 +685,6 @@ sub setlabels { ## no critic (ProhibitManyArgs)
     if (defined $Config{lineformat}) {
         dumper(DBDEB, 'lineformat', \%{$Config{lineformat}});
         foreach my $tuple (keys %{$Config{lineformat}}) {
-            ## no critic (RegularExpressions)
             if ($tuple =~ /^$dataset,/) {
                 my @values = split /,/, $tuple;
                 foreach my $value (@values) {
@@ -768,10 +771,10 @@ sub rrdline {
         @ds);                   # array of strings for use as the command line
     my $directory = $Config{rrddir};
 
-    if ($params->{rrdopts} and $params->{rrdopts} =~ m/snow.(\d+)/) { ## no critic (RegularExpressions)
+    if ($params->{rrdopts} and $params->{rrdopts} =~ m/snow.(\d+)/) {
         $duration = $1;
     } else {
-        $duration = 118_800; ## no critic (ProhibitMagicNumbers)
+        $duration = 118_800;    ## no critic (ProhibitMagicNumbers)
     }
     @ds = (q(-), q(-a), 'PNG', '--start', "-$params->{offset}");
     # Identify where to pull data from and what to call it
@@ -796,7 +799,7 @@ sub rrdline {
 
     # Dimensions of graph if geom is specified
     if ($params->{geom} && $params->{geom} ne 'default') {
-        my ($w, $h) = split /x/, $params->{geom}; ## no critic (RegularExpressions)
+        my ($w, $h) = split /x/, $params->{geom};
         push @ds, '-w', $w, '-h', $h;
     } else {
         push @ds, '-w', GRAPHWIDTH; # just make the graph wider than default
@@ -804,7 +807,7 @@ sub rrdline {
     # Additional parameters to rrd graph, if specified
     if ($params->{rrdopts}) {
         my $opt = q();
-        foreach my $ii (split /\s+/, $params->{rrdopts}) { ## no critic (RegularExpressions)
+        foreach my $ii (split /\s+/, $params->{rrdopts}) {
             if (substr($ii, 0, 1) eq q(-)) {
                 $opt = $ii;
                 push @ds, $opt;
@@ -850,10 +853,10 @@ sub getgraphlist {
     } elsif (-f $current && substr($current, $rrdlen) eq $extension) { # Files are for services
         my ($host, $service, $dataset);
         $dataset = $File::Find::dir; # this stops the only used once message
-        ($host = $File::Find::dir) =~ s|^$Config{rrddir}/||; ## no critic (RegularExpressions)
+        ($host = $File::Find::dir) =~ s|^$Config{rrddir}/||;
         # We got the server to associate with and now
         # we get the service name by splitting on separator
-        ($service, $dataset) = split /___/, $current; ## no critic (RegularExpressions)
+        ($service, $dataset) = split /___/, $current;
         if ($dataset) { $dataset = substr $dataset, 0, $rrdlen; }
         #debug(DBDEB, "getgraphlist: service = $service, dataset = $dataset");
         if (not exists $Navmenu{$host}{unescape($service)}) {
@@ -979,61 +982,109 @@ sub printnavmenu {
     $rval = printjavascript(\@servers, \%servers);
 
     # Create main form
-    $rval .= $cgi->
-        div({-id=>'controls'}, "\n",
-            $cgi->start_form(-method=>'GET', -name=>'menuform'),
-            $cgi->span({-id=>'primary_controls'},
-            # Selecting a new server shows the associated services menu
-                       trans('selecthost') . ': ',
-                       $cgi->popup_menu(-name=>'servidors',
-                                        -onChange=>'setService(this)',
-                                        -values=>[$host],
-                                        -default=>"$host"), "\n",
-            # Selecting a new service reloads the page with the new graphs
-                       trans('selectserv') . ': ',
-                       $cgi->popup_menu(-name=>'services',
-                                        -onChange=>'setDB(this)',
-                                        -values=>[$service],
-                                        -default=>$service), "\n",
-                       $cgi->span({-id=>'update_controls'},
-                                  $cgi->button(-name=>'go',
-                                               -label=>trans('submit'),
-                                               -onClick=>'jumpto()')
-                                  ), "\n",
-                       ), "\n",
-            $cgi->span({-id=>'secondary_controls'},
-                       $cgi->checkbox(-name=>'showhidecontrols',
-                                      -onChange=>'toggleControlsDisplay()',
-                                      -label=>trans('showhidecontrols')),
-                       $cgi->br(), "\n",
-                       $cgi->span({-id=>'secondary_controls_box'},
-                                  $cgi->checkbox(-name=>'FixedScale',
-                                                 -label=>trans('fixedscale'),
-                                                 -checked=>$fixedscale),
-                                  $cgi->br(), "\n",
-                                  trans('zoom'),
-                                  $cgi->popup_menu(-name=>'geom',
-                                                   -values=>[split /,/, $Config{geometries}]), "\n", ## no critic (RegularExpressions)
-                                  $cgi->br(), "\n",
-                                  $cgi->span({-id=>'db_controls'},
-                                             trans('selectitems'), "\n",
-                                             $cgi->popup_menu(-name=>'db',
-                                                              -values=>[],
-                                                              -size=>3,
-                                                              -multiple=>1),
-                                             $cgi->button(-name=>'clear',
-                                                          -label=>trans('clear'),
-                                                          -onClick=>'clearDBMenuItems()'),
-                                             $cgi->br(), "\n",
-                                             ), "\n",
-                                  ), "\n",
-                       ), "\n",
-            $cgi->end_form) . "\n";
+    $rval .= printcontrols($cgi, 'both', $host, $service, $fixedscale);
 
-    # Preload selected host services
-    $rval .= "<script type=\"text/javascript\">preloadMenus(\"$host\"," .
+    # load the menus
+    $rval .= "<script type=\"text/javascript\">configureMenus(\"$host\"," .
         "\"$service\");</script>\n";
+
     return $rval;
+}
+
+# context is one of both (show), host (showhost), or service (showservice).
+sub printcontrols {
+    my($cgi, $context, $host, $service, $fixedscale) = @_;
+
+    my %selstr = qw(host selecthost service selectserv);
+    my %name = qw(host servidors service services);
+
+    my $item = ($host ne q()) ? $host : $service;
+
+    return $cgi->
+        div({-class=>'controls'}, "\n",
+            $cgi->start_form(-method=>'GET', -name=>'menuform'),
+            ($context eq 'both')
+            ? $cgi->div({-class=>'primary_controls'},
+                        # Selecting a host shows the associated services
+                        trans('selecthost') . q( ),
+                        $cgi->popup_menu(-name=>'servidors',
+                                         -onChange=>'setService(this)',
+                                         -values=>[$host],
+                                         -default=>"$host"), "\n",
+                        # Selecting a service loads the page with new graphs
+                        trans('selectserv') . q( ),
+                        $cgi->popup_menu(-name=>'services',
+                                         -onChange=>'setDB(this)',
+                                         -values=>[$service],
+                                         -default=>$service), "\n",
+                        $cgi->span({-class=>'update_controls'},
+                                   $cgi->button(-name=>'go',
+                                                -label=>trans('submit'),
+                                                -onClick=>'jumpto()')
+                                   ), "\n",
+                      )
+            : $cgi->div({-class=>'primary_controls'},
+                        trans($selstr{$context}) . q( ) .
+                        $cgi->popup_menu(-name=>$name{$context},
+                                         -onChange=>"jumpto${context}(this)",
+                                         -values=>[$item],
+                                         -default=>$item), "\n"),
+            "\n",
+            $cgi->div({-class=>'secondary_controls'},
+                      $cgi->p({-class=>'controls_toggle'},
+                              $cgi->checkbox(-name=>'showhidecontrols',
+                                             -onChange=>'toggleControlsDisplay()',
+                                             -label=>trans('showhidecontrols'))),
+                      $cgi->table({-id=>'secondary_controls_box'},
+                                  $cgi->Tr({-valign=>'top'},
+                                           $cgi->td(q( )),
+                                           $cgi->td($cgi->checkbox(-name=>'FixedScale',
+                                                                   -label=>trans('fixedscale'),
+                                                                   -checked=>$fixedscale)),
+                                           $cgi->td(q( )),
+                                           ),
+                                  $cgi->Tr({-valign=>'top'},
+                                           $cgi->td({-class=>'control_label'},
+                                                    trans('zoom')),
+                                           $cgi->td($cgi->popup_menu(-name=>'geom',
+                                                                     -values=>[split /,/, $Config{geometries}])),
+                                           $cgi->td(q( )),
+                                           ),
+                                  $cgi->Tr({-valign=>'top'},
+                                           $cgi->td({-class=>'control_label'},
+                                                    trans('periods')),
+                                           $cgi->td($cgi->popup_menu(-name=>'period',
+                                                                     -values=>[@PERIODS],
+                                                                     -size=>5,
+                                                                     -multiple=>1)),
+                                           $cgi->td($cgi->button(-name=>'clear',
+                                                                 -label=>trans('clear'),
+                                                                 -onClick=>'clearPeriodItems()')),
+                                           ),
+                                  ($context eq 'host') ? q() :
+                                  $cgi->span({-id=>'db_controls'},
+                                            $cgi->Tr({-valign=>'top'},
+                                                     $cgi->td({-class=>'control_label'},
+                                                              trans('selectds')),
+                                                     $cgi->td($cgi->popup_menu(-name=>'db',
+                                                                               -values=>[],
+                                                                               -size=>3,
+                                                                               -multiple=>1)),
+                                                     $cgi->td($cgi->button(-name=>'clear',
+                                                                           -label=>trans('clear'),
+                                                                           -onClick=>'clearDBMenuItems()')),
+                                                     )),
+                                  ($context eq 'both') ? q() :
+                                  $cgi->Tr({-class=>'update_controls'},
+                                           $cgi->td(q( )),
+                                           $cgi->td($cgi->button(-name=>'go',
+                                                                 -label=>trans('submit'),
+                                                                 -onClick=>'jumpto()')),
+                                           $cgi->td(q( )),
+                                           ),
+                                  ), "\n",
+                      ), "\n",
+            $cgi->end_form) . "\n";
 }
 
 sub checkrrdoptsfortitle {
@@ -1044,57 +1095,100 @@ sub checkrrdoptsfortitle {
     return 1;
 }
 
+sub getdesc {
+    my ($cgi, $params) = @_;
+    # the description contains a list of the data set names.  we first see
+    # if there is a translation for the complete name, e.g. 'cpu,idle'.  if
+    # not, then we try for the smaller part, e.g. 'idle'.  if that fails,
+    # just display the full name, e.g. 'cpu,idle'.  in any case do not
+    # complain about missing translations for these.
+    my $desc = q();
+    if (defined $Config{showdesc} and $Config{showdesc} eq 'true' and
+        $params->{db} and
+        $#{$params->{db}} >= 0 and
+        ${$params->{db}}[0] ne $params->{service}) {
+        foreach my $ii (sortnaturally(@{$params->{db}})) {
+            if ($desc ne q()) { $desc .= $cgi->br(); }
+            my $xx = trans($ii, 1);
+            if ($xx eq $ii) {
+                my ($aa, $bb) = split /,/, $ii;
+                if ($bb && $bb ne q()) {
+                    my $yy = trans($bb, 1);
+                    if ($yy ne $bb) { $xx = $yy; }
+                }
+            }
+            $desc .= $xx;
+        }
+    }
+    return $desc;
+}
+
 sub printgraphlinks {
-    my ($cgi, $params, $period) = @_;
+    my ($cgi, $params, $period, $link) = @_;
+    if (not defined $link) { $link = q(); }
     dumper(DBDEB, 'printgraphlinks params', $params);
     dumper(DBDEB, 'printgraphlinks period', $period);
-    my ($rval, $url) = (q());
-    if ($params->{db}) {
-        my $showtitles = (defined $Config{showtitles} and
-                          $Config{showtitles} eq 'true' and
-                          not exists $Config{nolabels});
-        my $showdesc = (defined $Config{showdesc} and
-                        $Config{showdesc} eq 'true');
-        my @labels = getlabels($params->{service}, $params->{db});
-        $url = buildurl($params->{host}, $params->{service},
-                        {geom => $params->{geom},
-                         rrdopts => $params->{rrdopts},
-                         db => $params->{db},
-                         graph => $period->[1],
-                         fixedscale => $params->{fixedscale}});
-        if (index($url, 'rrdopts') < 0) {
-            $url .= '&rrdopts=';
-        } else {
-            $url .= q( );
-        }
-        if ($showtitles and ref $params->{rrdopts} eq 'ARRAY' and
-            checkrrdoptsfortitle($params->{rrdopts}) and @labels) {
-            if (substr($url, -1, 1) ne q(=)) { $url .= q( ); } ## no critic (ProhibitMagicNumbers)
-            $url .= urllabels(@labels);
-            if (substr($url, -1, 1) ne q(=)) { $url .= q( ); } ## no critic (ProhibitMagicNumbers)
-        }
-        $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?' . $url .
-            '-snow-' . $period->[1] . ' -enow-' . $params->{offset};
-        $url =~ tr/ /+/;
-        debug(DBDEB, "printgraphlinks url = $url");
-        $rval .= $cgi->div({-class => 'graphs'},
-            $cgi->img({-src => $url, -alt => join ', ', @labels})) . "\n";
-        if ($showdesc) {
-            $rval .= printlabels($cgi, @labels);
-        }
-        #if (not $showtitles) { $rval .= printlabels($cgi, @labels); }
-    } else {
-        $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?' .
-            buildurl($params->{host},
-                     $params->{service},
-                     {graph => $period->[1],
-                      geom => $params->{geom},
-                      rrdopts => $params->{rrdopts}[0]});
-        $rval .= $cgi->div({-class => 'graphs'},
-                           $cgi->img({-src => $url,
-                                      -alt => 'Graph'})) . "\n";
+
+    my $desc = getdesc($cgi, $params);
+
+    # the title is the service and host.  do not translate the host, and do
+    # not complain about missing service definitions.
+    my $title = trans($params->{service}, 1) . q( ) . trans('on') . q( )
+        . $params->{host};
+
+    dumper(DBDEB, 'printgraphlinks rrdopts', $params->{rrdopts});
+    my $rrdopts = $params->{rrdopts};
+    if (defined $Config{showgraphtitle}
+        and $Config{showgraphtitle} eq 'true'
+        and $rrdopts !~ /(-t|--title)/) {
+        $rrdopts .= ' -t ' . $title;
     }
-    return $rval;
+    $rrdopts .= ' -snow-' . $period->[1] . ' -enow-' . $params->{offset};
+    $rrdopts =~ tr/ /+/;
+    debug(DBDEB, "printgraphlinks rrdopts = $rrdopts");
+
+    my %opts = (graph => $period->[1],
+                geom => $params->{geom},
+                rrdopts => [$rrdopts],
+                fixedscale => $params->{fixedscale},);
+    if ($params->{db}) { $opts{db} = $params->{db}; }
+    my $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?' .
+        buildurl($params->{host}, $params->{service}, %opts);
+    debug(DBDEB, "printgraphlinks url = $url");
+
+    my $showtitle = defined $Config{showtitle} && $Config{showtitle} eq 'true';
+    if ($showtitle ne q()) {
+        $showtitle = $cgi->p({-class=>'graph_title'}, $title) . "\n";
+    }
+    if ($link ne q()) {
+        $link = $cgi->p({-class=>'graph_link'}, $link) . "\n";
+    }
+    if ($desc ne q()) {
+        $desc = $cgi->p({-class=>'graph_description'}, $desc) . "\n";
+    }
+    my $alttag = trans('graphof') . q( ) . $params->{service} .
+        q( ) . trans('on') . q( ) . $params->{host};
+    return $cgi->div({-class => 'graph'},
+                     $cgi->img({-src=>$url, -alt=>$alttag})) . "\n" .
+           $cgi->div({-class => 'graph_details'}, "\n",
+                     $showtitle,
+                     $desc,
+                     $link) . "\n";
+}
+
+sub printperiodlinks {
+    my ($cgi, $params, $period, $now) = @_;
+    my (@navstr) = getperiodctrls($cgi, $params, $period, $now);
+    return $cgi->div({-class=>'period_title'},
+                     $cgi->span({-class => 'period_anchor'},
+                                $cgi->a({-id => trans($period->[0])},
+                                        trans($period->[0] . 'ly'))),
+                     $cgi->span({-class => 'period_controls'},
+                             $navstr[0],
+                             $cgi->span({-class => 'period_detail'},
+                                        $navstr[1]),
+                             $navstr[2]),
+                     ), "\n";
 }
 
 sub printheader {
@@ -1102,108 +1196,51 @@ sub printheader {
     my $label = q();
     my $host = q();
     my $service = q();
-    my $selstr = q();
-    my $name = q();
     my $item = $opts->{default};
-    my $func = q();
     if ($opts->{call} eq 'host') {
         $label = trans('perfforhost');
         $host = $item;
-        $selstr = 'selecthost';
-        $name = 'servidors';
-        $func = 'jumptohost';
     } else {
         $label = trans('perfforserv');
         $service = $item;
-        $selstr = 'selectserv';
-        $name = 'services';
-        $func = 'jumptoservice';
     }
+    my $refresh = (defined $Config{refresh})
+        ? $cgi->meta({ -http_equiv => 'Refresh',
+                       -content => "$Config{refresh}" })
+        : q();
     my $rval = $cgi->header;
     $rval .= $cgi->start_html(-id => 'nagiosgraph',
                               -title => "nagiosgraph: $opts->{title}",
-                              #-head => $cgi->meta({ -http_equiv => "Refresh",
-                              #                      -content => "300" }),
+                              -head => $refresh,
                               @{$opts->{style}});
     my %result = getserverlist();
     my(@servers) = @{$result{host}};
     my(%servers) = %{$result{hostserv}};
     $rval .= printjavascript(\@servers, \%servers);
 
-    $rval .= $cgi->
-        div({-id=>'controls'}, "\n",
-            $cgi->start_form(-method=>'GET', -name=>'menuform'),
-            $cgi->span({-id=>'primary_controls'},
-                       $cgi->start_form(-method=>'GET', -name=>'menuform'),
-                       trans($selstr) . ': ' .
-                       $cgi->popup_menu(-name=>$name,
-                                        -onChange=>"${func}(this)",
-                                        -values=>[$item],
-                                        -default=>$item)),
-            $cgi->span({-id=>'secondary_controls'},
-                       $cgi->checkbox(-name=>'showhidecontrols',
-                                      -onChange=>'toggleControlsDisplay()',
-                                      -label=>trans('showhidecontrols')),
-                       $cgi->br(), "\n",
-                       $cgi->span({-id=>'secondary_controls_box'},
-                                  $cgi->checkbox(-name=>'FixedScale',
-                                                 -label=>trans('fixedscale'),
-                                                 -checked=>$opts->{fixedscale}),
-                                  $cgi->br(), "\n",
-                                  trans('zoom'),
-                                  $cgi->popup_menu(-name=>'geom',
-                                                   -values=>[split /,/, $Config{geometries}]), "\n", ## no critic (RegularExpressions)
-                                  $cgi->br(), "\n",
-                                  trans('periods'), "\n",
-                                  $cgi->popup_menu(-name=>'period',
-                                                   -values=>[@PERIODS],
-                                                   -size=>5,
-                                                   -multiple=>1), "\n",
-                                  $cgi->button(-name=>'clear',
-                                               -label=>trans('clear'),
-                                               -onClick=>'clearPeriodItems()'), "\n",
-                                  $cgi->br(), "\n",
-                                  ($opts->{call} eq 'host') ? q() :
-                                  $cgi->span({-id=>'db_controls'},
-                                             trans('selectitems'), "\n",
-                                             $cgi->popup_menu(-name=>'db',
-                                                              -values=>[],
-                                                              -size=>3,
-                                                              -multiple=>1),
-                                             $cgi->button(-name=>'clear',
-                                                          -label=>trans('clear'),
-                                                          -onClick=>'clearDBMenuItems()'),
-                                             $cgi->br(), "\n",
-                                             ), "\n",
-                                  $cgi->span({-id=>'update_controls'},
-                                             $cgi->button(-name=>'go',
-                                                          -label=>trans('submit'),
-                                                          -onClick=>'jumpto()')
-                                             ), "\n",
-                                  ), "\n",
-                       ), "\n",
-            $cgi->end_form) . "\n";
+    $rval .= printcontrols($cgi, $opts->{call},
+                           $host, $service, $opts->{fixedscale});
 
     $rval .= $cgi->br({-clear=>'all'}) . "\n";
 
     # load the menus
     my $script = ($opts->{call} eq 'host')
-        ? "preloadMenus(\"$host\",\"$service\");"
-        : "preloadServiceMenu(\"$service\");";
+        ? "configureMenus(\"$host\",\"$service\");"
+        : "configureServiceMenu(\"$service\");";
     $rval .= "<script type=\"text/javascript\">$script</script>\n";
     $rval .= $cgi->h1('Nagiosgraph') . "\n" .
-        $cgi->p($label . ': ' .
-                $cgi->strong($cgi->tt($opts->{label})) .
-                q( ) . trans('asof') . ': ' .
-                $cgi->strong(scalar localtime)) . "\n";
+        $cgi->p($label . q( ) .
+                $cgi->span({-class=>'item_label'}, $opts->{label}) . q( ) .
+                trans('asof') . q( ) .
+                $cgi->span({-class=>'timestamp'}, scalar localtime)) . "\n";
     return $rval;
 }
 
 sub printfooter {
     my ($cgi) = @_;
-    return $cgi->div({-id => 'footer'}, $cgi->hr(),
+    return $cgi->div({-id => 'footer'}, q(), # or instead of q() $cgi->hr()
     	$cgi->small(trans('createdby') . q( ) .
-    	$cgi->a({href => 'http://nagiosgraph.wiki.sourceforge.net/'},
+    	$cgi->a({href => NAGIOSGRAPHURL},
     	'Nagiosgraph ' . $VERSION) . q(.) )) . $cgi->end_html();
 }
 
@@ -1212,30 +1249,35 @@ sub printfooter {
 # and the time period they will cover.
 sub graphsizes {
     my $conf = shift;
-    debug(DBDEB, "graphsizes($conf)");
-    # Values in config file
-    my @config_times = split /\s+/, $conf; ## no critic (RegularExpressions)
-    my @final_t;
+    dumper(DBDEB, 'graphsizes period', $conf);
+    my @config_times = split /\s+/, $conf;
 
     # [Label, period span, offset] (in seconds)
     ##  no critic (ProhibitMagicNumbers)
     # Pre-defined available graph sizes
-    #     Daily        =  33h = 118800s
-    #     Weekly        =   9d = 777600s
+    #     Daily      =  33h = 118800s
+    #     Weekly     =   9d = 777600s
     #     Monthly    =   5w = 3024000s
-    #     Quarterly    =  14w = 8467200s
-    #     Yearly        = 400d = 34560000s
-    my @default_times = (['dai', 118_800, 86_400], ['week', 777_600, 604_800],
-        ['month', 3_024_000, 2_592_000], ['year', 34_560_000, 31_536_000],);
-    my %default_times = ('day' => 0, 'week' => 1, 'month' => 2, 'year' => 3,
-        'quarter' => ['quarter', 8_467_200, 7_776_000],);
+    #     Quarterly  =  14w = 8467200s
+    #     Yearly     = 400d = 34560000s
+    my @default_times = (['dai', 118_800, 86_400],
+                         ['week', 777_600, 604_800],
+                         ['month', 3_024_000, 2_592_000],
+                         ['year', 34_560_000, 31_536_000],);
+    my %default_times = ('day' => 0,
+                         'week' => 1,
+                         'month' => 2,
+                         'year' => 3,
+                         'quarter' => ['quarter', 8_467_200, 7_776_000],);
 
     # Configuration entry was absent or empty. Use default
     if (not @config_times) {
+        debug(DBDEB, 'cannot determine period, using defaults');
         return @default_times;
     }
 
     # Try to match known entries from configuration file
+    my @final_t;
     foreach my $ii (@config_times) {
         chomp $ii;
         next if not exists $default_times{$ii};
@@ -1247,10 +1289,58 @@ sub graphsizes {
     }
 
     # Final check to see if we matched any known entry or use default
-    if (not @final_t) { @final_t = @default_times; }
+    if (not @final_t) {
+        debug(DBDEB, 'final check for period failed, using defaults');
+        @final_t = @default_times;
+    }
 
     my @rval = sort {$a->[1] <=> $b->[1]} @final_t;
     return @rval;
+}
+
+# returns three strings: a url for previous period, a label for current
+# display, and a url for the next period.  do not permit voyages into
+# the future.
+# FIXME: prevent going back in time before there are rrd slots (filled or not)
+sub getperiodctrls {
+    my($cgi, $params, $period, $now) = @_;
+    my $url = buildurl($params->{host},
+                       $params->{service},
+                       { geom => $params->{geom},
+                         rrdopts => $params->{rrdopts},
+                         db => $params->{db} });
+    my $offset = ($params->{offset} + $period->[2]);
+    my $p = $cgi->a({-href=>"?$url&offset=$offset"}, '<');
+    my $c = getperiod($now, $params->{offset}, $period->[1], $period->[0]);
+    $offset = ($params->{offset} - $period->[2]);
+    my $n = $cgi->a({-href=>"?$url&offset=$offset"}, '>');
+    if ($offset < 0) { $n = q(); }
+    return ( $p, $c, $n );
+}
+
+# returns a human-readable string with the start and end time relative to
+# the current hour plus the indicated offset.  the resolution determines
+# how much information to put into the label string.
+# FIXME: this assumes localtime return of 'ddd mmm DD HH:MM:SS YYYY'
+sub getperiod {
+    my($now, $offset, $period, $res) = @_;
+    my $e = $now - $offset;
+    my $s = $e - $period;
+    my $sstr = scalar localtime $s;
+    my $estr = scalar localtime $e;
+
+    # display only the bits of time appropriate for the period
+    $sstr =~ s/:\d\d:\d\d /:00 /; # strip the minutes and seconds
+    $sstr =~ s/^\S\S\S //; # weekday
+    if ($res ne 'quarter' && $res ne 'year') { $sstr =~ s/ \d\d\d\d//; } # year
+    if ($res ne 'dai') { $sstr =~ s/ \d\d:\d\d//; } # hour and minutes
+
+    $estr =~ s/:\d\d:\d\d /:00 /;
+    $estr =~ s/^\S\S\S //;
+    if ($res ne 'quarter' && $res ne 'year') { $estr =~ s/ \d\d\d\d//; }
+    if ($res ne 'dai') { $estr =~ s/ \d\d:\d\d//; }
+
+    return "$sstr to $estr";
 }
 
 # return an array of labels for the service-db pair
@@ -1370,7 +1460,7 @@ sub createrrd {
         $ds);                    # data set ID string
 
     if (defined $Config{resolution}) {
-        @resolution = split / /, $Config{resolution}; ## no critic (RegularExpressions)
+        @resolution = split / /, $Config{resolution};
         dumper(DBINF, 'createrrd resolution',  \@resolution);
     }
 
@@ -1489,7 +1579,7 @@ sub rrdupdate {
     }
     runupdate(\@dataset);
 
-    $service = (split /_/, $file)[0]; ## no critic (RegularExpressions)
+    $service = (split /_/, $file)[0];
     if (defined $Config{withminimums}->{$service}) {
         $dataset[0] = "$directory/${file}_min";
         runupdate(\@dataset);
@@ -1532,7 +1622,7 @@ sub processdata {
     debug(DBDEB, 'processdata(' . scalar(@lines) . ')');
     my (@data, $debug, $rrds, $sets);
     for my $line (@lines) {
-        @data = split /\|\|/, $line; ## no critic (RegularExpressions)
+        @data = split /\|\|/, $line;
         # Suggested by Andrew McGill for 0.9.0, but I'm (Alan Brenner) not sure
         # it is still needed due to urlencoding in file names by getfilename.
         # replace spaces with - in the description so rrd doesn't choke
@@ -1556,7 +1646,7 @@ sub processdata {
 # I18N ########################################################################
 %Ctrans = (
     # These come from the timeall, timehost and timeservice values defined in
-    # nagiosgraph.conf. +ly is the adverb form.
+    # the configuration. +ly is the adverb form.
     dai => 'Today',
     daily => 'Daily',
     day => 'Today',
@@ -1564,8 +1654,39 @@ sub processdata {
     weekly => 'Weekly',
     month => 'This Month',
     monthly => 'Monthly',
+    quarter => 'This Quarter',
+    quarterly => 'Quarterly',
     year => 'This Year',
     yearly => 'Yearly',
+
+    # These are used as is, in the source. Verify with:
+    # grep trans cgi/* etc/* | sed -e 's/^.*trans(\([^)]*\).*/\1/' | sort -u
+    asof => 'as of',
+    clear => 'clear',
+    configerror => 'Configuration Error',
+    createdby => 'Created by',
+    fixedscale => 'Fixed Scale',
+    graph => 'Graph',
+    graphof => 'Graph of',
+    next => 'next',
+    nohostgiven => 'no host specified',
+    noservicegiven => 'no service specified',
+    on => 'on',
+    perfforhost => 'Data for host',
+    perfforserv => 'Data for service',
+    periods => 'Periods: ',
+    previous => 'previous',
+    selectall => 'select all items',
+    selectds => 'Data Sets: ',
+    selecthost => 'Host: ',
+    selectitems => 'Optionally, select the data set(s) to graph:',
+    selectserv => 'Service: ',
+    service => 'service',
+    showhidecontrols => 'Show Controls',
+    submit => 'Update Graphs',
+    testcolor => 'Show Colors',
+    typesome => 'Type some space-seperated nagiosgraph line names here',
+    zoom => 'Size: ',
 
     # These come from Nagios, so are just from what I use.
     apcupsd => 'Uninterruptible Power Supply Status',
@@ -1588,32 +1709,6 @@ sub processdata {
     qsize => 'Messages in Outbound Queue',
     rta => 'Round Trip Average',
     smtp => 'E-mail Status',
-
-    # These are used as is, in the source. Verify with:
-    # grep trans cgi/* etc/* | sed -e 's/^.*trans(\([^)]*\).*/\1/' | sort -u
-    asof => 'as of',
-    clear => 'clear the list',
-    configerror => 'Configuration Error',
-    createdby => 'Created by',
-    fixedscale => 'Fixed Scale',
-    graph => 'Graph',
-    next => 'next',
-    nohostgiven => 'Bad URL &mdash; no host given',
-    noservicegiven => 'Bad URL &mdash; no service given',
-    perfforhost => 'Data for host',
-    perfforserv => 'Data for service',
-    periods => 'Periods: ',
-    previous => 'previous',
-    selectall => 'select all items',
-    selecthost => 'Select host',
-    selectitems => 'Optionally, select the data set(s) to graph:',
-    selectserv => 'Select service',
-    service => 'service',
-    showhidecontrols => 'Show Controls',
-    submit => 'Update Graphs',
-    testcolor => 'Show Colors',
-    typesome => 'Type some space seperated nagiosgraph line names here',
-    zoom => 'Resize the graphs:',
 );
 
 sub trans {
@@ -1623,14 +1718,17 @@ sub trans {
     return $Config{$text} if $Config{$text};
     return $Config{escape($text)} if $Config{escape($text)};
     if (not $Config{warned} and not $quiet) {
-        debug(DBWRN, 'define "' . escape($text) . '" in nagiosgraph.conf');
+        debug(DBWRN, 'define "' . escape($text) . '" in ' . $CFGNAME);
         $Config{warned} = 1;
     }
     # The hope is not to get to here except in the case of upgrades where
-    # nagiosgraph.conf doesn't have the translation values.
+    # the configuration file doesn't have the translation values.
     return $Ctrans{$text} if $Ctrans{$text};
-    if (not $Config{ctrans} and not $quiet and $text !~ /%2F/ and $text !~ /^\//) { ## no critic (RegularExpressions)
-        debug(DBCRT, "define '$text' in ngshared.pm (in %Ctrans) and report it, please");
+    if (not $Config{ctrans}
+        and not $quiet
+        and $text !~ /%2F/
+        and $text !~ /^\//) {
+        debug(DBCRT, "please define '$text' in $CFGNAME and report it");
         $Config{ctrans} = 1;
     }
     # This can get ugly, so make sure %Ctrans has everything.
@@ -1646,10 +1744,9 @@ sub sortnaturally {
         sort
         map {
             my $key = $list[$_];
-            ## no critic (RegularExpressions)
             $key =~ s/((?<!\.)(\d+)\.\d+(?!\.)|\d+)/
                 my $len = length( defined($2) ? $2 : $1 );
-                pack( "N", $len ) . $1 . ' ';
+                pack( 'N', $len ) . $1 . ' ';
             /ge;
             $key . pack 'N', $_
         } 0..$#list
@@ -1674,11 +1771,27 @@ B<use ngshared;>
 
 A shared set of routines for reading configuration files, logging, etc.
 
+=head1 USAGE
+
+=head1 CONFIGURATION
+
+=head1 REQUIRED ARGUMENTS
+
+=head1 OPTIONS
+
+=head1 EXIT STATUS
+
+=head1 DIAGNOSTICS
+
+=head1 DEPENDENCIES
+
 =head1 INSTALLATION
 
 Copy this file into a convinient directory (/etc/nagios/nagiosgraph, for
 example) and modify the show*.cgi files to B<use lib> the directory this file
 is in.
+
+=head1 INCOMPATIBILITIES
 
 =head1 DEPENDENCIES
 
