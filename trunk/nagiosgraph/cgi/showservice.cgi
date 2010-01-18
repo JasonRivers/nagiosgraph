@@ -65,12 +65,15 @@ $dbinfo->{fixedscale} = $params->{fixedscale};
 $dbinfo->{offset} = 0;
 
 # Draw the page
+my ($service, $fixedscale) = ('', 0);
+if ($params->{service}) { $service = $params->{service}; }
+if ($params->{fixedscale}) { $fixedscale = $params->{fixedscale}; }
 print printheader($cgi,
-                  {title => $params->{service},
+                  {title => $service,
                    style => \@style,
                    call => 'service',
                    default => $label,
-                   fixedscale => $params->{fixedscale},
+                   fixedscale => $fixedscale,
                    label => $cgi->unescape($label)}) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
@@ -87,7 +90,7 @@ foreach my $period (graphsizes($periods)) {
             '&service=' . $cgi->escape($params->{service});
         $url =~ tr/ /+/;
         my $link = $cgi->a({href => $url}, $host);
-        print printgraphlinks($cgi, $dbinfo, $period) . "\n" or
+        print printgraphlinks($cgi, $dbinfo, $period, $link) . "\n" or
             debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
     }
 }

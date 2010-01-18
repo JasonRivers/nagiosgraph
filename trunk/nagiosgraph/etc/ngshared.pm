@@ -178,6 +178,8 @@ sub getparams {
 
 sub arrayorstring {
     my ($opts, $param) = @_;
+    debug(DBDEB, "arrayorstring($opts, $param)");
+    dumper(DBDEB, 'arrayorstring opts', $opts);
     my $rval = q();
     if (exists $opts->{$param} and $opts->{$param}) {
         if (ref($opts->{$param}) eq 'ARRAY') {
@@ -1153,7 +1155,7 @@ sub printgraphlinks {
                 fixedscale => $params->{fixedscale},);
     if ($params->{db}) { $opts{db} = $params->{db}; }
     my $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?' .
-        buildurl($params->{host}, $params->{service}, %opts);
+        buildurl($params->{host}, $params->{service}, \%opts);
     debug(DBDEB, "printgraphlinks url = $url");
 
     my $showtitle = defined $Config{showtitle} && $Config{showtitle} eq 'true';
@@ -1178,8 +1180,9 @@ sub printgraphlinks {
 
 sub printperiodlinks {
     my ($cgi, $params, $period, $now) = @_;
+    debug(DBDEB, "printperiodlinks($period, $now)");
     my (@navstr) = getperiodctrls($cgi, $params, $period, $now);
-    return $cgi->div({-class=>'period_title'},
+    return $cgi->div({-class => 'period_title'},
                      $cgi->span({-class => 'period_anchor'},
                                 $cgi->a({-id => trans($period->[0])},
                                         trans($period->[0] . 'ly'))),
@@ -1188,7 +1191,7 @@ sub printperiodlinks {
                              $cgi->span({-class => 'period_detail'},
                                         $navstr[1]),
                              $navstr[2]),
-                     ), "\n";
+                     ) . "\n";
 }
 
 sub printheader {
@@ -1213,7 +1216,7 @@ sub printheader {
                               -title => "nagiosgraph: $opts->{title}",
                               -head => $refresh,
                               @{$opts->{style}});
-    my %result = getserverlist();
+    my %result = getserverlist($cgi->remote_user());
     my(@servers) = @{$result{host}};
     my(%servers) = %{$result{hostserv}};
     $rval .= printjavascript(\@servers, \%servers);
@@ -1303,7 +1306,8 @@ sub graphsizes {
 # the future.
 # FIXME: prevent going back in time before there are rrd slots (filled or not)
 sub getperiodctrls {
-    my($cgi, $params, $period, $now) = @_;
+    my ($cgi, $params, $period, $now) = @_;
+    debug(DBDEB, "getperiodctrls($period, $now)");
     my $url = buildurl($params->{host},
                        $params->{service},
                        { geom => $params->{geom},
@@ -1315,7 +1319,7 @@ sub getperiodctrls {
     $offset = ($params->{offset} - $period->[2]);
     my $n = $cgi->a({-href=>"?$url&offset=$offset"}, '>');
     if ($offset < 0) { $n = q(); }
-    return ( $p, $c, $n );
+    return ($p, $c, $n);
 }
 
 # returns a human-readable string with the start and end time relative to
@@ -1388,6 +1392,7 @@ sub printlabels {
 # Check that we have some data to work on
 sub inputdata {
     my @inputlines;
+    debug(DBDEB, 'inputdata()');
     if ( $ARGV[0] ) {
         @inputlines = $ARGV[0];
     } elsif ( defined $Config{perflog} ) {
@@ -1594,6 +1599,7 @@ sub rrdupdate {
 # Read the map file and define a subroutine that parses performance data
 sub getrules {
     my $file = shift;
+    debug(DBDEB, "getrules($file)");
     my ($rval, $FH, @rules, $rules);
     open $FH, '<', $file or die "$OS_ERROR\n";
     while (<$FH>) {

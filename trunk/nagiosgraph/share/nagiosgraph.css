@@ -88,7 +88,7 @@ h1 {
 .timestamp {
 	font-weight: bold;
 }
-.footer {
+#footer {
 	clear: both;
 	padding-top: 20px;
 }

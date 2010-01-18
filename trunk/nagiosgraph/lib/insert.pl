@@ -26,7 +26,7 @@ $VERSION = '2.0';
 my (@perfdata);                 # data returned by inputdata for processdata
 
 readconfig('write');            # specify 'write' to check creation of RRD files
-if (defined $Config{ngshared}) { # ngshared is set on an error
+if (defined $Config{ngshared} and $Config{ngshared}) { # ngshared is set on an error
     debug(DBCRT, $Config{ngshared});
     exit;
 }

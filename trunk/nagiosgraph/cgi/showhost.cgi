@@ -54,14 +54,18 @@ find(\&getgraphlist, $Config{rrddir});
 my $hdb = readhostdb($params->{host});
 
 # Draw a page
+my ($host, $fixedscale) = ('', 0);
+if ($params->{host}) { $host = $params->{host}; }
+if ($params->{fixedscale}) { $fixedscale = $params->{fixedscale}; }
 print printheader($cgi,
-                  {title => $params->{host},
+                  {title => $host,
                    style => \@style,
                    call => 'host',
-                   default => $params->{host},
-                   fixedscale => $params->{fixedscale},
-                   label => $cgi->a({href => "$Config{nagioscgiurl}/extinfo.cgi?type=1&host=$params->{host}"},
-                                    $params->{host})}) or
+                   default => $host,
+                   fixedscale => $fixedscale,
+                   label => $cgi->a({href => $Config{nagiosgraphcgiurl} .
+                                        '/extinfo.cgi?type=1&host=' . $host},
+                                    $host)}) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $now = time;

@@ -72,7 +72,7 @@ print $cgi->header,
                      -head => $refresh,
                      @style) . "\n" .
     printnavmenu($cgi, $params->{host}, $params->{service},
-                                  $params->{fixedscale}, $cgi->remote_user()) .
+                 $params->{fixedscale}, $cgi->remote_user()) .
     $cgi->br({-clear=>'all'}) . "\n" .
     $cgi->h1('Nagiosgraph') . "\n" .
     $cgi->p(trans('perfforhost') . q( ) .
@@ -82,7 +82,7 @@ print $cgi->header,
             $cgi->span({-class=>'item_label'},
                        $cgi->a({href => $surl}, $params->{service})) . q( ) .
             trans('asof') . q( ) .
-            $cgi->span({-class=>'timestamp'},scalar localtime)
+            $cgi->span({-class=>'timestamp'}, scalar localtime)
             ) . "\n" or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
