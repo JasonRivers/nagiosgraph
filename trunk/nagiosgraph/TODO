@@ -1,6 +1,7 @@
 Bugs
 
-* None currently known
+* The next/prev functions are not coordinated with the data saved to the rrd
+    files.  As a result, next/prev do not function as one might expect.
 
 Desired features.
 
