@@ -1,36 +1,73 @@
-------------------------
-nagiosgraph Installation
-------------------------
+$Id$
+------------------------       License: OSI Artistic License
+nagiosgraph Installation       Author:  (c) 2005 Soren Dossing
+------------------------       Author:  (c) 2008 Alan Brenner, Ithaka Harbors
+                               Author:  (c) 2010 Matthew Wall
 
-File:    $Id$
-Author:  (c) Alan Brenner, Ithaka Harbors, 2008; Soren Dossing, 2005
-License: OSI Artistic License
-         http://www.opensource.org/licenses/artistic-license.php
+These are the installation and configuration instructions for nagiosgraph.
+This document contains the following sections:
 
-The instructions below are mainly for latest stable versions of Nagios,
-e.g. 2.12, and might differ in other versions of Nagios. See the end of this
-document for platform specific notes.
+  Installation Preliminaries
+  Installation Instructions
+  Upgrade Notes
+  Displaying Graphs Directly in Nagios
+  Service Perfdata Processing Configuration
+    Old Style
+    New Style
+  Configuring Graphing and Display
+  Adding New Mapping and Troubleshooting
+  Appendix: Sample Installation Layouts
+  Appendix: Web Server Configuration
+  Appendix: Platform Specific Notes
+    CentOS 5 and Nagiosgraph 0.9:
 
+The instructions below are mainly for Nagios 2.x and 3.x and might differ
+in other versions of Nagios.
+
+See Principles of Operation in the README file for an overview of how
+Nagiosgraph is designed to work.
 
 
 Installation Preliminaries
 --------------------------
 
+  Nagiosgraph will not function without a working Nagios installation, so
+  first ensure that Nagios works.
+
+  Nagiosgraph uses rrdtool from perl, so both rrdtool and the perl wrapper
+  for rrdtool must be installed.
+
+  There are two installation layouts for Nagiosgraph: separate or overlay.
+  The separated layout has nagiosgraph and nagios in separate directories.
+  The overlay places nagiosgraph components with nagios components.
+  Note also that nagios and nagiosgraph can be installed in just about
+  any location, for example /opt or /usr/local.  So decide upon a layout
+  before you start the installation.
+
+  Examples of these layouts are in the Sample Installation Layouts section.
+
+  Nagiosgraph depends on perfdata processing in Nagios using the Nagios
+  directive process_performance_data.
+
+
+Installation Instructions
+-------------------------
+
  - Check required packages: nagios, nagios-plugins, rrdtool, perl,
    perl-CGI, and perl-rrdtool
 
  - Extract the Nagiosgraph tarball into a temporary location:
+     cd /tmp
+     tar xzvf nagiosgraph-x.y.z.tgz
 
-   tar xzvf nagiosgraph-1.3.0.tgz
-
- - Copy the contents of etc into your preferred configuration target location,
-   e.g. /etc/nagios/nagiosgraph
+ - Copy the contents of etc into your preferred configuration location,
+   e.g. /etc/nagiosgraph
 
  - Edit the perl scripts in the cgi and lib directories, modifying the
-   "use lib" lines to point to the directory in the previous step.
+   "use lib" lines to point to the directory from the previous step.
 
  - Copy the contents of lib into a location Nagios can execute file in
-   e.g. /usr/lib/nagios
+   e.g. /usr/lib/nagios/libexec
 
  - Copy the contents of cgi into the Nagios cgi-bin directory,
    e.g. /usr/lib/nagios/cgi-bin
@@ -41,11 +78,11 @@ Installation Preliminaries
  - Copy the share/nagiosgraph.css file into the Nagios stylesheets directory,
    e.g. /usr/share/nagios/stylesheets
 
- - Copy the share/nagiosgraph.js file into a directory serve-able by your web
-   server, and configure the "javascript = /nagios/nagiosgraph.js" in the
-   nagiosgraph.conf to point to URL for nagiosgraph.sh.
+ - Copy the share/nagiosgraph.js file into a directory served by the web server
+   e.g. /usr/share/nagios, then modify "javascript = /nagios/nagiosgraph.js"
+   in nagiosgraph.conf to the appropriate URL.
 
- - Edit paths, debug level etc. in nagiosgraph.conf.
+ - Edit nagiosgraph.conf to set paths, debug level etc.
 
  - Update permissions of "rrddir" (as defined in nagiosgraph.conf),
    so that the *nagios* user can write to it and the *www* user can read it.
@@ -63,10 +100,9 @@ Upgrade Notes
    the stylesheet (nagiosgraph.css).
 
  - Use diff, or a similar tool, to update your nagiosgraph.conf with new fields
-   from etc/nagiosgraph.conf, and in particular, note the JavaScript change.
-   The majority of the JavaScript used in each web page is now a separate file
-   that gets sent seperately to the browser, and as such needs to go where the
-   web server can send it.
+   from etc/nagiosgraph.conf.  Note in particular the javascript file,
+   nagiosgraph.js.  The web server must be able to read this file and send it
+   to web clients.
 
  - You may want to look at etc/map to see if there are any new examples that
    you may find useful.
@@ -77,20 +113,21 @@ Displaying Graphs Directly in Nagios
 
 To embed nagiosgraph graphs directly into nagios, do the following:
 
-  - Modify side.php (e.g. /opt/nagios/share/side.php) by inserting two
+  - Modify side.php (e.g. /opt/nagios/share/side.php) by inserting
     bullets under the 'Trends' heading, one for showing hosts and the
     other for showing services:
 
 <li><a href="<?php echo $cfg["cgi_base_url"];?>/trends.cgi" target="<?php echo $link_target;?>">Trends</a>
 <ul>
-<li><a href="<?php echo $cfg["cgi_base_url"];?>/showhost.cgi" target="<?php echo $link_target;?>">Hosts</a></li>
-<li><a href="<?php echo $cfg["cgi_base_url"];?>/showservice.cgi" target="<?php echo $link_target;?>">Services</a></li>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/show.cgi" target="<?php echo $link_target;?>">Graphs</a></li>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/showhost.cgi" target="<?php echo $link_target;?>">Graphs by Host</a></li>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/showservice.cgi" target="<?php echo $link_target;?>">Graphs by Service</a></li>
 </ul>
 </li>
 
   - If you keep the nagiosgraph cgi scripts in a location different than
     the nagios cgi scripts, then use 'ng_cgi_base_url' rather than
-    'cgi_base_url' and make an entry in config.inc.php like this:
+    'cgi_base_url' and make an entry in config.inc.php such as this:
 
 $cfg['cgi_base_url']='/nagios/cgi-bin';
 $cfg['ng_cgi_base_url']='/nagiosgraph/cgi-bin';
@@ -179,10 +216,11 @@ Configuring Graphing and Display
 
  - For Nagios version 2.6 and later.
      Note: This may also be what is required for earlier versions of Nagios.
-     It is uncertain as when Nagios started handling extended services differently.
+     It is uncertain as when Nagios started handling extended services
+     differently.
 
-     If you have these lines in nagios.cfg, then this step is what you need to do
-     instead of the one above.
+     If you have these lines in nagios.cfg, then this step is what you need
+     to do instead of the one above.
 
      # Extended host/service info definitions are now stored along with
      # other object definitions:
@@ -238,12 +276,11 @@ Configuring Graphing and Display
     graphs.
 
  -- Add rrdopts option (e.g. &rrdopts=%2Dl%200%20%2Du%20100 (meaning:
-   "-l 0 -u 100")) to notes_url line for custom Y axis ranges. Any
-   rrdgraph options can be specified, but has to be url encoded.
+    "-l 0 -u 100")) to notes_url line for custom Y axis ranges. Any
+    rrdgraph options can be specified, but has to be url encoded.
 
  -- Add &fixedscale to set the Y-axis to be in the same units as the
-   supplied perf data. Will also set the legends to be in same units
-
+    supplied perf data. Will also set the legends to be in same units
 
  - Configure Apache to point to show.cgi. For example:
 
@@ -275,6 +312,94 @@ Adding New Mapping and Troubleshooting
 
  - Keep an eye on the log file. It can grow big. Perhaps rotate it, or
    decrease log level when everything works fine.
+
+
+
+Sample Installation Layouts
+---------------------------
+
+Here are samples of nagiosgraph/nagios installation layouts.
+
+  separate, installed to /opt:
+    /opt/nagios/bin/
+    /opt/nagios/cgi-bin/
+    /opt/nagios/etc/
+    /opt/nagios/include/
+    /opt/nagios/libexec/
+    /opt/nagios/perl/
+    /opt/nagios/sbin/
+    /opt/nagios/share/
+
+    /opt/nagiosgraph/bin/insert.pl
+    /opt/nagiosgraph/cgi-bin/show.cgi
+    /opt/nagiosgraph/cgi-bin/showhost.cgi
+    /opt/nagiosgraph/cgi-bin/showservice.cgi
+    /opt/nagiosgraph/cgi-bin/showgraph.cgi
+    /opt/nagiosgraph/etc/ngshared.pm
+    /opt/nagiosgraph/etc/nagiosgraph.conf
+    /opt/nagiosgraph/share/nagiosgraph.css
+    /opt/nagiosgraph/share/nagiosgraph.js
+   
+  overlay, installed to /:
+    /usr/lib/nagios/libexec/insert.pl
+    /usr/lib/nagios/cgi-bin/show.cgi
+    /usr/lib/nagios/cgi-bin/showhost.cgi
+    /usr/lib/nagios/cgi-bin/showservice.cgi
+    /usr/lib/nagios/cgi-bin/showgraph.cgi
+    /etc/nagiosgraph/ngshared.pm
+    /etc/nagiosgraph/nagiosgraph.conf
+    /usr/share/nagios/stylesheets/nagiosgraph.css
+    /usr/share/nagios/nagiosgraph.js
+
+  overlay, installed to /usr/local:
+    /usr/local/nagios/libexec/insert.pl
+    /usr/local/nagios/cgi-bin/show.cgi
+    /usr/local/nagios/cgi-bin/showhost.cgi
+    /usr/local/nagios/cgi-bin/showservice.cgi
+    /usr/local/nagios/cgi-bin/showgraph.cgi
+    /usr/local/nagios/etc/ngshared.pm
+    /usr/local/nagios/etc/nagiosgraph.conf
+    /usr/local/nagios/share/stylesheets/nagiosgraph.css
+    /usr/local/nagios/share/nagiosgraph.js
+
+
+
+Web Server Configuration
+------------------------
+
+Here are snippets from a typical (but basic) Apache server configuration.
+
+ScriptAlias /nagiosgraph/cgi-bin/ "/opt/nagiosgraph/cgi/"
+<Directory "/opt/nagiosgraph/cgi">
+   Options ExecCGI
+   AllowOverride None
+   Order allow,deny
+   Allow from all
+</Directory>
+
+Alias /nagiosgraph "/opt/nagiosgraph/share"
+<Directory "/opt/nagiosgraph/share">
+   Options None
+   AllowOverride None
+   Order allow,deny
+   Allow from all
+</Directory>
+
+ScriptAlias /nagios/cgi-bin "/opt/nagios/sbin"
+<Directory "/opt/nagios/sbin">
+   Options ExecCGI
+   AllowOverride None
+   Order allow,deny
+   Allow from all
+</Directory>
+
+Alias /nagios "/opt/nagios/share"
+<Directory "/opt/nagios/share">
+   Options None
+   AllowOverride None
+   Order allow,deny
+   Allow from all
+</Directory>
 
 
 

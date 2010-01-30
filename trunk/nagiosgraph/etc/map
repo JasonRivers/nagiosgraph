@@ -1,14 +1,16 @@
-# File:    $Id: map,v 1.10 2006/07/21 14:18:17 sauber Stab $
-# Author:  (c) Soren Dossing, 2005
+# File:    $Id$
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
+# Author:  (c) Soren Dossing, 2005
+# Author:  (c) 2008 Alan Brenner, Ithaka Harbors
+# Author:  (c) 2010 Matthew Wall
 
 ########################################################################
 #
 # INSTRUCTIONS:
 #
-# This file contains several example of service types. Edit this file to
-# add more service types. The data string from Nagios is in $_ . Use
+# This file contains several examples of service types. Edit this file to
+# add more service types. The data string from Nagios is in $_ .  Use
 # regular expressions to identify and extract data like the examples below
 # below.  Match on either output: or perfdata: . The code is pure perl,
 # that will be run inside an eval{}. Results are expected in @s. The
@@ -21,7 +23,7 @@
 #                [ .       .              .        ],
 #                [ .       .              .        ] ];
 #
-# But more advanced code is possible, as long as the resulting
+# Of course, more advanced code is possible, as long as the resulting
 # data structure is correct.
 #
 ########################################################################
@@ -128,9 +130,9 @@ and push @s, [ 'mailq',
                [ 'qwarn', GAUGE, $2 ],
                [ 'qcrit', GAUGE, $3 ] ];
 # or, if you prefer (from Matthew Wall):
-#               [ 'qsize', GAUGE, $1 ],
-#               [ 'qwarn', GAUGE, $2 ],
-#               [ 'qcrit', GAUGE, $3 ] ];
+#               [ 'size', GAUGE, $1 ],
+#               [ 'warn', GAUGE, $2 ],
+#               [ 'crit', GAUGE, $3 ] ];
 
 # Service type: unix-netstat
 #   output:OK

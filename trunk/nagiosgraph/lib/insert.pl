@@ -1,15 +1,14 @@
 #!/usr/bin/perl
 
-# File:        $Id: insert.pl,v 1.25 2007/06/12 19:00:06 toriniasty Stab $
-# Author:    (c) Soren Dossing, 2005
-# License:    OSI Artistic License
-#            http://www.opensource.org/licenses/artistic-license.php
+# License: OSI Artistic License
+#          http://www.opensource.org/licenses/artistic-license.php
+# Author:  (c) Soren Dossing, 2005
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 
 # The configuration file and ngshared.pm must be in this directory.
-use lib '/etc/nagios/nagiosgraph';
-# The configuration loader will look for nagiosgraph.conf in this directory.
 # So take note upgraders, there is no $configfile = '....' line anymore.
+use lib '/opt/nagiosgraph/etc';
+
 
 # Main program - change nothing below
 
@@ -26,7 +25,7 @@ $VERSION = '2.0';
 my (@perfdata);                 # data returned by inputdata for processdata
 
 readconfig('write');            # specify 'write' to check creation of RRD files
-if (defined $Config{ngshared} and $Config{ngshared}) { # ngshared is set on an error
+if (defined $Config{ngshared}) { # ngshared is set on an error
     debug(DBCRT, $Config{ngshared});
     exit;
 }

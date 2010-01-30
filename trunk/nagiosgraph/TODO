@@ -1,3 +1,5 @@
+$Id$
+
 Bugs
 
 * The next/prev functions are not coordinated with the data saved to the rrd
@@ -19,3 +21,5 @@ Desired features.
 * Either do it all with javascript, or do it all without. Right now there is a
   mix of stuff, specifically the 'update graphs' button does not need to be
   done with javascript.
+* Prefix strings with i8n_ to avoid name clashes with configuration params.
+* Make the date/time handling and formatting robust across locales

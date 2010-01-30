@@ -1,10 +1,8 @@
-map file
---------
-
-File:    $Id$
-Author:  (c) Soren Dossing, 2005
-License: OSI Artistic License
-         http://www.opensource.org/licenses/artistic-license.php
+$Id$
+----------------------         License: OSI Artistic License
+nagiosgraph README.map         Author:  (c) 2005 Soren Dossing
+----------------------         Author:  (c) 2008 Alan Brenner, Ithaka Harbors
+                               Author:  (c) 2010 Matthew Wall
 
 This describes how to work with the map file.
 
@@ -13,13 +11,12 @@ and define content in RRD databases. All entries are written in perl, so
 editing, adding or deleting entries requires some perl programming 
 knowledge. Knowledge of RRD is also necessary.
 
-There has to be one entry for each type of service. The distributed map 
-file already have several examples for cpu, memory, disk, network etc.
+There has to be one entry for each type of service. The map file included 
+with nagiosgraph has several examples for cpu, memory, disk, network etc.
 Most examples follow the same schema of identifying data from either 
-Nagios output or Nagios perfdata and defining a number of rrd data 
-sources.
+Nagios output or Nagios perfdata and defining a number of rrd data sources.
 
-insert.pl is the script receiving data from Nagios. It format data for map 
+insert.pl is the script receiving data from Nagios. It formats data for map 
 file by creating one string consisting of three lines of text. This string 
 might look like this:
 
@@ -33,8 +30,16 @@ Or like this:
   output:OK - load average: 0.06, 0.12, 0.10
   perfdata:load1=0;15;30;0 load5=0;10;25;0 load15=0;5;20;0 
 
-perfdata is not always set, so depending on type of service, the most 
-useful data can be in either the output or perfdata line.
+The official perfdata format is a space-delimited list of qualified
+name-value pairs with this format:
+
+  name=value[units];[warn];[crit];[min];[max]
+
+where units is one of: nothing, s %, B, c
+
+However, the perfdata is not always set, and the format of perfdata varies
+a great deal from plugin to plugin.  So depending on type of service, the
+most useful data can be in either the output or perfdata line.
 
 For the ping example above, data can be extracted from the output line 
 with a regular expression like this:

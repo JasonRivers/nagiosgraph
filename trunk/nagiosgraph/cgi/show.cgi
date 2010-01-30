@@ -1,14 +1,14 @@
 #!/usr/bin/perl
 
-# File:    $Id$
-# Author:  (c) Alan Brenner, Ithaka Harbors, 2008; Soren Dossing, 2005
 # License: OSI Artistic License
-#            http://www.opensource.org/licenses/artistic-license-2.0.php
+#          http://www.opensource.org/licenses/artistic-license-2.0.php
+# Author:  (c) 2005 Soren Dossing
+# Author:  (c) 2008 Alan Brenner, Ithaka Harbors
+# Author:  (c) 2010 Matthew Wall
 
 # The configuration file and ngshared.pm must be in this directory.
-use lib '/etc/nagios/nagiosgraph';
-# The configuration loader will look for nagiosgraph.conf in this directory.
 # So take note upgraders, there is no $configfile = '....' line anymore.
+use lib '/opt/nagiosgraph/etc';
 
 # Main program - change nothing below
 
@@ -20,78 +20,72 @@ use RRDs;
 use strict;
 use warnings;
 
-my $cgi = new CGI;              ## no critic (ProhibitIndirectSyntax)
-$cgi->autoEscape(0);
 readconfig('read');
 if (defined $Config{ngshared}) {
     debug(DBCRT, $Config{ngshared});
-    htmlerror($cgi, $Config{ngshared});
+    htmlerror($Config{ngshared});
     exit;
 }
 
-# comment this out, if running readconfig with a DBDEB second parameter
+my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
+$cgi->autoEscape(0);
+
+my $params = getparams($cgi);
+getdebug('show', $params->{host}, $params->{service});
+
 dumper(DBDEB, 'config', \%Config);
-
-# Expect host and service
-my $params = getparams($cgi, 'show', ['host', 'service']);
-if (not defined $params->{host} or not $params->{host}) {
-    htmlerror(trans('nohostgiven'), 1);
-    exit;
-}
-if (not defined $params->{service} or not $params->{service}) {
-    htmlerror(trans('noservicegiven'), 1);
-    exit;
-}
-if (defined $Config{rrdopts}{$params->{service}}) {
-    $params->{rrdopts} = $Config{rrdopts}{$params->{service}};
-}
 dumper(DBDEB, 'params', $params);
 
-# see if the time periods were specified.  ensure list is space-delimited.
-my $periods = (defined $params->{period} && $params->{period} ne q())
-    ? $params->{period} : $Config{timeall};
-$periods =~ s/,/ /g;            ## no critic (RegularExpressions)
+my $host = q();
+if ($params->{host}) { $host = $params->{host}; }
+my $service = q();
+if ($params->{service}) { $service = $params->{service}; }
 
-# use stylesheet if specified
+my $periods = getperiods('timeall', $params->{period});
+
 my @style;
 if ($Config{stylesheet}) {
-    @style = ( -style => {-src => "$Config{stylesheet}"} );
+    @style = (-style => {-src => "$Config{stylesheet}"});
 }
 my $hurl = $Config{nagiosgraphcgiurl} . '/showhost.cgi?host=' .
-    $cgi->escape($params->{host});
+    $cgi->escape($host);
 my $surl = $Config{nagiosgraphcgiurl} . '/showservice.cgi?service=' .
-    $cgi->escape($params->{service});
+    $cgi->escape($service);
 my $refresh = (defined $Config{refresh})
     ? $cgi->meta({ -http_equiv => 'Refresh', -content => "$Config{refresh}" })
     : q();
+my $ngtitle = (defined $Config{hidengtitle} and $Config{hidengtitle} eq 'true')
+    ? q() : $cgi->h1('Nagiosgraph');
+
+cfgparams($params, $params, $service);
 
 # Draw the full page
 print $cgi->header,
     $cgi->start_html(-id => 'nagiosgraph',
-                     -title => "nagiosgraph: $params->{host}-$params->{service}",
+                     -title => "nagiosgraph: $host - $service",
                      -head => $refresh,
                      @style) . "\n" .
-    printnavmenu($cgi, $params->{host}, $params->{service},
-                 $params->{fixedscale}, $cgi->remote_user()) .
+    printnavmenu($cgi, $host, $service, $cgi->remote_user(), $params) .
     $cgi->br({-clear=>'all'}) . "\n" .
-    $cgi->h1('Nagiosgraph') . "\n" .
+    $ngtitle .
     $cgi->p(trans('perfforhost') . q( ) .
             $cgi->span({-class=>'item_label'},
-                       $cgi->a({href => $hurl}, $params->{host})) . ', ' .
+                       $cgi->a({href => $hurl}, $host)) . ', ' .
             trans('service') . q( ) .
             $cgi->span({-class=>'item_label'},
-                       $cgi->a({href => $surl}, $params->{service})) . q( ) .
+                       $cgi->a({href => $surl}, $service)) . q( ) .
             trans('asof') . q( ) .
-            $cgi->span({-class=>'timestamp'}, scalar localtime)
+            $cgi->span({-class=>'timestamp'},scalar localtime)
             ) . "\n" or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $now = time;
 for my $period (graphsizes($periods)) {
-    print printperiodlinks($cgi, $params, $period, $now) .
-          printgraphlinks($cgi, $params, $period) or
-        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+    my $str = printgraphlinks($cgi, $params, $period);
+    print printperiodlinks($cgi, $params, $period, $now, $str);
 }
+
+print printscript('both', $host, $service);
 
 print printfooter($cgi) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
@@ -104,8 +98,7 @@ show.cgi - Graph Nagios data
 
 =head1 DESCRIPTION
 
-Run this via a web server cgi to generate an HTML page of data stored by
-insert.pl (including the graphs).
+Run this via a web server to generate a page of graph data.
 
 =head1 USAGE
 
@@ -113,19 +106,29 @@ B<show.cgi>
 
 =head1 CONFIGURATION
 
-=head1 REQUIRED ARGUMENTS
+The B<nagiosgraph.conf> file controls the behavior of this script.
 
 =head1 OPTIONS
 
+host=host_name
+
+service=service_name
+
 period=(day week month quarter year)
 
-=head1 EXIT STATUS
-
 =head1 DIAGNOSTICS
+
+Use the debug_show setting from B<nagiosgraph.conf> to control the amount
+of debug information that will be emitted by this script.  Debug output will
+go to the web server error log.
 
 =head1 DEPENDENCIES
 
 =over 4
+
+=item B<showgraph.cgi>
+
+This generates the graphs shown in the HTML generated here.
 
 =item B<Nagios>
 
@@ -149,7 +152,7 @@ the ScriptAlias for /nagios/cgi-bin points), and make sure it is executable by
 the web server.
 
 Install the B<ngshared.pm> file and edit this file to change the B<use lib>
-line (line 9) to point to the directory containing B<ngshared.pm>.
+line to point to the directory containing B<ngshared.pm>.
 
 Create or edit the example B<nagiosgraph.conf>, which must reside in the same
 directory as B<ngshared.pm>.
@@ -171,10 +174,6 @@ existing service. Only the hosts listed in host_name will have an action icon
 next to the service name on a detail page.
 
 Copy the images/action.gif file to the nagios/images directory, if desired.
-
-=head1 INCOMPATIBILITIES
-
-=head1 BUGS AND LIMITATIONS
 
 =head1 SEE ALSO
 

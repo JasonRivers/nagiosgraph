@@ -1,3 +1,5 @@
+$Id$
+
 TBD
 
 * retain expanded/collapsed state of controls between reloads
@@ -14,6 +16,7 @@ TBD
     showgraphtitle
     graphonly
     hidelegend
+    hidengtitle
     lineformat
     plotasLINE1
     plotasLINE2
@@ -35,7 +38,7 @@ TBD
     small
 * host and service are no longer required args.  just do the right thing.
 * use same controls layout for show, showhost, showservice
-* remove the <h1>Nagiosgraph</h1> line so we see more graph and less text
+* optional removal of <h1>Nagiosgraph</h1> for more graph and less text
 * adjust time period title layout
 * control on each time period to collapse/expand that period
 * (partially) fixed prev/next controls

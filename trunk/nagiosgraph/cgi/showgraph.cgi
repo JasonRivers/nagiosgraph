@@ -1,15 +1,14 @@
 #!/usr/bin/perl
-## no critic (RequireVersionVar)
 
-# File:    $Id$
-# Author:  (c) Alan Brenner, Ithaka Harbors, 2008; Soren Dossing, 2005
 # License: OSI Artistic License
-#			http://www.opensource.org/licenses/artistic-license-2.0.php
+#          http://www.opensource.org/licenses/artistic-license-2.0.php
+# Author:  (c) 2005 Soren Dossing
+# Author:  (c) 2008 Alan Brenner, Ithaka Harbors
+# Author:  (c) 2010 Matthew Wall
 
 # The configuration file and ngshared.pm must be in this directory.
-use lib '/etc/nagios/nagiosgraph';
-# The configuration loader will look for nagiosgraph.conf in this directory.
 # So take note upgraders, there is no $configfile = '....' line anymore.
+use lib '/opt/nagiosgraph/etc';
 
 # Main program - change nothing below
 
@@ -22,19 +21,21 @@ use MIME::Base64;
 use strict;
 use warnings;
 
-my $cgi = new CGI;
-$cgi->autoEscape(0);
 readconfig('read');
 if (defined $Config{ngshared}) {
-	debug(1, $Config{ngshared});
-	htmlerror($Config{ngshared});
-	exit;
+    debug(1, $Config{ngshared});
+    htmlerror($Config{ngshared});
+    exit;
 }
-# Expect host, service and db input
-my $params = getparams($cgi, 'showgraph', ['host', 'service', 'db']);
-debug(DBDEB, "showgraph: $params->{host}, $params->{service}");
 
-if (not $Config{linewidth}) { $Config{linewidth} = 2; }
+my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
+$cgi->autoEscape(0);
+
+my $params = getparams($cgi, 'showgraph');
+getdebug('showgraph', $params->{host}, $params->{service});
+
+dumper(DBDEB, 'config', \%Config);
+dumper(DBDEB, 'params', $params);
 
 # Draw a graph
 $OUTPUT_AUTOFLUSH = 1;          # Make sure headers arrive before image data
@@ -43,15 +44,20 @@ print $cgi->header(-type => 'image/png') or
 
 my @ds = rrdline($params);      # Figure out db files and line labels
 dumper(DBDEB, 'RRDs::graph', \@ds);
+
 RRDs::graph(@ds);
 if (RRDs::error) {
-	debug(DBERR, 'RRDs::graph ERR ' . RRDs::error);
-	if ($Config{debug} < DBINF) { dumper(DBERR, 'RRDs::graph', \@ds); }
-	print decode_base64(       # send a small, clear image on errors
-	    'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGlj' .
+    debug(DBERR, 'RRDs::graph ERR ' . RRDs::error);
+    if ($Config{debug} < DBINF) { dumper(DBERR, 'RRDs::graph', \@ds); }
+    print decode_base64(       # send a small, clear image on errors
+        'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGlj' .
         'Q29udmVydGVyIChJbnRlbCl3h/oZAAAAGUlEQVR4nGL4//8/AzrGEKCCIAAAAP//AwB4w0q2n+sy' .
         'HQAAAABJRU5ErkJggg==');
 }
+
+exit 0;
+
+
 
 __END__
 
@@ -61,18 +67,29 @@ showgraph.cgi - Graph Nagios data
 
 =head1 DESCRIPTION
 
-Run this via a web server cgi to generate an HTML page of data stored by
-insert.pl (including the graphs).
+This CGI script generates a graph of RRD data as a PNG image.
 
 =head1 USAGE
 
-B<showgraph.cgi>
-
-=head1 CONFIGURATION
+B<showgraph.cgi>?host=host_name&service=service_name
 
 =head1 REQUIRED ARGUMENTS
 
+host
+
+service
+
 =head1 OPTIONS
+
+host=host_name
+
+service=service_name
+
+graph=118800
+
+geom=default
+
+rrdopts=-u+100+-l+0+-r+-snow-118800+-enow-0
 
 =head1 EXIT STATUS
 
@@ -102,13 +119,6 @@ This provides the perl interface to rrdtool.
 Copy this file into Nagios' cgi directory (for the Apache web server, see where
 the ScriptAlias for /nagios/cgi-bin points), and make sure it is executable by
 the web server.
-
-=head1 INCOMPATIBILITIES
-
-=head1 BUGS AND LIMITATIONS
-
-Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
-simple and tested.
 
 =head1 SEE ALSO
 
