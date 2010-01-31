@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# $Id$
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 # Author:  (c) 2004 Soren Dossing
@@ -40,7 +41,7 @@ dumper(DBDEB, 'params', $params);
 my $host = q();
 if ($params->{host}) { $host = $params->{host}; }
 
-my $periods = getperiods('timehost', $params->{period});
+my ($periods, $expanded_periods) = getperiods('host', $params);
 
 my @style;
 if ($Config{stylesheet}) {
@@ -87,7 +88,8 @@ foreach my $period (graphsizes($periods)) {
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printscript('host', $host, $params->{service});
+print printscript('host', $host, $params->{service}, $expanded_periods) or
+    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");

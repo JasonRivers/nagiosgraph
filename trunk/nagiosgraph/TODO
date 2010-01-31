@@ -23,3 +23,5 @@ Desired features.
   done with javascript.
 * Prefix strings with i8n_ to avoid name clashes with configuration params.
 * Make the date/time handling and formatting robust across locales
+* Either use cookies to maintain GUI state, or design a more robust and
+    easier-to-manage CGI/JavaScript way of doing it.

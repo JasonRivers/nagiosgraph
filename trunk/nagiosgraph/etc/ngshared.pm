@@ -198,11 +198,27 @@ sub getparams {
     return \%rval;
 }
 
+# return two strings: period and expand_period.  each is a comma-delimited
+# list of day, week, month, quarter, year.  first try to get the value from
+# the parameters.  if that fails, use whatever is defined in config.
+#
+# CGI uses comma-delimited, old configs used space-delimited, so we deal with
+# either.  we ensure the result is comma-delimited.
 sub getperiods {
-    my ($label, $s) = @_;
-    my $rval = (defined $s && $s ne q()) ? $s : $Config{$label};
-    $rval =~ s/,/ /g; ## no critic (RegularExpressions)
-    return $rval;
+    my ($label, $opts) = @_;
+    if ($label eq 'both') {
+        $label = 'all';
+    }
+
+    my $s = $opts->{period};
+    my $p = (defined $s && $s ne q()) ? $s : $Config{'time' . $label};
+    $p =~ s/ /,/g; ## no critic (RegularExpressions)
+
+    $s = $opts->{expand_period};
+    my $ep = (defined $s && $s ne q()) ? $s : $Config{'expand_time' . $label};
+    $ep =~ s/ /,/g; ## no critic (RegularExpressions)
+
+    return ($p, $ep);
 }
 
 # configure parameters with something that we are sure will work.  grab values
@@ -221,10 +237,11 @@ sub cfgparams {
         }
     }
 
+    if ($dflt->{period} ne q()) {
+        $p->{period} = $dflt->{period};
+    }
     if ($dflt->{expand_period} ne q()) {
         $p->{expand_period} = $dflt->{expand_period};
-    } elsif(defined $Config{expand_period}) {
-        $p->{expand_period} = $Config{expand_period};
     }
 
     $p->{geom} = $dflt->{geom};
@@ -511,6 +528,9 @@ sub readconfig {
     foreach my $ii (['timeall', 'day week month'],
                     ['timehost', 'day'],
                     ['timeservice', 'day'],
+                    ['expand_timeall', 'day week month'],
+                    ['expand_timehost', 'day'],
+                    ['expand_timeservice', 'day'],
                     ['geometries', GEOMETRIES],
                     ['colors', COLORS],) {
         if (not $Config{$ii->[0]}) { $Config{$ii->[0]} = $ii->[1]; }
@@ -1054,11 +1074,10 @@ sub printnavmenu {
 # end of the web page so that all elements have a chance to be instantiated
 # before this is invoked.
 sub printscript {
-    my ($call, $host, $service) = @_;
-    my $periods = $Config{expand_period};
+    my ($call, $host, $service, $expanded_periods) = @_;
     my $script = ($call eq 'both' or $call eq 'host')
-        ? "configureMenus(\"$host\",\"$service\",\"$periods\");"
-        : "configureServiceMenu(\"$service\",\"$periods\");";
+        ? "configureMenus(\"$host\",\"$service\",\"$expanded_periods\");"
+        : "configureServiceMenu(\"$service\",\"$expanded_periods\");";
     return "<script type=\"text/javascript\">$script</script>\n";
 }
 
@@ -1310,9 +1329,11 @@ sub printfooter {
 
 # Full page routine ###########################################################
 # Determine the number of graphs that will be displayed on the page
-# and the time period they will cover.
+# and the time period they will cover.  This expects a comma-delimited list
+# of time periods.
 sub graphsizes {
     my $conf = shift;
+    $conf =~ s/,/ /g; # convert to spaces so we can split on whitespace
     dumper(DBDEB, 'graphsizes period', $conf);
     my @config_times = split /\s+/, $conf;
 

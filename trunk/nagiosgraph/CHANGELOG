@@ -10,7 +10,7 @@ TBD
 * right-align text in the color tester
 * more code consolidation between show/showgraph/showhost/showservice
 * update the documentation: README, INSTALL, TODO
-* new configuration options:
+* new configuration options (see nagiosgraph.conf for details):
     showtitle
     showdesc
     showgraphtitle
@@ -18,16 +18,13 @@ TBD
     hidelegend
     hidengtitle
     lineformat
-    plotasLINE1
-    plotasLINE2
-    plotasLINE3
-    plotasAREA
-    plotasTICK
+    plotasLINE1, plotasLINE2, plotasLINE3, plotasAREA, plotasTICK
     negate
     nagioscgiurl
     nagiosgraphcgiurl
     refresh
     geometries
+    expand_timeall, expand_timehost, expand_timeservice
 * modified configuration options:
     'time' is now 'timeall'
     timeall, timehost, timeservice take comma-delimited lists
