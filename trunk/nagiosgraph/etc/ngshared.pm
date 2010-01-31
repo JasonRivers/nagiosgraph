@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 ## no critic (RegularExpressions)
 
-# $Id$
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license-2.0.php
 # Author:  (c) Soren Dossing, 2005
@@ -1072,13 +1071,10 @@ sub printnavmenu {
 
 # emit the javascript that configures the web page.  this has to be at the
 # end of the web page so that all elements have a chance to be instantiated
-# before this is invoked.
+# before the javascript is invoked.
 sub printscript {
-    my ($call, $host, $service, $expanded_periods) = @_;
-    my $script = ($call eq 'both' or $call eq 'host')
-        ? "configureMenus(\"$host\",\"$service\",\"$expanded_periods\");"
-        : "configureServiceMenu(\"$service\",\"$expanded_periods\");";
-    return "<script type=\"text/javascript\">$script</script>\n";
+    my ($host, $service, $expanded_periods) = @_;
+    return "<script type=\"text/javascript\">cfgMenus(\'$host\',\'$service\',\'$expanded_periods\');</script>\n";
 }
 
 # context is one of both (show), host (showhost), or service (showservice).
@@ -1087,6 +1083,7 @@ sub printcontrols {
 
     my %selstr = qw(host selecthost service selectserv);
     my %name = qw(host servidors service services);
+    my %func = qw(host hostChange service serviceChange);
 
     my $item = ($host ne q()) ? $host : $service;
 
@@ -1107,17 +1104,17 @@ sub printcontrols {
                       ($context eq 'both')
                       ? (trans('selecthost') . q( ) .
                          $cgi->popup_menu(-name => 'servidors',
-                                          -onChange => 'setService(this)',
+                                          -onChange => 'hostChange()',
                                           -values => [$host],
                                           -default => $host) . "\n" .
                          trans('selectserv') . q( ) .
                          $cgi->popup_menu(-name => 'services',
-                                          -onChange => 'setDB(this)',
+                                          -onChange => 'serviceChange()',
                                           -values => [$service],
                                           -default => $service))
                       : (trans($selstr{$context}) . q( ) .
                          $cgi->popup_menu(-name => $name{$context},
-                                          -onChange => "jumpto${context}(this)",
+                                          -onChange => $func{$context} . '()',
                                           -values => [$item],
                                           -default => $item)) . "\n",
                       $cgi->span({-class => 'update_controls'},
@@ -1145,14 +1142,14 @@ sub printcontrols {
                                   $cgi->Tr({-valign => 'top'},
                                            $cgi->td({-class => 'control_label'},trans('periods')),
                                            $cgi->td($cgi->popup_menu(-name => 'period', -values => [@PERIODS], -size => 5, -multiple => 1)),
-                                           $cgi->td($cgi->button(-name => 'clear', -label => trans('clear'), -onClick => 'clearPeriodItems()')),
+                                           $cgi->td($cgi->button(-name => 'clear', -label => trans('clear'), -onClick => 'clearPeriodSelection()')),
                                            ),
                                   ($context eq 'host') ? q() :
                                   $cgi->span({-id => 'db_controls'},
                                             $cgi->Tr({-valign => 'top'},
                                                      $cgi->td({-class => 'control_label'},trans('selectds')),
                                                      $cgi->td($cgi->popup_menu(-name => 'db', -values => [], -size => 3, -multiple => 1)),
-                                                     $cgi->td($cgi->button(-name => 'clear', -label => trans('clear'), -onClick => 'clearDBMenuItems()')),
+                                                     $cgi->td($cgi->button(-name => 'clear', -label => trans('clear'), -onClick => 'clearDBSelection()')),
                                                      )),
                                   ) . "\n",
                       ) . "\n",
@@ -1256,21 +1253,21 @@ sub printgraphlinks {
 sub printperiodlinks {
     my($cgi, $params, $period, $now, $content) = @_;
     my (@navstr) = getperiodctrls($cgi, $params, $period, $now);
+    my $label = (($period->[0] eq 'day') ? 'dai' : $period->[0]) . 'ly';
     my $id = 'period_data_' . $period->[0];
     return $cgi->div({-class => 'period_title'},
                      $cgi->span({-class => 'period_anchor'},
                                 $cgi->button(-id => 'toggle_' . $period->[0],
                                              -label => '-',
                                              -onClick => "togglePeriodDisplay('" . $id . "', this)"),
-                                $cgi->a({-id => $period->[0]},
-                                        trans($period->[0] . 'ly'))),
+                                $cgi->a({ -id => $period->[0] },
+                                        trans($label))),
                      $cgi->span({-class => 'period_controls'}, 
                              $navstr[0],
                              $cgi->span({-class => 'period_detail'},
                                         $navstr[1]),
                              $navstr[2]),
-                     $cgi->div({-id => $id },
-                                $content)), "\n";
+                     $cgi->div({-id => $id }, $content)), "\n";
 }
 
 sub printheader {
@@ -1345,7 +1342,7 @@ sub graphsizes {
     #     Monthly    =   5w = 3024000s
     #     Quarterly  =  14w = 8467200s
     #     Yearly     = 400d = 34560000s
-    my @default_times = (['dai', 118_800, 86_400],
+    my @default_times = (['day', 118_800, 86_400],
                          ['week', 777_600, 604_800],
                          ['month', 3_024_000, 2_592_000],
                          ['year', 34_560_000, 31_536_000],);
@@ -1419,12 +1416,12 @@ sub getperiod {
     $sstr =~ s/:\d\d:\d\d /:00 /; # strip the minutes and seconds
     $sstr =~ s/^\S\S\S //; # weekday
     if ($res ne 'quarter' && $res ne 'year') { $sstr =~ s/ \d\d\d\d//; } # year
-    if ($res ne 'dai') { $sstr =~ s/ \d\d:\d\d//; } # hour and minutes
+    if ($res ne 'day') { $sstr =~ s/ \d\d:\d\d//; } # hour and minutes
 
     $estr =~ s/:\d\d:\d\d /:00 /;
     $estr =~ s/^\S\S\S //;
     if ($res ne 'quarter' && $res ne 'year') { $estr =~ s/ \d\d\d\d//; }
-    if ($res ne 'dai') { $estr =~ s/ \d\d:\d\d//; }
+    if ($res ne 'day') { $estr =~ s/ \d\d:\d\d//; }
 
     return "$sstr to $estr";
 }
@@ -1694,9 +1691,8 @@ sub processdata {
 %Ctrans = (
     # These come from the timeall, timehost and timeservice values defined in
     # the configuration file. +ly is the adverb form.
-    dai => 'Today',
-    daily => 'Daily',
     day => 'Today',
+    daily => 'Daily',
     week => 'This Week',
     weekly => 'Weekly',
     month => 'This Month',

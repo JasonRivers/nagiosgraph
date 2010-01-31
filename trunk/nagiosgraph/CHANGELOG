@@ -2,6 +2,9 @@ $Id$
 
 TBD
 
+* major overhaul of the javascript.  state is managed better now, and a lot
+   of redundant code was removed.  there are more functions now, but the
+   functions are more precise with fewer side effects.
 * retain expanded/collapsed state of controls between reloads
 * one more baby step toward consolidated configfile/argument handling
 * fixed color bug - use 'colors' not 'color' in config file

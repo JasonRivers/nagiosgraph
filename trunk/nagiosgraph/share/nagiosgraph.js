@@ -1,15 +1,48 @@
 // nagiosgraph javascript bits and pieces
-// $Id$
 //
+// $Id$
 // License: OSI Artistic License
 //          http://www.opensource.org/licenses/artistic-license-2.0.php
 // Author:  (c) 2005 Soren Dossing
 // Author:  (c) 2008 Alan Brenner, Ithaka Harbors
 // Author:  (c) 2010 Matthew Wall
 
-function setVisibility(elem, state) {
+var pname = [ 'day', 'week', 'month', 'quarter', 'year' ];
+
+// return the value (if any) for the indicated CGI key.
+function getCGIValue(key) {
+  var rval = '';
+  var query = this.location.search.substring(1);
+  if (query && query.length) {
+    var params = query.split("&");
+    for (var ii = 0; ii < params.length ; ii++) {
+      var pos = params[ii].indexOf("=");
+      if (params[ii].substring(0, pos) == key) {
+        rval = unescape(params[ii].substring(pos+1));
+        break;
+      }
+    }
+  }
+  return rval;
+}
+
+// return true if the key shows up as a CGI argument.
+function getCGIBoolean(key) {
+  var query = this.location.search.substring(1);
+  if (query && query.length > 0) {
+    var params = query.split("&");
+    for (var ii = 0; ii < params.length ; ii++) {
+      if (params[ii] == key) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function setDisplay(elem, state) {
   if (elem) {
-    if (state == 'visible') {
+    if (state) {
       elem.style.display = 'inline';
     } else {
       elem.style.display = 'none';
@@ -39,23 +72,19 @@ function setCheckBoxGUIState(expanded, panel, chkbox) {
 
 function setButtonGUIState(expanded, panel, button) {
   if (expanded) {
-    if (panel)
-      panel.style.display = 'inline';
-    if (button)
-      button.value = '-';
+    if (panel) panel.style.display = 'inline';
+    if (button) button.value = '-';
   } else {
-    if (panel)
-      panel.style.display = 'none';
-    if (button)
-      button.value = '+';
+    if (panel) panel.style.display = 'none';
+    if (button) button.value = '+';
   }
 }
 
 // FIXME: this does not work.  i tried making a table row have this id, and
 // that resulted in messed up table layout.  so i wrapped the row in a div.
 // now the layout is ok, but the visibility changes do not work.  sigh.
-function setDBControlsVisibility(state) {
-  setVisibility(document.getElementById('db_controls'), state);
+function showDBControls(flag) {
+  setDisplay(document.getElementById('db_controls'), flag);
 }
 
 // show/hide the secondary controls panel
@@ -74,170 +103,7 @@ function togglePeriodDisplay(period, button) {
   }
 }
 
-// see if there is a cgi argument to expand the controls.  if so, do it.  if
-// not, then collapse them.  make the gui match the state.
-function setControlsGUIState() {
-  var expanded = false;
-  var query = this.location.search.substring(1);
-  if (query.length > 0) {
-    var params = query.split("&");
-    for (var ii = 0; ii < params.length ; ii++) {
-      if (params[ii] == 'expand_controls') {
-        expanded = true;
-        break;
-      }
-    }
-  }
-  setCheckBoxGUIState(expanded,
-                      document.getElementById('secondary_controls_box'),
-                      document.menuform.showhidecontrols);
-}
-
-function setPeriodGUIStates(expanded_periods) {
-  var pstr = expanded_periods;
-  var query = this.location.search.substring(1);
-  if (query.length > 0) {
-    var params = query.split("&");
-    for (var ii = 0; ii < params.length; ii++) {
-      var pos = params[ii].indexOf("=");
-      if (pos >= 0) {
-        var name = params[ii].substring(0, pos);
-        if (name == 'expand_period') {
-          pstr = params[ii].substring(pos+1);
-          break;
-        }
-      }
-    }
-  }
-  var pflag = [ 0, 0, 0, 0, 0 ];
-  var pname = [ 'day', 'week', 'month', 'quarter', 'year' ];
-  if (pstr != '') {
-     var periods = pstr.split(",");    
-     for (var ii = 0; ii < periods.length; ii++) {
-       for (var jj = 0; jj < pname.length; jj++) {
-         if (periods[ii] == pname[jj]) {
-           pflag[jj] = 1;
-         }
-       }
-     }
-  }
-  for (var ii = 0; ii < pflag.length; ii++) {
-    var n = pname[ii];
-    if (n == 'day') n = 'dai';
-    setButtonGUIState(pflag[ii],
-                      document.getElementById('period_data_' + n),
-                      document.getElementById('toggle_' + n));
-  }
-}
-
-//Converts -, etc in input to _ for matching array name
-function findName(entry) {
-  for (var ii = 0; ii < menudata.length; ii++) {
-    if (menudata[ii][0] == entry) {
-      return ii;
-    }
-  }
-  throw entry + " not found in the configured systems"
-}
-
-//Swaps the secondary (services) menu content after a server is selected
-function setService(element, service) {
-  var opts;
-  try {
-    opts = menudata[findName(element.options[element.selectedIndex].text)];
-  }
-  catch (e) {
-    alert(e);
-    return;
-  }
-  var elem = window.document.menuform.services;
-  if (typeof(service) == 'undefined') {
-    var query = this.location.search.substring(1);
-    if (query.length > 0) {
-      var params = query.split("&");
-      for (var ii = 0; ii < params.length ; ii++) {
-        var pos = params[ii].indexOf("=");
-        var name = params[ii].substring(0, pos);
-        if (name == "service") {
-          service = params[ii].substring(pos + 1);
-          break;
-        }
-      }
-    }
-  }
-  elem.length = opts.length - 1;
-  for (var ii = 1; ii < opts.length; ii++) {
-    elem.options[ii - 1].text = opts[ii][0];
-    if (opts[ii][0] == service)
-      elem.options[ii - 1].selected = true;
-  }
-  setDB(window.document.menuform.services, 1);
-}
-
-// Once a service is selected this function updates the database list
-// first try using whatever host is selected.  if there is no selected host,
-// just use the first service we find.
-function setDB(element) {
-  var service = element.options[element.selectedIndex].text;
-  var opts;
-  var hosts = window.document.menuform.servidors;
-  if (hosts) {
-    try {
-      opts = menudata[window.document.menuform.servidors.selectedIndex];
-    } catch (e) {
-      alert(e);
-      return;
-    }
-  } else {
-    for (var ii = 0; ii < menudata.length; ii++) {
-      for (var jj = 0; jj < menudata[ii].length; jj++) {
-        if (menudata[ii][jj][0] == service) {
-          opts = menudata[ii];
-          break;
-        }
-      }
-    }
-  }
-  var count = 0
-  for (var ii = 1; ii < opts.length; ii++) {
-    if (opts[ii][0] == service) {
-      for (var jj = 1; jj < opts[ii].length; jj++) {
-        for (var kk = 1; kk < opts[ii][jj].length; kk++) {
-          count++;
-        }
-      }
-      break;
-    }
-  }
-  var elem = window.document.menuform.db;
-  elem.length = count;
-  count = 0;
-  for (var ii = 1; ii < opts.length; ii++) {
-    if (opts[ii][0] == service) {
-      for (var jj = 1; jj < opts[ii].length; jj++) {
-        for (var kk = 1; kk < opts[ii][jj].length; kk++) {
-          elem.options[count].text = opts[ii][jj][0] + ',' + opts[ii][jj][kk];
-          count++;
-        }
-      }
-      break;
-    }
-  }
-  if (elem.length == 1) {
-    setDBControlsVisibility('hidden');
-    if (arguments.length == 1)
-      jumpto();
-  } else {
-    if (elem.length > 5) {
-      elem.size = 5;
-    } else {
-      elem.size = elem.length;
-    }
-    setDBControlsVisibility('visible');
-  }
-}
-
-function clearDBMenuItems() {
+function clearDBSelection() {
   var elem = window.document.menuform.db;
   if (elem) {
     for (var ii = 0; ii < elem.length; ii++) {
@@ -246,7 +112,7 @@ function clearDBMenuItems() {
   }
 }
 
-function clearPeriodItems() {
+function clearPeriodSelection() {
   var elem = window.document.menuform.period;
   if (elem) {
     for (var ii = 0; ii < elem.length; ii++) {
@@ -255,15 +121,16 @@ function clearPeriodItems() {
   }
 }
 
-// Once a line is selected this function loads the new page
-// FIXME: this duplicates CGI logic that lives in ngshared.pm.  punt it.
-function jumpto() {
-  var db = new Array();
-  var server;
+// Construct a CGI query based on current state.
+// FIXME: do we need this?  why not regular CGI?
+function mkCGIArgs() {
+  var host;
   var service;
+  var db = new Array();
+
   var elem = window.document.menuform.servidors;
   if (elem) {
-    server = escape(elem.options[elem.selectedIndex].text);
+    host = escape(elem.options[elem.selectedIndex].text);
   }
   elem = window.document.menuform.services;
   if (elem) {
@@ -276,15 +143,14 @@ function jumpto() {
         db.push(escape(elem.options[ii].text));
     }
   }
-  var qstr = "";
-  if (server) {
-    if (qstr.length > 0)
-      qstr += "&";
-    qstr += "host=" + server;
+
+  var qstr = '';
+  if (host) {
+    if (qstr != '') qstr += "&";
+    qstr += "host=" + host;
   }
   if (service) {
-    if (qstr.length > 0)
-      qstr += "&";
+    if (qstr != '') qstr += "&";
     qstr += "service=" + service;
   }
   var source, entry;
@@ -343,137 +209,323 @@ function jumpto() {
   if (document.menuform.showhidecontrols.checked) {
     qstr += "&expand_controls";
   }
-  var periods = [ 'day', 'week', 'month', 'quarter', 'year' ];
   var ep = '';
-  for (var ii = 0; ii < periods.length; ii++) {
-    var p = periods[ii];
-    if (p == 'day') p = 'dai';
-    elem = document.getElementById('period_data_' + p);
+  for (var ii = 0; ii < pname.length; ii++) {
+    elem = document.getElementById('period_data_' + pname[ii]);
     if (elem && elem.style.display == 'inline') {
       if (ep != '') ep += ',';
-      ep += periods[ii];
+      ep += pname[ii];
     }
   }
   if (ep != '') {
     qstr += "&expand_period=" + ep;
   }
-  var newURL = location.pathname + "?" + qstr;
-  window.location.assign(newURL);
+  return qstr;
 }
 
-// function to change host/service
-function jumptohost(element) {
-  var item = escape(document.menuform.servidors.value);
-  window.location.assign(location.pathname + "?host=" + item);
-}
+// Populate menus and make the GUI state match the CGI query string.
+// This should be invoked at the bottom of a web page, after all of the DOM
+// elements have been instantiated.
+//
+// expanded_controls is a boolean that indicates the default expanded/collapsed
+// controls state.  this is overridden by any CGI arguments.
+//
+// expanded_periods is a comma-separate list of periods that indicates the
+// periods that should be expanded.  these are overridden by any CGI arguments.
+//
+// if nothing specified, see if there is anything in the CGI query string.
+function cfgMenus(host, service, expanded_periods) {
+  cfgHostMenu(host);
+  cfgServiceMenu(host, service);
+  cfgDBMenu(host, service);
 
-function jumptoservice(element) {
-  var item = escape(document.menuform.services.value);
-  window.location.assign(location.pathname + "?service=" + item);
-}
-
-// Fill the host and service menus with the correct entries
-function configureMenus(server, service, expanded_periods) {
   setControlsGUIState();
   setPeriodGUIStates(expanded_periods);
-  setPeriodMenuItems();
-  var ii, jj, kk, pos, items;
-  var elem = document.menuform.servidors;
-  if(elem) {
-    elem.length = menudata.length;
-    for (ii = 0; ii < menudata.length; ii++) {
-      elem.options[ii].text = menudata[ii][0];
-      if (menudata[ii][0] == server) elem.options[ii].selected = true;
-    }
-    setService(elem, service);
-    clearDBMenuItems();
-  }
-  setDBMenuItems();
+  selectPeriodItems();
+  selectDBItems(this.location.search.substring(1));
 }
 
-// Fill the service menu with the correct entries
-// loop through all of the menudata and create a list of all the services
-// that we encounter.
-// FIXME: this is inefficient and will suck on large number of services
-function configureServiceMenu(service, expanded_periods) {
-  setControlsGUIState(); 
-  setPeriodGUIStates(expanded_periods);
-  setPeriodMenuItems();
-  var n = 0;
-  var items = new Array();
+// Populate the host menu and select the indicated host.
+function cfgHostMenu(host) {
+  var menu = document.menuform.servidors;
+  if(!menu) return;
+
+  menu.length = menudata.length;
   for (var ii = 0; ii < menudata.length; ii++) {
-    var opts = menudata[ii];
-    for (var jj = 1; jj < opts.length; jj++) {
-      var data = opts[jj];
-      var found = 0;
-      for (var kk = 0; kk < items.length; kk++) {
-        if (items[kk] == data[0]) {
-          found = 1;
-        }
-      }
-      if (!found) {
-        items[n] = data[0]
-        n++;
-      }
-    }
+    menu.options[ii].text = menudata[ii][0];
+    if (menudata[ii][0] == host) menu.options[ii].selected = true;
   }
-  var elem = window.document.menuform.services;
-  elem.length = items.length;
-  for (var ii = 0; ii < items.length; ii++) {
-    elem.options[ii].text = items[ii];
-    if (items[ii] == service) {
-      elem.options[ii].selected = true;
-    }
-  }
-  setDB(window.document.menuform.services, 1);
-  clearDBMenuItems();
-  setDBMenuItems();
 }
 
-function setPeriodMenuItems() {
-  elem = window.document.menuform.period;
-  if(elem) {
-    var params = this.location.search.substring(1).split("&");
-    for (ii = 0; ii < params.length; ii++) {
-      var pos = params[ii].indexOf("=");
-      if (params[ii].substring(0, pos) == "period") {
-        var items = params[ii].substring(pos + 1).split(',');
-        for (jj=0; jj<items.length; jj++) {
-          for (kk=0; kk<elem.length; kk++) {
-            if (items[jj] == elem.options[kk].value) {
-              elem.options[kk].selected = true;
-              break;
-            }
+//Converts -, etc in input to _ for matching array name
+function findName(entry) {
+  for (var ii = 0; ii < menudata.length; ii++) {
+    if (menudata[ii][0] == entry) {
+      return ii;
+    }
+  }
+  throw entry + " not found in the configured hosts and services"
+}
+
+// Populate the service menu and select the indicated service.
+// If a host is specified, then use only the services for that host.
+// If no host is specified, then loop through all of the menudata and create
+// a list of all the services that we encounter.
+// FIXME: this is inefficient and will suck on large number of hosts/services
+function cfgServiceMenu(host, service) {
+  var menu = window.document.menuform.services;
+  if (!menu) return;
+
+  var items = new Array();
+
+  if (typeof(host) != 'undefined' && host != '') {
+    var opts;
+    for (var ii=0; ii<menudata.length; ii++) {
+      if (menudata[ii][0] == host) {
+        opts = menudata[ii];
+        break;
+      }
+    }
+    if (opts) {
+      items.length = opts.length - 1;
+      for (var ii=1; ii<opts.length; ii++) {
+        items[ii-1] = opts[ii][0];
+      }
+    }
+  } else {
+    var n = 0;
+    for (var ii = 0; ii < menudata.length; ii++) {
+      var opts = menudata[ii];
+      for (var jj = 1; jj < opts.length; jj++) {
+        var data = opts[jj];
+        var found = 0;
+        for (var kk = 0; kk < items.length; kk++) {
+          if (items[kk] == data[0]) {
+            found = 1;
           }
         }
+        if (!found) {
+          items[n] = data[0]
+          n++;
+        }
+      }
+    }
+  }
+
+  menu.length = items.length;
+  for (var ii = 0; ii < items.length; ii++) {
+    menu.options[ii].text = items[ii];
+    if (items[ii] == service) {
+      menu.options[ii].selected = true;
+    }
+  }
+}
+
+// Once a service is selected this function updates the list of corrsponding
+// data sets.  First try using whatever host is selected.  If there is no
+// selected host, just use the first matching service we find.
+function cfgDBMenu(host, service) {
+  var menu = window.document.menuform.db;
+  if (!menu) return;
+
+  var opts;
+  if (typeof(host) != 'undefined' && host != '') {
+    for (var ii=0; ii<menudata.length; ii++) {
+      if (menudata[ii][0] == host) {
+        opts = menudata[ii];
+        break;
+      }
+    }
+  } else if (typeof(service) != 'undefined' && service != '') {
+    for (var ii = 0; ii < menudata.length; ii++) {
+      for (var jj = 0; jj < menudata[ii].length; jj++) {
+        if (menudata[ii][jj][0] == service) {
+          opts = menudata[ii];
+          break;
+        }
+      }
+    }
+  }
+
+  menu.length = 0;
+  if (opts) {
+    var count = 0;
+    for (var ii = 1; ii < opts.length; ii++) {
+      if (opts[ii][0] == service) {
+        for (var jj = 1; jj < opts[ii].length; jj++) {
+          for (var kk = 1; kk < opts[ii][jj].length; kk++) {
+            count++;
+          }
+        }
+        break;
+      }
+    }
+    menu.length = count;
+    count = 0;
+    for (var ii = 1; ii < opts.length; ii++) {
+      if (opts[ii][0] == service) {
+        for (var jj = 1; jj < opts[ii].length; jj++) {
+          for (var kk = 1; kk < opts[ii][jj].length; kk++) {
+            menu.options[count].text = opts[ii][jj][0] +','+ opts[ii][jj][kk];
+            count++;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  if (menu.length <= 1) {
+    showDBControls(false);
+  } else {
+    menu.size = 5;
+    showDBControls(true);
+  }
+}
+
+// highlight the period menu items based on the elements in the page.
+function selectPeriodItems() {
+  elem = window.document.menuform.period;
+  if(!elem) return;
+
+  var pstr = '';
+  for (var ii=0; ii<pname.length; ii++) {
+    var x = document.getElementById('period_data_' + pname[ii]);
+    if (x) {
+      if (pstr != '') pstr += ',';
+      pstr += pname[ii];
+    }
+  }
+
+  var items = pstr.split(',');
+  for (jj=0; jj<items.length; jj++) {
+    for (kk=0; kk<elem.length; kk++) {
+      if (items[jj] == elem.options[kk].value) {
+        elem.options[kk].selected = true;
+        break;
       }
     }
   }
 }
 
-// highlight the db menu items based on the url query string
-function setDBMenuItems() {
+// highlight the db menu items based on the url query string.
+// specifying nothing is equivalent to selecting all.
+function selectDBItems(query) {
   elem = window.document.menuform.db;
-  if(elem) {
-    var params = this.location.search.substring(1).split("&");
-    for (ii = 0; ii < params.length ; ii++) {
+  if(!elem) return;
+
+  var found = false;
+  if (query && query.length) {
+    var params = query.split("&");
+    for (var ii = 0; ii < params.length ; ii++) {
       var pos = params[ii].indexOf("=");
-      if (params[ii].substring(0, pos) == "db") {
-        var items = unescape(params[ii].substring(pos + 1)).split(',');
-        for (jj = 1; jj < items.length; jj++) {
-          for (kk = 0; kk < elem.length; kk++) {
+      if (params[ii].substring(0, pos) == 'db') {
+        var value = unescape(params[ii].substring(pos+1));
+        var items = value.split(',');
+        for (var jj = 1; jj < items.length; jj++) {
+          for (var kk = 0; kk < elem.length; kk++) {
             if (items[0] + ',' + items[jj] == elem.options[kk].value) {
               elem.options[kk].selected = true;
+              found = true;
               break;
             }
           }
         }
       }
     }
-    if (elem.length == 1) {
-      setDBControlsVisibility('hidden');
-    } else {
-      setDBControlsVisibility('visible');
+  }
+
+  if (! found) {
+    for (var kk=0; kk<elem.length; kk++) {
+      elem.options[kk].selected = true;
     }
   }
+
+  if (elem.length == 1) {
+    showDBControls(false);
+  } else {
+    showDBControls(true);
+  }
+}
+
+// see if there is a cgi argument to expand the controls.  if so, do it.  if
+// not, then collapse them.  make the gui match the state.
+function setControlsGUIState() {
+  setCheckBoxGUIState(getCGIBoolean('expand_controls'),
+                      document.getElementById('secondary_controls_box'),
+                      document.menuform.showhidecontrols);
+}
+
+// see if there is a cgi argument to expand time periods.  if so, expand the
+// appropriate periods.  if not, collapse them.  make the gui match the state.
+// FIXME: the spec for this is indeterminate
+function setPeriodGUIStates(expanded_periods) {
+  var pstr = getCGIValue('expand_period');
+  var pflag = [ 0, 0, 0, 0, 0 ];
+  if (typeof(pstr) != 'undefined' && pstr != '') {
+     var periods = pstr.split(",");    
+     for (var ii = 0; ii < periods.length; ii++) {
+       for (var jj = 0; jj < pname.length; jj++) {
+         if (periods[ii] == pname[jj]) {
+           pflag[jj] = 1;
+         }
+       }
+     }
+  }
+  for (var ii = 0; ii < pflag.length; ii++) {
+    setButtonGUIState(pflag[ii],
+                      document.getElementById('period_data_' + pname[ii]),
+                      document.getElementById('toggle_' + pname[ii]));
+  }
+}
+
+// reload the page with CGI arguments constructed from current state.
+function jumpto() {
+  var qstr = mkCGIArgs();
+  window.location.assign(location.pathname + "?" + qstr);
+}
+
+// configure everything based on a change to the selected host.  a change
+// to the host requires that the service menu be reconstructed to match the
+// services of the selected host.
+function hostChange() {
+  var host = '';
+  var service = '';
+
+  var hostmenu = document.menuform.servidors;
+  if (hostmenu) {
+    host = hostmenu.options[hostmenu.selectedIndex].text;
+  }
+  var servmenu = document.menuform.services;
+  if (servmenu) {
+    service = servmenu.options[servmenu.selectedIndex].text;
+  }
+  cfgServiceMenu(host, service);
+
+  // service selection may have changed, so get the new one
+  if (servmenu) {
+    service = servmenu.options[servmenu.selectedIndex].text;
+  }
+  cfgDBMenu(host, service);
+  selectDBItems('');
+}
+
+// configure everything based on a change to the selected service.  a change
+// to the service requires that the db menu be reconstructed to match the
+// data sets of the selected service.
+function serviceChange() {
+  var host = '';
+  var service = '';
+
+  var hostmenu = document.menuform.servidors;
+  if (hostmenu) {
+    host = hostmenu.options[hostmenu.selectedIndex].text;
+  }
+  var servmenu = document.menuform.services;
+  if (servmenu) {
+    service = servmenu.options[servmenu.selectedIndex].text;
+  }
+
+  cfgDBMenu(host, service);
+  selectDBItems('');
 }

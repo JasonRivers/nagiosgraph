@@ -86,7 +86,7 @@ for my $period (graphsizes($periods)) {
     print printperiodlinks($cgi, $params, $period, $now, $str);
 }
 
-print printscript('both', $host, $service, $expanded_periods) or
+print printscript($host, $service, $expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or
