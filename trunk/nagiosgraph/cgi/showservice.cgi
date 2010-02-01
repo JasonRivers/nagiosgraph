@@ -64,9 +64,11 @@ print printheader($cgi,
                     style => \@style,
                     call => 'service',
                     default => $label,
+                    service => $service,
                     label => $cgi->unescape($label)}) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
+my $url = $ENV{REQUEST_URI};
 my $now = time;
 foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
@@ -81,7 +83,7 @@ foreach my $period (graphsizes($periods)) {
         my $link = $cgi->a({href => $url}, $host);
         $str .= printgraphlinks($cgi, $dbinfo, $period, $link) . "\n";
     }
-    print printperiodlinks($cgi, $params, $period, $now, $str) or
+    print printperiodlinks($cgi, $url, $params, $period, $now, $str) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 

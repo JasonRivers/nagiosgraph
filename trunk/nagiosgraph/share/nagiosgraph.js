@@ -123,10 +123,12 @@ function clearPeriodSelection() {
 }
 
 // Construct a CGI query based on current state.
-// FIXME: do we need this?  why not regular CGI?
+// why not just use CGI, you ask?  we need this since we maintain the GUI
+// state, i.e. expanded/collapsed state of time periods and controls.
 function mkCGIArgs() {
   var host;
   var service;
+  var group;
   var db = new Array();
 
   var elem = window.document.menuform.servidors;
@@ -136,6 +138,10 @@ function mkCGIArgs() {
   elem = window.document.menuform.services;
   if (elem) {
     service = escape(elem.options[elem.selectedIndex].text);
+  }
+  elem = window.document.menuform.groups;
+  if (elem) {
+    group = escape(elem.options[elem.selectedIndex].text);
   }
   elem = window.document.menuform.db;
   if (elem) {
@@ -153,6 +159,10 @@ function mkCGIArgs() {
   if (service && service != '' && service != '-') {
     if (qstr != '') qstr += "&";
     qstr += "service=" + service;
+  }
+  if (group && group != '' && group != '-') {
+    if (qstr != '') qstr += "&";
+    qstr += "group=" + group;
   }
   var source, entry;
   for (var ii = 0; ii < db.length; ii++) {

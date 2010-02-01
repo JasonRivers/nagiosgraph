@@ -14,9 +14,9 @@ use lib '/opt/nagiosgraph/etc';
 
 # Main program - change nothing below
 
-use ngshared qw(:SHOWHOST);
+use ngshared qw(:SHOWGROUP);
 
-use CGI;
+use CGI qw(-nosticky);
 use English qw(-no_match_vars);
 use File::Find;
 use strict;
@@ -33,37 +33,32 @@ my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
 $cgi->autoEscape(0);
 
 my $params = getparams($cgi);
-getdebug('showhost', $params->{host}, $params->{service});
+getdebug('showgroup', $params->{host}, $params->{service});
 
 dumper(DBDEB, 'config', \%Config);
 dumper(DBDEB, 'params', $params);
 
-my $host = q();
-if ($params->{host}) { $host = $params->{host}; }
+my $group = q();
+if ($params->{group}) { $group = $params->{group}; }
 
-my ($periods, $expanded_periods) = getperiods('host', $params);
+my ($periods, $expanded_periods) = getperiods('group', $params);
 
-my @style;
-if ($Config{stylesheet}) {
-    @style = (-style => {-src => "$Config{stylesheet}"});
-}
+my @style = getstyle();
 
 find(\&getgraphlist, $Config{rrddir});
 
-my $hdb = readhostdb($host);
+my ($gnames, $ginfos) = readgroupdb($group);
+dumper(DBDEB, 'groups', $gnames);
+dumper(DBDEB, 'groupinfo', $ginfos);
 
-# nagios and nagiosgraph may not share the same cgi directory
-my $nagioscgiurl = $Config{nagiosgraphcgiurl};
-if ($Config{nagioscgiurl}) { $nagioscgiurl = $Config{nagioscgiurl}; }
-
-# draw the page
 print printheader($cgi,
-                  { title => $host,
+                  { title => $group,
                     style => \@style,
-                    call => 'host',
-                    default => $host,
-                    host => $host,
-                    label => $cgi->a({href => $nagioscgiurl . '/extinfo.cgi?type=1&host=' . $host}, $host)}) or
+                    call => 'group',
+                    default => $group,
+                    group => $group,
+                    grouplist => \@{$gnames},
+                    label => $cgi->unescape($group) }) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $url = $ENV{REQUEST_URI};
@@ -71,26 +66,32 @@ my $now = time;
 foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
     my $str = q();
-    foreach my $dbinfo (@{$hdb}) {
-        $dbinfo->{host} = $params->{host};
-        cfgparams($dbinfo, $params, $dbinfo->{service});
-        dumper(DBDEB, 'dbinfo', $dbinfo);
+    foreach my $info (@{$ginfos}) {
+        cfgparams($info, $params, $info->{service});
+        dumper(DBDEB, 'graph info', $info);
 
-        my $url = $Config{nagiosgraphcgiurl} .
-            '/showservice.cgi?service=' . $dbinfo->{service} .
-            join('&db=' . @{$dbinfo->{db}});
+        my $surl = $Config{nagiosgraphcgiurl} .
+            '/showservice.cgi?service=' . $cgi->escape($info->{service});
+        if ($info->{db}) {
+            $surl .= join('&db=' . @{$info->{db}});
+        }
+        $surl =~ tr/ /+/;
+
+        my $hurl = $Config{nagiosgraphcgiurl} .
+            '/showhost.cgi?host=' . $cgi->escape($info->{host});
         $url =~ tr/ /+/;
 
-        my $link = $cgi->a({href => $url},
-                           defined $dbinfo->{label} ? $dbinfo->{label} :
-                           $dbinfo->{service});
-        $str .= printgraphlinks($cgi, $dbinfo, $period, $link) . "\n";
+        my $link = $cgi->a({href => $surl}, $info->{service}) .
+            q( ) . trans('on') . q( ) .
+            $cgi->a({href => $hurl}, $info->{host});
+
+        $str .= printgraphlinks($cgi, $info, $period, $link) . "\n";
     }
     print printperiodlinks($cgi, $url, $params, $period, $now, $str) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printscript($host, $params->{service}, $expanded_periods) or
+print printscript('', '', $expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or
@@ -100,36 +101,36 @@ __END__
 
 =head1 NAME
 
-showhost.cgi - Graph Nagios data for a given host
+showgroup.cgi - Graph Nagios data for a given host or service group
 
 =head1 DESCRIPTION
 
 This is a CGI script that is designed to be run on a web server.  It generates
-a page of HTML that displays a list of graphs for a single host.  The graph
-data are retrieved from RRD files and are typically captured by insert.pl.
+a page of HTML that displays a list of graphs for a group of hosts and/or 
+services.  The graph data are retrieved from RRD files and are typically
+captured by insert.pl.
 
 The showgraph.cgi script generates the graphs themselves.
 
 =head1 USAGE
 
-B<showhost.cgi>?host=host_name
+B<showgroup.cgi>?group=group_name
 
 =head1 CONFIGURATION
 
 The B<nagiosgraph.conf> file controls the behavior of this script.
 
-The B<hostdb.conf> controls which services will be listed and the order in
-which those services will appear.
+Groups of services and hosts are defined in the B<groupdb.conf> file.
 
 =head1 OPTIONS
 
-host=host_name
+group=group_name
 
 period=(day week month quarter year)
 
 =head1 DIAGNOSTICS
 
-Use the debug_showhost setting from B<nagiosgraph.conf> to control the amount
+Use the debug_showgroup setting from B<nagiosgraph.conf> to control the amount
 of debug information that will be emitted by this script.  Debug output will
 go to the web server error log.
 
@@ -165,25 +166,12 @@ the web server.
 Install the B<ngshared.pm> file and edit this file to change the B<use lib>
 line to point to the directory containing B<ngshared.pm>.
 
-Create or edit the example B<hostdb.conf>, which must reside in the same
+Create or edit the example B<groupdb.conf>, which must reside in the same
 directory as B<ngshared.pm>.
-
-To link a web page generated by this script from Nagios, add
-
-=over 4
-
-action_url https://server/nagios/cgi-bin/showhost.cgi?host=host1
-
-=back
-
-to the B<define host> (Nagios 3) or B<define hostextinfo> (Nagios 2.12) stanza
-(changing the base URL and host1 as needed).
-
-Copy the images/action.gif file to the nagios/images directory, if desired.
 
 =head1 SEE ALSO
 
-B<hostdb.conf> B<nagiosgraph.conf> B<showgraph.cgi> B<showservice.cgi> B<ngshared.pm>
+B<groupdb.conf> B<nagiosgraph.conf> B<showgraph.cgi> B<show.cgi> B<showhost.cgi> B<showservice.cgi> B<ngshared.pm>
 
 =head1 AUTHOR
 
@@ -191,16 +179,13 @@ Soren Dossing, the original author of show.cgi in 2004.
 
 Robert Teeter, the original author of showhost.cgi in 2005
 
-Alan Brenner - alan.brenner@ithaka.org; I've updated this from the version
-at http://nagiosgraph.wiki.sourceforge.net/ by moving some subroutines into a
-shared file (ngshared.pm), using showgraph.cgi, and adding links for show.cgi
-and showservice.cgi.
+Alan Brenner, author of ngshared.pm and many other parts in 2008.
 
-Matthew Wall, added features, bug fixes and refactoring in 2010.
+Matthew Wall, author of showgroup.cgi in 2010.
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright (C) 2005 Soren Dossing, 2008 Ithaka Harbors, Inc.
+Copyright (C) 2010 Matthew Wall
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the OSI Artistic License:

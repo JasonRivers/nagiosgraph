@@ -164,7 +164,7 @@ sub getparams {
     my %rval;
 
     # these flags are either string or array
-    for my $ii (qw(host service db graph geom rrdopts offset period expand_period)) {
+    for my $ii (qw(host service db group graph geom rrdopts offset period expand_period)) {
         if ($cgi->param($ii)) {
             if (ref($cgi->param($ii)) eq 'ARRAY') {
                 my @rval = $cgi->param($ii);
@@ -210,14 +210,28 @@ sub getperiods {
     }
 
     my $s = $opts->{period};
-    my $p = (defined $s && $s ne q()) ? $s : $Config{'time' . $label};
+    my $c = $Config{'time' . $label};
+    my $p = '';
+    if (defined $c && $c ne q()) { $p = $c; }
+    if (defined $s && $s ne q()) { $p = $s; }
     $p =~ s/ /,/g; ## no critic (RegularExpressions)
 
     $s = $opts->{expand_period};
-    my $ep = (defined $s && $s ne q()) ? $s : $Config{'expand_time' . $label};
+    $c = $Config{'expand_time' . $label};
+    my $ep = '';
+    if (defined $c && $c ne q()) { $ep = $c; }
+    if (defined $s && $s ne q()) { $ep = $s; }
     $ep =~ s/ /,/g; ## no critic (RegularExpressions)
 
     return ($p, $ep);
+}
+
+sub getstyle {
+    my @style;
+    if ($Config{stylesheet}) { 
+        @style = (-style => {-src => "$Config{stylesheet}"});
+    }
+    return @style;
 }
 
 # configure parameters with something that we are sure will work.  grab values
@@ -292,8 +306,14 @@ sub buildurl {
     return $url;
 }
 
+# construct the filename to RRD data file.  this requires at least a valid
+# host and service to work.
 sub getfilename {
     my ($host, $service, $db, $quiet) = @_;
+    if (not $host || not $service) { 
+        debug(DBWRN, 'cannot construct filename: missing host or service');
+        return 'BOGUSDIR', 'BOGUSFILE';
+    }
     $db ||= q();
     $quiet ||= 0;
     if (not $quiet) { debug(DBDEB, "getfilename($host, $service, $db)"); }
@@ -649,6 +669,69 @@ sub readservdb {
     }
     dumper(DBDEB, 'validated hosts', \@hdb);
     return \@hdb, \@sdb, \%dbinfo;
+}
+
+# Read the groupdb file
+#
+# This returns a list of graph infos for the specified group '$val' and a list
+# of all group names.
+sub readgroupdb {
+    my ($val) = @_;
+    $val ||= q();
+    debug(DBDEB, "readgroupdb($val)");
+
+    if (! defined $Config{groupdb} || $Config{groupdb} eq '') {
+        my $msg = "no groupdb file has been specified in the configuration.";
+        debug(DBDEB, $msg);
+        htmlerror($msg);
+        croak($msg);
+    }
+
+    my $fn = $Config{groupdb};
+    my %gnames;
+    my @ginfo;
+    if (open DB, '<', $fn) {
+        while (my $line = <DB>) {
+            chomp $line;
+            $line =~ s/\s*#.*//;       # eliminate comments
+            $line =~ tr/+/ /;          # unescape CGI-escaped spaces
+            $line =~ s/^\s+//g;        # strip leading whitespace
+            next if ! $line;
+            debug(DBDEB, "readgroupdb: $line");
+            my($name, $value) = split(/=/, $line, 2);
+            $name =~ s/\s+$//g;
+            next if ! $name;
+            $gnames{$name} = 1;
+            next if $name ne $val;
+            $value =~ s/^\s+//g;
+            next if ! $value;
+            my($host, $serv) = split(/,/, $value, 2);
+            next if ! $host || ! $serv;
+
+            my @db;
+            if ($serv =~ /(^[^&]+)&(.*)/) {
+                $serv = $1;
+                @db = ($2 =~ /db\s*=\s*([^&]*)/g);
+            }
+
+            my %dbtmp;
+            $dbtmp{host} = $host;
+            $dbtmp{service} = $serv;
+            if (@db) { $dbtmp{db} = \@db; }
+            debug(DBDEB, "readgroupdb saving host:$dbtmp{host} service:$dbtmp{service} db:" . ($dbtmp{db} ? @{$dbtmp{db}} : ''));
+            push @ginfo, \%dbtmp;
+        }
+        close DB or debug(DBERR, "cannot close $Config{$fn}: $OS_ERROR");
+    } else {
+        my $msg = "cannot open groupdb $fn: $!";
+        debug(DBDEB, $msg);
+        htmlerror($msg);
+        croak($msg);
+    }
+
+    my @gnames = sortnaturally(keys %gnames);
+
+    return \@gnames, \@ginfo;
 }
 
 # show.cgi subroutines here for unit testability ##############################
@@ -1045,11 +1128,9 @@ sub getserverlist {
 
 # Inserts the navigation menu (top of the page)
 sub printnavmenu {
-    my ($cgi, $host, $service, $userid, $opts) = @_;
+    my ($cgi, $userid, $opts) = @_;
     my ($rval);
 
-    # Get list of servers/services
-    debug(DBDEB, "printnavmenu($host, $service)");
     # Print Navigation Menu if we have a separator set (that will allow
     # navigation menu to correctly split the filenames/filepaths in
     # host/service/db names.
@@ -1064,7 +1145,7 @@ sub printnavmenu {
     $rval = printjavascript(\@servers, \%servers);
 
     # Create main form
-    $rval .= printcontrols($cgi, 'both', $host, $service, $opts);
+    $rval .= printcontrols($cgi, 'both', $opts);
 
     return $rval;
 }
@@ -1077,57 +1158,77 @@ sub printscript {
     return "<script type=\"text/javascript\">cfgMenus(\'$host\',\'$service\',\'$expanded_periods\');</script>\n";
 }
 
-# context is one of both (show), host (showhost), or service (showservice).
+
+# there are 4 contexts: show, showhost, showservice, showgroup.
+#   show displays both host and service menus.
+#   showhost displays the host menu.
+#   showservice displays the service menu.
+#   showgroup displays the groups menu.
+#
+# primary controls consist of the host/service/group menus and the
+# update button.  secondary controls are all the others.
 sub printcontrols {
-    my ($cgi, $context, $host, $service, $opts) = @_;
+    my ($cgi, $context, $opts) = @_;
 
-    my %selstr = qw(host selecthost service selectserv);
-    my %name = qw(host servidors service services);
-    my %func = qw(host hostChange service serviceChange);
+    # FIXME: this is prolly not necessary since we fabricate the action
+    # in javascript.
+    my %script = qw(both show.cgi host showhost.cgi service showservice.cgi group showgroup.cgi);
+    my $action = $Config{nagiosgraphcgiurl} . q(/) . $script{$context};
 
-    my $item = ($host ne q()) ? $host : $service;
-
-    # there are 3 contexts: show, showhost, showservice.  show
-    # displays both host and service menus.  showhost displays
-    # the host menu.  showservice displays the service menu.
-    #
-    # Selecting a host shows the associated services
-    # Selecting a service loads the page with new graphs
-    #
-    # primary controls consist of the host/service menus and the
-    # update button.  secondary controls are all the others.
+    my $menustr = q();
+    if ($context eq 'both') {
+        my $host = $opts->{host};
+        my $service = $opts->{service};
+        $menustr = $cgi->span({-class => 'selector'},
+                              trans('selecthost') . q( ) .
+                              $cgi->popup_menu(-name => 'servidors',
+                                               -onChange => 'hostChange()',
+                                               -values => [$host],
+                                               -default => $host)) . "\n";
+        $menustr .= $cgi->span({-class => 'selector'},
+                               trans('selectserv') . q( ) .
+                               $cgi->popup_menu(-name => 'services',
+                                                -onChange => 'serviceChange()',
+                                                -values => [$service],
+                                                -default => $service));
+    } elsif ($context eq 'host') {
+        my $host = $opts->{host};
+        $menustr = $cgi->span({-class => 'selector'},
+                              trans('selecthost') . q( ) .
+                              $cgi->popup_menu(-name => 'servidors',
+                                               -onChange => 'hostChange()',
+                                               -values => [$host],
+                                               -default => $host));
+    } elsif ($context eq 'service') {
+        my $service = $opts->{service};
+        $menustr = $cgi->span({-class => 'selector'},
+                              trans('selectserv') . q( ) .
+                              $cgi->popup_menu(-name => 'services',
+                                               -onChange => 'serviceChange()',
+                                               -values => [$service],
+                                               -default => $service));
+    } elsif ($context eq 'group') {
+        my $group = $opts->{group};
+        my @groups = ('-', @{$opts->{grouplist}});
+        $menustr = $cgi->span({-class => 'selector'},
+                              trans('selectgroup') . q( ) .
+                              $cgi->popup_menu(-name => 'groups',
+                                               -values => [@groups],
+                                               -default => $group));
+    }
 
     return $cgi->
         div({-class => 'controls'}, "\n" .
-            $cgi->start_form(-method => 'GET', -name => 'menuform') . "\n",
+            $cgi->start_form(-method => 'GET',
+                             -action => $action,
+                             -name => 'menuform') . "\n",
             $cgi->div({-class => 'primary_controls'},
-                      ($context eq 'both')
-                      ? $cgi->span({-class => 'selector'},
-                                   trans('selecthost') . q( ) .
-                                   $cgi->popup_menu(-name => 'servidors',
-                                                    -onChange => 'hostChange()',
-                                                    -values => [$host],
-                                                    -default => $host)) .
-                      "\n" .
-                      $cgi->span({-class => 'selector'},
-                                 trans('selectserv') . q( ) .
-                                 $cgi->popup_menu(-name => 'services',
-                                                  -onChange => 'serviceChange()',
-                                                  -values => [$service],
-                                                  -default => $service))
-                      : $cgi->span({-class => 'selector'},
-                                   trans($selstr{$context}) . q( ) .
-                                   $cgi->popup_menu(-name => $name{$context},
-                                                    -onChange => $func{$context} . '()',
-                                                    -values => [$item],
-                                                    -default => $item)),
-                      "\n",
+                      $menustr . "\n",
                       $cgi->span({-class => 'executor'},
                                  $cgi->button(-name => 'go', 
                                               -label => trans('submit'),
                                               -onClick => 'jumpto()')
-                                 ) . "\n",
-                      ) . "\n",
+                                 ) . "\n") . "\n",
             $cgi->div({-class => 'secondary_controls'},
                       $cgi->p({-class => 'controls_toggle'},
                               $cgi->checkbox(-name => 'showhidecontrols',
@@ -1149,13 +1250,14 @@ sub printcontrols {
                                            $cgi->td($cgi->popup_menu(-name => 'period', -values => [@PERIODS], -size => 5, -multiple => 1)),
                                            $cgi->td($cgi->button(-name => 'clear', -label => trans('clear'), -onClick => 'clearPeriodSelection()')),
                                            ),
-                                  ($context eq 'host') ? q() :
-                                  $cgi->span({-id => 'db_controls'},
-                                            $cgi->Tr({-valign => 'top'},
-                                                     $cgi->td({-class => 'control_label'},trans('selectds')),
-                                                     $cgi->td($cgi->popup_menu(-name => 'db', -values => [], -size => 3, -multiple => 1)),
-                                                     $cgi->td($cgi->button(-name => 'clear', -label => trans('clear'), -onClick => 'clearDBSelection()')),
-                                                     )),
+                                  ($context eq 'both' || $context eq 'service')
+                                  ? $cgi->span({-id => 'db_controls'},
+                                               $cgi->Tr({-valign => 'top'},
+                                                        $cgi->td({-class => 'control_label'},trans('selectds')),
+                                                        $cgi->td($cgi->popup_menu(-name => 'db', -values => [], -size => 3, -multiple => 1)),
+                                                        $cgi->td($cgi->button(-name => 'clear', -label => trans('clear'), -onClick => 'clearDBSelection()')),
+                                                        ))
+                                  : q(),
                                   ) . "\n",
                       ) . "\n",
             $cgi->end_form . "\n") . "\n";
@@ -1204,8 +1306,17 @@ sub printgraphlinks {
         }
     }
 
+    # include quite a bit of information in the alt tag - it helps when
+    # debugging configuration files.
     $alttag = trans('graphof') . q( ) . $params->{service} .
         q( ) . trans('on') . q( ) . $params->{host};
+    if ($params->{db}) {
+        $alttag .= ' (';
+        foreach my $ii (sortnaturally(@{$params->{db}})) {
+            $alttag .= q( ) . $ii;
+        }
+        $alttag .= ' )';
+    }
 
     dumper(DBDEB, "printgraphlinks rrdopts", $params->{rrdopts});
     my $rrdopts = $params->{rrdopts};
@@ -1256,8 +1367,8 @@ sub printgraphlinks {
 }
 
 sub printperiodlinks {
-    my($cgi, $params, $period, $now, $content) = @_;
-    my (@navstr) = getperiodctrls($cgi, $params, $period, $now);
+    my($cgi, $url, $params, $period, $now, $content) = @_;
+    my (@navstr) = getperiodctrls($cgi, $url, $params, $period, $now);
     my $label = (($period->[0] eq 'day') ? 'dai' : $period->[0]) . 'ly';
     my $id = 'period_data_' . $period->[0];
     return $cgi->div({-class => 'period_title'},
@@ -1285,7 +1396,7 @@ sub printheader {
     if ($opts->{call} eq 'host') {
         $label = trans('perfforhost');
         $host = $item;
-    } else {
+    } elsif ($opts->{call} eq 'service') {
         $label = trans('perfforserv');
         $service = $item;
     }
@@ -1306,7 +1417,7 @@ sub printheader {
     my(%servers) = %{$result{hostserv}};
     $rval .= printjavascript(\@servers, \%servers);
 
-    $rval .= printcontrols($cgi, $opts->{call}, $host, $service, $opts);
+    $rval .= printcontrols($cgi, $opts->{call}, $opts);
 
     $rval .= (defined $Config{hidengtitle} and $Config{hidengtitle} eq 'true')
         ? q() : $cgi->h1('Nagiosgraph');
@@ -1389,19 +1500,20 @@ sub graphsizes {
 # the future.
 # FIXME: prevent going back in time before there are rrd slots (filled or not)
 sub getperiodctrls {
-    my ($cgi, $params, $period, $now) = @_;
-    debug(DBDEB, "getperiodctrls($period, $now)");
-    my $url = buildurl($params->{host},
-                       $params->{service},
-                       { geom => $params->{geom},
-                         rrdopts => $params->{rrdopts},
-                         db => $params->{db} });
+    my ($cgi, $url, $params, $period, $now) = @_;
+    debug(DBDEB, "getperiodctrls(now: $now period: @{$period})");
+
+    # strip any offset from the url
+    $url =~ s/&*offset=[^&]*//;
+
+    # now calculate and inject our own offset
     my $offset = ($params->{offset} + $period->[2]);
     my $p = $cgi->a({-href=>"?$url&offset=$offset"}, '<');
     my $c = getperiod($now, $params->{offset}, $period->[1], $period->[0]);
     $offset = ($params->{offset} - $period->[2]);
     my $n = $cgi->a({-href=>"?$url&offset=$offset"}, '>');
     if ($offset < 0) { $n = q(); }
+
     return ($p, $c, $n);
 }
 
@@ -1720,6 +1832,7 @@ sub processdata {
     perfforserv => 'Data for service',
     periods => 'Periods: ',
     selectds => 'Data Sets: ',
+    selectgroup => 'Group: ',
     selecthost => 'Host: ',
     selectserv => 'Service: ',
     service => 'service',
@@ -1755,6 +1868,7 @@ sub processdata {
 
 sub trans {
     my ($text, $quiet) = @_;
+    return '' if ! defined($text) || $text eq '';
     my $hexslash = '%2F';
     return unescape($text) if substr $text, 0, length($hexslash) eq $hexslash;
     return $Config{$text} if $Config{$text};

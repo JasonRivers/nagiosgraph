@@ -4,12 +4,12 @@ Bugs
 
 * The next/prev functions are not coordinated with the data saved to the rrd
     files.  As a result, next/prev do not function as one might expect.
+* The next/prev URLs are broken due to changes in buildurl.
+* showhost and showgroup do not need all the menudata in javascript
+* showgroup does not respect access controls
 
 Desired features.
 
-* Custom reports - combine graphs of various types on one page.
-  - This is partially addressed by showhost.cgi (all graphs for one host on a
-    page) and showservice.cgi (all graphs for one service on a page).
 * Customize rrd options for split graphs.
 * Red bar in graph to indicate missing data.
 * Installer - that can configure Nagios (must work with Nagios 2.12 and 3.x).
@@ -18,10 +18,7 @@ Desired features.
     since other data sets may not work well with an area graph type.
 * Custom unit labels on the graphs.
 * Units specification beyond what Fixed Scale does.
-* Either do it all with javascript, or do it all without. Right now there is a
-  mix of stuff, specifically the 'update graphs' button does not need to be
-  done with javascript.
-* Prefix strings with i8n_ to avoid name clashes with configuration params.
+* Prefix strings with i18n_ to avoid name clashes with configuration params.
 * Make the date/time handling and formatting robust across locales
 * Either use cookies to maintain GUI state, or design a more robust and
     easier-to-manage CGI/JavaScript way of doing it.

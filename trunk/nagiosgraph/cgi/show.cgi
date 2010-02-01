@@ -39,8 +39,10 @@ dumper(DBDEB, 'params', $params);
 
 my $host = q();
 if ($params->{host}) { $host = $params->{host}; }
+else { $params->{host} = q(); }
 my $service = q();
 if ($params->{service}) { $service = $params->{service}; }
+else { $params->{service} = q(); }
 
 my ($periods,$expanded_periods) = getperiods('both', $params);
 
@@ -66,7 +68,7 @@ print $cgi->header,
                      -title => "nagiosgraph: $host - $service",
                      -head => $refresh,
                      @style) . "\n" .
-    printnavmenu($cgi, $host, $service, $cgi->remote_user(), $params) .
+    printnavmenu($cgi, $cgi->remote_user(), $params) .
     $ngtitle .
     $cgi->p({ -class => 'summary' }, trans('perfforhost') . q( ) .
             $cgi->span({-class => 'item_label'},
@@ -79,10 +81,11 @@ print $cgi->header,
             ) . "\n" or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
+my $url = $ENV{REQUEST_URI};
 my $now = time;
 for my $period (graphsizes($periods)) {
     my $str = printgraphlinks($cgi, $params, $period);
-    print printperiodlinks($cgi, $params, $period, $now, $str);
+    print printperiodlinks($cgi, $url, $params, $period, $now, $str);
 }
 
 print printscript($host, $service, $expanded_periods) or
