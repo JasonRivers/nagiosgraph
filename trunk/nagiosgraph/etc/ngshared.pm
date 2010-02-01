@@ -31,7 +31,7 @@ use constant ERRSTYLE => '.error { padding: 0.75em; background-color: #fff6f3; b
 use constant ERRMSG => 'Nagiosgraph has detected an error in the configuration file: ';
 
 # default geometries
-use constant GEOMETRIES => 'default,500x80,650x150,1000x200';
+use constant GEOMETRIES => '500x80,650x150,1000x200';
 # default custom color palette
 use constant COLORS => 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0';
 
@@ -553,9 +553,6 @@ sub readconfig {
                     ['geometries', GEOMETRIES],
                     ['colors', COLORS],) {
         if (not $Config{$ii->[0]}) { $Config{$ii->[0]} = $ii->[1]; }
-    }
-    if ($Config{geometries} !~ /default/) {
-        $Config{geometries} = 'default,' . $Config{geometries};
     }
     $Config{colors} = [split /\s*,\s*/, $Config{colors}];
 
@@ -1175,6 +1172,9 @@ sub printcontrols {
     my %script = qw(both show.cgi host showhost.cgi service showservice.cgi group showgroup.cgi);
     my $action = $Config{nagiosgraphcgiurl} . q(/) . $script{$context};
 
+    # preface the geometry list with a default entry no matter what
+    my @geom = ('default', split(/,/, $Config{geometries}));
+
     my $menustr = q();
     if ($context eq 'both') {
         my $host = $opts->{host};
@@ -1237,12 +1237,12 @@ sub printcontrols {
                       $cgi->table({-id => 'secondary_controls_box'},
                                   $cgi->Tr({-valign => 'top'},
                                            $cgi->td(q( )),
-                                           $cgi->td($cgi->checkbox(-name => 'FixedScale', -label => trans('str_fixedscale'), -checked => $opts->{fixedscale})),
+                                           $cgi->td($cgi->checkbox(-name => 'fixedscale', -label => trans('i18n_fixedscale'), -checked => $opts->{fixedscale})),
                                            $cgi->td(q( )),
                                            ),
                                   $cgi->Tr({-valign => 'top'},
                                            $cgi->td({-class => 'control_label'},trans('zoom')),
-                                           $cgi->td($cgi->popup_menu(-name => 'geom', -values => [split(/,/, $Config{geometries})])),
+                                           $cgi->td($cgi->popup_menu(-name => 'geom', -values => [@geom])),
                                            $cgi->td(q( )),
                                            ),
                                   $cgi->Tr({-valign => 'top'},
@@ -1837,7 +1837,7 @@ sub processdata {
     selectserv => 'Service: ',
     service => 'service',
     showhidecontrols => 'Show Controls',
-    str_fixedscale => 'Fixed Scale',
+    i18n_fixedscale => 'Fixed Scale',
     submit => 'Update Graphs',
     testcolor => 'Show Colors',
     typesome => 'Enter names separated by spaces',

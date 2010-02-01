@@ -13,7 +13,7 @@ var PNAME = [ 'day', 'week', 'month', 'quarter', 'year' ];
 // but it has no value, return empty string.  if no arg, then return undefined.
 function getCGIValue(key) {
   var rval;
-  var query = this.location.search.substring(1);
+  var query = location.search.substring(1);
   if (query && query.length) {
     var params = query.split("&");
     for (var ii = 0; ii < params.length ; ii++) {
@@ -29,7 +29,7 @@ function getCGIValue(key) {
 
 // return true if the key shows up as a CGI argument.
 function getCGIBoolean(key) {
-  var query = this.location.search.substring(1);
+  var query = location.search.substring(1);
   if (query && query.length > 0) {
     var params = query.split("&");
     for (var ii = 0; ii < params.length ; ii++) {
@@ -61,7 +61,7 @@ function toggleDisplay(elem) {
   }
 }
 
-function setCheckBoxGUIState(expanded, panel, chkbox) {
+function setExpansionStateCB(expanded, panel, chkbox) {
   if (expanded) {
     if (panel) panel.style.display = 'inline';
     if (chkbox) chkbox.checked = true;
@@ -71,7 +71,7 @@ function setCheckBoxGUIState(expanded, panel, chkbox) {
   }
 }
 
-function setButtonGUIState(expanded, panel, button) {
+function setExpansionStateB(expanded, panel, button) {
   if (expanded) {
     if (panel) panel.style.display = 'inline';
     if (button) button.value = '-';
@@ -105,7 +105,7 @@ function togglePeriodDisplay(period, button) {
 }
 
 function clearDBSelection() {
-  var elem = window.document.menuform.db;
+  var elem = document.menuform.db;
   if (elem) {
     for (var ii = 0; ii < elem.length; ii++) {
       elem.options[ii].selected = false;
@@ -114,7 +114,7 @@ function clearDBSelection() {
 }
 
 function clearPeriodSelection() {
-  var elem = window.document.menuform.period;
+  var elem = document.menuform.period;
   if (elem) {
     for (var ii = 0; ii < elem.length; ii++) {
       elem.options[ii].selected = false;
@@ -122,106 +122,85 @@ function clearPeriodSelection() {
   }
 }
 
-// Construct a CGI query based on current state.
-// why not just use CGI, you ask?  we need this since we maintain the GUI
-// state, i.e. expanded/collapsed state of time periods and controls.
+// Construct a CGI query based on current state.  We start with the existing
+// URL then modify it based on the current state.
+//
+// Why not just use CGI, you ask?  We need this since we maintain the GUI
+// state, e.g. expanded/collapsed state of time periods and controls.
 function mkCGIArgs() {
-  var host;
-  var service;
-  var group;
-  var db = new Array();
+  var args = new Array();
 
-  var elem = window.document.menuform.servidors;
+  var elem = document.menuform.servidors;
   if (elem) {
-    host = escape(elem.options[elem.selectedIndex].text);
-  }
-  elem = window.document.menuform.services;
-  if (elem) {
-    service = escape(elem.options[elem.selectedIndex].text);
-  }
-  elem = window.document.menuform.groups;
-  if (elem) {
-    group = escape(elem.options[elem.selectedIndex].text);
-  }
-  elem = window.document.menuform.db;
-  if (elem) {
-    for (var ii = 0; ii < elem.length; ii++) {
-      if (elem.options[ii].selected)
-        db.push(escape(elem.options[ii].text));
+    var host = elem.options[elem.selectedIndex].text;
+    if (host && host != '' && host != '-') {
+      args.push('host=' + escape(host));
     }
   }
-
-  var qstr = '';
-  if (host && host != '' && host != '-') {
-    if (qstr != '') qstr += "&";
-    qstr += "host=" + host;
-  }
-  if (service && service != '' && service != '-') {
-    if (qstr != '') qstr += "&";
-    qstr += "service=" + service;
-  }
-  if (group && group != '' && group != '-') {
-    if (qstr != '') qstr += "&";
-    qstr += "group=" + group;
-  }
-  var source, entry;
-  for (var ii = 0; ii < db.length; ii++) {
-    entry = db[ii].split(',');
-    if (entry[0] == source) {
-      qstr += "," + entry[1];
-    } else {
-      qstr += "&db=" + db[ii];
-      source = entry[0];
+  elem = document.menuform.services;
+  if (elem) {
+    service = elem.options[elem.selectedIndex].text;
+    if (service && service != '' && service != '-') {
+       args.push('service=' + escape(service));
     }
   }
-  var havegeom = false;
-  elem = window.document.menuform.geom;
+  elem = document.menuform.groups;
   if (elem) {
-    for (var ii = 0; ii < elem.length; ii++) {
+    group = elem.options[elem.selectedIndex].text;
+    if (group && group != '' && group != '-') {
+       args.push('group=' + escape(group));
+    }
+  }
+  elem = document.menuform.db;
+  if (elem) {
+    for (var ii=0; ii<elem.length; ii++) {
       if (elem.options[ii].selected) {
-        qstr += "&geom=" + elem.options[ii].text;
-        havegeom = true;
+        args.push('db=' + escape(elem.options[ii].text));
       }
     }
   }
-  var havetime = false;
-  elem = window.document.menuform.period;
+
+  var geom = '';
+  elem = document.menuform.geom;
   if (elem) {
-    var str = "";
     for (var ii = 0; ii < elem.length; ii++) {
       if (elem.options[ii].selected) {
-        if (str != "") str += ",";
+        if (elem.options[ii].text == 'default') {
+          geom = 'default';
+        } else {
+          geom = 'geom=' + escape(elem.options[ii].text);
+        }
+        break;
+      }
+    }
+  }
+
+  elem = document.menuform.fixedscale;
+  if (elem && elem.checked) {
+    args.push('fixedscale');
+  }
+
+  elem = document.menuform.showhidecontrols;
+  if (elem && elem.checked) {
+    args.push('expand_controls');
+  }
+
+  elem = document.menuform.period;
+  if (elem) {
+    var str = '';
+    for (var ii = 0; ii < elem.length; ii++) {
+      if (elem.options[ii].selected) {
+        if (str != '') str += ',';
         str += elem.options[ii].text;
-        havetime = true;
       }
     }
-    if (str != "") {
-      qstr += "&period=" + str;
+    if (str != '') {
+      args.push('period=' + str);
     }
-  }
-  var oldqstr = this.location.search.substring(1);
-  if (oldqstr.length > 0) {
-    var params = oldqstr.split("&");
-    for (var ii = 0; ii < params.length ; ii++) {
-      var name = params[ii].substring(0, params[ii].indexOf("="));
-      //Append "safe" params (geom, rrdopts)
-      if (name == "rrdopts") {
-        qstr += "&" + params[ii];
-      } else if (name == "geom" && havegeom == false) {
-        qstr += "&" + params[ii];
-      } else if (name == "period" && havetime == false) {
-        qstr += "&" + params[ii];
-      }
-    }
-  }
-  if (document.menuform.FixedScale.checked) {
-    qstr += "&fixedscale";
-  }
-  if (document.menuform.showhidecontrols.checked) {
-    qstr += "&expand_controls";
   }
 
-  // no expanded periods means they are all collapsed
+  // an empty string for expand_period means they are all collapsed.
+  // no expand_period variable means use the defaults/config.
   var ep = '';
   for (var ii = 0; ii < PNAME.length; ii++) {
     elem = document.getElementById('period_data_' + PNAME[ii]);
@@ -230,9 +209,51 @@ function mkCGIArgs() {
       ep += PNAME[ii];
     }
   }
-  qstr += "&expand_period=" + ep;
+  args.push('expand_period=' + ep);
 
-  return qstr;
+  // remove parameters from previous query string
+  var oldq = location.search.substring(1);
+  var params = oldq.split("&");
+  for (var ii=0; ii<params.length; ii++) {
+    var name = '';
+    var value = '';
+    var pos = params[ii].indexOf("=");
+    if (pos >= 0) {
+      name = params[ii].substring(0, pos);
+      value = params[ii].substring(pos+1);
+    } else {
+      name = params[ii];
+    }
+    if (name == 'host'
+        || name == 'service'
+        || name == 'group'
+        || name == 'db'
+        || name == 'fixedscale'
+        || name == 'expand_controls'
+        || name == 'period'
+        || name == 'expand_period') {
+      // skip it
+    } else if (name == 'geom') {
+      if (geom == '' && value != '' && value != 'default') {
+        geom = params[ii];
+      }
+    } else {
+      args.push(params[ii]);
+    }
+  }
+
+  if (geom != '' && geom != 'default') {
+    args.push(geom);
+  }
+
+  var newq = '';
+  for (var ii=0; ii<args.length; ii++) {
+    if (args[ii] != '') {
+      if (newq != '') newq += '&';
+      newq += args[ii];
+    }
+  }
+  return newq;
 }
 
 // Populate menus and make the GUI state match the CGI query string.
@@ -251,7 +272,7 @@ function cfgMenus(host, service, expanded_periods) {
   setControlsGUIState();
   setPeriodGUIStates(expanded_periods);
   selectPeriodItems();
-  selectDBItems(this.location.search.substring(1));
+  selectDBItems(location.search.substring(1));
 }
 
 // Populate the host menu and select the indicated host.
@@ -285,7 +306,7 @@ function findName(entry) {
 // a list of all the services that we encounter.
 // FIXME: this is inefficient and will suck on large number of hosts/services
 function cfgServiceMenu(host, service) {
-  var menu = window.document.menuform.services;
+  var menu = document.menuform.services;
   if (!menu) return;
 
   var items = new Array();
@@ -338,7 +359,7 @@ function cfgServiceMenu(host, service) {
 // data sets.  First try using whatever host is selected.  If there is no
 // selected host, just use the first matching service we find.
 function cfgDBMenu(host, service) {
-  var menu = window.document.menuform.db;
+  var menu = document.menuform.db;
   if (!menu) return;
 
   var opts;
@@ -398,7 +419,7 @@ function cfgDBMenu(host, service) {
 
 // highlight the period menu items based on the elements in the page.
 function selectPeriodItems() {
-  elem = window.document.menuform.period;
+  elem = document.menuform.period;
   if(!elem) return;
 
   var pstr = '';
@@ -424,7 +445,7 @@ function selectPeriodItems() {
 // highlight the db menu items based on the url query string.
 // specifying nothing is equivalent to selecting all.
 function selectDBItems(query) {
-  elem = window.document.menuform.db;
+  elem = document.menuform.db;
   if(!elem) return;
 
   var found = false;
@@ -463,7 +484,7 @@ function selectDBItems(query) {
 
 // returns a string with the selected data sets.  string is in CGI format.
 function getSelectedDBItems() {
-  elem = window.document.menuform.db;
+  elem = document.menuform.db;
   if(!elem) return '';
 
   var rval = '';
@@ -477,11 +498,26 @@ function getSelectedDBItems() {
 }
 
 // see if there is a cgi argument to expand the controls.  if so, do it.  if
-// not, then collapse them.  make the gui match the state.
+// not, then collapse them.  make the other gui controls match the state as
+// well.
 function setControlsGUIState() {
-  setCheckBoxGUIState(getCGIBoolean('expand_controls'),
+  setExpansionStateCB(getCGIBoolean('expand_controls'),
                       document.getElementById('secondary_controls_box'),
                       document.menuform.showhidecontrols);
+  var elem = document.menuform.fixedscale;
+  if (elem) {
+    elem.checked = getCGIBoolean('fixedscale');
+  }
+  elem = document.menuform.geom;
+  if (elem) {
+    var geom = getCGIValue('geom');
+    for (var ii=0; ii<elem.length; ii++) {
+      if (elem.options[ii].text == geom) {
+        elem.options[ii].selected = true;
+        break;
+      }
+    }
+  }
 }
 
 // if there is a cgi argument to expand time periods, then respect it.  an
@@ -504,16 +540,16 @@ function setPeriodGUIStates(expanded_periods) {
      }
   }
   for (var ii = 0; ii < pflag.length; ii++) {
-    setButtonGUIState(pflag[ii],
-                      document.getElementById('period_data_' + PNAME[ii]),
-                      document.getElementById('toggle_' + PNAME[ii]));
+    setExpansionStateB(pflag[ii],
+                       document.getElementById('period_data_' + PNAME[ii]),
+                       document.getElementById('toggle_' + PNAME[ii]));
   }
 }
 
 // reload the page with CGI arguments constructed from current state.
 function jumpto() {
   var qstr = mkCGIArgs();
-  window.location.assign(location.pathname + "?" + qstr);
+  location.assign(location.pathname + "?" + qstr);
 }
 
 // configure everything based on a change to the selected host.  a change
