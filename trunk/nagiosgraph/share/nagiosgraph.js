@@ -7,11 +7,12 @@
 // Author:  (c) 2008 Alan Brenner, Ithaka Harbors
 // Author:  (c) 2010 Matthew Wall
 
-var pname = [ 'day', 'week', 'month', 'quarter', 'year' ];
+var PNAME = [ 'day', 'week', 'month', 'quarter', 'year' ];
 
-// return the value (if any) for the indicated CGI key.
+// return the value (if any) for the indicated CGI key.  if we find the arg
+// but it has no value, return empty string.  if no arg, then return undefined.
 function getCGIValue(key) {
-  var rval = '';
+  var rval;
   var query = this.location.search.substring(1);
   if (query && query.length) {
     var params = query.split("&");
@@ -145,11 +146,11 @@ function mkCGIArgs() {
   }
 
   var qstr = '';
-  if (host) {
+  if (host && host != '' && host != '-') {
     if (qstr != '') qstr += "&";
     qstr += "host=" + host;
   }
-  if (service) {
+  if (service && service != '' && service != '-') {
     if (qstr != '') qstr += "&";
     qstr += "service=" + service;
   }
@@ -209,17 +210,18 @@ function mkCGIArgs() {
   if (document.menuform.showhidecontrols.checked) {
     qstr += "&expand_controls";
   }
+
+  // no expanded periods means they are all collapsed
   var ep = '';
-  for (var ii = 0; ii < pname.length; ii++) {
-    elem = document.getElementById('period_data_' + pname[ii]);
+  for (var ii = 0; ii < PNAME.length; ii++) {
+    elem = document.getElementById('period_data_' + PNAME[ii]);
     if (elem && elem.style.display == 'inline') {
       if (ep != '') ep += ',';
-      ep += pname[ii];
+      ep += PNAME[ii];
     }
   }
-  if (ep != '') {
-    qstr += "&expand_period=" + ep;
-  }
+  qstr += "&expand_period=" + ep;
+
   return qstr;
 }
 
@@ -250,10 +252,13 @@ function cfgHostMenu(host) {
   var menu = document.menuform.servidors;
   if(!menu) return;
 
-  menu.length = menudata.length;
-  for (var ii = 0; ii < menudata.length; ii++) {
-    menu.options[ii].text = menudata[ii][0];
-    if (menudata[ii][0] == host) menu.options[ii].selected = true;
+  menu.length = menudata.length+1;
+  menu.options[0].text = '-';
+  for (var ii=0; ii<menudata.length; ii++) {
+    menu.options[ii+1].text = menudata[ii][0];
+    if (menudata[ii][0] == host) {
+      menu.options[ii+1].selected = true;
+    }
   }
 }
 
@@ -312,11 +317,12 @@ function cfgServiceMenu(host, service) {
     }
   }
 
-  menu.length = items.length;
+  menu.length = items.length + 1;
+  menu.options[0].text = '-';
   for (var ii = 0; ii < items.length; ii++) {
-    menu.options[ii].text = items[ii];
+    menu.options[ii+1].text = items[ii];
     if (items[ii] == service) {
-      menu.options[ii].selected = true;
+      menu.options[ii+1].selected = true;
     }
   }
 }
@@ -389,11 +395,11 @@ function selectPeriodItems() {
   if(!elem) return;
 
   var pstr = '';
-  for (var ii=0; ii<pname.length; ii++) {
-    var x = document.getElementById('period_data_' + pname[ii]);
+  for (var ii=0; ii<PNAME.length; ii++) {
+    var x = document.getElementById('period_data_' + PNAME[ii]);
     if (x) {
       if (pstr != '') pstr += ',';
-      pstr += pname[ii];
+      pstr += PNAME[ii];
     }
   }
 
@@ -448,6 +454,21 @@ function selectDBItems(query) {
   }
 }
 
+// returns a string with the selected data sets.  string is in CGI format.
+function getSelectedDBItems() {
+  elem = window.document.menuform.db;
+  if(!elem) return '';
+
+  var rval = '';
+  for (var kk=0; kk<elem.length; kk++) {
+    if (elem.options[kk].selected == true) {
+      if (rval != '') rval += '&';
+      rval += 'db=' + escape(elem.options[kk].value);
+    }
+  }
+  return rval;
+}
+
 // see if there is a cgi argument to expand the controls.  if so, do it.  if
 // not, then collapse them.  make the gui match the state.
 function setControlsGUIState() {
@@ -456,17 +477,20 @@ function setControlsGUIState() {
                       document.menuform.showhidecontrols);
 }
 
-// see if there is a cgi argument to expand time periods.  if so, expand the
-// appropriate periods.  if not, collapse them.  make the gui match the state.
-// FIXME: the spec for this is indeterminate
+// if there is a cgi argument to expand time periods, then respect it.  an
+// empty argument means collapse all of them.  if there is no argument, then
+// fall back to the preferences (whatever was passed to us as an argument).
 function setPeriodGUIStates(expanded_periods) {
   var pstr = getCGIValue('expand_period');
+  if (typeof(pstr) == 'undefined') {
+    pstr = expanded_periods;
+  }
   var pflag = [ 0, 0, 0, 0, 0 ];
   if (typeof(pstr) != 'undefined' && pstr != '') {
      var periods = pstr.split(",");    
      for (var ii = 0; ii < periods.length; ii++) {
-       for (var jj = 0; jj < pname.length; jj++) {
-         if (periods[ii] == pname[jj]) {
+       for (var jj = 0; jj < PNAME.length; jj++) {
+         if (periods[ii] == PNAME[jj]) {
            pflag[jj] = 1;
          }
        }
@@ -474,8 +498,8 @@ function setPeriodGUIStates(expanded_periods) {
   }
   for (var ii = 0; ii < pflag.length; ii++) {
     setButtonGUIState(pflag[ii],
-                      document.getElementById('period_data_' + pname[ii]),
-                      document.getElementById('toggle_' + pname[ii]));
+                      document.getElementById('period_data_' + PNAME[ii]),
+                      document.getElementById('toggle_' + PNAME[ii]));
   }
 }
 
@@ -491,6 +515,7 @@ function jumpto() {
 function hostChange() {
   var host = '';
   var service = '';
+  var dbitems = getSelectedDBItems();
 
   var hostmenu = document.menuform.servidors;
   if (hostmenu) {
@@ -507,7 +532,7 @@ function hostChange() {
     service = servmenu.options[servmenu.selectedIndex].text;
   }
   cfgDBMenu(host, service);
-  selectDBItems('');
+  selectDBItems(dbitems);
 }
 
 // configure everything based on a change to the selected service.  a change
@@ -516,6 +541,7 @@ function hostChange() {
 function serviceChange() {
   var host = '';
   var service = '';
+  var dbitems = getSelectedDBItems();
 
   var hostmenu = document.menuform.servidors;
   if (hostmenu) {
@@ -527,5 +553,5 @@ function serviceChange() {
   }
 
   cfgDBMenu(host, service);
-  selectDBItems('');
+  selectDBItems(dbitems);
 }

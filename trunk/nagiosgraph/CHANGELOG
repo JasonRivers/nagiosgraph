@@ -6,6 +6,7 @@ TBD
    of redundant code was removed.  there are more functions now, but the
    functions are more precise with fewer side effects.
 * retain expanded/collapsed state of controls between reloads
+* retain selection state of host, service, data set, and time periods
 * one more baby step toward consolidated configfile/argument handling
 * fixed color bug - use 'colors' not 'color' in config file
 * added light/dark and green-tuple custom color palettes to config file
