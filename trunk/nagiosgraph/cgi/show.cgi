@@ -67,13 +67,12 @@ print $cgi->header,
                      -head => $refresh,
                      @style) . "\n" .
     printnavmenu($cgi, $host, $service, $cgi->remote_user(), $params) .
-    $cgi->br({-clear=>'all'}) . "\n" .
     $ngtitle .
-    $cgi->p(trans('perfforhost') . q( ) .
-            $cgi->span({-class=>'item_label'},
+    $cgi->p({ -class => 'summary' }, trans('perfforhost') . q( ) .
+            $cgi->span({-class => 'item_label'},
                        $cgi->a({href => $hurl}, $host)) . ', ' .
             trans('service') . q( ) .
-            $cgi->span({-class=>'item_label'},
+            $cgi->span({-class => 'item_label'},
                        $cgi->a({href => $surl}, $service)) . q( ) .
             trans('asof') . q( ) .
             $cgi->span({-class=>'timestamp'},scalar localtime)

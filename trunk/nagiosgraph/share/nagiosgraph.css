@@ -12,7 +12,7 @@ body {
   background-color: white;
   font-family: arial, verdana, serif;
   font-weight: normal;
-  font-size: 10pt;
+  font-size: 9pt;
 }
 h1 {
   font-size: 12pt;
@@ -22,7 +22,7 @@ h1 {
   clear: both;
   padding-top: 0.25em;
   padding-left: 0.5em;
-  padding-bottom: 1.5em;
+  padding-bottom: 1.75em;
   background-color: #efefef;
   border: 1px solid #dddddd;
 }
@@ -58,6 +58,71 @@ h1 {
 .graph_description {
   font-size: 9pt;
 }
+#secondary_controls_box {
+}
+#db_controls {
+}
+.control_label {
+  text-align: right;
+}
+.item_label {
+  font-weight: bold;
+}
+.timestamp {
+  font-weight: bold;
+}
+.footer {
+  clear: both;
+  padding-top: 20px;
+  font-style: italic;
+}
+
+
+
+/* Here are three configurations for the controls.  The first one hides them */
+/* completely.  The second one floats them above the graphs.  The third puts */
+/* them at the top of the page.  Use only one at a time! */
+
+/* hide the controls */
+/*
+.controls {
+  display: none;
+}
+*/
+
+/* put the controls in the upper right corner.  controls float above graphs. */
+/*
+.controls {
+  background-color: #efefef;
+  border: 1px solid #dddddd;
+  position: fixed;
+  top: 6em;
+  left: auto;
+  right: 1em;
+}
+.primary_controls {
+  padding: 4px 10px 4px 10px;
+}
+.secondary_controls {
+  padding: 4px 10px 4px 10px;
+}
+.selector {
+  text-align: right;
+  padding: 4px 10px 4px 10px;
+  display: block;
+}
+.executor {
+  padding: 4px 10px 4px 10px;
+  display: block;
+}
+.controls_toggle {
+}
+.summary {
+}
+*/
+
+/* put the controls at the top of the page.  controls scroll with page. */
+
 .controls {
 }
 .primary_controls {
@@ -72,27 +137,16 @@ h1 {
   padding: 4px 10px 4px 10px;
   float: right;
 }
-#secondary_controls_box {
+.selector {
 }
-#db_controls {
-}
-.update_controls {
-  padding: 4px 20px 4px 20px;
-}
-.control_label {
-  text-align: right;
+.executor {
+  padding: 4px 10px 4px 10px;
 }
 .controls_toggle {
   text-align: right;
   margin: 0px 0px 0px 0px;
 }
-.item_label {
-  font-weight: bold;
-}
-.timestamp {
-  font-weight: bold;
-}
-.footer {
+.summary {
+  padding-top: 1em;
   clear: both;
-  padding-top: 20px;
 }

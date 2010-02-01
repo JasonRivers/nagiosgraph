@@ -1102,22 +1102,27 @@ sub printcontrols {
             $cgi->start_form(-method => 'GET', -name => 'menuform') . "\n",
             $cgi->div({-class => 'primary_controls'},
                       ($context eq 'both')
-                      ? (trans('selecthost') . q( ) .
-                         $cgi->popup_menu(-name => 'servidors',
-                                          -onChange => 'hostChange()',
-                                          -values => [$host],
-                                          -default => $host) . "\n" .
-                         trans('selectserv') . q( ) .
-                         $cgi->popup_menu(-name => 'services',
-                                          -onChange => 'serviceChange()',
-                                          -values => [$service],
-                                          -default => $service))
-                      : (trans($selstr{$context}) . q( ) .
-                         $cgi->popup_menu(-name => $name{$context},
-                                          -onChange => $func{$context} . '()',
-                                          -values => [$item],
-                                          -default => $item)) . "\n",
-                      $cgi->span({-class => 'update_controls'},
+                      ? $cgi->span({-class => 'selector'},
+                                   trans('selecthost') . q( ) .
+                                   $cgi->popup_menu(-name => 'servidors',
+                                                    -onChange => 'hostChange()',
+                                                    -values => [$host],
+                                                    -default => $host)) .
+                      "\n" .
+                      $cgi->span({-class => 'selector'},
+                                 trans('selectserv') . q( ) .
+                                 $cgi->popup_menu(-name => 'services',
+                                                  -onChange => 'serviceChange()',
+                                                  -values => [$service],
+                                                  -default => $service))
+                      : $cgi->span({-class => 'selector'},
+                                   trans($selstr{$context}) . q( ) .
+                                   $cgi->popup_menu(-name => $name{$context},
+                                                    -onChange => $func{$context} . '()',
+                                                    -values => [$item],
+                                                    -default => $item)),
+                      "\n",
+                      $cgi->span({-class => 'executor'},
                                  $cgi->button(-name => 'go', 
                                               -label => trans('submit'),
                                               -onClick => 'jumpto()')
@@ -1153,7 +1158,7 @@ sub printcontrols {
                                                      )),
                                   ) . "\n",
                       ) . "\n",
-            $cgi->end_form) . "\n";
+            $cgi->end_form . "\n") . "\n";
 }
 
 sub printgraphlinks {
@@ -1303,12 +1308,11 @@ sub printheader {
 
     $rval .= printcontrols($cgi, $opts->{call}, $host, $service, $opts);
 
-    $rval .= $cgi->br({-clear=>'all'}) . "\n";
-
     $rval .= (defined $Config{hidengtitle} and $Config{hidengtitle} eq 'true')
         ? q() : $cgi->h1('Nagiosgraph');
 
-    $rval .= $cgi->p($label . q( ) .
+    $rval .= $cgi->p({ -class => 'summary' },
+                     $label . q( ) .
                      $cgi->span({-class => 'item_label'}, $opts->{label}) .
                      q( ) . trans('asof') . q( ) .
                      $cgi->span({-class => 'timestamp'}, scalar localtime)) .

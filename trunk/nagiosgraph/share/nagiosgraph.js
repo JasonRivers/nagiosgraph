@@ -229,9 +229,6 @@ function mkCGIArgs() {
 // This should be invoked at the bottom of a web page, after all of the DOM
 // elements have been instantiated.
 //
-// expanded_controls is a boolean that indicates the default expanded/collapsed
-// controls state.  this is overridden by any CGI arguments.
-//
 // expanded_periods is a comma-separate list of periods that indicates the
 // periods that should be expanded.  these are overridden by any CGI arguments.
 //
