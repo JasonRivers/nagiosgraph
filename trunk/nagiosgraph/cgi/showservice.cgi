@@ -15,7 +15,7 @@ use lib '/opt/nagiosgraph/etc';
 # Main program - change nothing below
 
 use ngshared;
-use CGI;
+use CGI qw(-nosticky);
 use English qw(-no_match_vars);
 use File::Find;
 use strict;
@@ -39,29 +39,24 @@ dumper(DBDEB, 'params', $params);
 
 my $service = q();
 if ($params->{service}) { $service = $params->{service}; }
+my $db;
+if ($params->{db}) { $db = $params->{db}; }
 
 my ($periods, $expanded_periods) = getperiods('service', $params);
 
-my @style;
-if ($Config{stylesheet}) {
-    @style = (-style => {-src => "$Config{stylesheet}"});
-}
-
 find(\&getgraphlist, $Config{rrddir});
 
-my ($hdb, $sdb, $dbinfo) = readservdb($service);
-dumper(DBDEB, 'hdb', $hdb);
-if ($params->{db}) { $dbinfo->{db} = $params->{db}; }
-dumper(DBDEB, 'dbinfo', $dbinfo);
-my $label = (exists $dbinfo->{label}) ? $dbinfo->{label} : $service;
-debug(DBDEB, "default = $label");
+my ($hosts) = readservdb($service, $db);
+dumper(DBDEB, 'hosts', $hosts);
 
-cfgparams($dbinfo, $params, $service);
+cfgparams($params, $params, $service);
+
+# FIXME: deal with the label
+my $label = (exists $params->{label}) ? $params->{label} : $service;
 
 # draw the page
 print printheader($cgi,
                   { title => $service,
-                    style => \@style,
                     call => 'service',
                     default => $label,
                     service => $service,
@@ -73,21 +68,21 @@ my $now = time;
 foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
     my $str = q();
-    foreach my $host (@{$hdb}) {
+    foreach my $host (@{$hosts}) {
         debug(DBDEB, "host = $host");
-        $dbinfo->{host} = $host;
+        $params->{host} = $host;
         my $url = $Config{nagiosgraphcgiurl} .
             '/show.cgi?host=' . $cgi->escape($host) .
             '&service=' . $cgi->escape($service);
         $url =~ tr/ /+/;
         my $link = $cgi->a({href => $url}, $host);
-        $str .= printgraphlinks($cgi, $dbinfo, $period, $link) . "\n";
+        $str .= printgraphlinks($cgi, $params, $period, $link) . "\n";
     }
     print printperiodlinks($cgi, $url, $params, $period, $now, $str) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printscript($params->{host}, $service, $expanded_periods) or
+print printscript('', $service, $expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or

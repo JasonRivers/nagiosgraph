@@ -2,6 +2,10 @@ $Id$
 
 TBD
 
+* fixed showservice.cgi so that it now requires only host names in the 
+   servdb.conf file.
+* more consolidation of code between the cgi scripts.  parsing and handling
+   of *db.conf files is now consistent.
 * added showgroup.cgi to display arbitrary groups of host/service/dataset.
    group definitions go in groupdb.conf.
 * major overhaul of the javascript.  state is managed better now, and a lot

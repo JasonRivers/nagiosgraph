@@ -43,17 +43,14 @@ if ($params->{group}) { $group = $params->{group}; }
 
 my ($periods, $expanded_periods) = getperiods('group', $params);
 
-my @style = getstyle();
-
 find(\&getgraphlist, $Config{rrddir});
 
 my ($gnames, $ginfos) = readgroupdb($group);
 dumper(DBDEB, 'groups', $gnames);
-dumper(DBDEB, 'groupinfo', $ginfos);
+dumper(DBDEB, 'graphinfos', $ginfos);
 
 print printheader($cgi,
                   { title => $group,
-                    style => \@style,
                     call => 'group',
                     default => $group,
                     group => $group,

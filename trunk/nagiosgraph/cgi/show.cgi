@@ -14,7 +14,7 @@ use lib '/opt/nagiosgraph/etc';
 # Main program - change nothing below
 
 use ngshared;
-use CGI;
+use CGI qw(-nosticky);
 use File::Find;
 use English qw(-no_match_vars);
 use RRDs;
@@ -46,17 +46,13 @@ else { $params->{service} = q(); }
 
 my ($periods,$expanded_periods) = getperiods('both', $params);
 
-my @style;
-if ($Config{stylesheet}) {
-    @style = (-style => {-src => "$Config{stylesheet}"});
-}
+my @style = getstyle();
+my $refresh = getrefresh($cgi);
+
 my $hurl = $Config{nagiosgraphcgiurl} . '/showhost.cgi?host=' .
     $cgi->escape($host);
 my $surl = $Config{nagiosgraphcgiurl} . '/showservice.cgi?service=' .
     $cgi->escape($service);
-my $refresh = (defined $Config{refresh})
-    ? $cgi->meta({ -http_equiv => 'Refresh', -content => "$Config{refresh}" })
-    : q();
 my $ngtitle = (defined $Config{hidengtitle} and $Config{hidengtitle} eq 'true')
     ? q() : $cgi->h1('Nagiosgraph');
 

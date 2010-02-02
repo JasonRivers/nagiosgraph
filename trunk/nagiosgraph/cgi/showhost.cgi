@@ -15,8 +15,7 @@ use lib '/opt/nagiosgraph/etc';
 # Main program - change nothing below
 
 use ngshared qw(:SHOWHOST);
-
-use CGI;
+use CGI qw(-nosticky);
 use English qw(-no_match_vars);
 use File::Find;
 use strict;
@@ -43,14 +42,10 @@ if ($params->{host}) { $host = $params->{host}; }
 
 my ($periods, $expanded_periods) = getperiods('host', $params);
 
-my @style;
-if ($Config{stylesheet}) {
-    @style = (-style => {-src => "$Config{stylesheet}"});
-}
-
 find(\&getgraphlist, $Config{rrddir});
 
-my $hdb = readhostdb($host);
+my $ginfos = readhostdb($host);
+dumper(DBDEB, 'graphinfos', $ginfos);
 
 # nagios and nagiosgraph may not share the same cgi directory
 my $nagioscgiurl = $Config{nagiosgraphcgiurl};
@@ -59,7 +54,6 @@ if ($Config{nagioscgiurl}) { $nagioscgiurl = $Config{nagioscgiurl}; }
 # draw the page
 print printheader($cgi,
                   { title => $host,
-                    style => \@style,
                     call => 'host',
                     default => $host,
                     host => $host,
@@ -71,20 +65,20 @@ my $now = time;
 foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
     my $str = q();
-    foreach my $dbinfo (@{$hdb}) {
-        $dbinfo->{host} = $params->{host};
-        cfgparams($dbinfo, $params, $dbinfo->{service});
-        dumper(DBDEB, 'dbinfo', $dbinfo);
+    foreach my $ginfo (@{$ginfos}) {
+        $ginfo->{host} = $params->{host};
+        cfgparams($ginfo, $params, $ginfo->{service});
+        dumper(DBDEB, 'graphinfo', $ginfo);
 
         my $url = $Config{nagiosgraphcgiurl} .
-            '/showservice.cgi?service=' . $dbinfo->{service} .
-            join('&db=' . @{$dbinfo->{db}});
+            '/showservice.cgi?service=' . $ginfo->{service} .
+            join('&db=' . @{$ginfo->{db}});
         $url =~ tr/ /+/;
 
         my $link = $cgi->a({href => $url},
-                           defined $dbinfo->{label} ? $dbinfo->{label} :
-                           $dbinfo->{service});
-        $str .= printgraphlinks($cgi, $dbinfo, $period, $link) . "\n";
+                           defined $ginfo->{label} ? $ginfo->{label} :
+                           $ginfo->{service});
+        $str .= printgraphlinks($cgi, $ginfo, $period, $link) . "\n";
     }
     print printperiodlinks($cgi, $url, $params, $period, $now, $str) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");

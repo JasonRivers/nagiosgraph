@@ -204,20 +204,20 @@ sub getparams {
 # CGI uses comma-delimited, old configs used space-delimited, so we deal with
 # either.  we ensure the result is comma-delimited.
 sub getperiods {
-    my ($label, $opts) = @_;
-    if ($label eq 'both') {
-        $label = 'all';
+    my ($context, $opts) = @_;
+    if ($context eq 'both') {
+        $context = 'all';
     }
 
     my $s = $opts->{period};
-    my $c = $Config{'time' . $label};
+    my $c = $Config{'time' . $context};
     my $p = '';
     if (defined $c && $c ne q()) { $p = $c; }
     if (defined $s && $s ne q()) { $p = $s; }
     $p =~ s/ /,/g; ## no critic (RegularExpressions)
 
     $s = $opts->{expand_period};
-    $c = $Config{'expand_time' . $label};
+    $c = $Config{'expand_time' . $context};
     my $ep = '';
     if (defined $c && $c ne q()) { $ep = $c; }
     if (defined $s && $s ne q()) { $ep = $s; }
@@ -232,6 +232,15 @@ sub getstyle {
         @style = (-style => {-src => "$Config{stylesheet}"});
     }
     return @style;
+}
+
+sub getrefresh {
+    my ($cgi) = @_;
+    my $refresh = (defined $Config{refresh})
+        ? $cgi->meta({ -http_equiv => 'Refresh',
+                       -content => "$Config{refresh}" })
+        : q();
+    return $refresh;
 }
 
 # configure parameters with something that we are sure will work.  grab values
@@ -308,7 +317,7 @@ sub buildurl {
 
 # construct the filename to RRD data file.  this requires at least a valid
 # host and service to work.
-sub getfilename {
+sub mkfilename {
     my ($host, $service, $db, $quiet) = @_;
     if (not $host || not $service) { 
         debug(DBWRN, 'cannot construct filename: missing host or service');
@@ -316,13 +325,13 @@ sub getfilename {
     }
     $db ||= q();
     $quiet ||= 0;
-    if (not $quiet) { debug(DBDEB, "getfilename($host, $service, $db)"); }
+    if (not $quiet) { debug(DBDEB, "mkfilename($host, $service, $db)"); }
     my ($directory, $filename) = $Config{rrddir};
-    if (not $quiet) { debug(DBDEB + 1, "getfilename: dbseparator: '$Config{dbseparator}'"); }
+    if (not $quiet) { debug(DBDEB + 1, "mkfilename: dbseparator: '$Config{dbseparator}'"); }
     if ($Config{dbseparator} eq 'subdir') {
         $directory .=  q(/) . $host;
         if (not -e $directory) { # Create host specific directories
-            debug(DBINF, "getfilename: creating directory $directory");
+            debug(DBINF, "mkfilename: creating directory $directory");
             mkdir $directory, 0775; ## no critic (ProhibitMagicNumbers)
             if (not -w $directory) { croak "$directory not writable"; }
         }
@@ -339,7 +348,7 @@ sub getfilename {
             $filename = escape("${host}_${service}_");
         }
     }
-    if (not $quiet) { debug(DBDEB, "getfilename: returning: $directory, $filename"); }
+    if (not $quiet) { debug(DBDEB, "mkfilename: dir=$directory file=$filename"); }
     return $directory, $filename;
 }
 
@@ -572,110 +581,164 @@ sub readconfig {
     return;
 }
 
+sub parsedb {
+    my ($line) = @_;
+    $line =~ s/^&db=//;
+    my @db = split(/&db=/, $line);
+    return getdbname(@db), @db;
+}
+
+sub getdbname {
+    my (@db) = @_;
+    my $dbname = q();
+    if (@db && $db[0] =~ /(^[^,]+)/) {
+        $dbname = $1;
+    }
+    return $dbname;
+}
+
 # Read hostdb file
 #
-# This returns a list of dbinfos that are valid for the host '$val' and each
-# service listed in the file.
+# This returns a list of graph infos for the specified host based on the
+# contents of the hostdb file.
+#
+# Services are defined with this format:
+#
+#   service=name[&db=dataset[&label=text][&db=dataset[&label=text][...]]]
+#
 sub readhostdb {
-    my ($val) = @_;
-    $val ||= q();
-    debug(DBDEB, "readhostdb($val)");
-    my $db = 'hostdb';
-    my ($DB, $line, @hdb);
-    if (not open $DB, '<', $Config{$db}) { ## no critic (RequireBriefOpen)
-        my $msg = "cannot open $Config{$db}";
+    my ($host) = @_;
+    $host ||= q();
+    if ($host eq q()) { return (); }
+
+    debug(DBDEB, "readhostdb($host)");
+
+    if (! defined $Config{hostdb} || $Config{hostdb} eq '') {
+        my $msg = "no hostdb file has been specified in the configuration.";
         debug(DBDEB, $msg);
         htmlerror($msg);
         croak($msg);
     }
-    while ($line = <$DB>) {
-        chomp $line;
-        $line =~ s/\s*#.*//;
-        next if ! $line;
-        $line =~ tr/+/ /;
-        chomp $line;
-        debug(DBDEB, "readhostdb $line");
-        my %dbtmp = ($line =~ /([^=&]+)\s*=\s*([^&]*)/g);
-        my @dbtmp = split /,/, $dbtmp{db};
-        $dbtmp{db} = \@dbtmp;
-        my ($dir, $file) = getfilename($val, $dbtmp{service}, $dbtmp[0]);
-        $dbtmp{filename} = $dir . q(/) . $file;
-        if (not -f $dbtmp{filename}) {
-            debug(DBDEB, "readhostdb $dbtmp{filename} not found");
-            next;
+
+    my @ginfo;
+    my $fn = $Config{hostdb};
+    if (open DB, '<', $fn) {
+        while (my $line = <DB>) {
+            chomp $line;
+            debug(DBDEB, "readhostdb: $line");
+            $line =~ s/\s*#.*//;
+            $line =~ tr/+/ /;
+            $line =~ s/^\s+//g;
+            my $service = q();
+            my $dbname = q();
+            my @db;
+            if ($line =~ s/^service\s*=\s*([^&]+)//) {
+                $service = $1;
+                ($dbname, @db) = parsedb($line);
+            }
+            next if ! $service;
+            my($dir, $file) = mkfilename($host, $service, $dbname, 1);
+            my $rrdfn = $dir . q(/) . $file;
+            if (-f $rrdfn) {
+                my %info;
+                $info{host} = $host;
+                $info{service} = $service;
+                $info{dbname} = $dbname;
+                $info{db} = \@db;
+                $info{filename} = $rrdfn;
+                push @ginfo, \%info;
+                debug(DBDEB, "readhostdb: add host:$host service:$service");
+            } else {
+                debug(DBDEB, "readhostdb: skip host:$host service:$service");
+            }
         }
-        debug(DBDEB, "readhostdb saving $dbtmp{service}");
-        push @hdb, \%dbtmp;
+        close DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
+    } else {
+        my $msg = "cannot open hostdb $fn: $!";
+        debug(DBDEB, $msg);
+        htmlerror($msg);
+        croak($msg);
     }
-    close $DB or debug(DBERR, "cannot close $Config{$db}: $OS_ERROR");
-    return \@hdb;
+
+    return \@ginfo;
 }
 
 # Read the servdb file
 #
-# This returns a list of hosts that have data for the specified service '$val'.
+# This returns a list of hosts that have data for the specified service and db.
+#
+# Hosts are defined with this format:
+#
+#   host=name[,name1[,name2[...]]]
+#
 sub readservdb {
-    my ($val) = @_;
-    $val ||= q();
-    debug(DBDEB, "readservdb($val)");
-    my $db = 'servdb';
-    my ($DB, $line, @hdb, @sdb, %dbinfo);
-    if (not open $DB, '<', $Config{$db}) { ## no critic (RequireBriefOpen)
-        my $msg = "cannot open $Config{$db}";
+    my ($service, $dblist) = @_;
+    $service ||= q();
+    if ($service eq q()) { return (); }
+    my $dbname = q();
+    if ($dblist) { ($dbname) = getdbname(@{$dblist}); }
+
+    debug(DBDEB, "readservdb($service, $dbname)");
+
+    if (! defined $Config{servdb} || $Config{servdb} eq '') {
+        my $msg = "no servdb file has been specified in the configuration.";
         debug(DBDEB, $msg);
         htmlerror($msg);
         croak($msg);
     }
-    my @hosts;
-    while ($line = <$DB>) {
-        chomp $line;
-        $line =~ s/\s*#.*//;
-        next if ! $line;
-        $line =~ tr/+/ /;
-        chomp $line;
-        debug(DBDEB, "readservdb $line");
-        if (index($line, 'host') == 0) {
-            debug(DBDEB, 'readservdb found service host list');
-            push @hosts, split /\s*,\s*/, (split /=/, $line)[1];
-        } else {
-            my %dbtmp = ($line =~ /([^=&]+)\s*=\s*([^&]*)/g);
-            dumper(DBDEB, 'readservdb dbtmp', \%dbtmp);
-            push @sdb, $dbtmp{service};
-            debug(DBDEB, "readservdb $dbtmp{service} eq $val");
-            if ($dbtmp{service} eq $val) {
-                %dbinfo = %dbtmp;
-                dumper(DBDEB, 'dbinfo', \%dbinfo);
-            }
-        }
-    }
-    close $DB or debug(DBERR, "cannot close $Config{$db}: $OS_ERROR");
 
-    # ensure that we return only hosts that have data that matches the service
-    dumper(DBDEB, 'candidate hosts', \@hosts);
-    if ($dbinfo{db}) {
-        foreach my $host (@hosts) {
-            my @dbtmp = split /,/, $dbinfo{db};
-            my($dir,$file) = getfilename($host, $dbinfo{service}, $dbtmp[0]);
-            my $fn = $dir . q(/) . $file;
-            if (not -f $fn) {
-                debug(DBDEB, "readhostdb $fn not found");
-                next;
+    my @allhosts;
+    my @ginfo;
+    my $fn = $Config{servdb};
+    if (open DB, '<', $fn) {
+        while (my $line = <DB>) {
+            chomp $line;
+            debug(DBDEB, "readservdb: $line");
+            $line =~ s/\s*#.*//;
+            $line =~ tr/+/ /;
+            $line =~ s/^\s+//g;
+            my $host = q();
+            if ($line =~ s/^host\s*=\s*(.*)//) {
+                $host = $1;
             }
-            push @hdb, $host;
+            next if ! $host;
+            push @allhosts, split /\s*,\s*/, $host;
+        }
+        close DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
+    } else {
+        my $msg = "cannot open servdb $fn: $!";
+        debug(DBDEB, $msg);
+        htmlerror($msg);
+        croak($msg);
+    }
+
+    my @hosts;
+    foreach my $host (@allhosts) {
+        my($dir, $file) = mkfilename($host, $service, $dbname, 1);
+        my $rrdfn = $dir . q(/) . $file;
+        if (-f $rrdfn) {
+            push @hosts, $host;
         }
     }
-    dumper(DBDEB, 'validated hosts', \@hdb);
-    return \@hdb, \@sdb, \%dbinfo;
+
+    dumper(DBDEB, 'readservdb: all hosts', \@allhosts);
+    dumper(DBDEB, 'readservdb: validated hosts', \@hosts);
+    return \@hosts;
 }
 
 # Read the groupdb file
 #
-# This returns a list of graph infos for the specified group '$val' and a list
+# This returns a list of graph infos for the specified group and a list
 # of all group names.
+#
+# Groups are defined with this format:
+#
+#   groupname=host,service[&db=dataset[&label=text][...]]
+#
 sub readgroupdb {
-    my ($val) = @_;
-    $val ||= q();
-    debug(DBDEB, "readgroupdb($val)");
+    my ($g) = @_;
+    $g ||= q();
+    debug(DBDEB, "readgroupdb($g)");
 
     if (! defined $Config{groupdb} || $Config{groupdb} eq '') {
         my $msg = "no groupdb file has been specified in the configuration.";
@@ -690,35 +753,40 @@ sub readgroupdb {
     if (open DB, '<', $fn) {
         while (my $line = <DB>) {
             chomp $line;
-            $line =~ s/\s*#.*//;       # eliminate comments
-            $line =~ tr/+/ /;          # unescape CGI-escaped spaces
-            $line =~ s/^\s+//g;        # strip leading whitespace
-            next if ! $line;
             debug(DBDEB, "readgroupdb: $line");
-            my($name, $value) = split(/=/, $line, 2);
-            $name =~ s/\s+$//g;
-            next if ! $name;
-            $gnames{$name} = 1;
-            next if $name ne $val;
-            $value =~ s/^\s+//g;
-            next if ! $value;
-            my($host, $serv) = split(/,/, $value, 2);
-            next if ! $host || ! $serv;
-
+            $line =~ s/\s*#.*//;
+            $line =~ tr/+/ /;
+            $line =~ s/^\s+//g;
+            my $group = q();
+            my $host = q();
+            my $service = q();
+            my $dbname = q();
             my @db;
-            if ($serv =~ /(^[^&]+)&(.*)/) {
-                $serv = $1;
-                @db = ($2 =~ /db\s*=\s*([^&]*)/g);
+            if ($line =~ s/^([^=]+)\s*=\s*([^,]+)\s*,\s*([^&]+)//) {
+                $group = $1;
+                $host = $2;
+                $service = $3;
+                ($dbname, @db) = parsedb($line);
             }
-
-            my %dbtmp;
-            $dbtmp{host} = $host;
-            $dbtmp{service} = $serv;
-            if (@db) { $dbtmp{db} = \@db; }
-            debug(DBDEB, "readgroupdb saving host:$dbtmp{host} service:$dbtmp{service} db:" . ($dbtmp{db} ? @{$dbtmp{db}} : ''));
-            push @ginfo, \%dbtmp;
+            next if ! $group || ! $host || ! $service;
+            $gnames{$group} = 1;
+            next if $group ne $g;
+            my($dir, $file) = mkfilename($host, $service, $dbname, 1);
+            my $rrdfn = $dir . q(/) . $file;
+            if (-f $rrdfn) {
+                my %info;
+                $info{host} = $host;
+                $info{service} = $service;
+                $info{dbname} = $dbname;
+                $info{db} = \@db;
+                $info{filename} = $rrdfn;
+                push @ginfo, \%info;
+                debug(DBDEB, "readgroupdb: add host:$host service:$service");
+            } else {
+                debug(DBDEB, "readgroupdb: skip host:$host service:$service");
+            }
         }
-        close DB or debug(DBERR, "cannot close $Config{$fn}: $OS_ERROR");
+        close DB or debug(DBERR, "readgroupdb: close failed for $fn: $OS_ERROR");
     } else {
         my $msg = "cannot open groupdb $fn: $!";
         debug(DBDEB, $msg);
@@ -738,16 +806,21 @@ sub readgroupdb {
 sub dbfilelist {
     my ($host, $serv) = @_;
     debug(DBDEB, "dbfilelist($host, $serv)");
-    my ($directory, $filename) = (getfilename($host, $serv));
+    my ($directory, $filename) = mkfilename($host, $serv);
     debug(DBDEB, "dbfilelist scanning $directory for $filename");
-    my ($entry, $DH, @rrd);
-    opendir $DH, $directory;
-    while ($entry = readdir $DH) {
-        if ($entry =~ /^${filename}(.+)\.rrd$/) {
-            push @rrd, unescape($1);
+    my @rrd;
+    if (opendir(DH, $directory)) {
+        while (my $entry=readdir(DH)) {
+            next if $entry =~ /^\./;
+            if ($entry =~ /^${filename}(.+)\.rrd$/) {
+                push @rrd, unescape($1);
+            }
         }
+        closedir DH or debug(DBCRT, "cannot close $directory: $OS_ERROR");
+    } else {
+        debug(DBWRN, "cannot open directory $directory: $!");
     }
-    closedir $DH or debug(DBCRT, "cannot close $directory: $OS_ERROR");
+
     dumper(DBDEB, 'dbfilelist', \@rrd);
     return \@rrd;
 }
@@ -1107,7 +1180,7 @@ sub getserverlist {
         @services = sortnaturally(keys %{$Navmenu{$ii}});
         foreach my $jj (@services) {
             foreach my $kk (@{$Navmenu{$ii}{$jj}}) {
-                @dataitems = getdataitems(join q(/), getfilename($ii, $jj, $kk, 1));
+                @dataitems = getdataitems(join q(/), mkfilename($ii, $jj, $kk, 1));
                 if (not exists $hostserv{$ii}) {
                     $hostserv{$ii} = {};
                 }
@@ -1164,11 +1237,13 @@ sub printscript {
 #
 # primary controls consist of the host/service/group menus and the
 # update button.  secondary controls are all the others.
+#
+# the host and group contexts do not require javascript updates when the
+# menus change, since there are no dependencies in those contexts.
 sub printcontrols {
     my ($cgi, $context, $opts) = @_;
 
-    # FIXME: this is prolly not necessary since we fabricate the action
-    # in javascript.
+    # FIXME: prolly not necessary since we fabricate the submit in javascript.
     my %script = qw(both show.cgi host showhost.cgi service showservice.cgi group showgroup.cgi);
     my $action = $Config{nagiosgraphcgiurl} . q(/) . $script{$context};
 
@@ -1196,7 +1271,6 @@ sub printcontrols {
         $menustr = $cgi->span({-class => 'selector'},
                               trans('selecthost') . q( ) .
                               $cgi->popup_menu(-name => 'servidors',
-                                               -onChange => 'hostChange()',
                                                -values => [$host],
                                                -default => $host));
     } elsif ($context eq 'service') {
@@ -1401,16 +1475,14 @@ sub printheader {
         $service = $item;
     }
 
-    my $refresh = (defined $Config{refresh})
-        ? $cgi->meta({ -http_equiv => 'Refresh',
-                       -content => "$Config{refresh}" })
-        : q();
+    my $refresh = getrefresh($cgi);
+    my @style = getstyle();
 
     my $rval = $cgi->header;
     $rval .= $cgi->start_html(-id => 'nagiosgraph',
                               -title => "nagiosgraph: $opts->{title}",
                               -head => $refresh,
-                              @{$opts->{style}});
+                              @style);
 
     my %result = getserverlist($cgi->remote_user());
     my(@servers) = @{$result{host}};
@@ -1631,7 +1703,7 @@ sub createrrd {
     ## use critic
 
     $db = shift @{$labels};
-    ($directory, $filenames[0]) = getfilename($host, $service, $db);
+    ($directory, $filenames[0]) = mkfilename($host, $service, $db);
     debug(DBDEB, "createrrd checking $directory/$filenames[0]");
     @ds = ("$directory/$filenames[0]", '--start', $start);
     @dsmin = ("$directory/$filenames[0]_min", '--start', $start);
@@ -1645,7 +1717,7 @@ sub createrrd {
         if (defined $Config{hostservvar}->{$host} and
             defined $Config{hostservvar}->{$host}->{$service} and
             defined $Config{hostservvar}->{$host}->{$service}->{$labels->[$ii]->[0]}) {
-            my $filename = (getfilename($host, $service . $labels->[$ii]->[0], $db, 1))[1];
+            my $filename = (mkfilename($host, $service . $labels->[$ii]->[0], $db, 1))[1];
             push @filenames, $filename;
             push @datasets, [$ii];
             if (not -e "$directory/$filename") {
@@ -1784,7 +1856,7 @@ sub processdata {
     for my $line (@lines) {
         @data = split /\|\|/, $line;
         # Suggested by Andrew McGill for 0.9.0, but I'm (Alan Brenner) not sure
-        # it is still needed due to urlencoding in file names by getfilename.
+        # it is still needed due to urlencoding in file names by mkfilename.
         # replace spaces with - in the description so rrd doesn't choke
         # $data[2] =~ s/\W+/-/g;
         $debug = $Config{debug};
