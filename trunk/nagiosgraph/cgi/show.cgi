@@ -23,9 +23,6 @@ use warnings;
 my ($cgi, $params) = init('show');
 my ($periods, $expanded_periods) = initperiods('both', $params);
 
-if (! $params->{host}) { $params->{host} = q(); }
-if (! $params->{service}) { $params->{service} = q(); }
-
 cfgparams($params, $params, $params->{service});
 
 print printheader($cgi, { title => "$params->{host} - $params->{service}",

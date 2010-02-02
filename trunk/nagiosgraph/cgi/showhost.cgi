@@ -23,8 +23,6 @@ use warnings;
 my ($cgi, $params) = init('showhost');
 my ($periods, $expanded_periods) = initperiods('host', $params);
 
-if (! $params->{host}) { $params->{host} = q(); }
-
 my $ginfos = readhostdb($params->{host});
 dumper(DBDEB, 'graphinfos', $ginfos);
 

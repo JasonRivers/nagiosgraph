@@ -23,8 +23,6 @@ use warnings;
 my ($cgi, $params) = init('showgroup');
 my ($periods, $expanded_periods) = initperiods('group', $params);
 
-if (! $params->{group}) { $params->{group} = q(); }
-
 my ($gnames, $ginfos) = readgroupdb($params->{group});
 dumper(DBDEB, 'groups', $gnames);
 dumper(DBDEB, 'graphinfos', $ginfos);

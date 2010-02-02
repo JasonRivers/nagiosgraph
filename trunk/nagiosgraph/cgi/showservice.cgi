@@ -23,8 +23,6 @@ use warnings;
 my ($cgi, $params) = init('showservice');
 my ($periods, $expanded_periods) = initperiods('service', $params);
 
-if (! $params->{service}) { $params->{service} = q(); }
-
 my ($hosts) = readservdb($params->{service}, $params->{db});
 dumper(DBDEB, 'hosts', $hosts);
 

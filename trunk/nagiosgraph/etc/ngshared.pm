@@ -214,8 +214,17 @@ sub getparams {
         }
     }
 
-    if (not $rval{db} && $rval{host} && $rval{host} ne '-') {
-        $rval{db} = dbfilelist($rval{host}, $rval{service});
+    if (not $rval{host}) { $rval{host} = q(); }
+    if (not $rval{service}) { $rval{service} = q(); }
+    if (not $rval{group}) { $rval{group} = q(); }
+    if (not $rval{db}) {
+        if ($rval{host} ne q() && $rval{host} ne '-'
+            && $rval{service} ne q() && $rval{service} ne '-') {
+            $rval{db} = dbfilelist($rval{host}, $rval{service});
+        } else {
+            my @db;
+            $rval{db} = \@db;
+        }
     }
 
     if ($rval{offset}) { $rval{offset} = int $rval{offset}; }
