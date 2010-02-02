@@ -38,7 +38,6 @@ print printheader($cgi, { title => $params->{host},
 
 # FIXME: db= handling is not consistent
 
-my $url = $ENV{REQUEST_URI};
 my $now = time;
 foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
@@ -50,14 +49,14 @@ foreach my $period (graphsizes($periods)) {
         my $url = $Config{nagiosgraphcgiurl} .
             '/showservice.cgi?service=' . $cgi->escape($info->{service});
         if ($info->{db}) {
-            $url .= join('&db=' . @{$info->{db}});
+            $url .= '&db=' . @{$info->{db}};
             $url =~ tr/ /+/;
         }
         my $link = $cgi->a({href => $url}, trans($info->{service}, 1));
 
         $str .= printgraphlinks($cgi, $info, $period, $link) . "\n";
     }
-    print printperiodlinks($cgi, $url, $params, $period, $now, $str) or
+    print printperiodlinks($cgi, $params, $period, $now, $str) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
@@ -85,12 +84,7 @@ The showgraph.cgi script generates the graphs themselves.
 
 B<showhost.cgi>?host=host_name
 
-=head1 CONFIGURATION
-
-The B<nagiosgraph.conf> file controls the behavior of this script.
-
-The B<hostdb.conf> controls which services will be listed and the order in
-which those services will appear.
+=head1 REQUIRED ARGUMENTS
 
 =head1 OPTIONS
 
@@ -98,11 +92,20 @@ host=host_name
 
 period=(day week month quarter year)
 
+=head1 EXIT STATUS
+
 =head1 DIAGNOSTICS
 
 Use the debug_showhost setting from B<nagiosgraph.conf> to control the amount
 of debug information that will be emitted by this script.  Debug output will
 go to the web server error log.
+
+=head1 CONFIGURATION
+
+The B<nagiosgraph.conf> file controls the behavior of this script.
+
+The B<hostdb.conf> controls which services will be listed and the order in
+which those services will appear.
 
 =head1 DEPENDENCIES
 
@@ -151,6 +154,10 @@ to the B<define host> (Nagios 3) or B<define hostextinfo> (Nagios 2.12) stanza
 (changing the base URL and host1 as needed).
 
 Copy the images/action.gif file to the nagios/images directory, if desired.
+
+=head1 INCOMPATIBILITIES
+
+=head1 BUGS AND LIMITATIONS
 
 =head1 SEE ALSO
 

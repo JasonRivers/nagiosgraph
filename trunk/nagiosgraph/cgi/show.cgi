@@ -33,12 +33,12 @@ print printheader($cgi, { title => "$params->{host} - $params->{service}",
                           serviceurl => $Config{nagiosgraphcgiurl} . '/showservice.cgi?service=' . $cgi->escape($params->{service}) }) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
-my $url = $ENV{REQUEST_URI};
 my $now = time;
 for my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
     my $str = printgraphlinks($cgi, $params, $period);
-    print printperiodlinks($cgi, $url, $params, $period, $now, $str);
+    print printperiodlinks($cgi, $params, $period, $now, $str) or
+        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
 print printscript($params->{host}, $params->{service}, $expanded_periods) or
@@ -61,9 +61,7 @@ Run this via a web server to generate a page of graph data.
 
 B<show.cgi>
 
-=head1 CONFIGURATION
-
-The B<nagiosgraph.conf> file controls the behavior of this script.
+=head1 REQUIRED ARGUMENTS
 
 =head1 OPTIONS
 
@@ -73,11 +71,17 @@ service=service_name
 
 period=(day week month quarter year)
 
+=head1 EXIT STATUS
+
 =head1 DIAGNOSTICS
 
 Use the debug_show setting from B<nagiosgraph.conf> to control the amount
 of debug information that will be emitted by this script.  Debug output will
 go to the web server error log.
+
+=head1 CONFIGURATION
+
+The B<nagiosgraph.conf> file controls the behavior of this script.
 
 =head1 DEPENDENCIES
 
@@ -131,6 +135,10 @@ existing service. Only the hosts listed in host_name will have an action icon
 next to the service name on a detail page.
 
 Copy the images/action.gif file to the nagios/images directory, if desired.
+
+=head1 INCOMPATIBILITIES
+
+=head1 BUGS AND LIMITATIONS
 
 =head1 SEE ALSO
 

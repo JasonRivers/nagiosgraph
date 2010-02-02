@@ -38,12 +38,9 @@ if (RRDs::error) {
     print decode_base64(       # send a small, clear image on errors
         'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGlj' .
         'Q29udmVydGVyIChJbnRlbCl3h/oZAAAAGUlEQVR4nGL4//8/AzrGEKCCIAAAAP//AwB4w0q2n+sy' .
-        'HQAAAABJRU5ErkJggg==');
+        'HQAAAABJRU5ErkJggg==') or
+        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
-
-exit 0;
-
-
 
 __END__
 
@@ -81,6 +78,8 @@ rrdopts=-u+100+-l+0+-r+-snow-118800+-enow-0
 
 =head1 DIAGNOSTICS
 
+=head1 CONFIGURATION
+
 =head1 DEPENDENCIES
 
 =over 4
@@ -105,6 +104,10 @@ This provides the perl interface to rrdtool.
 Copy this file into Nagios' cgi directory (for the Apache web server, see where
 the ScriptAlias for /nagios/cgi-bin points), and make sure it is executable by
 the web server.
+
+=head1 INCOMPATIBILITIES
+
+=head1 BUGS AND LIMITATIONS
 
 =head1 SEE ALSO
 

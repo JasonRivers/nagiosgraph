@@ -1,11 +1,15 @@
 #!/usr/bin/perl
-## no critic (RegularExpressions)
-
+# $Id$
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license-2.0.php
 # Author:  (c) Soren Dossing, 2005
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 # Author:  (c) Matthew Wall, 2010
+
+## no critic (RegularExpressions)
+## no critic (ProhibitCascadingIfElse)
+## no critic (ProhibitExcessComplexity)
+## no critic (ProhibitDeepNests)
 
 use strict;
 use warnings;
@@ -31,6 +35,8 @@ use constant PROG => basename($PROGRAM_NAME);
 use constant NAGIOSGRAPHURL => 'http://nagiosgraph.wiki.sourceforge.net/';
 use constant ERRSTYLE => '.error { padding: 0.75em; background-color: #fff6f3; border: solid 1px #cc3333; }';
 use constant ERRMSG => 'Nagiosgraph has detected an error in the configuration file: ';
+use constant DBLISTROWS => 3;
+use constant PERIODLISTROWS => 5;
 
 # default geometries
 use constant GEOMETRIES => '500x80,650x150,1000x200';
@@ -52,7 +58,7 @@ sub stacktrace {
     my $max_depth = 30; ## no critic (ProhibitMagicNumbers)
     my $ii = 1;
     warn "--- Begin stack trace ---\n";
-    while ((my @call_details = (caller($ii++))) && ($ii < $max_depth)) {
+    while ((my @call_details = (caller $ii++)) && ($ii < $max_depth)) {
       warn "$call_details[1] line $call_details[2] in function $call_details[3]\n";
     }
     warn "--- End stack trace ---\n";
@@ -73,7 +79,7 @@ sub debug {
     # Get a lock on the LOG file (blocking call)
     my $rval = eval {
         flock $LOG, LOCK_EX;
-        print ${LOG} "$message\n" or carp("could not write to STDOUT: $OS_ERROR");
+        print ${LOG} "$message\n" or carp("could not write to LOG: $OS_ERROR");
         flock $LOG, LOCK_UN;
         return 0;
     };
@@ -218,8 +224,8 @@ sub getparams {
     if (not $rval{service}) { $rval{service} = q(); }
     if (not $rval{group}) { $rval{group} = q(); }
     if (not $rval{db}) {
-        if ($rval{host} ne q() && $rval{host} ne '-'
-            && $rval{service} ne q() && $rval{service} ne '-') {
+        if ($rval{host} ne q() && $rval{host} ne q(-)
+            && $rval{service} ne q() && $rval{service} ne q(-)) {
             $rval{db} = dbfilelist($rval{host}, $rval{service});
         } else {
             my @db;
@@ -247,14 +253,14 @@ sub initperiods {
 
     my $s = $opts->{period};
     my $c = $Config{'time' . $context};
-    my $p = '';
+    my $p = q();
     if (defined $c && $c ne q()) { $p = $c; }
     if (defined $s && $s ne q()) { $p = $s; }
     $p =~ s/ /,/g; ## no critic (RegularExpressions)
 
     $s = $opts->{expand_period};
     $c = $Config{'expand_time' . $context};
-    my $ep = '';
+    my $ep = q();
     if (defined $c && $c ne q()) { $ep = $c; }
     if (defined $s && $s ne q()) { $ep = $s; }
     $ep =~ s/ /,/g; ## no critic (RegularExpressions)
@@ -264,7 +270,7 @@ sub initperiods {
 
 sub getstyle {
     my @style;
-    if ($Config{stylesheet}) { 
+    if ($Config{stylesheet}) {
         @style = (-style => {-src => "$Config{stylesheet}"});
     }
     return @style;
@@ -310,6 +316,8 @@ sub cfgparams {
         $p->{rrdopts} = (defined $Config{rrdopts}{$service})
             ? $Config{rrdopts}{$service} : $dflt->{rrdopts};
     }
+
+    return;
 }
 
 sub arrayorstring {
@@ -356,7 +364,7 @@ sub buildurl {
 # host and service to work.
 sub mkfilename {
     my ($host, $service, $db, $quiet) = @_;
-    if (not $host || not $service) { 
+    if (not $host or not $service) {
         debug(DBWRN, 'cannot construct filename: missing host or service');
         return 'BOGUSDIR', 'BOGUSFILE';
     }
@@ -621,7 +629,7 @@ sub readconfig {
 sub parsedb {
     my ($line) = @_;
     $line =~ s/^&db=//;
-    my @db = split(/&db=/, $line);
+    my @db = split /&db=/, $line;
     return getdbname(@db), @db;
 }
 
@@ -650,8 +658,8 @@ sub readhostdb {
 
     debug(DBDEB, "readhostdb($host)");
 
-    if (! defined $Config{hostdb} || $Config{hostdb} eq '') {
-        my $msg = "no hostdb file has been specified in the configuration.";
+    if (! defined $Config{hostdb} || $Config{hostdb} eq q()) {
+        my $msg = 'no hostdb file has been specified in the configuration.';
         debug(DBDEB, $msg);
         htmlerror($msg);
         croak($msg);
@@ -659,7 +667,7 @@ sub readhostdb {
 
     my @ginfo;
     my $fn = $Config{hostdb};
-    if (open my $DB, '<', $fn) {
+    if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
         while (my $line = <$DB>) {
             chomp $line;
             debug(DBDEB, "readhostdb: $line");
@@ -717,8 +725,8 @@ sub readservdb {
 
     debug(DBDEB, "readservdb($service, $dbname)");
 
-    if (! defined $Config{servdb} || $Config{servdb} eq '') {
-        my $msg = "no servdb file has been specified in the configuration.";
+    if (! defined $Config{servdb} || $Config{servdb} eq q()) {
+        my $msg = 'no servdb file has been specified in the configuration.';
         debug(DBDEB, $msg);
         htmlerror($msg);
         croak($msg);
@@ -727,7 +735,7 @@ sub readservdb {
     my @allhosts;
     my @ginfo;
     my $fn = $Config{servdb};
-    if (open my $DB, '<', $fn) {
+    if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
         while (my $line = <$DB>) {
             chomp $line;
             debug(DBDEB, "readservdb: $line");
@@ -786,8 +794,8 @@ sub readgroupdb {
     $g ||= q();
     debug(DBDEB, "readgroupdb($g)");
 
-    if (! defined $Config{groupdb} || $Config{groupdb} eq '') {
-        my $msg = "no groupdb file has been specified in the configuration.";
+    if (! defined $Config{groupdb} || $Config{groupdb} eq q()) {
+        my $msg = 'no groupdb file has been specified in the configuration.';
         debug(DBDEB, $msg);
         htmlerror($msg);
         croak($msg);
@@ -796,7 +804,7 @@ sub readgroupdb {
     my $fn = $Config{groupdb};
     my %gnames;
     my @ginfo;
-    if (open my $DB, '<', $fn) {
+    if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
         while (my $line = <$DB>) {
             chomp $line;
             debug(DBDEB, "readgroupdb: $line");
@@ -855,8 +863,8 @@ sub dbfilelist {
     my ($directory, $filename) = mkfilename($host, $serv);
     debug(DBDEB, "dbfilelist scanning $directory for $filename");
     my @rrd;
-    if (opendir(DH, $directory)) {
-        while (my $entry=readdir(DH)) {
+    if (opendir DH, $directory) {
+        while (my $entry=readdir DH) {
             next if $entry =~ /^\./;
             if ($entry =~ /^${filename}(.+)\.rrd$/) {
                 push @rrd, unescape($1);
@@ -957,7 +965,7 @@ sub setlabels { ## no critic (ProhibitManyArgs)
     debug(DBDEB, "setlabels($label)");
     my $linestyle = $Config{plotas};
     foreach my $ii (qw(LINE1 LINE2 LINE3 AREA TICK)) {
-        if (defined($Config{'plotas' . $ii}->{$dataset})) {
+        if (defined $Config{'plotas' . $ii}->{$dataset}) {
             $linestyle = $ii;
             last;
         }
@@ -1271,7 +1279,7 @@ sub printcontrols {
     my $action = $Config{nagiosgraphcgiurl} . q(/) . $script{$context};
 
     # preface the geometry list with a default entry no matter what
-    my @geom = ('default', split(/,/, $Config{geometries}));
+    my @geom = ('default', split /,/, $Config{geometries});
 
     my $menustr = q();
     if ($context eq 'both') {
@@ -1306,7 +1314,7 @@ sub printcontrols {
                                                -default => $service));
     } elsif ($context eq 'group') {
         my $group = $opts->{group};
-        my @groups = ('-', @{$opts->{grouplist}});
+        my @groups = (q(-), @{$opts->{grouplist}});
         $menustr = $cgi->span({-class => 'selector'},
                               trans('selectgroup') . q( ) .
                               $cgi->popup_menu(-name => 'groups',
@@ -1322,7 +1330,7 @@ sub printcontrols {
             $cgi->div({-class => 'primary_controls'},
                       $menustr . "\n",
                       $cgi->span({-class => 'executor'},
-                                 $cgi->button(-name => 'go', 
+                                 $cgi->button(-name => 'go',
                                               -label => trans('submit'),
                                               -onClick => 'jumpto()')
                                  ) . "\n") . "\n",
@@ -1344,14 +1352,14 @@ sub printcontrols {
                                            ),
                                   $cgi->Tr({-valign => 'top'},
                                            $cgi->td({-class => 'control_label'},trans('periods')),
-                                           $cgi->td($cgi->popup_menu(-name => 'period', -values => [@PERIODS], -size => 5, -multiple => 1)),
+                                           $cgi->td($cgi->popup_menu(-name => 'period', -values => [@PERIODS], -size => PERIODLISTROWS, -multiple => 1)),
                                            $cgi->td($cgi->button(-name => 'clear', -label => trans('clear'), -onClick => 'clearPeriodSelection()')),
                                            ),
                                   ($context eq 'both' || $context eq 'service')
                                   ? $cgi->span({-id => 'db_controls'},
                                                $cgi->Tr({-valign => 'top'},
                                                         $cgi->td({-class => 'control_label'},trans('selectds')),
-                                                        $cgi->td($cgi->popup_menu(-name => 'db', -values => [], -size => 3, -multiple => 1)),
+                                                        $cgi->td($cgi->popup_menu(-name => 'db', -values => [], -size => DBLISTROWS, -multiple => 1)),
                                                         $cgi->td($cgi->button(-name => 'clear', -label => trans('clear'), -onClick => 'clearDBSelection()')),
                                                         ))
                                   : q(),
@@ -1362,7 +1370,7 @@ sub printcontrols {
 
 sub printgraphlinks {
     my ($cgi, $params, $period, $link) = @_;
-    $link = q() if ! defined $link;
+    if (! defined $link) { $link = q(); }
     dumper(DBDEB, 'printgraphlinks params', $params);
     dumper(DBDEB, 'printgraphlinks period', $period);
 
@@ -1378,7 +1386,7 @@ sub printgraphlinks {
     # not complain about missing service definitions.
     my $title = trans($params->{service}, 1) . q( ) . trans('on') . q( )
         . $params->{host};
-    
+
     # the description contains a list of the data set names.  we first see
     # if there is a translation for the complete name, e.g. 'cpu,idle'.  if
     # not, then we try for the smaller part, e.g. 'idle'.  if that fails,
@@ -1389,13 +1397,15 @@ sub printgraphlinks {
             $#{$params->{db}} >= 0 &&
             ${$params->{db}}[0] ne $params->{service}) {
             foreach my $ii (sortnaturally(@{$params->{db}})) {
-                $desc .= $cgi->br() if $desc ne "";
+                if ($desc ne q()) { $desc .= $cgi->br(); }
                 my $x = trans($ii, 1);
                 if ($x eq $ii) {
-                    my ($a,$b) = split(/,/, $ii);
+                    my ($a,$b) = split /,/, $ii;
                     if ($b && $b ne q()) {
                         my $y = trans($b, 1);
-                        $x = $y if $y ne $b;
+                        if ($y ne $b) {
+                            $x = $y;
+                        }
                     }
                 }
                 $desc .= $x;
@@ -1415,10 +1425,12 @@ sub printgraphlinks {
         $alttag .= ' )';
     }
 
-    dumper(DBDEB, "printgraphlinks rrdopts", $params->{rrdopts});
+    dumper(DBDEB, 'printgraphlinks rrdopts', $params->{rrdopts});
     my $rrdopts = $params->{rrdopts};
     if ($showgraphtitle) {
-        $rrdopts .= ' -t ' . $title if $rrdopts !~ /(-t|--title)/;
+        if ($rrdopts !~ /(-t|--title)/) {
+            $rrdopts .= ' -t ' . $title;
+        }
     }
     if ($params->{graphonly}) {
         $rrdopts .= ' -j';
@@ -1464,18 +1476,18 @@ sub printgraphlinks {
 }
 
 sub printperiodlinks {
-    my($cgi, $url, $params, $period, $now, $content) = @_;
-    my (@navstr) = getperiodctrls($cgi, $url, $params, $period, $now);
+    my($cgi, $params, $period, $now, $content) = @_;
+    my (@navstr) = getperiodctrls($cgi, $params, $period, $now);
     my $label = (($period->[0] eq 'day') ? 'dai' : $period->[0]) . 'ly';
     my $id = 'period_data_' . $period->[0];
     return $cgi->div({-class => 'period_title'},
                      $cgi->span({-class => 'period_anchor'},
                                 $cgi->button(-id => 'toggle_' . $period->[0],
-                                             -label => '-',
-                                             -onClick => "togglePeriodDisplay('" . $id . "', this)"),
+                                             -label => q(-),
+                                             -onClick => 'togglePeriodDisplay(\'' . $id . '\', this)'),
                                 $cgi->a({ -id => $period->[0] },
                                         trans($label))),
-                     $cgi->span({-class => 'period_controls'}, 
+                     $cgi->span({-class => 'period_controls'},
                              $navstr[0],
                              $cgi->span({-class => 'period_detail'},
                                         $navstr[1]),
@@ -1505,11 +1517,11 @@ sub printsummary {
                                $opts->{host}));
     } elsif ($opts->{call} eq 'service') {
         $s = trans('perfforserv') . q( ) .
-            $cgi->span({-class => 'item_label'}, 
+            $cgi->span({-class => 'item_label'},
                        trans($opts->{service}, 1));
     } elsif ($opts->{call} eq 'group') {
         $s = trans('perfforgroup') . q( ) .
-            $cgi->span({-class => 'item_label'}, 
+            $cgi->span({-class => 'item_label'},
                        trans($opts->{group}, 1));
     }
 
@@ -1620,10 +1632,11 @@ sub graphsizes {
 # the future.
 # FIXME: prevent going back in time before there are rrd slots (filled or not)
 sub getperiodctrls {
-    my ($cgi, $url, $params, $period, $now) = @_;
+    my ($cgi, $params, $period, $now) = @_;
     debug(DBDEB, "getperiodctrls(now: $now period: @{$period})");
 
     # strip any offset from the url
+    my $url = $ENV{REQUEST_URI};
     $url =~ s/&*offset=[^&]*//;
 
     # now calculate and inject our own offset
@@ -1983,7 +1996,7 @@ sub processdata {
 
 sub trans {
     my ($text, $quiet) = @_;
-    return '' if ! defined($text) || $text eq '';
+    if (! defined($text) || $text eq q()) { return q(); }
     my $hexslash = '%2F';
     return unescape($text) if substr $text, 0, length($hexslash) eq $hexslash;
     return $Config{$text} if $Config{$text};
@@ -1997,7 +2010,7 @@ sub trans {
     return $Ctrans{$text} if $Ctrans{$text};
     if (not $Config{ctrans}
         and not $quiet
-        and $text !~ /%2F/ 
+        and $text !~ /%2F/
         and $text !~ /^\//) {
         debug(DBCRT, "please define '$text' in $CFGNAME and report it");
         $Config{ctrans} = 1;
@@ -2041,6 +2054,18 @@ B<use ngshared;>
 
 A shared set of routines for reading configuration files, logging, etc.
 
+=head1 USAGE
+
+=head1 REQUIRED ARGUMENTS
+
+=head1 OPTIONS
+
+=head1 DIAGNOSTICS
+
+=head1 EXIT STATUS
+
+=head1 CONFIGURATION
+
 =head1 INSTALLATION
 
 Copy this file into a convinient directory (/etc/nagios/nagiosgraph, for example) and modify the show*.cgi files to B<use lib> the directory this file is in.
@@ -2052,6 +2077,8 @@ RRDs interface to rrdtool.
 =head1 BUGS AND LIMITATIONS
 
 Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this simple and tested.
+
+=head1 INCOMPATIBILITIES
 
 =head1 SEE ALSO
 

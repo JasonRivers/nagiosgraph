@@ -33,7 +33,6 @@ print printheader($cgi, { title => $params->{group},
                           grouplist => \@{$gnames} }) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
-my $url = $ENV{REQUEST_URI};
 my $now = time;
 foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
@@ -44,7 +43,7 @@ foreach my $period (graphsizes($periods)) {
         my $surl = $Config{nagiosgraphcgiurl} .
             '/showservice.cgi?service=' . $cgi->escape($info->{service});
         if ($info->{db}) {
-            $surl .= join('&db=' . @{$info->{db}});
+            $surl .= '&db=' . @{$info->{db}};
             $surl =~ tr/ /+/;
         }
         my $hurl = $Config{nagiosgraphcgiurl} .
@@ -55,11 +54,11 @@ foreach my $period (graphsizes($periods)) {
 
         $str .= printgraphlinks($cgi, $info, $period, $link) . "\n";
     }
-    print printperiodlinks($cgi, $url, $params, $period, $now, $str) or
+    print printperiodlinks($cgi, $params, $period, $now, $str) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printscript('', '', $expanded_periods) or
+print printscript(q(), q(), $expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or
@@ -84,11 +83,7 @@ The showgraph.cgi script generates the graphs themselves.
 
 B<showgroup.cgi>?group=group_name
 
-=head1 CONFIGURATION
-
-The B<nagiosgraph.conf> file controls the behavior of this script.
-
-Groups of services and hosts are defined in the B<groupdb.conf> file.
+=head1 REQUIRED ARGUMENTS
 
 =head1 OPTIONS
 
@@ -96,11 +91,19 @@ group=group_name
 
 period=(day week month quarter year)
 
+=head1 EXIT STATUS
+
 =head1 DIAGNOSTICS
 
 Use the debug_showgroup setting from B<nagiosgraph.conf> to control the amount
 of debug information that will be emitted by this script.  Debug output will
 go to the web server error log.
+
+=head1 CONFIGURATION
+
+The B<nagiosgraph.conf> file controls the behavior of this script.
+
+Groups of services and hosts are defined in the B<groupdb.conf> file.
 
 =head1 DEPENDENCIES
 
@@ -136,6 +139,10 @@ line to point to the directory containing B<ngshared.pm>.
 
 Create or edit the example B<groupdb.conf>, which must reside in the same
 directory as B<ngshared.pm>.
+
+=head1 INCOMPATIBILITIES
+
+=head1 BUGS AND LIMITATIONS
 
 =head1 SEE ALSO
 

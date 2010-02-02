@@ -33,7 +33,6 @@ print printheader($cgi, { title => $params->{service},
                           service => $params->{service} }) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
-my $url = $ENV{REQUEST_URI};
 my $now = time;
 foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
@@ -48,11 +47,11 @@ foreach my $period (graphsizes($periods)) {
 
         $str .= printgraphlinks($cgi, $params, $period, $link) . "\n";
     }
-    print printperiodlinks($cgi, $url, $params, $period, $now, $str) or
+    print printperiodlinks($cgi, $params, $period, $now, $str) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printscript('', $params->{service}, $expanded_periods) or
+print printscript(q(), $params->{service}, $expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or
@@ -77,12 +76,7 @@ The showgraph.cgi script generates the graphs themselves.
 
 B<showservice.cgi>?service=service_description
 
-=head1 CONFIGURATION
-
-The B<nagiosgraph.conf> file controls the behavior of this script.
-
-The B<servdb.conf> controls which services will be listed and the order in
-which those services will appear.
+=head1 REQUIRED ARGUMENTS
 
 =head1 OPTIONS
 
@@ -90,10 +84,19 @@ service=service_description
 
 period=(day week month quarter year)
 
+=head1 EXIT STATUS
+
 =head1 DIAGNOSTICS
 
 Use the debug_showservice setting from B<nagiosgraph.conf> to control the 
 amount of debug information that will be emitted by this script.
+
+=head1 CONFIGURATION
+
+The B<nagiosgraph.conf> file controls the behavior of this script.
+
+The B<servdb.conf> controls which services will be listed and the order in
+which those services will appear.
 
 =head1 DEPENDENCIES
 
@@ -129,6 +132,10 @@ line to point to the directory containing B<ngshared.pm>.
 
 Create or edit the example B<servdb.conf>, which must reside in the same
 directory as B<ngshared.pm>.
+
+=head1 INCOMPATIBILITIES
+
+=head1 BUGS AND LIMITATIONS
 
 =head1 SEE ALSO
 

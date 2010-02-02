@@ -102,6 +102,14 @@ corresponds to a different color palette.
 
 Color palette 9 is defined by a list of RGB colors in B<nagiosgraph.conf>
 
+=head1 REQUIRED ARGUMENTS
+
+=head1 OPTIONS
+
+=head1 EXIT STATUS
+
+=head1 DIAGNOSTICS
+
 =head1 CONFIGURATION
 
 Create a custom color palette in the nagiosgraph configuration file by creating
@@ -114,6 +122,8 @@ colors = 90d080,30a030,90c0e0,304090,ffc0ff,a050a0,ffc060,c07020
 # green from light to dark
 colors = 80d080,50a050,308030
 
+=head1 DEPENDENCIES
+
 =head1 INSTALLATION
 
 Copy this file into Nagios' cgi directory (for the Apache web server, see where
@@ -122,6 +132,10 @@ the web server.
 
 Install the B<ngshared.pm> file and edit this file to change the B<use lib>
 line to point to the directory containing B<ngshared.pm>.
+
+=head1 INCOMPATIBILITIES
+
+=head1 BUGS AND LIMITATIONS
 
 =head1 SEE ALSO
 
