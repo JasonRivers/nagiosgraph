@@ -659,8 +659,8 @@ sub readhostdb {
 
     my @ginfo;
     my $fn = $Config{hostdb};
-    if (open DB, '<', $fn) {
-        while (my $line = <DB>) {
+    if (open my $DB, '<', $fn) {
+        while (my $line = <$DB>) {
             chomp $line;
             debug(DBDEB, "readhostdb: $line");
             $line =~ s/\s*#.*//;
@@ -689,7 +689,7 @@ sub readhostdb {
                 debug(DBDEB, "readhostdb: skip host:$host service:$service");
             }
         }
-        close DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
+        close $DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
     } else {
         my $msg = "cannot open hostdb $fn: $!";
         debug(DBDEB, $msg);
@@ -727,8 +727,8 @@ sub readservdb {
     my @allhosts;
     my @ginfo;
     my $fn = $Config{servdb};
-    if (open DB, '<', $fn) {
-        while (my $line = <DB>) {
+    if (open my $DB, '<', $fn) {
+        while (my $line = <$DB>) {
             chomp $line;
             debug(DBDEB, "readservdb: $line");
             $line =~ s/\s*#.*//;
@@ -741,7 +741,7 @@ sub readservdb {
             next if ! $host;
             push @allhosts, split /\s*,\s*/, $host;
         }
-        close DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
+        close $DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
     } else {
         my $msg = "cannot open servdb $fn: $!";
         debug(DBDEB, $msg);
@@ -796,8 +796,8 @@ sub readgroupdb {
     my $fn = $Config{groupdb};
     my %gnames;
     my @ginfo;
-    if (open DB, '<', $fn) {
-        while (my $line = <DB>) {
+    if (open my $DB, '<', $fn) {
+        while (my $line = <$DB>) {
             chomp $line;
             debug(DBDEB, "readgroupdb: $line");
             $line =~ s/\s*#.*//;
@@ -832,7 +832,7 @@ sub readgroupdb {
                 debug(DBDEB, "readgroupdb: skip host:$host service:$service");
             }
         }
-        close DB or debug(DBERR, "readgroupdb: close failed for $fn: $OS_ERROR");
+        close $DB or debug(DBERR, "readgroupdb: close failed for $fn: $OS_ERROR");
     } else {
         my $msg = "cannot open groupdb $fn: $!";
         debug(DBDEB, $msg);
