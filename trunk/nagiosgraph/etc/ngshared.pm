@@ -95,13 +95,6 @@ sub dumper {
     return;
 }
 
-readconfig('read');
-if (defined $Config{ngshared}) {
-    debug(1, $Config{ngshared});
-    htmlerror($Config{ngshared});
-    exit;
-}
-
 sub init {
     my ($app) = @_;
 
