@@ -101,9 +101,14 @@ This provides the perl interface to rrdtool.
 
 =head1 INSTALLATION
 
-Copy this file into Nagios' cgi directory (for the Apache web server, see where
-the ScriptAlias for /nagios/cgi-bin points), and make sure it is executable by
-the web server.
+Copy B<ngshared.pm> and B<nagiosgraph.conf> to a configuration directory
+such as /etc/nagiosgraph.
+
+Copy this file to a CGI script directory on a web server and ensure that
+it is executable by the web server.  Modify the B<use lib> line to point
+to the configuration directory.
+
+Edit B<nagiosgraph.conf> as needed.
 
 =head1 INCOMPATIBILITIES
 
@@ -111,7 +116,9 @@ the web server.
 
 =head1 SEE ALSO
 
-B<nagiosgraph.conf> B<showhost.cgi> B<showservice.cgi> B<ngshared.pm>
+B<nagiosgraph.conf>
+B<ngshared.pm>
+B<show.cgi> B<showhost.cgi> B<showservice.cgi> B<showgroup.cgi>
 
 =head1 AUTHOR
 
@@ -122,14 +129,16 @@ at http://nagiosgraph.wiki.sourceforge.net/ by moving some subroutines into a
 shared file (ngshared.pm), adding color number nine, and adding support for
 showhost.cgi and showservice.cgi.
 
+Matthew Wall, showgroup.cgi, CSS and JavaScript in 2010.
+
 =head1 LICENSE AND COPYRIGHT
 
 Copyright (C) 2005 Soren Dossing, 2008 Ithaka Harbors, Inc.
 
-This program is free software; you can redistribute it and/or modify it under
-the terms of the OSI Artistic License see:
+This program is free software; you can redistribute it and/or
+modify it under the terms of the OSI Artistic License see:
 http://www.opensource.org/licenses/artistic-license-2.0.php
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

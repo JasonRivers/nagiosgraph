@@ -87,9 +87,17 @@ B<showgroup.cgi>?group=group_name
 
 =head1 OPTIONS
 
-group=group_name
+=over 4
 
-period=(day week month quarter year)
+=item group=group_name
+
+=item period=(day week month quarter year)
+
+=item geom=WIDTHxHEIGHT
+
+=item rrdopts=-g
+
+=back
 
 =head1 EXIT STATUS
 
@@ -130,15 +138,14 @@ This provides the perl interface to rrdtool.
 
 =head1 INSTALLATION
 
-Copy this file into Nagios' cgi directory (for the Apache web server, see where
-the ScriptAlias for /nagios/cgi-bin points), and make sure it is executable by
-the web server.
+Copy B<ngshared.pm>, B<nagiosgraph.conf>, and B<groupdb.conf> to a
+configuration directory such as /etc/nagiosgraph.
 
-Install the B<ngshared.pm> file and edit this file to change the B<use lib>
-line to point to the directory containing B<ngshared.pm>.
+Copy this file to a CGI script directory on a web server and ensure that
+it is executable by the web server.  Modify the B<use lib> line to point
+to the configuration directory.
 
-Create or edit the example B<groupdb.conf>, which must reside in the same
-directory as B<ngshared.pm>.
+Edit B<nagiosgraph.conf> and B<groupdb.conf> as needed.
 
 =head1 INCOMPATIBILITIES
 
@@ -146,7 +153,9 @@ directory as B<ngshared.pm>.
 
 =head1 SEE ALSO
 
-B<groupdb.conf> B<nagiosgraph.conf> B<showgraph.cgi> B<show.cgi> B<showhost.cgi> B<showservice.cgi> B<ngshared.pm>
+B<groupdb.conf> B<nagiosgraph.conf>
+B<ngshared.pm> B<showgraph.cgi>
+B<show.cgi> B<showhost.cgi> B<showservice.cgi>
 
 =head1 AUTHOR
 
@@ -156,16 +165,16 @@ Robert Teeter, the original author of showhost.cgi in 2005
 
 Alan Brenner, author of ngshared.pm and many other parts in 2008.
 
-Matthew Wall, author of showgroup.cgi in 2010.
+Matthew Wall, showgroup.cgi, CSS and JavaScript in 2010.
 
 =head1 LICENSE AND COPYRIGHT
 
 Copyright (C) 2010 Matthew Wall
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of the OSI Artistic License:
+This program is free software; you can redistribute it and/or
+modify it under the terms of the OSI Artistic License see:
 http://www.opensource.org/licenses/artistic-license-2.0.php
 
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

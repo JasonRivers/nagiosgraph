@@ -2043,7 +2043,7 @@ __END__
 
 =head1 NAME
 
-ngshared.pm - shared subroutines for the nagiosgraph programs insert.pl, show.cgi, showhost.cgi, showservice.cgi, and showgraph.cgi
+ngshared.pm - shared subroutines for the nagiosgraph programs
 
 =head1 SYNOPSIS
 
@@ -2056,6 +2056,8 @@ A shared set of routines for reading configuration files, logging, etc.
 
 =head1 USAGE
 
+There is no direct invocation.  ngshared.pm contains functions that can be used to graph RRD data sets with data for hosts and services from Nagios.
+
 =head1 REQUIRED ARGUMENTS
 
 =head1 OPTIONS
@@ -2066,13 +2068,25 @@ A shared set of routines for reading configuration files, logging, etc.
 
 =head1 CONFIGURATION
 
+ngshared.pm uses B<nagiosgraph.conf> for most configuration.  ngshared.pm also includes subroutines to read from B<hostdb.conf>, B<servdb.conf>, B<groupdb.conf>, and B<rrdopts.conf> files.  These files are typically located in /etc/nagiosgraph.
+
 =head1 INSTALLATION
 
-Copy this file into a convinient directory (/etc/nagios/nagiosgraph, for example) and modify the show*.cgi files to B<use lib> the directory this file is in.
+Copy this file into a configuration directory (/etc/nagiosgraph, for example) and modify the B<use lib> line in each *.cgi file to the directory.
 
 =head1 DEPENDENCIES
 
-RRDs interface to rrdtool.
+=over 4
+
+=item B<rrdtool>
+
+This provides the data storage and graphing system.
+
+=item B<RRDs>
+
+This provides the perl interface to rrdtool.
+
+=back
 
 =head1 BUGS AND LIMITATIONS
 
@@ -2082,7 +2096,7 @@ Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
 
 =head1 SEE ALSO
 
-B<insert.pl> B<show.cgi> B<showhost.cgi> B<showservice.cgi> B<showgraph.cgi>
+B<insert.pl> B<showgraph.cgi> B<show.cgi> B<showhost.cgi> B<showservice.cgi> B<showgroup.cgi> B<testcolor.cgi>
 
 =head1 AUTHOR
 
@@ -2091,16 +2105,17 @@ Soren Dossing, the original author in 2005.
 Alan Brenner - alan.brenner@ithaka.org; I've updated this from the version at http://nagiosgraph.wiki.sourceforge.net/ by moving some subroutines into this shared file (ngshared.pm) for use by insert.pl and the show*.cgi files.
 
 Matthew Wall.  Added some graphing and display features.  General bugfixing,
-cleanup and refactoring.
+cleanup and refactoring.  Added showgraph.cgi.  Added CSS and JavaScript for
+graph and time period controls.
 
 =head1 LICENSE AND COPYRIGHT
 
 Copyright (C) 2005 Soren Dossing, 2009 Andrew W. Mellon Foundation
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of the OSI Artistic License:
+This program is free software; you can redistribute it and/or
+modify it under the terms of the OSI Artistic License see:
 http://www.opensource.org/licenses/artistic-license-2.0.php
 
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

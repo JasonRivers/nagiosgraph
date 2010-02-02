@@ -74,15 +74,25 @@ The showgraph.cgi script generates the graphs themselves.
 
 =head1 USAGE
 
-B<showservice.cgi>?service=service_description
+B<showservice.cgi>?service=service_description[&db=dataset]
 
 =head1 REQUIRED ARGUMENTS
 
 =head1 OPTIONS
 
-service=service_description
+=over 4
 
-period=(day week month quarter year)
+=item service=service_description
+
+=item db=dataset
+
+=item period=(day week month quarter year)
+
+=item geom=WIDTHxHEIGHT
+
+=item rrdopts=-g
+
+=back
 
 =head1 EXIT STATUS
 
@@ -123,15 +133,14 @@ This provides the perl interface to rrdtool.
 
 =head1 INSTALLATION
 
-Copy this file into Nagios' cgi directory (for the Apache web server, see where
-the ScriptAlias for /nagios/cgi-bin points), and make sure it is executable by
-the web server.
+Copy B<ngshared.pm>, B<nagiosgraph.conf>, and B<servdb.conf> to a
+configuration directory such as /etc/nagiosgraph.
 
-Install the B<ngshared.pm> file and edit this file to change the B<use lib>
-line to point to the directory containing B<ngshared.pm>.
+Copy this file to a CGI script directory on a web server and ensure that
+it is executable by the web server.  Modify the B<use lib> line to point
+to the configuration directory.
 
-Create or edit the example B<servdb.conf>, which must reside in the same
-directory as B<ngshared.pm>.
+Edit B<nagiosgraph.conf> and B<servdb.conf> as needed.
 
 =head1 INCOMPATIBILITIES
 
@@ -139,7 +148,9 @@ directory as B<ngshared.pm>.
 
 =head1 SEE ALSO
 
-B<servdb.conf> B<nagiosgraph.conf> B<showgraph.cgi> B<showhost.cgi> B<ngshared.pm>
+B<servdb.conf> B<nagiosgraph.conf>
+B<ngshared.pm> B<showgraph.cgi>
+B<show.cgi> B<showhost.cgi> B<showgroup.cgi>
 
 =head1 AUTHOR
 
@@ -150,7 +161,7 @@ Robert Teeter, the original author of showhost.cgi in 2005.
 Alan Brenner - alan.brenner@ithaka.org; I've written this based on Robert
 Teeter's showhost.cgi.
 
-Matthew Wall, added features, bug fixes and refactoring in 2010.
+Matthew Wall, showgroup.cgi, CSS and JavaScript in 2010.
 
 =head1 LICENSE AND COPYRIGHT
 

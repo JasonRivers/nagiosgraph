@@ -124,14 +124,28 @@ colors = 80d080,50a050,308030
 
 =head1 DEPENDENCIES
 
+=over 4
+
+=item B<ngshared.pm>
+
+This is the nagiosgraph perl library.  It contains code used by this script.
+
+=item B<nagiosgraph.conf>
+
+This configuration file controls behavior of this script.
+
+=back
+
 =head1 INSTALLATION
 
-Copy this file into Nagios' cgi directory (for the Apache web server, see where
-the ScriptAlias for /nagios/cgi-bin points), and make sure it is executable by
-the web server.
+Copy B<ngshared.pm> and B<nagiosgraph.conf> to a configuration directory
+such as /etc/nagiosgraph.
 
-Install the B<ngshared.pm> file and edit this file to change the B<use lib>
-line to point to the directory containing B<ngshared.pm>.
+Copy this file to a CGI script directory on a web server and ensure that
+it is executable by the web server.  Modify the B<use lib> line to point
+to the configuration directory.
+
+Edit B<nagiosgraph.conf> as needed.
 
 =head1 INCOMPATIBILITIES
 
@@ -139,7 +153,9 @@ line to point to the directory containing B<ngshared.pm>.
 
 =head1 SEE ALSO
 
-B<nagiosgraph.conf> B<show.cgi> B<showhost.cgi> B<showservice.cgi> B<ngshared.pm>
+B<nagiosgraph.conf>
+B<ngshared.pm> B<showgraph.cgi>
+B<show.cgi> B<showhost.cgi> B<showservice.cgi> B<showgroup.cgi>
 
 =head1 AUTHOR
 
@@ -150,16 +166,16 @@ at http://nagiosgraph.wiki.sourceforge.net/ by moving some subroutines into a
 shared file (ngshared.pm), using showgraph.cgi, and adding links for show.cgi
 and showservice.cgi.
 
-Matthew Wall, added features, bug fixes and refactoring in 2010.
+Matthew Wall, showgroup.cgi, CSS and JavaScript in 2010.
 
 =head1 LICENSE AND COPYRIGHT
 
 Copyright (C) 2005 Soren Dossing, 2008 Ithaka Harbors, Inc.
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of the OSI Artistic License:
+This program is free software; you can redistribute it and/or
+modify it under the terms of the OSI Artistic License see:
 http://www.opensource.org/licenses/artistic-license-2.0.php
 
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
