@@ -22,23 +22,8 @@ use MIME::Base64;
 use strict;
 use warnings;
 
-readconfig('read');
-if (defined $Config{ngshared}) {
-    debug(1, $Config{ngshared});
-    htmlerror($Config{ngshared});
-    exit;
-}
+my ($cgi, $params) = init('showgraph');
 
-my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
-$cgi->autoEscape(0);
-
-my $params = getparams($cgi, 'showgraph');
-getdebug('showgraph', $params->{host}, $params->{service});
-
-dumper(DBDEB, 'config', \%Config);
-dumper(DBDEB, 'params', $params);
-
-# Draw a graph
 $OUTPUT_AUTOFLUSH = 1;          # Make sure headers arrive before image data
 print $cgi->header(-type => 'image/png') or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");

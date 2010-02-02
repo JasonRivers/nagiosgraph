@@ -17,74 +17,53 @@ use lib '/opt/nagiosgraph/etc';
 use ngshared qw(:SHOWHOST);
 use CGI qw(-nosticky);
 use English qw(-no_match_vars);
-use File::Find;
 use strict;
 use warnings;
 
-readconfig('read');
-if (defined $Config{ngshared}) {
-    debug(1, $Config{ngshared});
-    htmlerror($Config{ngshared});
-    exit;
-}
+my ($cgi, $params) = init('showhost');
+my ($periods, $expanded_periods) = initperiods('host', $params);
 
-my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
-$cgi->autoEscape(0);
+if (! $params->{host}) { $params->{host} = q(); }
 
-my $params = getparams($cgi);
-getdebug('showhost', $params->{host}, $params->{service});
-
-dumper(DBDEB, 'config', \%Config);
-dumper(DBDEB, 'params', $params);
-
-my $host = q();
-if ($params->{host}) { $host = $params->{host}; }
-
-my ($periods, $expanded_periods) = getperiods('host', $params);
-
-find(\&getgraphlist, $Config{rrddir});
-
-my $ginfos = readhostdb($host);
+my $ginfos = readhostdb($params->{host});
 dumper(DBDEB, 'graphinfos', $ginfos);
 
 # nagios and nagiosgraph may not share the same cgi directory
 my $nagioscgiurl = $Config{nagiosgraphcgiurl};
 if ($Config{nagioscgiurl}) { $nagioscgiurl = $Config{nagioscgiurl}; }
 
-# draw the page
-print printheader($cgi,
-                  { title => $host,
-                    call => 'host',
-                    default => $host,
-                    host => $host,
-                    label => $cgi->a({href => $nagioscgiurl . '/extinfo.cgi?type=1&host=' . $host}, $host)}) or
+print printheader($cgi, { title => $params->{host},
+                          call => 'host',
+                          host => $params->{host},
+                          hosturl => $nagioscgiurl . '/extinfo.cgi?type=1&host=' . $params->{host} }) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+
+# FIXME: db= handling is not consistent
 
 my $url = $ENV{REQUEST_URI};
 my $now = time;
 foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
     my $str = q();
-    foreach my $ginfo (@{$ginfos}) {
-        $ginfo->{host} = $params->{host};
-        cfgparams($ginfo, $params, $ginfo->{service});
-        dumper(DBDEB, 'graphinfo', $ginfo);
+    foreach my $info (@{$ginfos}) {
+        $info->{host} = $params->{host};
+        cfgparams($info, $params, $info->{service});
 
         my $url = $Config{nagiosgraphcgiurl} .
-            '/showservice.cgi?service=' . $ginfo->{service} .
-            join('&db=' . @{$ginfo->{db}});
-        $url =~ tr/ /+/;
+            '/showservice.cgi?service=' . $cgi->escape($info->{service});
+        if ($info->{db}) {
+            $url .= join('&db=' . @{$info->{db}});
+            $url =~ tr/ /+/;
+        }
+        my $link = $cgi->a({href => $url}, trans($info->{service}, 1));
 
-        my $link = $cgi->a({href => $url},
-                           defined $ginfo->{label} ? $ginfo->{label} :
-                           $ginfo->{service});
-        $str .= printgraphlinks($cgi, $ginfo, $period, $link) . "\n";
+        $str .= printgraphlinks($cgi, $info, $period, $link) . "\n";
     }
     print printperiodlinks($cgi, $url, $params, $period, $now, $str) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printscript($host, $params->{service}, $expanded_periods) or
+print printscript($params->{host}, $params->{service}, $expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or

@@ -17,50 +17,22 @@ use lib '/opt/nagiosgraph/etc';
 use ngshared;
 use CGI qw(-nosticky);
 use English qw(-no_match_vars);
-use File::Find;
 use strict;
 use warnings;
 
-readconfig('read');
-if (defined $Config{ngshared}) {
-    debug(1, $Config{ngshared});
-    htmlerror($Config{ngshared});
-    exit;
-}
+my ($cgi, $params) = init('showservice');
+my ($periods, $expanded_periods) = initperiods('service', $params);
 
-my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
-$cgi->autoEscape(0);
+if (! $params->{service}) { $params->{service} = q(); }
 
-my $params = getparams($cgi);
-getdebug('showservice', $params->{host}, $params->{service});
-
-dumper(DBDEB, 'config', \%Config);
-dumper(DBDEB, 'params', $params);
-
-my $service = q();
-if ($params->{service}) { $service = $params->{service}; }
-my $db;
-if ($params->{db}) { $db = $params->{db}; }
-
-my ($periods, $expanded_periods) = getperiods('service', $params);
-
-find(\&getgraphlist, $Config{rrddir});
-
-my ($hosts) = readservdb($service, $db);
+my ($hosts) = readservdb($params->{service}, $params->{db});
 dumper(DBDEB, 'hosts', $hosts);
 
-cfgparams($params, $params, $service);
+cfgparams($params, $params, $params->{service});
 
-# FIXME: deal with the label
-my $label = (exists $params->{label}) ? $params->{label} : $service;
-
-# draw the page
-print printheader($cgi,
-                  { title => $service,
-                    call => 'service',
-                    default => $label,
-                    service => $service,
-                    label => $cgi->unescape($label)}) or
+print printheader($cgi, { title => $params->{service},
+                          call => 'service',
+                          service => $params->{service} }) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $url = $ENV{REQUEST_URI};
@@ -69,20 +41,20 @@ foreach my $period (graphsizes($periods)) {
     dumper(DBDEB, 'period', $period);
     my $str = q();
     foreach my $host (@{$hosts}) {
-        debug(DBDEB, "host = $host");
         $params->{host} = $host;
+
         my $url = $Config{nagiosgraphcgiurl} .
             '/show.cgi?host=' . $cgi->escape($host) .
-            '&service=' . $cgi->escape($service);
-        $url =~ tr/ /+/;
+            '&service=' . $cgi->escape($params->{service});
         my $link = $cgi->a({href => $url}, $host);
+
         $str .= printgraphlinks($cgi, $params, $period, $link) . "\n";
     }
     print printperiodlinks($cgi, $url, $params, $period, $now, $str) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printscript('', $service, $expanded_periods) or
+print printscript('', $params->{service}, $expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or

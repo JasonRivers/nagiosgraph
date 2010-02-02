@@ -14,8 +14,10 @@ use CGI qw(escape unescape);
 use Data::Dumper;
 use English qw(-no_match_vars);
 use Fcntl qw(:DEFAULT :flock);
+use File::Find;
 use File::Basename;
 use RRDs;
+use POSIX;
 
 ## no critic (ProhibitConstantPragma)
 use constant DBCRT => 1;
@@ -91,6 +93,35 @@ sub dumper {
     chomp $out;
     debug($level, substr $out, 1);
     return;
+}
+
+readconfig('read');
+if (defined $Config{ngshared}) {
+    debug(1, $Config{ngshared});
+    htmlerror($Config{ngshared});
+    exit;
+}
+
+sub init {
+    my ($app) = @_;
+
+    readconfig('read');
+    if (defined $Config{ngshared}) {
+        debug(DBCRT, $Config{ngshared});
+        htmlerror($Config{ngshared});
+        exit;
+    }
+    
+    my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
+    $cgi->autoEscape(0);
+    
+    my $params = getparams($cgi);
+    getdebug($app, $params->{host}, $params->{service});
+    
+    dumper(DBDEB, 'config', \%Config);
+    dumper(DBDEB, 'params', $params);
+
+    return $cgi, $params;
 }
 
 # we must have a type (the CGI script that is being invoked).  we may or may
@@ -190,7 +221,10 @@ sub getparams {
         }
     }
 
-    if (not $rval{db}) { $rval{db} = dbfilelist($rval{host}, $rval{service}); }
+    if (not $rval{db} && $rval{host} && $rval{host} ne '-') {
+        $rval{db} = dbfilelist($rval{host}, $rval{service});
+    }
+
     if ($rval{offset}) { $rval{offset} = int $rval{offset}; }
     if (not $rval{offset} or $rval{offset} <= 0) { $rval{offset} = 0; }
 
@@ -203,7 +237,7 @@ sub getparams {
 #
 # CGI uses comma-delimited, old configs used space-delimited, so we deal with
 # either.  we ensure the result is comma-delimited.
-sub getperiods {
+sub initperiods {
     my ($context, $opts) = @_;
     if ($context eq 'both') {
         $context = 'all';
@@ -265,9 +299,10 @@ sub cfgparams {
     if ($dflt->{expand_period} ne q()) {
         $p->{expand_period} = $dflt->{expand_period};
     }
-
-    $p->{geom} = $dflt->{geom};
-    $p->{offset} = 0;
+    if ($dflt->{geom} ne q()) {
+        $p->{geom} = $dflt->{geom};
+    }
+    $p->{offset} = $dflt->{offset} ne q() ? $dflt->{offset} : 0;
 
     if ($service) {
         $p->{rrdopts} = (defined $Config{rrdopts}{$service})
@@ -712,12 +747,21 @@ sub readservdb {
         croak($msg);
     }
 
+    # if we have a dbname, then do a check for that for each host.  if not, 
+    # then read each hosts rrd directory to see if we have a service match.
     my @hosts;
     foreach my $host (@allhosts) {
-        my($dir, $file) = mkfilename($host, $service, $dbname, 1);
-        my $rrdfn = $dir . q(/) . $file;
-        if (-f $rrdfn) {
-            push @hosts, $host;
+        if ($dbname ne q()) {
+            my($dir, $file) = mkfilename($host, $service, $dbname, 1);
+            my $rrdfn = $dir . q(/) . $file;
+            if (-f $rrdfn) {
+                push @hosts, $host;
+            }
+        } else {
+            my $rrds = dbfilelist($host, $service);
+            if (scalar @{$rrds} > 0) {
+                push @hosts, $host;
+            }
         }
     }
 
@@ -1196,30 +1240,6 @@ sub getserverlist {
     return ( host => [@hosts], hostserv => \%hostserv );
 }
 
-# Inserts the navigation menu (top of the page)
-sub printnavmenu {
-    my ($cgi, $userid, $opts) = @_;
-    my ($rval);
-
-    # Print Navigation Menu if we have a separator set (that will allow
-    # navigation menu to correctly split the filenames/filepaths in
-    # host/service/db names.
-    return q() if ($Config{dbseparator} ne 'subdir');
-    find(\&getgraphlist, $Config{rrddir});
-    #dumper(DBDEB, 'printnavmenu: Navmenu', \%Navmenu);
-
-    # Create Javascript Arrays for client-side menu navigation
-    my %result = getserverlist($userid);
-    my(@servers) = @{$result{host}};
-    my(%servers) = %{$result{hostserv}};
-    $rval = printjavascript(\@servers, \%servers);
-
-    # Create main form
-    $rval .= printcontrols($cgi, 'both', $opts);
-
-    return $rval;
-}
-
 # emit the javascript that configures the web page.  this has to be at the
 # end of the web page so that all elements have a chance to be instantiated
 # before the javascript is invoked.
@@ -1227,7 +1247,6 @@ sub printscript {
     my ($host, $service, $expanded_periods) = @_;
     return "<script type=\"text/javascript\">cfgMenus(\'$host\',\'$service\',\'$expanded_periods\');</script>\n";
 }
-
 
 # there are 4 contexts: show, showhost, showservice, showgroup.
 #   show displays both host and service menus.
@@ -1241,7 +1260,9 @@ sub printscript {
 # the host and group contexts do not require javascript updates when the
 # menus change, since there are no dependencies in those contexts.
 sub printcontrols {
-    my ($cgi, $context, $opts) = @_;
+    my ($cgi, $opts) = @_;
+
+    my $context = $opts->{call};
 
     # FIXME: prolly not necessary since we fabricate the submit in javascript.
     my %script = qw(both show.cgi host showhost.cgi service showservice.cgi group showgroup.cgi);
@@ -1334,7 +1355,7 @@ sub printcontrols {
                                   : q(),
                                   ) . "\n",
                       ) . "\n",
-            $cgi->end_form . "\n") . "\n";
+            $cgi->end_form . "\n");
 }
 
 sub printgraphlinks {
@@ -1460,46 +1481,71 @@ sub printperiodlinks {
                      $cgi->div({-id => $id }, $content)), "\n";
 }
 
-sub printheader {
-    my ($cgi, $opts) = @_;
+# quietly translate services and groups, but not hosts.
+sub printsummary {
+    my($cgi, $opts) = @_;
 
-    my $label = q();
-    my $host = q();
-    my $service = q();
-    my $item = $opts->{default};
-    if ($opts->{call} eq 'host') {
-        $label = trans('perfforhost');
-        $host = $item;
+    my $s = q();
+    if ($opts->{call} eq 'both') {
+        $s = trans('perfforhost') . q( ) .
+            $cgi->span({-class => 'item_label'},
+                       $cgi->a({href => $opts->{hosturl}},
+                               $opts->{host})) .
+            ', ' .
+            trans('service') . q( ) .
+            $cgi->span({-class => 'item_label'},
+                       $cgi->a({href => $opts->{serviceurl}},
+                               trans($opts->{service}, 1)));
+    } elsif ($opts->{call} eq 'host') {
+        $s = trans('perfforhost') . q( ) .
+            $cgi->span({-class => 'item_label'},
+                       $cgi->a({href => $opts->{hosturl}},
+                               $opts->{host}));
     } elsif ($opts->{call} eq 'service') {
-        $label = trans('perfforserv');
-        $service = $item;
+        $s = trans('perfforserv') . q( ) .
+            $cgi->span({-class => 'item_label'}, 
+                       trans($opts->{service}, 1));
+    } elsif ($opts->{call} eq 'group') {
+        $s = trans('perfforgroup') . q( ) .
+            $cgi->span({-class => 'item_label'}, 
+                       trans($opts->{group}, 1));
     }
 
-    my $refresh = getrefresh($cgi);
-    my @style = getstyle();
+    return $cgi->p({ -class => 'summary' },
+                   $s . q( ) . trans('asof') . q( ) .
+                   $cgi->span({ -class => 'timestamp' },
+                              formattime(time, 'timeformat_now')));
+}
+
+sub printheader {
+    my ($cgi, $opts) = @_;
 
     my $rval = $cgi->header;
     $rval .= $cgi->start_html(-id => 'nagiosgraph',
                               -title => "nagiosgraph: $opts->{title}",
-                              -head => $refresh,
-                              @style);
+                              -head => getrefresh($cgi),
+                              getstyle());
 
-    my %result = getserverlist($cgi->remote_user());
-    my(@servers) = @{$result{host}};
-    my(%servers) = %{$result{hostserv}};
-    $rval .= printjavascript(\@servers, \%servers);
+    # Print Navigation Menu if we have a separator set that will allow
+    # navigation menu to correctly split the filenames/filepaths in
+    # host/service/db names.
+    if (defined $Config{dbseparator} && $Config{dbseparator} eq 'subdir') {
+        File::Find::find(\&getgraphlist, $Config{rrddir});
+        #dumper(DBDEB, 'printheader: Navmenu', \%Navmenu);
 
-    $rval .= printcontrols($cgi, $opts->{call}, $opts);
+        my %result = getserverlist($cgi->remote_user());
+        my(@servers) = @{$result{host}};
+        my(%servers) = %{$result{hostserv}};
+        $rval .= printjavascript(\@servers, \%servers);
+    }
+
+    $rval .= printcontrols($cgi, $opts) . "\n";
 
     $rval .= (defined $Config{hidengtitle} and $Config{hidengtitle} eq 'true')
-        ? q() : $cgi->h1('Nagiosgraph');
+        ? q() : $cgi->h1('Nagiosgraph') . "\n";
 
-    $rval .= $cgi->p({ -class => 'summary' },
-                     $label . q( ) .
-                     $cgi->span({-class => 'item_label'}, $opts->{label}) .
-                     q( ) . trans('asof') . q( ) .
-                     $cgi->span({-class => 'timestamp'}, scalar localtime)) .
-                     "\n";
+    $rval .= printsummary($cgi, $opts) . "\n";
+
     return $rval;
 }
 
@@ -1580,10 +1626,10 @@ sub getperiodctrls {
 
     # now calculate and inject our own offset
     my $offset = ($params->{offset} + $period->[2]);
-    my $p = $cgi->a({-href=>"?$url&offset=$offset"}, '<');
-    my $c = getperiod($now, $params->{offset}, $period->[1], $period->[0]);
+    my $p = $cgi->a({-href=>"$url&offset=$offset"}, '<');
+    my $c = getperiodlabel($now,$params->{offset},$period->[1],$period->[0]);
     $offset = ($params->{offset} - $period->[2]);
-    my $n = $cgi->a({-href=>"?$url&offset=$offset"}, '>');
+    my $n = $cgi->a({-href=>"$url&offset=$offset"}, '>');
     if ($offset < 0) { $n = q(); }
 
     return ($p, $c, $n);
@@ -1592,26 +1638,20 @@ sub getperiodctrls {
 # returns a human-readable string with the start and end time relative to
 # the current hour plus the indicated offset.  the resolution determines
 # how much information to put into the label string.
-# FIXME: this assumes localtime return of 'ddd mmm DD HH:MM:SS YYYY'
-sub getperiod {
+sub getperiodlabel {
     my($now, $offset, $period, $res) = @_;
     my $e = $now - $offset;
     my $s = $e - $period;
-    my $sstr = scalar localtime $s;
-    my $estr = scalar localtime $e;
+    my $sstr = formattime($s, 'timeformat_' . $res);
+    my $estr = formattime($e, 'timeformat_' . $res);
+    return $sstr . q( - ) . $estr;
+}
 
-    # display only the bits of time appropriate for the period
-    $sstr =~ s/:\d\d:\d\d /:00 /; # strip the minutes and seconds
-    $sstr =~ s/^\S\S\S //; # weekday
-    if ($res ne 'quarter' && $res ne 'year') { $sstr =~ s/ \d\d\d\d//; } # year
-    if ($res ne 'day') { $sstr =~ s/ \d\d:\d\d//; } # hour and minutes
-
-    $estr =~ s/:\d\d:\d\d /:00 /;
-    $estr =~ s/^\S\S\S //;
-    if ($res ne 'quarter' && $res ne 'year') { $estr =~ s/ \d\d\d\d//; }
-    if ($res ne 'day') { $estr =~ s/ \d\d:\d\d//; }
-
-    return "$sstr to $estr";
+sub formattime {
+    my ($t, $key) = @_;
+    return $key && defined $Config{$key}
+        ? strftime $Config{$key}, localtime $t
+        : scalar localtime $t;
 }
 
 # insert.pl subroutines here for unit testability #############################
@@ -1900,6 +1940,7 @@ sub processdata {
     nohostgiven => 'no host specified',
     noservicegiven => 'no service specified',
     on => 'on',
+    perfforgroup => 'Data for group',
     perfforhost => 'Data for host',
     perfforserv => 'Data for service',
     periods => 'Periods: ',

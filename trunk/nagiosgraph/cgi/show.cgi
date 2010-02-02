@@ -15,76 +15,36 @@ use lib '/opt/nagiosgraph/etc';
 
 use ngshared;
 use CGI qw(-nosticky);
-use File::Find;
 use English qw(-no_match_vars);
 use RRDs;
 use strict;
 use warnings;
 
-readconfig('read');
-if (defined $Config{ngshared}) {
-    debug(DBCRT, $Config{ngshared});
-    htmlerror($Config{ngshared});
-    exit;
-}
+my ($cgi, $params) = init('show');
+my ($periods, $expanded_periods) = initperiods('both', $params);
 
-my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
-$cgi->autoEscape(0);
+if (! $params->{host}) { $params->{host} = q(); }
+if (! $params->{service}) { $params->{service} = q(); }
 
-my $params = getparams($cgi);
-getdebug('show', $params->{host}, $params->{service});
+cfgparams($params, $params, $params->{service});
 
-dumper(DBDEB, 'config', \%Config);
-dumper(DBDEB, 'params', $params);
-
-my $host = q();
-if ($params->{host}) { $host = $params->{host}; }
-else { $params->{host} = q(); }
-my $service = q();
-if ($params->{service}) { $service = $params->{service}; }
-else { $params->{service} = q(); }
-
-my ($periods,$expanded_periods) = getperiods('both', $params);
-
-my @style = getstyle();
-my $refresh = getrefresh($cgi);
-
-my $hurl = $Config{nagiosgraphcgiurl} . '/showhost.cgi?host=' .
-    $cgi->escape($host);
-my $surl = $Config{nagiosgraphcgiurl} . '/showservice.cgi?service=' .
-    $cgi->escape($service);
-my $ngtitle = (defined $Config{hidengtitle} and $Config{hidengtitle} eq 'true')
-    ? q() : $cgi->h1('Nagiosgraph');
-
-cfgparams($params, $params, $service);
-
-# Draw the full page
-print $cgi->header,
-    $cgi->start_html(-id => 'nagiosgraph',
-                     -title => "nagiosgraph: $host - $service",
-                     -head => $refresh,
-                     @style) . "\n" .
-    printnavmenu($cgi, $cgi->remote_user(), $params) .
-    $ngtitle .
-    $cgi->p({ -class => 'summary' }, trans('perfforhost') . q( ) .
-            $cgi->span({-class => 'item_label'},
-                       $cgi->a({href => $hurl}, $host)) . ', ' .
-            trans('service') . q( ) .
-            $cgi->span({-class => 'item_label'},
-                       $cgi->a({href => $surl}, $service)) . q( ) .
-            trans('asof') . q( ) .
-            $cgi->span({-class=>'timestamp'},scalar localtime)
-            ) . "\n" or
+print printheader($cgi, { title => "$params->{host} - $params->{service}",
+                          call => 'both',
+                          host => $params->{host},
+                          hosturl => $Config{nagiosgraphcgiurl} . '/showhost.cgi?host=' . $cgi->escape($params->{host}),
+                          service => $params->{service},
+                          serviceurl => $Config{nagiosgraphcgiurl} . '/showservice.cgi?service=' . $cgi->escape($params->{service}) }) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $url = $ENV{REQUEST_URI};
 my $now = time;
 for my $period (graphsizes($periods)) {
+    dumper(DBDEB, 'period', $period);
     my $str = printgraphlinks($cgi, $params, $period);
     print printperiodlinks($cgi, $url, $params, $period, $now, $str);
 }
 
-print printscript($host, $service, $expanded_periods) or
+print printscript($params->{host}, $params->{service}, $expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or

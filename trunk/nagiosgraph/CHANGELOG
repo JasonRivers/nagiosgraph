@@ -2,10 +2,10 @@ $Id$
 
 TBD
 
+* added format strings for dates and times
 * fixed showservice.cgi so that it now requires only host names in the 
    servdb.conf file.
-* more consolidation of code between the cgi scripts.  parsing and handling
-   of *db.conf files is now consistent.
+* made parsing and handling of *db.conf files more consistent
 * added showgroup.cgi to display arbitrary groups of host/service/dataset.
    group definitions go in groupdb.conf.
 * major overhaul of the javascript.  state is managed better now, and a lot
@@ -13,13 +13,10 @@ TBD
    functions are more precise with fewer side effects.
 * retain expanded/collapsed state of controls between reloads
 * retain selection state of host, service, data set, and time periods
-* one more baby step toward consolidated configfile/argument handling
-* fixed color bug - use 'colors' not 'color' in config file
 * added light/dark and green-tuple custom color palettes to config file
 * fixed debugging controls in testcolor.cgi, showgraph.cgi, and show.cgi
 * right-align text in the color tester
-* more code consolidation between show/showgraph/showhost/showservice
-* update the documentation: README, INSTALL, TODO
+* updated the documentation: README, INSTALL, TODO
 * new configuration options (see nagiosgraph.conf for details):
     showtitle
     showdesc
@@ -34,31 +31,36 @@ TBD
     nagiosgraphcgiurl
     refresh
     geometries
-    expand_timeall, expand_timehost, expand_timeservice
+    expand_timeall, expand_timehost, expand_timeservice, expand_timegroup
+    timeformat_now
+    timeformat_day, timeformat_week, timeformat_month
+    timeformat_quarter, timeformat_year
+    timegroup
 * modified configuration options:
     'time' is now 'timeall'
     timeall, timehost, timeservice take comma-delimited lists
+    'color' is now 'colors'
 * deleted configuration options:
     nolabels
     graphlabels
     large
     small
 * host and service are no longer required args.  just do the right thing.
-* use same controls layout for show, showhost, showservice
-* optional removal of <h1>Nagiosgraph</h1> for more graph and less text
-* adjust time period title layout
+* use the same controls layout for all cgi apps
+* adjusted time period title layout
+* added labels to time periods
 * control on each time period to collapse/expand that period
 * (partially) fixed prev/next controls
-* added labels to time periods
+* default to collapsed state for controls
+* added time period options to the controls
 * put http refresh interval into config file
 * eliminate tt and strong tags, replace with css
-* more consolidation of show/showhost/showservice
 * when missing translation, instruct to put translation in .conf not .pm
 * optionally show html title by each graph
 * optionally show data set names by each graph
 * optionally show title in each rrdgraph
-* time period options on every page (show/showhost/showservice)
-* default to collapsed state for controls
+* optionally hide <h1>Nagiosgraph</h1> for more graph and less text
+* consolidation of show*.cgi code
 
 1.4.0 2010-01-14
 * Most changes from Matthew Wall

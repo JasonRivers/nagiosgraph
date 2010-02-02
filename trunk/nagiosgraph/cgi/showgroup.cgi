@@ -14,48 +14,25 @@ use lib '/opt/nagiosgraph/etc';
 
 # Main program - change nothing below
 
-use ngshared qw(:SHOWGROUP);
-
+use ngshared;
 use CGI qw(-nosticky);
 use English qw(-no_match_vars);
-use File::Find;
 use strict;
 use warnings;
 
-readconfig('read');
-if (defined $Config{ngshared}) {
-    debug(1, $Config{ngshared});
-    htmlerror($Config{ngshared});
-    exit;
-}
+my ($cgi, $params) = init('showgroup');
+my ($periods, $expanded_periods) = initperiods('group', $params);
 
-my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
-$cgi->autoEscape(0);
+if (! $params->{group}) { $params->{group} = q(); }
 
-my $params = getparams($cgi);
-getdebug('showgroup', $params->{host}, $params->{service});
-
-dumper(DBDEB, 'config', \%Config);
-dumper(DBDEB, 'params', $params);
-
-my $group = q();
-if ($params->{group}) { $group = $params->{group}; }
-
-my ($periods, $expanded_periods) = getperiods('group', $params);
-
-find(\&getgraphlist, $Config{rrddir});
-
-my ($gnames, $ginfos) = readgroupdb($group);
+my ($gnames, $ginfos) = readgroupdb($params->{group});
 dumper(DBDEB, 'groups', $gnames);
 dumper(DBDEB, 'graphinfos', $ginfos);
 
-print printheader($cgi,
-                  { title => $group,
-                    call => 'group',
-                    default => $group,
-                    group => $group,
-                    grouplist => \@{$gnames},
-                    label => $cgi->unescape($group) }) or
+print printheader($cgi, { title => $params->{group},
+                          call => 'group',
+                          group => $params->{group},
+                          grouplist => \@{$gnames} }) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $url = $ENV{REQUEST_URI};
@@ -65,20 +42,16 @@ foreach my $period (graphsizes($periods)) {
     my $str = q();
     foreach my $info (@{$ginfos}) {
         cfgparams($info, $params, $info->{service});
-        dumper(DBDEB, 'graph info', $info);
 
         my $surl = $Config{nagiosgraphcgiurl} .
             '/showservice.cgi?service=' . $cgi->escape($info->{service});
         if ($info->{db}) {
             $surl .= join('&db=' . @{$info->{db}});
+            $surl =~ tr/ /+/;
         }
-        $surl =~ tr/ /+/;
-
         my $hurl = $Config{nagiosgraphcgiurl} .
             '/showhost.cgi?host=' . $cgi->escape($info->{host});
-        $url =~ tr/ /+/;
-
-        my $link = $cgi->a({href => $surl}, $info->{service}) .
+        my $link = $cgi->a({href => $surl}, trans($info->{service}, 1)) .
             q( ) . trans('on') . q( ) .
             $cgi->a({href => $hurl}, $info->{host});
 
