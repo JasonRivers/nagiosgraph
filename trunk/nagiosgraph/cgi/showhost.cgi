@@ -46,8 +46,9 @@ foreach my $period (graphsizes($periods)) {
         $info->{host} = $params->{host};
         cfgparams($info, $params, $info->{service});
 
-        my $url = $Config{nagiosgraphcgiurl} .
-            '/showservice.cgi?service=' . $cgi->escape($info->{service});
+        my $url = $Config{nagiosgraphcgiurl} . '/show.cgi?' .
+            'host=' . $cgi->escape($info->{host}) .
+            '&service=' . $cgi->escape($info->{service});
         if ($info->{db}) {
             foreach my $db (@{$info->{db}}) {
                 $url .= '&db=' . $db;
