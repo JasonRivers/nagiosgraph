@@ -9,9 +9,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN {
-    plan tests => 87;
-}
+BEGIN { plan tests => 165; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -190,7 +188,7 @@ sub testreadconfig { # Check the default configuration
 }
 
 sub testdbfilelist { # Check getting a list of rrd files
-	$Config{debug} = 5;
+	$Config{debug} = 0;
 	open $LOG, '+>', \$log;
 	$Config{rrddir} = $FindBin::Bin;
 	$Config{dbseparator} = '';
@@ -208,7 +206,7 @@ sub testdbfilelist { # Check getting a list of rrd files
 }
 
 sub testgraphinfo { # Depends on testcreaterrd making files
-	$Config{debug} = 5;
+	$Config{debug} = 0;
 	open $LOG, '+>', \$log;
 	$Config{rrddir} = $FindBin::Bin;
 	$Config{dbseparator} = '';
@@ -233,7 +231,7 @@ sub testgraphinfo { # Depends on testcreaterrd making files
 }
 
 sub testrrdline { # TODO: rrdline
-	$Config{debug} = 5;
+	$Config{debug} = 0;
 	open $LOG, '+>', \$log;
 	$result = getlabels('diskgb', 'test,junk');
 	ok($result->[0], 'Disk Usage in Gigabytes');
@@ -276,7 +274,7 @@ sub testprintNavMenu { # printNavMenu is like htmlerror--not really testable.
 }
 
 sub testgraphsizes {
-	$Config{debug} = 5;
+	$Config{debug} = 0;
 	open $LOG, '+>', \$log;
 	@result = graphsizes(''); # defaults
 	ok($result[0][0], 'day');
@@ -337,7 +335,7 @@ sub testruncreate {				# runcreate tested as part of createrrd
 }
 
 sub testcheckdatasources {
-	$Config{debug} = 5;
+	$Config{debug} = 0;
 	open $LOG, '+>', \$log;
 	$result = checkdatasources([0], 'test', [0], 'junk');
 	ok($result, 1);
@@ -350,7 +348,7 @@ sub testcheckdatasources {
 }
 
 sub testcreaterrd {
-	$Config{debug} = 5;
+	$Config{debug} = 0;
 	open $LOG, '+>', \$log;
 	$Config{rrddir} = $FindBin::Bin;
 	# test creation of a separate file for specific data
@@ -379,18 +377,18 @@ sub testrunupdate {				# like runcreate, it doesn't do much
 }
 
 sub testrrdupdate { # depends on testcreaterrd making a file
-	$Config{debug} = 3;
+	$Config{debug} = 0;
 	open $LOG, '+>', \$log;
-	dumpdata($log, \@result, 'result');
+#	dumpdata($log, \@result, 'result');
 	rrdupdate($result[0]->[0], 1221495635, $testvar, 'testbox', $result[1]->[0]);
 	skip(! -f $FindBin::Bin . '/testbox/PING___ping.rrd', $log, "");
 	close $LOG;
-	dumpdata($log, \@result, 'result');
+#	dumpdata($log, \@result, 'result');
 	$Config{debug} = 0;
 }
 
 sub testgetrules {
-	$Config{debug} = 3;
+	$Config{debug} = 0;
 	open $LOG, '+>', \$log;
 	getrules("$FindBin::Bin/../etc/map");
 	ok($log, "");
@@ -399,7 +397,7 @@ sub testgetrules {
 }
 
 sub testprocessdata { # depends on testcreaterdd and testgetrules
-	$Config{debug} = 3;
+	$Config{debug} = 0;
 	open $LOG, '+>', \$log;
 	my @perfdata = ('1221495636||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||losspct: 0%, rta: 37.06');
 	processdata(@perfdata);
@@ -411,11 +409,545 @@ sub testprocessdata { # depends on testcreaterdd and testgetrules
 }
 
 sub testtrans {
-	$Config{debug} = 5;
-	open $LOG, '+>', \$log;
-	ok(trans('day'), 'Today');
-	close $LOG;
-	$Config{debug} = 0;
+    $Config{debug} = 0;
+    open $LOG, '+>', \$log;
+    ok(trans('day'), 'Today');
+    ok(trans('daily'), 'Daily');
+    ok(trans('week'), 'This Week');
+    ok(trans('weekly'), 'Weekly');
+    ok(trans('month'), 'This Month');
+    ok(trans('monthly'), 'Monthly');
+    ok(trans('year'), 'This Year');
+    ok(trans('yearly'), 'Yearly');
+    close $LOG;
+    $Config{debug} = 0;
+}
+
+sub testinitperiods {
+    $Config{debug} = 0;
+    open $LOG, '+>', \$log;
+
+    # ensure we get values from opts
+    my %opts = ('period', 'day week month', 'expand_period', 'month year');
+    my ($a,$b) = initperiods('all', \%opts);
+    ok($a, 'day,week,month');
+    ok($b, 'month,year');
+    %opts = ('period', 'day week', 'expand_period', 'day month');
+    ($a,$b) = initperiods('all', \%opts);
+    ok($a, 'day,week');
+    ok($b, 'day,month');
+    ($a,$b) = initperiods('host', \%opts);
+    ok($a, 'day,week');
+    ok($b, 'day,month');
+    ($a,$b) = initperiods('service', \%opts);
+    ok($a, 'day,week');
+    ok($b, 'day,month');
+    ($a,$b) = initperiods('group', \%opts);
+    ok($a, 'day,week');
+    ok($b, 'day,month');
+
+    # ensure we get values from config
+    $Config{timeall} = 'month,year';
+    $Config{expand_timeall} = 'day';
+    %opts = ('period', '', 'expand_period', '');
+    ($a,$b) = initperiods('all', \%opts);
+    ok($a, 'month,year');
+    ok($b, 'day');
+
+    # ensure values from opts override those from config
+    $Config{timeall} = 'month,year';
+    $Config{expand_timeall} = 'day';
+    %opts = ('period', 'day', 'expand_period', 'month');
+    ($a,$b) = initperiods('all', \%opts);
+    ok($a, 'day');
+    ok($b, 'month');
+    
+    close $LOG;
+    $Config{debug} = 0;
+}
+
+sub testparsedb {
+    $Config{debug} = 0;
+    open $LOG, '+>', \$log;
+
+    # single data source
+    my $str = '&db=ping,rta';
+    my ($name, @db) = parsedb($str);
+    ok($name, 'ping');
+    ok(Dumper(\@db), "\$VAR1 = [
+          'ping,rta'
+        ];\n");
+
+    # two data sources
+    $str = '&db=ping,rta&db=ping,loss';
+    ($name, @db) = parsedb($str);
+    ok($name, 'ping');
+    ok(Dumper(\@db), "\$VAR1 = [
+          'ping,rta',
+          'ping,loss'
+        ];\n");
+
+    # multiple data sources
+    $str = '&db=ping,rta&db=ping,loss&db=ping,crit&db=ping,warn';
+    ($name, @db) = parsedb($str);
+    ok($name, 'ping');
+    ok(Dumper(\@db), "\$VAR1 = [
+          'ping,rta',
+          'ping,loss',
+          'ping,crit',
+          'ping,warn'
+        ];\n");
+
+    close $LOG;
+    $Config{debug} = 0;
+}
+
+sub testdbname {
+    $Config{debug} = 0;
+    open $LOG, '+>', \$log;
+
+    # check the normal usage
+    my @db = ('ping,rta', 'ping,loss');
+    my $name = getdbname(@db);
+    ok($name, 'ping');
+
+    # verify behavior when datasets have different service name.
+    @db = ('ping,rta', 'http,Bps');
+    $name = getdbname(@db);
+    ok($name, 'ping');
+    
+    close $LOG;
+    $Config{debug} = 0;
+}
+
+# create rrd files used in the read*db tests
+sub setuprrd {
+    $Config{rrddir} = $FindBin::Bin;
+    $Config{dbseparator} = 'subdir';
+
+    my $testvar = ['ping',
+                   ['losspct', 'GAUGE', 0],
+                   ['rta', 'GAUGE', .006] ];
+    my @result = createrrd('host0', 'PING', 1221495632, $testvar);
+    $testvar = ['http',
+                ['Bps', 'GAUGE', 0] ];
+    @result = createrrd('host0', 'HTTP', 1221495632, $testvar);
+
+    $testvar = ['http',
+                ['Bps', 'GAUGE', 0] ];
+    @result = createrrd('host1', 'HTTP', 1221495632, $testvar);
+
+    $testvar = ['ping',
+                ['losspct', 'GAUGE', 0],
+                ['rta', 'GAUGE', .006] ];
+    @result = createrrd('host2', 'PING', 1221495632, $testvar);
+
+    $testvar = ['loss',
+                ['losspct', 'GAUGE', 0],
+                ['losswarn', 'GAUGE', 5],
+                ['losscrit', 'GAUGE', 10] ];
+    @result = createrrd('host3', 'ping', 1221495632, $testvar);
+    $testvar = ['rta',
+                ['rtapct', 'GAUGE', 0.01],
+                ['rtawarn', 'GAUGE', 0.1],
+                ['rtacrit', 'GAUGE', 0.5] ];
+    @result = createrrd('host3', 'ping', 1221495632, $testvar);
+}
+
+sub testreadhostdb {
+    setuprrd();
+
+    my $fn = "$FindBin::Bin/db.conf";
+    my $cwd = $FindBin::Bin;
+    $Config{hostdb} = $fn;
+    my $result;
+
+    open TEST, ">$fn";
+    print TEST "\n";
+    close TEST;
+
+    # nothing when nothing in file
+    $result = readhostdb();
+    ok(@{$result}, 0);
+
+    open TEST, ">$fn";
+    print TEST "service=PING&db=ping\n";
+    close TEST;
+
+    # degenerate cases should return nothing
+    $result = readhostdb();
+    ok(@{$result}, 0);
+
+    $result = readhostdb('');
+    ok(@{$result}, 0);
+
+    $result = readhostdb('-');
+    ok(@{$result}, 0);
+
+    $result = readhostdb('bogus');
+    ok(@{$result}, 0);
+
+    # this host should not match anything
+    $result = readhostdb('host1');
+    ok(@{$result}, 0);
+
+    # for this host ensure we get only ping, not http
+    $result = readhostdb('host0');
+    ok(@{$result}, 1);
+    ok(Dumper($result), "\$VAR1 = [
+          {
+            'filename' => '$cwd/host0/PING___ping.rrd',
+            'db' => [
+                      'ping'
+                    ],
+            'service' => 'PING',
+            'dbname' => 'ping',
+            'host' => 'host0'
+          }
+        ];\n");
+
+
+    # now add more data sets, all for ping service
+    open TEST, ">$fn";
+    print TEST "service=ping&db=rta\n";
+    print TEST "service=ping&db=loss\n";
+    print TEST "service=PING&db=ping\n";
+    print TEST "service=PING&db=ping,rta\n";
+    print TEST "service=PING&db=ping,losspct\n";
+    close TEST;
+
+    # this should pick up three different pings
+    $result = readhostdb('host2');
+    ok(@{$result}, 3);
+    ok(Dumper($result), "\$VAR1 = [
+          {
+            'filename' => '$cwd/host2/PING___ping.rrd',
+            'db' => [
+                      'ping'
+                    ],
+            'service' => 'PING',
+            'dbname' => 'ping',
+            'host' => 'host2'
+          },
+          {
+            'filename' => '$cwd/host2/PING___ping.rrd',
+            'db' => [
+                      'ping,rta'
+                    ],
+            'service' => 'PING',
+            'dbname' => 'ping',
+            'host' => 'host2'
+          },
+          {
+            'filename' => '$cwd/host2/PING___ping.rrd',
+            'db' => [
+                      'ping,losspct'
+                    ],
+            'service' => 'PING',
+            'dbname' => 'ping',
+            'host' => 'host2'
+          }
+        ];\n");
+
+    $result = readhostdb('host3');
+    ok(@{$result}, 2);
+    ok(Dumper($result), "\$VAR1 = [
+          {
+            'filename' => '$cwd/host3/ping___rta.rrd',
+            'db' => [
+                      'rta'
+                    ],
+            'service' => 'ping',
+            'dbname' => 'rta',
+            'host' => 'host3'
+          },
+          {
+            'filename' => '$cwd/host3/ping___loss.rrd',
+            'db' => [
+                      'loss'
+                    ],
+            'service' => 'ping',
+            'dbname' => 'loss',
+            'host' => 'host3'
+          }
+        ];\n");
+
+
+    # valid service, bogus dataset
+    open TEST, ">$fn";
+    print TEST "service=PING&db=foo\n";
+    close TEST;
+
+    # this host should not match anything
+    $result = readhostdb('host2');
+    ok(@{$result}, 0);
+
+
+    # test multiple datasets per line
+    open TEST, ">$fn";
+    print TEST "service=ping&db=rta&db=loss\n";
+    print TEST "service=PING&db=ping,losspct&db=ping,rtapct\n";
+    close TEST;
+
+    $result = readhostdb('host2');
+    ok(@{$result}, 1);
+    ok(Dumper($result), "\$VAR1 = [
+          {
+            'filename' => '$cwd/host2/PING___ping.rrd',
+            'db' => [
+                      'ping,losspct',
+                      'ping,rtapct'
+                    ],
+            'service' => 'PING',
+            'dbname' => 'ping',
+            'host' => 'host2'
+          }
+        ];\n");
+
+    $result = readhostdb('host3');
+    ok(@{$result}, 1);
+    ok(Dumper($result), "\$VAR1 = [
+          {
+            'filename' => '$cwd/host3/ping___rta.rrd',
+            'db' => [
+                      'rta',
+                      'loss'
+                    ],
+            'service' => 'ping',
+            'dbname' => 'rta',
+            'host' => 'host3'
+          }
+        ];\n");
+
+
+# FIXME: handle labels properly
+
+    # test labels parsing
+    open TEST, ">$fn";
+    print TEST "service=PING&db=ping,losspct&label=Loser\n";
+    close TEST;
+
+
+    # test for spaces in label names
+    open TEST, ">$fn";
+    print TEST "service=PING&db=ping,rta&label=Real+Time Astronaut\n";
+    print TEST "service=PING&db=ping,losspct&label=Loser\n";
+    close TEST;
+
+
+    # ensure that labels override those in cfg file
+    open TEST, ">$fn";
+    print TEST "service=PING&db=ping,rta&label=Real+Time+Astronaut\n";
+    print TEST "service=PING&db=ping,losspct&label=Loser\n";
+    close TEST;
+
+
+    # test labels for multiple data sets
+    open TEST, ">$fn";
+    print TEST "service=PING&db=ping,losspct&label=A&db=ping,rtapct&label=B\n";
+    close TEST;
+
+    unlink $fn;
+}
+
+sub testreadservdb {
+    setuprrd();
+
+    my $fn = "$FindBin::Bin/db.conf";
+    $Config{servdb} = $fn;
+    my $result;
+
+    open TEST, ">$fn";
+    print TEST "\n";
+    close TEST;
+
+    # nothing when nothing in file
+    $result = readservdb('PING');
+    ok(@{$result}, 0);
+
+    open TEST, ">$fn";
+    print TEST "host=host0\n";
+    print TEST "host=host1\n";
+    print TEST "host=host2\n";
+    print TEST "host=host3\n";
+    print TEST "host=host4\n";
+    print TEST "host=host5\n";
+    close TEST;
+
+    # degenerate cases should return nothing
+    $result = readservdb();
+    ok(@{$result}, 0);
+
+    $result = readservdb('');
+    ok(@{$result}, 0);
+
+    $result = readservdb('-');
+    ok(@{$result}, 0);
+
+    $result = readservdb('bogus');
+    ok(@{$result}, 0);
+
+    # check valid services
+
+    $result = readservdb('HTTP');
+    ok(@{$result}, 2);
+    ok(Dumper($result), "\$VAR1 = [
+          'host0',
+          'host1'
+        ];\n");
+
+    $result = readservdb('PING');
+    ok(@{$result}, 2);
+    ok(Dumper($result), "\$VAR1 = [
+          'host0',
+          'host2'
+        ];\n");
+
+    $result = readservdb('ping');
+    ok(@{$result}, 1);
+    ok(Dumper($result), "\$VAR1 = [
+          'host3'
+        ];\n");
+
+    # check service/dataset pairs
+
+    $result = readservdb('PING');
+    ok(@{$result}, 2);
+    ok(Dumper($result), "\$VAR1 = [
+          'host0',
+          'host2'
+        ];\n");
+
+    $result = readservdb('PING', ['ping']);
+    ok(@{$result}, 2);
+    ok(Dumper($result), "\$VAR1 = [
+          'host0',
+          'host2'
+        ];\n");
+
+    $result = readservdb('ping', ['loss']);
+    ok(@{$result}, 1);
+    ok(Dumper($result), "\$VAR1 = [
+          'host3'
+        ];\n");
+
+    $result = readservdb('ping', ['bogus']);
+    ok(@{$result}, 0);
+    ok(Dumper($result), "\$VAR1 = [];\n");
+
+    # verify the order of hosts
+
+    open TEST, ">$fn";
+    print TEST "host=host0,host1\n";
+    close TEST;
+    $result = readservdb('HTTP');
+    ok(@{$result}, 2);
+    ok(Dumper($result), "\$VAR1 = [
+          'host0',
+          'host1'
+        ];\n");
+
+    open TEST, ">$fn";
+    print TEST "host=host1,host0\n";
+    close TEST;
+    $result = readservdb('HTTP');
+    ok(@{$result}, 2);
+    ok(Dumper($result), "\$VAR1 = [
+          'host1',
+          'host0'
+        ];\n");
+
+    unlink $fn;
+}
+
+sub testreadgroupdb {
+    setuprrd();
+
+    my $fn = "$FindBin::Bin/db.conf";
+    my $cwd = $FindBin::Bin;
+    $Config{groupdb} = $fn;
+    my $names;
+    my $infos;
+
+    open TEST, ">$fn";
+    print TEST "\n";
+    close TEST;
+
+    # nothing when nothing in file
+    ($names,$infos) = readgroupdb('PING');
+    ok(@{$names}, 0);
+
+    open TEST, ">$fn";
+    print TEST "PING=host1,PING&db=ping,rta\n";
+    print TEST "PING=host1,PING&db=ping,losspct\n";
+    print TEST "PING=host2,PING&db=ping,losspct\n";
+    print TEST "PING=host3,PING&db=ping,losspct\n";
+    print TEST "PING=host4,PING&db=ping,rta\n";
+    print TEST "PING=host4,PING&db=ping,losspct\n";
+    print TEST "PING=host5,PING&db=ping,losspct\n";
+    print TEST "Web Servers=host0,PING&db=ping,losspct\n";
+    print TEST "Web Servers=host0,HTTP&db=http\n";
+    print TEST "Web Servers=host1,PING&db=ping,losspct\n";
+    print TEST "Web Servers=host1,HTTP&db=http\n";
+    print TEST "Web Servers=host5,PING&db=ping,losspct\n";
+    print TEST "Web Servers=host5,HTTP&db=http\n";
+    close TEST;
+
+    ($names,$infos) = readgroupdb();
+    ok(@{$names}, 2);
+    ok(Dumper($names), "\$VAR1 = [
+          'PING',
+          'Web Servers'
+        ];\n");
+
+    # degenerate cases should return nothing
+    ($names,$infos) = readgroupdb();
+    ok(@{$infos}, 0);
+
+    ($names,$infos) = readgroupdb('');
+    ok(@{$infos}, 0);
+
+    ($names,$infos) = readgroupdb('-');
+    ok(@{$infos}, 0);
+
+    ($names,$infos) = readgroupdb('bogus');
+    ok(@{$infos}, 0);
+
+    ($names,$infos) = readgroupdb('Web Servers');
+    ok(@{$infos}, 3);
+    ok(Dumper($infos), "\$VAR1 = [
+          {
+            'filename' => '$cwd/host0/PING___ping.rrd',
+            'db' => [
+                      'ping,losspct'
+                    ],
+            'service' => 'PING',
+            'dbname' => 'ping',
+            'host' => 'host0'
+          },
+          {
+            'filename' => '$cwd/host0/HTTP___http.rrd',
+            'db' => [
+                      'http'
+                    ],
+            'service' => 'HTTP',
+            'dbname' => 'http',
+            'host' => 'host0'
+          },
+          {
+            'filename' => '$cwd/host1/HTTP___http.rrd',
+            'db' => [
+                      'http'
+                    ],
+            'service' => 'HTTP',
+            'dbname' => 'http',
+            'host' => 'host1'
+          }
+        ];\n");
+
+    #FIXME: test for label parsing
+
+    unlink $fn;
 }
 
 testdebug();
@@ -438,3 +970,9 @@ testgetrules();
 #testgraphinfo();		# must be after testcreaterrd
 testprocessdata();
 testtrans();
+testinitperiods();
+testparsedb();
+testdbname();
+testreadhostdb();
+testreadservdb();
+testreadgroupdb();
