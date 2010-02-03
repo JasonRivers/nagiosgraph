@@ -719,7 +719,7 @@ sub readhostdb {
 sub readservdb {
     my ($service, $dblist) = @_;
     $service ||= q();
-    if ($service eq q() || $service eq (-)) { return (); }
+    if ($service eq q() || $service eq q(-)) { return (); }
     my $dbname = q();
     if ($dblist) { ($dbname) = getdbname(@{$dblist}); }
 
