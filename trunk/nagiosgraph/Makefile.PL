@@ -4,10 +4,14 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'ABSTRACT'      => 'Nagios performance data storage and graphing',
     'AUTHOR'        => 'Alan Brenner <alan.brenner@ithaka.org>',
-    'NAME'	        => 'nagiosgraph',
+    'NAME'	    => 'nagiosgraph',
     'VERSION_FROM'  => 'etc/ngshared.pm',
-    'EXE_FILES'     => [ 'lib/insert.pl', 'cgi/show.cgi', 'cgi/showhost.cgi',
-		'cgi/showservice.cgi', 'cgi/testcolor.cgi'],
+    'EXE_FILES'     => [ 'lib/insert.pl',
+                         'cgi/show.cgi',
+                         'cgi/showhost.cgi',
+                         'cgi/showservice.cgi',
+                         'cgi/showgroup.cgi',
+                         'cgi/testcolor.cgi' ],
     'PREREQ_PM'     => { 'RRDs' => 0 },
     'dist'          => { 'SUFFIX'       => ".gz",
                          'DIST_DEFAULT' => 'all tardist',
@@ -18,4 +22,12 @@ WriteMakefile(
 
 sub MY::install {
 	"install :: all pure_install doc_install\n\t./install.pl";
+}
+
+# check everything with perlcritic.
+sub MY::postamble {
+'
+critic:
+	perlcritic -1 etc/ngshared.pm cgi/show.cgi cgi/showhost.cgi cgi/showservice.cgi cgi/showgroup.cgi cgi/testcolor.cgi lib/insert.pl
+';
 }

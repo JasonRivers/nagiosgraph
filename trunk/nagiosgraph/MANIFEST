@@ -9,9 +9,11 @@ install.pl
 nagiosgraph.spec
 cgi/show.cgi
 cgi/showgraph.cgi
+cgi/showgroup.cgi
 cgi/showhost.cgi
 cgi/showservice.cgi
 cgi/testcolor.cgi
+etc/groupdb.conf
 etc/hostdb.conf
 etc/map
 etc/nagiosgraph.conf

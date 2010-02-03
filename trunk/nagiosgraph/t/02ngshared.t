@@ -10,7 +10,7 @@ use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
 BEGIN {
-    plan tests => 93;
+    plan tests => 87;
 }
 
 sub dumpdata {
@@ -108,22 +108,22 @@ sub testgetdebug {
 	$Config{debug} = 0;
 }
 
-sub testgetfilename { # Test getting the file and directory for a database.
+sub testmkfilename { # Test getting the file and directory for a database.
 	# Make rrddir where we run from, since the 'subdir' configuration wants to
 	# create missing subdirectories
 	$Config{rrddir} = $FindBin::Bin;
 	$Config{dbseparator} = '';
-	@result = getfilename('testbox', 'Partition: /');
+	@result = mkfilename('testbox', 'Partition: /');
 	ok($result[0], $FindBin::Bin);
 	ok($result[1], 'testbox_Partition%3A%20%2F_');
-	@result = getfilename('testbox', 'Partition: /', 'diskgb');
+	@result = mkfilename('testbox', 'Partition: /', 'diskgb');
 	ok($result[0], $FindBin::Bin);
 	ok($result[1], 'testbox_Partition%3A%20%2F_diskgb.rrd');
 	$Config{dbseparator} = 'subdir';
-	@result = getfilename('testbox', 'Partition: /');
+	@result = mkfilename('testbox', 'Partition: /');
 	ok($result[0], $FindBin::Bin . '/testbox');
 	ok($result[1], 'Partition%3A%20%2F___');
-	@result = getfilename('testbox', 'Partition: /', 'diskgb');
+	@result = mkfilename('testbox', 'Partition: /', 'diskgb');
 	ok($result[0], $FindBin::Bin . '/testbox');
 	ok($result[1], 'Partition%3A%20%2F___diskgb.rrd');
 	ok(-d $result[0]);
@@ -151,7 +151,7 @@ sub testhashcolor { # With 16 generated colors, the default rainbow and one cust
 		$result = hashcolor('PLW', $ii);
 		ok($result, $testdata[$ii - 1]);
 	}
-	$Config{color} = ['123', 'ABC'];
+	$Config{colors} = ['123', 'ABC'];
 	@testdata = ('123', 'ABC', '123');
 	for ($ii = 0; $ii < 3; $ii++) {
 		$result = hashcolor('test', 9);
@@ -203,17 +203,6 @@ sub testdbfilelist { # Check getting a list of rrd files
 	@result = dbfilelist('testbox', 'Partition: /');
 	ok(@result, 1);
 	unlink $file;
-	close $LOG;
-	$Config{debug} = 0;
-}
-
-sub testgetdataitems { # Depends on testcreaterrd making files
-	$Config{debug} = 5;
-	open $LOG, '+>', \$log;
-	$result = getlabels('diskgb', 'test,junk');
-	ok($result->[0], 'Disk Usage in Gigabytes');
-	$result = getlabels('testing', 'tested,Mem%3A%20swap,junk');
-	ok($result->[0], 'Swap Utilization');
 	close $LOG;
 	$Config{debug} = 0;
 }
@@ -290,7 +279,7 @@ sub testgraphsizes {
 	$Config{debug} = 5;
 	open $LOG, '+>', \$log;
 	@result = graphsizes(''); # defaults
-	ok($result[0][0], 'dai');
+	ok($result[0][0], 'day');
 	ok($result[1][2], 604800);
 	@result = graphsizes('year month quarter'); # comes back in length order
 	ok($result[0][0], 'month');
@@ -299,31 +288,6 @@ sub testgraphsizes {
 	ok(@result, 1);
 	close $LOG;
 	$Config{debug} = 0;
-}
-
-sub testgetlabels {
-	$Config{debug} = 5;
-	open $LOG, '+>', \$log;
-	$result = getlabels('diskgb', 'test,junk');
-	ok($result->[0], 'Disk Usage in Gigabytes');
-	$result = getlabels('testing', 'tested,Mem%3A%20swap,junk');
-	ok($result->[0], 'Swap Utilization');
-	close $LOG;
-	$Config{debug} = 0;
-}
-
-sub testurllabels {
-	$Config{debug} = 5;
-	open $LOG, '+>', \$log;
-	$result = urllabels(['unchanged']);
-	ok($result, '-t unchanged');
-	$result = urllabels(['ignored', 'unchanged', 'Mem: swap']);
-	ok($result, '-t unchanged, Mem: swap'); # XXX: not sure about this
-	close $LOG;
-	$Config{debug} = 0;
-}
-
-sub testprintlabels { # TODO: printlabels is now testable.
 }
 
 sub testinputdata {
@@ -457,23 +421,20 @@ sub testtrans {
 testdebug();
 testdumper();
 testgetdebug();
-testgetfilename();
+testmkfilename();
 testhashcolor();
 testgetgraphlist();
-testurllabels();
 testlisttodict();
 testcheckdirempty();
 testreadconfig();
 testdbfilelist();
 testgraphsizes();
-testgetlabels();
 testinputdata();
 testgetrras();
 testcheckdatasources();
 testcreaterrd();
 testrrdupdate();
 testgetrules();
-testgetdataitems();		# must be after testcreaterrd and before testgraphinfo
 #testgraphinfo();		# must be after testcreaterrd
 testprocessdata();
 testtrans();

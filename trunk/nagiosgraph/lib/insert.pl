@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-
+# $Id$
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 # Author:  (c) Soren Dossing, 2005
@@ -54,17 +54,19 @@ __END__
 
 =head1 NAME
 
-insert.pl - Store performance data returned by Nagios plugins in rrdtool.
+insert.pl - Store performance data returned by Nagios plugins using rrdtool.
 
 =head1 DESCRIPTION
 
-Run this via Nagios (using insert.sh, if needed).
+Run this via Nagios.  insert.sh might be required on some platforms.
 
 =head1 USAGE
 
 B<insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$">
 
 =head1 CONFIGURATION
+
+The B<nagiosgraph.conf> file controls the behavior of this script.
 
 =head1 REQUIRED ARGUMENTS
 
@@ -73,6 +75,10 @@ B<insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SE
 =head1 EXIT STATUS
 
 =head1 DIAGNOSTICS
+
+Use the debug_insert setting from B<nagiosgraph.conf> to control the amount
+of debug information that will be emitted by this script.  Debug output will
+go to the nagiosgraph log file.
 
 =head1 DEPENDENCIES
 
@@ -86,17 +92,23 @@ This provides the data collection system.
 
 This provides the data storage and graphing system.
 
+=item B<RRDs>
+
+This provides the perl interface to rrdtool.
+
 =back
 
 =head1 INSTALLATION
 
-Copy this file someplace, and make sure it is executable by Nagios.
+Copy B<ngshared.pm> and B<nagiosgraph.conf> to a configuration directory
+such as /etc/nagiosgraph.
 
-Install the B<ngshared.pm> file and edit this file to change the B<use lib> line
-(line 10) to point to the directory containing B<ngshared.pm>.
+Copy this file to an executable directory such as /usr/local/nagiosgraph/bin.
+Make sure this file is executable by Nagios.
 
-Create or edit the example B<nagiosgraph.conf>, which must reside in the same
-directory as B<ngshared.pm>.
+Modify the B<use lib> line to point to the configuration directory.
+
+Edit B<nagiosgraph.conf> as needed.
 
 These steps describe the basic, run for every data event configuration. See the
 INSTALL file for the long running process confiugration.
@@ -121,10 +133,14 @@ and create a command like:
 
 =over 4
 
-define command {
- command_name process-service-perfdata
- command_line /usr/local/lib/nagios/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
-}
+=begin text
+
+  define command {
+    command_name process-service-perfdata
+    command_line /usr/local/lib/nagios/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
+  }
+
+=end text
 
 =back
 
@@ -135,8 +151,7 @@ Nagios 2.12 on Mac OS 10.5.
 
 =head1 BUGS AND LIMITATIONS
 
-Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
-simple and tested.
+Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this simple and tested.
 
 =head1 SEE ALSO
 
@@ -155,10 +170,10 @@ etc.
 
 Copyright (C) 2005 Soren Dossing, 2008 Ithaka Harbors, Inc.
 
-This program is free software; you can redistribute it and/or modify it under
-the terms of the OSI Artistic License see:
+This program is free software; you can redistribute it and/or
+modify it under the terms of the OSI Artistic License see:
 http://www.opensource.org/licenses/artistic-license-2.0.php
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
