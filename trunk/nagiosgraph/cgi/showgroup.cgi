@@ -43,7 +43,9 @@ foreach my $period (graphsizes($periods)) {
         my $surl = $Config{nagiosgraphcgiurl} .
             '/showservice.cgi?service=' . $cgi->escape($info->{service});
         if ($info->{db}) {
-            $surl .= '&db=' . @{$info->{db}};
+            foreach my $db (@{$info->{db}}) {
+                $surl .= '&db=' . $db;
+            }
             $surl =~ tr/ /+/;
         }
         my $hurl = $Config{nagiosgraphcgiurl} .

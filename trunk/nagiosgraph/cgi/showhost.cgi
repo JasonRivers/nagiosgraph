@@ -49,7 +49,9 @@ foreach my $period (graphsizes($periods)) {
         my $url = $Config{nagiosgraphcgiurl} .
             '/showservice.cgi?service=' . $cgi->escape($info->{service});
         if ($info->{db}) {
-            $url .= '&db=' . @{$info->{db}};
+            foreach my $db (@{$info->{db}}) {
+                $url .= '&db=' . $db;
+            }
             $url =~ tr/ /+/;
         }
         my $link = $cgi->a({href => $url}, trans($info->{service}, 1));
