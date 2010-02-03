@@ -40,19 +40,28 @@ foreach my $period (graphsizes($periods)) {
     foreach my $info (@{$ginfos}) {
         cfgparams($info, $params, $info->{service});
 
-        my $surl = $Config{nagiosgraphcgiurl} .
-            '/showservice.cgi?service=' . $cgi->escape($info->{service});
+        my $sstr = 'service=' . $cgi->escape($info->{service});
         if ($info->{db}) {
             foreach my $db (@{$info->{db}}) {
-                $surl .= '&db=' . $db;
+                $sstr .= '&db=' . $db;
             }
-            $surl =~ tr/ /+/;
+            $sstr =~ tr/ /+/;
         }
-        my $hurl = $Config{nagiosgraphcgiurl} .
-            '/showhost.cgi?host=' . $cgi->escape($info->{host});
-        my $link = $cgi->a({href => $surl}, trans($info->{service}, 1)) .
-            q( ) . trans('on') . q( ) .
-            $cgi->a({href => $hurl}, $info->{host});
+        my $hstr = 'host=' . $cgi->escape($info->{host});
+
+        my $burl = $Config{nagiosgraphcgiurl} . '/show.cgi' .
+            q(?) . $hstr . q(&) . $sstr;
+        my $surl = $Config{nagiosgraphcgiurl} . '/showservice.cgi?' . $sstr;
+        my $hurl = $Config{nagiosgraphcgiurl} . '/showhost.cgi?' . $hstr;
+
+        my $link = $cgi->a({href => $burl},
+                           trans($info->{service}, 1) .
+                           q( ) . trans('on') . q( ) .
+                           $info->{host}) .
+                   $cgi->br() .
+                   $cgi->a({href => $surl}, trans($info->{service}, 1)) .
+                   q( - ) .
+                   $cgi->a({href => $hurl}, $info->{host});
 
         $str .= printgraphlinks($cgi, $info, $period, $link) . "\n";
     }
