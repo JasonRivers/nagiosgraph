@@ -181,10 +181,10 @@ sub getdebug {
 # offset=
 # period=(day,week,month,quarter,year)
 # graphonly
+# showgraphtitle
 # hidelegend
 # fixedscale
 # showtitle
-# showgraphtitle
 # showdesc
 # expand_controls
 # expand_period=(day,week,month,quarter,year)
@@ -1369,12 +1369,11 @@ sub printcontrols {
 }
 
 sub printgraphlinks {
-    my ($cgi, $params, $period, $link) = @_;
-    if (! defined $link) { $link = q(); }
+    my ($cgi, $params, $period, $title) = @_;
+    if (! defined $title) { $title = q(); }
     dumper(DBDEB, 'printgraphlinks params', $params);
     dumper(DBDEB, 'printgraphlinks period', $period);
 
-    my $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?';
     my $alttag = q();
     my $desc = q();
 
@@ -1382,33 +1381,16 @@ sub printgraphlinks {
     my $showdesc = $params->{showdesc};
     my $showgraphtitle = $params->{showgraphtitle};
 
-    # the title is the service and host.  do not translate the host, and do
-    # not complain about missing service definitions.
-    my $title = trans($params->{service}, 1) . q( ) . trans('on') . q( )
-        . $params->{host};
-
     # the description contains a list of the data set names.  we first see
     # if there is a translation for the complete name, e.g. 'cpu,idle'.  if
     # not, then we try for the smaller part, e.g. 'idle'.  if that fails,
     # just display the full name, e.g. 'cpu,idle'.  in any case do not 
     # complain about missing translations for these.
     if ($showdesc) {
-        if ($params->{db} &&
-            $#{$params->{db}} >= 0 &&
-            ${$params->{db}}[0] ne $params->{service}) {
+        if ($params->{db} && $#{$params->{db}} >= 0) {
             foreach my $ii (sortnaturally(@{$params->{db}})) {
                 if ($desc ne q()) { $desc .= $cgi->br(); }
-                my $x = trans($ii, 1);
-                if ($x eq $ii) {
-                    my ($a,$b) = split /,/, $ii;
-                    if ($b && $b ne q()) {
-                        my $y = trans($b, 1);
-                        if ($y ne $b) {
-                            $x = $y;
-                        }
-                    }
-                }
-                $desc .= $x;
+                $desc .= trans($ii, 1);
             }
         }
     }
@@ -1443,36 +1425,27 @@ sub printgraphlinks {
     $rrdopts =~ tr/ /+/;
     debug(DBDEB, "printgraphlinks rrdopts = $rrdopts");
 
-    if ($params->{db}) {
-        $url .= buildurl($params->{host}, $params->{service},
-                         { graph => $period->[1],
-                           geom => $params->{geom},
-                           rrdopts => [$rrdopts],
-                           fixedscale => $params->{fixedscale},
-                           db => $params->{db}});
-    } else {
-        $url .= buildurl($params->{host}, $params->{service},
-                         { graph => $period->[1],
-                           geom => $params->{geom},
-                           rrdopts => [$rrdopts],
-                           fixedscale => $params->{fixedscale}});
-    }
+    my $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?';
+    $url .= buildurl($params->{host}, $params->{service},
+                     { graph => $period->[1],
+                       geom => $params->{geom},
+                       rrdopts => [$rrdopts],
+                       fixedscale => $params->{fixedscale},
+                       db => $params->{db}});
     debug(DBDEB, "printgraphlinks url = $url");
 
     my $titlestr = $showtitle
         ? $cgi->p({-class=>'graph_title'}, $title) : q();
-    my $linkstr = $link ne q()
-        ? $cgi->p({-class=>'graph_link'}, $link) : q();
     my $descstr = $desc ne q()
         ? $cgi->p({-class=>'graph_description'}, $desc) : q();
 
-    return $cgi->div({-class => 'graph'},
-                     $cgi->img({-src=>$url, -alt=>$alttag})) . "\n" .
-           $cgi->div({-class => 'graph_details'}, "\n",
-                     $titlestr, $titlestr ne q() ? "\n" : q(),
-                     $descstr, $descstr ne q() ? "\n" : q(),
-                     $linkstr, $linkstr ne q() ? "\n" : q(),
-                     ) . "\n";
+    return $cgi->div({-class => 'graph'}, "\n",
+                     $cgi->div({-class => 'graph_image'},
+                               $cgi->img({-src=>$url,-alt=>$alttag})) . "\n",
+                     $cgi->div({-class => 'graph_details'}, "\n",
+                               $titlestr, $titlestr ne q() ? "\n" : q(),
+                               $descstr, $descstr ne q() ? "\n" : q(),
+                               ));
 }
 
 sub printperiodlinks {
@@ -1480,19 +1453,21 @@ sub printperiodlinks {
     my (@navstr) = getperiodctrls($cgi, $params, $period, $now);
     my $label = (($period->[0] eq 'day') ? 'dai' : $period->[0]) . 'ly';
     my $id = 'period_data_' . $period->[0];
-    return $cgi->div({-class => 'period_title'},
-                     $cgi->span({-class => 'period_anchor'},
+    return $cgi->div({-class => 'period_banner'},
+                     $cgi->span({-class => 'period_title'},
                                 $cgi->button(-id => 'toggle_' . $period->[0],
                                              -label => q(-),
                                              -onClick => 'togglePeriodDisplay(\'' . $id . '\', this)'),
                                 $cgi->a({ -id => $period->[0] },
                                         trans($label))),
                      $cgi->span({-class => 'period_controls'},
-                             $navstr[0],
-                             $cgi->span({-class => 'period_detail'},
-                                        $navstr[1]),
-                             $navstr[2]),
-                     $cgi->div({-id => $id }, $content)), "\n";
+                                $navstr[0],
+                                $cgi->span({-class => 'period_detail'},
+                                           $navstr[1]),
+                                $navstr[2]),
+                     ) . "\n" .
+           $cgi->div({-class => 'period', -id => $id }, "\n" .
+                     $content) . "\n";
 }
 
 # quietly translate services and groups, but not hosts.

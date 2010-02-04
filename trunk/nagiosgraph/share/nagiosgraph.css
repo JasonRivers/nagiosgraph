@@ -18,7 +18,7 @@ h1 {
   font-size: 12pt;
   font-weight: bold;
 }
-.period_title {
+.period_banner {
   clear: both;
   padding-top: 0.25em;
   padding-left: 0.5em;
@@ -26,7 +26,7 @@ h1 {
   background-color: #efefef;
   border: 1px solid #dddddd;
 }
-.period_anchor {
+.period_title {
   float: left;
   font-weight: bold;
 }
@@ -39,24 +39,28 @@ h1 {
   font-size: 9pt;
   font-weight: normal;
 }
+.period {
+  clear: both;
+}
 .graph {
   clear: both;
+}
+.graph_image {
   float: left;
-  padding-top: 2px;
-  padding-bottom: 2px;
+  padding: 1px 0 1px 0;
 }
 .graph_details {
   float: right;
   text-align: right;
 }
 .graph_title {
+  font-size: 10pt;
   font-weight: bold;
-}
-.graph_link {
-  font-weight: bold;
+  margin-top: 0;
 }
 .graph_description {
-  font-size: 9pt;
+  font-size: 8pt;
+  margin-top: 0;
 }
 #secondary_controls_box {
 }
