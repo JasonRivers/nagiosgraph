@@ -960,7 +960,7 @@ sub graphinfo {
 }
 
 sub setlabels { ## no critic (ProhibitManyArgs)
-    my ($dataset, $longest, $color, $serv, $file, $ds) = @_;
+    my ($dataset, $longest, $serv, $file, $ds) = @_;
     my $label = sprintf "%-${longest}s", $dataset;
     debug(DBDEB, "setlabels($label)");
     my $linestyle = $Config{plotas};
@@ -970,6 +970,7 @@ sub setlabels { ## no critic (ProhibitManyArgs)
             last;
         }
     }
+    my $color = q();
     if (defined $Config{lineformat}) {
         dumper(DBDEB, 'lineformat', \%{$Config{lineformat}});
         foreach my $tuple (keys %{$Config{lineformat}}) {
@@ -986,6 +987,9 @@ sub setlabels { ## no critic (ProhibitManyArgs)
                 }
             }
         }
+    }
+    if ($color eq q()) {
+        $color = hashcolor($dataset);
     }
     if (defined $Config{maximums}->{$serv}) {
         push @{$ds}, "DEF:$dataset=$file:$dataset:MAX"
@@ -1054,7 +1058,6 @@ sub rrdline {
     dumper(DBDEB, 'rrdline params', $params);
     my ($graphinfo) = graphinfo($params->{host}, $params->{service}, $params->{db});
     my ($file,                  # current rrd data file
-        $color,                 # return value from hashcolor()
         $duration,              # how long the graph covers
         @ds);                   # array of strings for use as the command line
     my $directory = $Config{rrddir};
@@ -1074,13 +1077,11 @@ sub rrdline {
         my $longest = (sort map { length } keys %{$ii->{line}})[-1]; ## no critic (ProhibitMagicNumbers)
 
         for my $dataset (sortnaturally(keys %{$ii->{line}})) {
-            $color = hashcolor($dataset);
-            debug(DBDEB, "rrdline: file=$file dataset=$dataset color=$color");
             my ($serv, $pos) = ($params->{service}, length($params->{service}) - length $dataset);
             if (substr($params->{service}, $pos) eq $dataset) {
                 $serv = substr $params->{service}, 0, $pos;
             }
-            setlabels($dataset, $longest, $color, $serv, "$directory/$file", \@ds);
+            setlabels($dataset, $longest, $serv, "$directory/$file", \@ds);
             setdata($dataset, $params->{fixedscale}, $duration, $serv, "$directory/$file", \@ds);
         }
     }
