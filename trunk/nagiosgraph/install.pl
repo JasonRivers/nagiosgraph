@@ -1,8 +1,8 @@
 #!/usr/bin/perl
-# File:    $Id$
-# Author:  (c) Alan Brenner, Ithaka Harbors, 2008
+# $Id$
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
+# Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 
 # Main program - change nothing below
 
@@ -126,19 +126,23 @@ sub getconf {
          msg => 'Where should the configuration files go'),
         (env => 'NCGI', conf => 'cgi',
          base => ['/usr/local/lib64', '/usr/local/lib', '/usr/lib64', '/usr/lib'],
-         subd => ['/nagios/cgi'], def => '/usr/local/lib/nagios/cgi',
+         subd => ['/nagios/cgi'],
+         def => '/usr/local/lib/nagios/cgi',
          msg => 'Where should the cgi files go'),
         (env => 'NLIB', conf => 'lib',
          base => ['/usr/local/lib64', '/usr/local/lib', '/usr/lib64', '/usr/lib', '/usr/libexec'],
-         subd => ['/nagios'], def => '/usr/local/lib/nagios',
+         subd => ['/nagios'],
+         def => '/usr/local/lib/nagios',
          msg => 'Where should the data loading files go'),
         (env => 'NSHARE', conf => 'share',
          base => ['/usr/local/share', '/usr/share', '/opt'],
-         subd => ['/nagios'], def => '/usr/local/share/nagios',
+         subd => ['/nagios'],
+         def => '/usr/local/share/nagios',
          msg => 'Where should the CSS and GIF files go'),
         (env => 'NGSHARE', conf => 'ngshare',
          base => ['/usr/local/share', '/usr/share', '/opt'],
-         subd => ['/nagiosgraph'], def => '/usr/local/share/nagiosgraph',
+         subd => ['/nagiosgraph'],
+         def => '/usr/local/share/nagiosgraph',
          msg => 'Where should the nagiosgraph documentation go'),);
     foreach my $ii (@conf) {
         if ($ENV{$ii->{env}}) {
@@ -153,7 +157,7 @@ sub getconf {
     if (not $destdir and
         getanswer('Modify the Nagios configuration', 'N') =~ /^\s*y/xism) {
         $conf{nagios} = searchdirs(['/usr/local/etc', '/usr/local', '/etc', '/opt'],
-            ['/nagios'], '/etc/nagios', 'nagios', \%conf);
+                                   ['/nagios'], '/etc/nagios', 'nagios', \%conf);
         $conf{nagios} = getanswer('Where are the Nagios configuration files',
             $conf{nagios});
     } else {
@@ -184,7 +188,7 @@ foreach my $ii (qw(AUTHORS CHANGELOG INSTALL README README.map TODO)) {
     print "installing $ii to $file/$ii\n"; ## no critic (RequireCheckedSyscalls)
     copy($ii, "$file/$ii");
 }
-foreach my $ii (qw(more_examples utils)) {
+foreach my $ii (qw(examples utils)) {
     $file = $destdir . $conf-> {ngshare} . "/$ii";
     if (not -d $file) { mkpath $file, 0, RWPATH; }
     foreach my $jj (getfiles($ii)) {
@@ -244,7 +248,7 @@ variables:
 =over 4
 
 B<NGETC> - the configuration files directory
-B<NGSHARE> - documentation, extra examples, etc. for Nagiosgraph itself
+B<NGSHARE> - documentation, examples, etc. for Nagiosgraph itself
 
 B<NCGI> - the Nagios CGI program directory
 B<NLIB> - directory for the programs that only get run by Nagios
@@ -266,14 +270,21 @@ B<DESTDIR> - RPM packaging directory
 
 This provides the data collection system.
 
+=item B<rrdtool>
+
+This provides the data storage and graphing system.
+
+=item B<RRDs>
+
+This provides the perl interface to rrdtool.
+
 =back
 
 =head1 INCOMPATIBILITIES
 
 =head1 BUGS AND LIMITATIONS
 
-Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
-simple and tested.
+Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this simple and tested.
 
 =head1 AUTHOR
 
@@ -283,10 +294,10 @@ Alan Brenner - alan.brenner@ithaka.org, the original author in 2008.
 
 Copyright (C) 2008 Ithaka Harbors, Inc.
 
-This program is free software; you can redistribute it and/or modify it under
-the terms of the OSI Artistic License see:
+This program is free software; you can redistribute it and/or
+modify it under the terms of the OSI Artistic License see:
 http://www.opensource.org/licenses/artistic-license-2.0.php
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

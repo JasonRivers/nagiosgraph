@@ -1,5 +1,5 @@
 /* nagiosgraph stylesheet
-   $Id$
+   $Id: nagiosgraph.css 246 2010-01-30 21:17:21Z mwall $
 
   License: OSI Artistic License
            http://www.opensource.org/licenses/artistic-license-2.0.php
@@ -81,8 +81,50 @@ h1 {
   font-style: italic;
 }
 
-/* Put the controls at the top of the page.  Controls scroll with page. */
-/* See the nagiosgraph examples directory for other controls positions. */
+
+
+/* Here are different configurations for the controls.  Use only one! */
+
+/* hide the controls */
+/*
+.controls {
+  display: none;
+}
+*/
+
+/* put the controls in the upper right corner.  controls float above graphs. */
+/*
+.controls {
+  background-color: #efefef;
+  border: 1px solid #dddddd;
+  position: fixed;
+  top: 6em;
+  left: auto;
+  right: 1em;
+}
+.primary_controls {
+  padding: 4px 10px 4px 10px;
+}
+.secondary_controls {
+  padding: 4px 10px 4px 10px;
+}
+.selector {
+  text-align: right;
+  padding: 4px 10px 4px 10px;
+  display: block;
+}
+.executor {
+  padding: 4px 10px 4px 10px;
+  display: block;
+}
+.controls_toggle {
+}
+.summary {
+}
+*/
+
+/* put the controls at the top of the page.  controls scroll with page. */
+/*
 .controls {
 }
 .primary_controls {
@@ -104,9 +146,48 @@ h1 {
 }
 .controls_toggle {
   text-align: right;
-  margin: 0 0 0 0;
+  margin: 0px 0px 0px 0px;
 }
 .summary {
   padding-top: 1em;
   clear: both;
+}
+*/
+
+/* controls at the top of the page.  graphs scroll under the controls. */
+
+.controls {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 60%;
+  background-color: #e0e0e0;
+  border: 1px solid #aaaaaa;
+  padding: 4px 10px 4px 10px;
+}
+.primary_controls {
+  float: left;
+}
+.secondary_controls {
+  float: right;
+}
+.selector {
+}
+.executor {
+}
+.controls_toggle {
+  text-align: right;
+  margin: 0 0 0 0;
+}
+.summary {
+  background-color: #e0e0e0;
+  border: 1px solid #aaaaaa;
+  position: fixed;
+  top: -1em;
+  right: 0;
+  width: 30%;
+  padding: 2px 10px 2px 10px;
+}
+.period_banner {
+  margin-top: 40px;
 }
