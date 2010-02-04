@@ -305,6 +305,7 @@ function findName(entry) {
 // If no host is specified, then loop through all of the menudata and create
 // a list of all the services that we encounter.
 // FIXME: this is inefficient and will suck on large number of hosts/services
+// FIXME: consider creating the list of all services in the CGI not here
 function cfgServiceMenu(host, service) {
   var menu = document.menuform.services;
   if (!menu) return;
@@ -344,6 +345,8 @@ function cfgServiceMenu(host, service) {
       }
     }
   }
+
+  items.sort();
 
   menu.length = items.length + 1;
   menu.options[0].text = '-';
