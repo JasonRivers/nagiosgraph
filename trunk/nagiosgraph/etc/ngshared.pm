@@ -312,9 +312,12 @@ sub cfgparams {
     }
     $p->{offset} = $dflt->{offset} ne q() ? $dflt->{offset} : 0;
 
-    if ($service) {
-        $p->{rrdopts} = (defined $Config{rrdopts}{$service})
-            ? $Config{rrdopts}{$service} : $dflt->{rrdopts};
+    if ($service && defined $Config{rrdoptshash}{$service}) {
+        $p->{rrdopts} = $Config{rrdoptshash}{$service};
+    } elsif (defined $Config{rrdoptshash}{global}) {
+        $p->{rrdopts} = $Config{rrdoptshash}{global};
+    } else {
+        $p->{rrdopts} = $dflt->{rrdopts};
     }
 
     return;
@@ -575,10 +578,11 @@ sub readconfig {
 
     # From Craig Dunn, with modifications by Alan Brenner to use an eval, to
     # allow continuing on failure to open the file, while logging the error
+    $Config{rrdoptshash}{global} =
+        defined $Config{rrdopts} ? $Config{rrdopts} : q();
     if ( defined $Config{rrdoptsfile} ) {
-        $Config{rrdopts} = {};
         my $rval = eval {
-            readfile($Config{rrdoptsfile}, $Config{rrdopts});
+            readfile($Config{rrdoptsfile}, $Config{rrdoptshash});
             return 0;
         };
         if ($rval or $EVAL_ERROR) { debug(DBCRT, $rval . q( ) . $EVAL_ERROR); }
@@ -671,7 +675,7 @@ sub readhostdb {
         while (my $line = <$DB>) {
             chomp $line;
             debug(DBDEB, "readhostdb: $line");
-            $line =~ s/\s*#.*//;
+            next if $line =~ /^\s*#/;        # skip commented lines
             $line =~ tr/+/ /;
             $line =~ s/^\s+//g;
             my $service = q();
@@ -739,7 +743,7 @@ sub readservdb {
         while (my $line = <$DB>) {
             chomp $line;
             debug(DBDEB, "readservdb: $line");
-            $line =~ s/\s*#.*//;
+            next if $line =~ /^\s*#/;        # skip commented lines
             $line =~ tr/+/ /;
             $line =~ s/^\s+//g;
             my $host = q();
@@ -808,7 +812,7 @@ sub readgroupdb {
         while (my $line = <$DB>) {
             chomp $line;
             debug(DBDEB, "readgroupdb: $line");
-            $line =~ s/\s*#.*//;
+            next if $line =~ /^\s*#/;        # skip commented lines
             $line =~ tr/+/ /;
             $line =~ s/^\s+//g;
             my $group = q();
@@ -1415,11 +1419,6 @@ sub printgraphlinks {
 
     dumper(DBDEB, 'printgraphlinks rrdopts', $params->{rrdopts});
     my $rrdopts = $params->{rrdopts};
-    if ($showgraphtitle) {
-        if ($rrdopts !~ /(-t|--title)/) {
-            $rrdopts .= ' -t ' . $title;
-        }
-    }
     if ($params->{graphonly}) {
         $rrdopts .= ' -j';
     }
@@ -1429,6 +1428,16 @@ sub printgraphlinks {
     $rrdopts .= ' -snow-' . $period->[1];
     $rrdopts .= ' -enow-' . $params->{offset};
     $rrdopts =~ tr/ /+/;
+    $rrdopts =~ s/#/%23/g;
+    if ($showgraphtitle) {
+        if ($rrdopts !~ /(-t|--title)/) {
+            my $t = $title;
+            $t =~ s/<br.*//g;     # use only the first line
+            $t =~ s/<[^>]+>//g;   # punt any html markup
+            $t =~ tr/-/:/;        # hyphens cause problems
+            $rrdopts .= ' -t ' . $t;
+        }
+    }
     debug(DBDEB, "printgraphlinks rrdopts = $rrdopts");
 
     my $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?';
