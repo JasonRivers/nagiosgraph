@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# File:    $Id: testentry.pl,v 1.4 2005/10/08 05:55:08 sauber Stab $
+# File:    $Id$
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
