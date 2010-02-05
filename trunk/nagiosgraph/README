@@ -71,15 +71,17 @@ install.pl            - An initial stab at an installer (for the brave only).
 lib/insert.pl         - Reads nagios perfdata log and insert into rrd files.
 lib/insert.sh         - A shell script wrapper around insert.pl.
 cgi/show.cgi          - Generates an html page for the host/service specified.
-cgi/showgraph.cgi     - Generates graphs for show, showhost and showservices.
+cgi/showgraph.cgi     - Generates the actual graph image used by other scripts.
+cgi/showgroup.cgi     - Generates an html page for the group specified.
 cgi/showhost.cgi      - Generates an html page for the host specified, showing
                           all available services on the host.
-cgi/showservices.cgi  - Generates an html page for the service specified,
+cgi/showservice.cgi   - Generates an html page for the service specified,
                           showing all hosts with that service.
 cgi/testcolor.cgi     - Preview of colors for keywords in each color scheme
 etc/nagiosgraph.conf  - paths and other configuration
+etc/groupdb.conf      - Configuration specific to showgroup.cgi
 etc/hostdb.conf       - Configuration specific to showhost.cgi
-etc/servdb.conf       - Configuration specific to showservices.cgi
+etc/servdb.conf       - Configuration specific to showservice.cgi
 etc/rrdopts.conf      - Per-service options to rrdgraph
 etc/map               - Regular expression to identify services and
                           specification for how to create rrd files.
