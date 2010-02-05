@@ -520,7 +520,7 @@ sub readfile {
         carp $Config{ngshared};
     my ($key, $val);
     while (<$FH>) {
-        s/\s*#.*//;             # Strip comments
+        next if /^\s*#/;        # skip commented lines
         s/^\s+//;               # removes leading whitespace
         /^([^=]+) \s* = \s* (.*) $/x and do { # splits into key=val pairs
             $key = $1;
@@ -959,10 +959,8 @@ sub graphinfo {
     return \@rrd;
 }
 
-sub setlabels { ## no critic (ProhibitManyArgs)
-    my ($dataset, $longest, $serv, $file, $ds) = @_;
-    my $label = sprintf "%-${longest}s", $dataset;
-    debug(DBDEB, "setlabels($label)");
+sub getlineattr {
+    my ($dataset) = @_;
     my $linestyle = $Config{plotas};
     foreach my $ii (qw(LINE1 LINE2 LINE3 AREA TICK)) {
         if (defined $Config{'plotas' . $ii}->{$dataset}) {
@@ -970,9 +968,8 @@ sub setlabels { ## no critic (ProhibitManyArgs)
             last;
         }
     }
-    my $color = q();
+    my $linecolor = q();
     if (defined $Config{lineformat}) {
-        dumper(DBDEB, 'lineformat', \%{$Config{lineformat}});
         foreach my $tuple (keys %{$Config{lineformat}}) {
             if ($tuple =~ /^$dataset,/) {
                 my @values = split /,/, $tuple;
@@ -982,30 +979,38 @@ sub setlabels { ## no critic (ProhibitManyArgs)
                         $value eq 'TICK') {
                         $linestyle = $value;
                     } elsif ($value =~ /[0-9a-f][0-9a-f][0-9a-f]+/) {
-                        $color = $value;
+                        $linecolor = $value;
                     }
                 }
             }
         }
     }
-    if ($color eq q()) {
-        $color = hashcolor($dataset);
+    if ($linecolor eq q()) {
+        $linecolor = hashcolor($dataset);
     }
+    return $linestyle, $linecolor;
+}
+
+sub setlabels { ## no critic (ProhibitManyArgs)
+    my ($dataset, $longest, $serv, $file, $ds) = @_;
+    my $label = sprintf "%-${longest}s", $dataset;
+    debug(DBDEB, "setlabels($label)");
+    my ($linestyle, $linecolor) = getlineattr($dataset);
     if (defined $Config{maximums}->{$serv}) {
         push @{$ds}, "DEF:$dataset=$file:$dataset:MAX"
                 , "CDEF:ceil$dataset=$dataset,CEIL"
-                , "$linestyle:${dataset}#$color:$label";
+                , "$linestyle:${dataset}#$linecolor:$label";
     } elsif (defined $Config{minimums}->{$serv}) {
         push @{$ds}, "DEF:$dataset=$file:$dataset:MIN"
                 , "CDEF:floor$dataset=$dataset,FLOOR"
-                , "$linestyle:${dataset}#$color:$label";
+                , "$linestyle:${dataset}#$linecolor:$label";
     } else {
         push @{$ds}, "DEF:${dataset}=$file:$dataset:AVERAGE";
         if (defined $Config{negate}->{$dataset}) {
             push @{$ds}, "CDEF:${dataset}_neg=${dataset},-1,*";
-            push @{$ds}, "$linestyle:${dataset}_neg#$color:$label";
+            push @{$ds}, "$linestyle:${dataset}_neg#$linecolor:$label";
         } else {
-            push @{$ds}, "$linestyle:${dataset}#$color:$label";
+            push @{$ds}, "$linestyle:${dataset}#$linecolor:$label";
         }
     }
     return;

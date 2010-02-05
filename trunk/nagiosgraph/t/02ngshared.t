@@ -9,7 +9,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 165; }
+BEGIN { plan tests => 172; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -177,6 +177,33 @@ sub testcheckdirempty { # Test with an empty directory, then one with a file.
 	ok(checkdirempty('checkdir'), 0);
 	unlink 'checkdir/tmp';
 	rmdir 'checkdir';
+}
+
+sub testreadfile {
+    my $fn = "$FindBin::Bin/test.conf";
+    my $cwd = $FindBin::Bin;
+
+    open TEST, ">$fn";
+    print TEST "name0 = value0\n";
+    print TEST "name1 = x1,x2,x3\n";
+    print TEST "#name2 = value2\n";
+    print TEST "  #name2 = value2\n";
+    print TEST "name3 = value3 # comment\n";
+    print TEST "name4 = --color BACK#FFFFFF\n";
+    print TEST "name5=      y1,    y2,y3   ,y4\n";
+    close TEST;
+
+    my %vars;
+    readfile($fn, \%vars);
+    ok(scalar keys %vars, 5);
+    ok($vars{name0}, "value0");
+    ok($vars{name1}, "x1,x2,x3");
+    ok($vars{name2}, undef);                    # ignore commented lines
+    ok($vars{name3}, "value3 # comment");       # do not strip comments
+    ok($vars{name4}, "--color BACK#FFFFFF");
+    ok($vars{name5}, "y1,    y2,y3   ,y4");
+
+    unlink $fn;
 }
 
 sub testreadconfig { # Check the default configuration
@@ -958,6 +985,7 @@ testhashcolor();
 testgetgraphlist();
 testlisttodict();
 testcheckdirempty();
+testreadfile();
 testreadconfig();
 testdbfilelist();
 testgraphsizes();
