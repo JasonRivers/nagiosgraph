@@ -358,7 +358,7 @@ function cfgServiceMenu(host, service) {
   }
 }
 
-// Once a service is selected this function updates the list of corrsponding
+// Once a service is selected this function updates the list of corresponding
 // data sets.  First try using whatever host is selected.  If there is no
 // selected host, just use the first matching service we find.
 function cfgDBMenu(host, service) {
@@ -587,7 +587,6 @@ function hostChange() {
 function serviceChange() {
   var host = '';
   var service = '';
-  var dbitems = getSelectedDBItems();
 
   var hostmenu = document.menuform.servidors;
   if (hostmenu) {
@@ -599,5 +598,5 @@ function serviceChange() {
   }
 
   cfgDBMenu(host, service);
-  selectDBItems(dbitems);
+  selectDBItems('');
 }
