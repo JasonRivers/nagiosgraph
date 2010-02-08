@@ -223,15 +223,7 @@ sub getparams {
     if (not $rval{host}) { $rval{host} = q(); }
     if (not $rval{service}) { $rval{service} = q(); }
     if (not $rval{group}) { $rval{group} = q(); }
-    if (not $rval{db}) {
-        if ($rval{host} ne q() && $rval{host} ne q(-)
-            && $rval{service} ne q() && $rval{service} ne q(-)) {
-            $rval{db} = dbfilelist($rval{host}, $rval{service});
-        } else {
-            my @db;
-            $rval{db} = \@db;
-        }
-    }
+    if (not $rval{db}) { my @db; $rval{db} = \@db; }
 
     if ($rval{offset}) { $rval{offset} = int $rval{offset}; }
     if (not $rval{offset} or $rval{offset} <= 0) { $rval{offset} = 0; }
@@ -679,10 +671,14 @@ sub readhostdb {
             $line =~ tr/+/ /;
             $line =~ s/^\s+//g;
             my $service = q();
+            my $label = q();
             my $dbname = q();
             my @db;
             if ($line =~ s/^service\s*=\s*([^&]+)//) {
                 $service = $1;
+                if ($line =~ s/^&label=([^&]+)//) {
+                    $label = $1;
+                }
                 ($dbname, @db) = parsedb($line);
             }
             next if ! $service;
@@ -692,6 +688,7 @@ sub readhostdb {
                 my %info;
                 $info{host} = $host;
                 $info{service} = $service;
+                if ($label ne q())  { $info{service_label} = $label; }
                 $info{dbname} = $dbname;
                 $info{db} = \@db;
                 $info{filename} = $rrdfn;
@@ -724,10 +721,12 @@ sub readservdb {
     my ($service, $dblist) = @_;
     $service ||= q();
     if ($service eq q() || $service eq q(-)) { return (); }
-    my $dbname = q();
-    if ($dblist) { ($dbname) = getdbname(@{$dblist}); }
+    my @dbs;
+    if ($dblist) {
+        @dbs = @{$dblist};
+    }
 
-    debug(DBDEB, "readservdb($service, $dbname)");
+    debug(DBDEB, "readservdb($service, " . join ', ', @dbs . ')');
 
     if (! defined $Config{servdb} || $Config{servdb} eq q()) {
         my $msg = 'no servdb file has been specified in the configuration.';
@@ -746,14 +745,11 @@ sub readservdb {
             next if $line =~ /^\s*#/;        # skip commented lines
             $line =~ tr/+/ /;
             $line =~ s/^\s+//g;
-            my $host = q();
-            if ($line =~ s/^host\s*=\s*(.*)//) {
-                $host = $1;
+            if ($line =~ /^host\s*=\s*(.+)/) {
+                push @allhosts, split /\s*,\s*/, $1;
             }
-            next if ! $host;
-            push @allhosts, split /\s*,\s*/, $host;
         }
-        close $DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
+        close $DB or debug(DBERR, "readservdb: close failed for $fn: $OS_ERROR");
     } else {
         my $msg = "cannot open servdb $fn: $!";
         debug(DBDEB, $msg);
@@ -761,8 +757,10 @@ sub readservdb {
         croak($msg);
     }
 
-    # if we have a dbname, then do a check for that for each host.  if not, 
-    # then read each hosts rrd directory to see if we have a service match.
+    # if a dataset was specified, then do a check for that dataset for each
+    # host.  if not, then read the rrd directory for each host to see if we
+    # have a service match.
+    my $dbname = getdbname(@dbs);
     my @hosts;
     foreach my $host (@allhosts) {
         if ($dbname ne q()) {
@@ -818,12 +816,16 @@ sub readgroupdb {
             my $group = q();
             my $host = q();
             my $service = q();
+            my $label = q();
             my $dbname = q();
             my @db;
             if ($line =~ s/^([^=]+)\s*=\s*([^,]+)\s*,\s*([^&]+)//) {
                 $group = $1;
                 $host = $2;
                 $service = $3;
+                if ($line =~ s/^&label=([^&]+)//) {
+                    $label = $1;
+                }
                 ($dbname, @db) = parsedb($line);
             }
             next if ! $group || ! $host || ! $service;
@@ -835,6 +837,7 @@ sub readgroupdb {
                 my %info;
                 $info{host} = $host;
                 $info{service} = $service;
+                if ($label ne q())  { $info{service_label} = $label; }
                 $info{dbname} = $dbname;
                 $info{db} = \@db;
                 $info{filename} = $rrdfn;
@@ -857,28 +860,71 @@ sub readgroupdb {
     return \@gnames, \@ginfo;
 }
 
+# Default datasets for services are defined using lines with this format:
+#
+#   service=name&db=dataset[&db=dataset[...]]
+#
+# Data sets from the db file are used only if no data sets are specified as
+# an argument to this subroutine.
+sub readdatasetdb {
+    if (! defined $Config{datasetdb} || $Config{datasetdb} eq q()) {
+        my $msg = 'no datasetdb file has been specified in the configuration.';
+        debug(DBDEB, $msg);
+        htmlerror($msg);
+        croak($msg);
+    }
+
+    my %data;
+    my $fn = $Config{datasetdb};
+    if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
+        while (my $line = <$DB>) {
+            chomp $line;
+            debug(DBDEB, "readdatasetdb: $line");
+            next if $line =~ /^\s*#/;        # skip commented lines
+            $line =~ tr/+/ /;
+            $line =~ s/^\s+//g;
+            if ($line =~ /^service\s*=\s*([^&]+)(.+)/) {
+                my $service = $1;
+                my $dbstr = $2;
+                my ($dbname, @dbs) = parsedb($dbstr);
+                $data{$service} = \@dbs;
+            }
+        }
+        close $DB or debug(DBERR, "readdatasetdb: close failed for $fn: $OS_ERROR");
+    } else {
+        my $msg = "cannot open datasetdb $fn: $!";
+        debug(DBDEB, $msg);
+        htmlerror($msg);
+        croak($msg);
+    }
+
+    dumper(DBDEB, 'readdatasetdb: data sets', \%data);
+    return \%data;
+}
+
 # show.cgi subroutines here for unit testability ##############################
 # Shared routines #############################################################
 # Get list of matching rrd files
 # unescape the filenames as we read in since they should be escaped on disk
 sub dbfilelist {
     my ($host, $serv) = @_;
-    debug(DBDEB, "dbfilelist($host, $serv)");
-    my ($directory, $filename) = mkfilename($host, $serv);
-    debug(DBDEB, "dbfilelist scanning $directory for $filename");
     my @rrd;
-    if (opendir DH, $directory) {
-        while (my $entry=readdir DH) {
-            next if $entry =~ /^\./;
-            if ($entry =~ /^${filename}(.+)\.rrd$/) {
-                push @rrd, unescape($1);
+    debug(DBDEB, "dbfilelist($host, $serv)");
+    if ($host ne q() && $serv ne q()) {
+        my ($directory, $filename) = mkfilename($host, $serv);
+        debug(DBDEB, "dbfilelist scanning $directory for $filename");
+        if (opendir DH, $directory) {
+            while (my $entry=readdir DH) {
+                next if $entry =~ /^\./;
+                if ($entry =~ /^${filename}(.+)\.rrd$/) {
+                    push @rrd, unescape($1);
+                }
             }
+            closedir DH or debug(DBCRT, "cannot close $directory: $OS_ERROR");
+        } else {
+            debug(DBWRN, "cannot open directory $directory: $!");
         }
-        closedir DH or debug(DBCRT, "cannot close $directory: $OS_ERROR");
-    } else {
-        debug(DBWRN, "cannot open directory $directory: $!");
     }
-
     dumper(DBDEB, 'dbfilelist', \@rrd);
     return \@rrd;
 }
@@ -1166,60 +1212,6 @@ sub getgraphlist {
     return;
 }
 
-# If configured, check to see if this user is allowed to see this host.
-sub checkperms {
-    my ($host, $user, $authz) = @_;
-    if (not $Config{userdb}) { return 1; } # not configured = yes
-    my $untie = 1;
-    if ($authz) {
-        $untie = 0;
-    } else {
-        tie %{$authz}, $Config{dbfile}, $Config{userdb}, O_RDONLY or return; ## no critic (ProhibitTies)
-    }
-    if ($authz->{$host} and $authz->{$host}{$user}) {
-        if ($untie) { untie %{$authz}; }
-        return 1;
-    }
-    if ($untie) { untie %{$authz}; }
-    return 0;
-}
-
-sub printjavascript {
-    my ($servers, $lookup) = @_;
-    my $rval = "<script type=\"text/javascript\">\nmenudata = new Array();\n";
-    my (@services,              # list of services on a server
-        $com1, $com2);          # booleans for whether or a comma gets printed
-
-    # Create Javascript Arrays for client-side menu navigation
-    for my $ii (0 .. @{$servers} - 1) {
-        $rval .= "menudata[$ii] = [\"$servers->[$ii]\", \n";
-        @services = sortnaturally(keys %{$Navmenu{$servers->[$ii]}});
-        #dumper(DBDEB, 'printjavascript: keys', \@services);
-        $com1 = 0;
-        foreach my $jj (@services) {
-            if ($com1) {
-                $rval .= q( ,);
-            } else {
-                $rval .= q(  );
-            }
-            $rval .= "[\"$jj\",";
-            $com2 = 0;
-            foreach my $kk (@{$lookup->{$servers->[$ii]}{$jj}}) {
-                if ($com2) {
-                    $rval .= q(,);
-                }
-                $rval .= '["' . join('","', @{$kk}) . '"]';
-                $com2 = 1;
-            }
-            $rval .= "]\n";
-            $com1 = 1;
-        }
-        $rval .= "];\n";
-    }
-    return $rval . "</script>\n<script type=\"text/javascript\" src=\"" .
-        $Config{javascript} . "\"></script>\n";
-}
-
 sub getserverlist {
     my ($userid) = @_;
     debug(DBDEB, "getserverlist($userid)");
@@ -1260,10 +1252,99 @@ sub getserverlist {
     return ( host => [@hosts], hostserv => \%hostserv );
 }
 
+# If configured, check to see if this user is allowed to see this host.
+sub checkperms {
+    my ($host, $user, $authz) = @_;
+    if (not $Config{userdb}) { return 1; } # not configured = yes
+    my $untie = 1;
+    if ($authz) {
+        $untie = 0;
+    } else {
+        tie %{$authz}, $Config{dbfile}, $Config{userdb}, O_RDONLY or return; ## no critic (ProhibitTies)
+    }
+    if ($authz->{$host} and $authz->{$host}{$user}) {
+        if ($untie) { untie %{$authz}; }
+        return 1;
+    }
+    if ($untie) { untie %{$authz}; }
+    return 0;
+}
+
+# Create Javascript Arrays for client-side menu navigation
+sub printmenudatascript {
+    my ($hosts, $lookup) = @_;
+
+    my $rval = "menudata = new Array();\n";
+    for my $ii (0 .. @{$hosts} - 1) {
+        $rval .= "menudata[$ii] = [\"$hosts->[$ii]\"\n";
+        my @services = sortnaturally(keys %{$Navmenu{$hosts->[$ii]}});
+        #dumper(DBDEB, 'printmenudatascript: keys', \@services);
+        foreach my $jj (@services) {
+            $rval .= " ,[\"$jj\",";
+            my $com2 = 0;
+            foreach my $kk (@{$lookup->{$hosts->[$ii]}{$jj}}) {
+                if ($com2) {
+                    $rval .= q(,);
+                }
+                my $name = q();
+                my @ds;
+                foreach my $x (@{$kk}) {
+                    if ($name eq q()) {
+                        $name = $x;
+                    } else {
+                        push @ds, $x;
+                    }
+                }
+                $rval .= '["' . $name . '","' . join('","', sortnaturally(@ds)) . '"]';
+                $com2 = 1;
+            }
+            $rval .= "]\n";
+        }
+        $rval .= "];\n";
+    }
+    return "<script type=\"text/javascript\">\n" . $rval . "</script>\n";
+}
+
+# Create Javascript Arrays for default service listings.
+#
+# sample input:
+#  ( "net", ( "bytes-received", "bytes-transmitted" ),
+#    "ping", ( "rta,rtaloss", "ping,loss" )
+#  )
+#
+# sample output:
+#  defaultds = new Array();
+#  defaultds[0] = ["net", "bytes-received", "bytes-transmitted" ];
+#  defaultds[1] = ["ping", "rta,rtaloss", "ping,loss"];
+#
+sub printdatasetscript {
+    my ($dsref) = @_;
+
+    my $rval = "defaultds = new Array();\n";
+    if ($dsref) {
+        my %dsdata = %{$dsref};
+        my @keys = keys %dsdata;
+        for my $ii (0 .. @keys - 1) {
+            $rval .= "defaultds[$ii] = [\"$keys[$ii]\"";
+            foreach my $ds (@{$dsdata{$keys[$ii]}}) {
+                $rval .= ", \"$ds\"";
+            }
+            $rval .= "];\n";
+        }
+    }
+    return "<script type=\"text/javascript\">\n" . $rval . "</script>\n";
+}
+
+sub printincludescript {
+    return (defined $Config{javascript} && $Config{javascript} ne q())
+        ? "<script type=\"text/javascript\" src=\"$Config{javascript}\"></script>\n"
+        : q();
+}
+
 # emit the javascript that configures the web page.  this has to be at the
 # end of the web page so that all elements have a chance to be instantiated
 # before the javascript is invoked.
-sub printscript {
+sub printinitscript {
     my ($host, $service, $expanded_periods) = @_;
     return "<script type=\"text/javascript\">cfgMenus(\'$host\',\'$service\',\'$expanded_periods\');</script>\n";
 }
@@ -1536,12 +1617,16 @@ sub printheader {
     if (defined $Config{dbseparator} && $Config{dbseparator} eq 'subdir') {
         File::Find::find(\&getgraphlist, $Config{rrddir});
         #dumper(DBDEB, 'printheader: Navmenu', \%Navmenu);
-
-        my %result = getserverlist($cgi->remote_user());
-        my(@servers) = @{$result{host}};
-        my(%servers) = %{$result{hostserv}};
-        $rval .= printjavascript(\@servers, \%servers);
     }
+
+    my %result = getserverlist($cgi->remote_user());
+    my(@servers) = @{$result{host}};
+    my(%servers) = %{$result{hostserv}};
+    $rval .= printmenudatascript(\@servers, \%servers);
+    if ($opts->{defaultdatasets}) {
+        $rval .= printdatasetscript($opts->{defaultdatasets});
+    }
+    $rval .= printincludescript();
 
     $rval .= printcontrols($cgi, $opts) . "\n";
 

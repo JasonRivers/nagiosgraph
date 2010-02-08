@@ -55,7 +55,9 @@ foreach my $period (graphsizes($periods)) {
             }
             $url =~ tr/ /+/;
         }
-        my $link = $cgi->a({href => $url}, trans($info->{service}, 1));
+        my $label = $info->{service_label} ?
+            $info->{service_label} : trans($info->{service}, 1);
+        my $link = $cgi->a({href => $url}, $label);
 
         $str .= printgraphlinks($cgi, $info, $period, $link) . "\n";
     }
@@ -63,7 +65,7 @@ foreach my $period (graphsizes($periods)) {
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printscript($params->{host}, $params->{service}, $expanded_periods) or
+print printinitscript($params->{host},$params->{service},$expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or

@@ -69,7 +69,7 @@ foreach my $period (graphsizes($periods)) {
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printscript(q(), q(), $expanded_periods) or
+print printinitscript(q(), q(), $expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or

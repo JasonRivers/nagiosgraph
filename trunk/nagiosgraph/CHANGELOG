@@ -2,10 +2,18 @@ $Id$
 
 TBD
 
+* labels for services and data sets are now implemented throughout all cgi
+   scripts.  the first place to define them is nagiosgraph.conf.  labels
+   can be further specialized by defining them in hostdb.conf and
+   groupdb.conf files.
+* added mechanism to define default subset of datasets per service.
 * added format strings for dates and times
 * fixed showservice.cgi so that it now requires only host names in the 
    servdb.conf file.
 * made parsing and handling of *db.conf files more consistent
+* the *db.conf files now include detailed comments about file format
+* comment character in *db.conf file must be at beginning of line in order
+   to be treated as comment.
 * added showgroup.cgi to display arbitrary groups of host/service/dataset.
    group definitions go in groupdb.conf.
 * major overhaul of the javascript.  state is managed better now, and a lot
@@ -36,6 +44,8 @@ TBD
     timeformat_day, timeformat_week, timeformat_month
     timeformat_quarter, timeformat_year
     timegroup
+    datasetdb
+    groupdb
 * modified configuration options:
     'time' is now 'timeall'
     timeall, timehost, timeservice take comma-delimited lists

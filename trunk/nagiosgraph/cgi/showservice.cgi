@@ -23,14 +23,21 @@ use warnings;
 my ($cgi, $params) = init('showservice');
 my ($periods, $expanded_periods) = initperiods('service', $params);
 
-my ($hosts) = readservdb($params->{service}, $params->{db});
-dumper(DBDEB, 'hosts', $hosts);
+my $defaultds = readdatasetdb();
+if (scalar @{$params->{db}} == 0
+    && $defaultds->{$params->{service}}
+    && scalar @{$defaultds->{$params->{service}}} > 0) {
+    $params->{db} = $defaultds->{$params->{service}};
+}
+
+my $hosts = readservdb($params->{service}, $params->{db});
 
 cfgparams($params, $params, $params->{service});
 
 print printheader($cgi, { title => $params->{service},
                           call => 'service',
-                          service => $params->{service} }) or
+                          service => $params->{service},
+                          defaultdatasets => $defaultds }) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $now = time;
@@ -39,6 +46,14 @@ foreach my $period (graphsizes($periods)) {
     my $str = q();
     foreach my $host (@{$hosts}) {
         $params->{host} = $host;
+
+        # FIXME: this uses the datasets from the first host encountered.
+        # we use the same logic in the javascript, and it is not correct.
+        # it works in most cases, but there may be corner cases where it
+        # is not appropriate.
+        if (scalar @{$params->{db}} == 0) {
+            $params->{db} = dbfilelist($params->{host}, $params->{service});
+        }
 
         my $url = $Config{nagiosgraphcgiurl} .
             '/show.cgi?host=' . $cgi->escape($host) .
@@ -51,7 +66,7 @@ foreach my $period (graphsizes($periods)) {
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printscript(q(), $params->{service}, $expanded_periods) or
+print printinitscript(q(), $params->{service}, $expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or

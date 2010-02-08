@@ -9,7 +9,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 172; }
+BEGIN { plan tests => 182; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -747,9 +747,30 @@ sub testreadhostdb {
         ];\n");
 
 
-# FIXME: handle labels properly
+    # test service labels parsing
+    open TEST, ">$fn";
+    print TEST "service=ping&label=PING Loss Percentage&db=loss\n";
+    close TEST;
 
-    # test labels parsing
+    $result = readhostdb('host3');
+    ok(@{$result}, 1);
+    ok(Dumper($result), "\$VAR1 = [
+          {
+            'service_label' => 'PING Loss Percentage',
+            'filename' => '$cwd/host3/ping___loss.rrd',
+            'db' => [
+                      'loss'
+                    ],
+            'service' => 'ping',
+            'dbname' => 'loss',
+            'host' => 'host3'
+          }
+        ];\n");
+
+
+    #FIXME: do per-dataset labels
+
+    # test dataset labels parsing
     open TEST, ">$fn";
     print TEST "service=PING&db=ping,losspct&label=Loser\n";
     close TEST;
@@ -972,7 +993,89 @@ sub testreadgroupdb {
           }
         ];\n");
 
-    #FIXME: test for label parsing
+
+    # test labels
+    open TEST, ">$fn";
+    print TEST "PING=host0,PING&label=PING RTA&db=ping,rta\n";
+    print TEST "PING=host0,PING&db=ping,losspct\n";
+    close TEST;
+
+    ($names,$infos) = readgroupdb('PING');
+    ok(@{$names}, 1);
+    ok(Dumper($names), "\$VAR1 = [
+          'PING'
+        ];\n");
+    ok(Dumper($infos), "\$VAR1 = [
+          {
+            'service_label' => 'PING RTA',
+            'filename' => '$cwd/host0/PING___ping.rrd',
+            'db' => [
+                      'ping,rta'
+                    ],
+            'service' => 'PING',
+            'dbname' => 'ping',
+            'host' => 'host0'
+          },
+          {
+            'filename' => '$cwd/host0/PING___ping.rrd',
+            'db' => [
+                      'ping,losspct'
+                    ],
+            'service' => 'PING',
+            'dbname' => 'ping',
+            'host' => 'host0'
+          }
+        ];\n");
+
+    unlink $fn;
+}
+
+sub testreaddatasetdb {
+    setuprrd();
+
+    my $fn = "$FindBin::Bin/db.conf";
+    my $cwd = $FindBin::Bin;
+    $Config{datasetdb} = $fn;
+    my $result;
+
+    open TEST, ">$fn";
+    print TEST "\n";
+    close TEST;
+
+    # nothing when nothing in file
+    $result = readdatasetdb();
+    ok(keys %{$result}, 0);
+
+    open TEST, ">$fn";
+    print TEST "service=PING&db=ping,rta\n";
+    print TEST "service=net&db=bytes-received&db=bytes-transmitted\n";
+    close TEST;
+
+    $result = readdatasetdb();
+    ok(keys %{$result}, 2);
+    ok(Dumper($result), "\$VAR1 = {
+          'PING' => [
+                      'ping,rta'
+                    ],
+          'net' => [
+                     'bytes-received',
+                     'bytes-transmitted'
+                   ]
+        };\n");
+
+    open TEST, ">$fn";
+    print TEST "service=PING&db=ping,rta\n";
+    print TEST "service=PING&db=ping,loss\n";
+    close TEST;
+
+    # if multiple definitions, use the last one
+    $result = readdatasetdb();
+    ok(keys %{$result}, 1);
+    ok(Dumper($result), "\$VAR1 = {
+          'PING' => [
+                      'ping,loss'
+                    ]
+        };\n");
 
     unlink $fn;
 }
@@ -1004,3 +1107,4 @@ testdbname();
 testreadhostdb();
 testreadservdb();
 testreadgroupdb();
+testreaddatasetdb();

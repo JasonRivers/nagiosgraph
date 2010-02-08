@@ -23,6 +23,17 @@ use warnings;
 my ($cgi, $params) = init('show');
 my ($periods, $expanded_periods) = initperiods('both', $params);
 
+my $defaultds = readdatasetdb();
+if (scalar @{$params->{db}} == 0) {
+    if ($defaultds->{$params->{service}}
+        && scalar @{$defaultds->{$params->{service}}} > 0) {
+        $params->{db} = $defaultds->{$params->{service}};
+    } elsif ($params->{host} ne q() && $params->{host} ne q(-)
+             && $params->{service} ne q() && $params->{service} ne q(-)) {
+        $params->{db} = dbfilelist($params->{host}, $params->{service});
+    }
+}
+
 cfgparams($params, $params, $params->{service});
 
 print printheader($cgi, { title => "$params->{host} - $params->{service}",
@@ -30,7 +41,8 @@ print printheader($cgi, { title => "$params->{host} - $params->{service}",
                           host => $params->{host},
                           hosturl => $Config{nagiosgraphcgiurl} . '/showhost.cgi?host=' . $cgi->escape($params->{host}),
                           service => $params->{service},
-                          serviceurl => $Config{nagiosgraphcgiurl} . '/showservice.cgi?service=' . $cgi->escape($params->{service}) }) or
+                          serviceurl => $Config{nagiosgraphcgiurl} . '/showservice.cgi?service=' . $cgi->escape($params->{service}),
+                          defaultdatasets => $defaultds }) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $now = time;
@@ -41,7 +53,7 @@ for my $period (graphsizes($periods)) {
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printscript($params->{host}, $params->{service}, $expanded_periods) or
+print printinitscript($params->{host},$params->{service},$expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 print printfooter($cgi) or
