@@ -10,11 +10,12 @@ This document contains the following sections:
   Installation Preliminaries
   Installation Instructions
   Upgrade Notes
-  Displaying Graphs Directly in Nagios
   Service Perfdata Processing Configuration
     Old Style
     New Style
   Configuring Graphing and Display
+  Displaying Graphs Directly in Nagios
+  Customizing the Graphs
   Adding New Mapping and Troubleshooting
   Appendix: Sample Installation Layouts
   Appendix: Web Server Configuration
@@ -108,31 +109,6 @@ Upgrade Notes
    you may find useful.
 
 
-Displaying Graphs Directly in Nagios
-------------------------------------
-
-To embed nagiosgraph graphs directly into nagios, do the following:
-
-  - Modify side.php (e.g. /opt/nagios/share/side.php) by inserting
-    bullets under the 'Trends' heading, one for showing hosts and the
-    other for showing services:
-
-<li><a href="<?php echo $cfg["cgi_base_url"];?>/trends.cgi" target="<?php echo $link_target;?>">Trends</a>
-<ul>
-<li><a href="<?php echo $cfg["cgi_base_url"];?>/show.cgi" target="<?php echo $link_target;?>">Graphs</a></li>
-<li><a href="<?php echo $cfg["cgi_base_url"];?>/showhost.cgi" target="<?php echo $link_target;?>">Graphs by Host</a></li>
-<li><a href="<?php echo $cfg["cgi_base_url"];?>/showservice.cgi" target="<?php echo $link_target;?>">Graphs by Service</a></li>
-</ul>
-</li>
-
-  - If you keep the nagiosgraph cgi scripts in a location different than
-    the nagios cgi scripts, then use 'ng_cgi_base_url' rather than
-    'cgi_base_url' and make an entry in config.inc.php such as this:
-
-$cfg['cgi_base_url']='/nagios/cgi-bin';
-$cfg['ng_cgi_base_url']='/nagiosgraph/cgi-bin';
-
-
 Service Perfdata Processing Configuration
 -----------------------------------------
 
@@ -210,6 +186,25 @@ every service check, to update the corresponding rrd files.
 Configuring Graphing and Display
 --------------------------------
 
+First configure the web server to run the nagiosgraph CGI scripts.  For
+example, with Apache do something like this:
+
+     ScriptAlias /nagiosgraph/cgi-bin /usr/lib/nagios/cgi-bin
+
+Verify that nagiosgraph is working by running show.cgi or showhost.cgi.
+
+    http://server/nagiosgraph/cgi-bin/show.cgi
+
+After the CGI scripts are running you can configure nagios.  There are
+a few ways to embed nagiosgraph into nagios.  Nagios will display graph
+icons that, when clicked, will open a new web page displaying nagiosgraph
+graphs.  These icons can be displayed per-host (linked to the showhost.cgi
+script) or per-host-service (linked to the show.cgi script).
+
+Here are examples of Nagios configurations.  The specifics depend on the
+Nagios version as well as how you have configured your host and service
+definitions.
+
  - For Nagios versions < 2.6, define in cgi.cfg the following:
 
      xedtemplate_config_file=/usr/local/etc/nagios/serviceextinfo.cfg
@@ -230,11 +225,11 @@ Configuring Graphing and Display
      Un-comment the 2 cfg_file= lines.
      [NOTE: hostextinfo.cfg not required for Nagios 2.9]
 
-
  - Edit or create hostextinfo.cfg [NOTE: For Nagios 2.9, skip this step.]
 
      define hostextinfo {
        host_name  your-host
+       action_url /nagiosgraph/showhost.cgi?host=$HOSTNAME$
      }
 
      This must be the host you will use in serviceextinfo.cfg
@@ -251,11 +246,8 @@ Configuring Graphing and Display
        icon_image_alt  View graphs
      }
 
- -- Instead of hostgroup line a host_name line with all hosts where this
-    type of data are being collected.
-
  -- For Nagios 2.9, delete or comment out the two lines of icon_image
-    and icon_image_alt. And, replace nagios/images/notes.gif with your own
+    and icon_image_alt. Replace nagios/images/notes.gif with your own
     40x40 gif file.
 
  -- Some type of services have data values that have big differences in the
@@ -272,19 +264,59 @@ Configuring Graphing and Display
 
     For Nagios 3, just add the notes_url to the existing service definition.
 
- -- Add geom option (e.g. &geom=350x100) to notes_url line for custom sizes of
-    graphs.
+
+
+Displaying Graphs Directly in Nagios
+------------------------------------
+
+To embed nagiosgraph graphs directly into nagios, do the following:
+
+  - Modify side.php (e.g. /opt/nagios/share/side.php) by inserting
+    bullets under the 'Trends' heading, one for showing hosts and the
+    other for showing services:
+
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/trends.cgi" target="<?php echo $link_target;?>">Trends</a>
+<ul>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/show.cgi" target="<?php echo $link_target;?>">Graphs</a></li>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/showhost.cgi" target="<?php echo $link_target;?>">Graphs by Host</a></li>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/showservice.cgi" target="<?php echo $link_target;?>">Graphs by Service</a></li>
+</ul>
+</li>
+
+  - If you keep the nagiosgraph cgi scripts in a location different than
+    the nagios cgi scripts, then use 'ng_cgi_base_url' rather than
+    'cgi_base_url' and make an entry in config.inc.php such as this:
+
+$cfg['cgi_base_url']='/nagios/cgi-bin';
+$cfg['ng_cgi_base_url']='/nagiosgraph/cgi-bin';
+
+
+
+Customizing the Graphs
+----------------------
+
+Graphs can be customized individually by specifying CGI arguments, or they
+can be customized overall by specifying values in the nagiosgraph.conf or
+rrdopts.conf files.  Here are a few examples of what is possible.
+
+ -- Add geom option (e.g. &geom=350x100) for custom sizes of graphs.
 
  -- Add rrdopts option (e.g. &rrdopts=%2Dl%200%20%2Du%20100 (meaning:
-    "-l 0 -u 100")) to notes_url line for custom Y axis ranges. Any
-    rrdgraph options can be specified, but has to be url encoded.
+    "-l 0 -u 100")) for custom Y axis ranges. Any rrdgraph options can
+    be specified, but has to be url encoded.
 
  -- Add &fixedscale to set the Y-axis to be in the same units as the
-    supplied perf data. Will also set the legends to be in same units
+    perf data.  This will also set the legends to be in same units.
 
- - Configure Apache to point to show.cgi. For example:
+ -- Add hidelegend (e.g. &hidelegend) to hide the legend.  This is useful
+    for thumbnail graphs.
 
-     ScriptAlias /nagiosgraph/ /usr/local/nagios/nagiosgraph/
+ -- Use lineformat to control the line thickness and line color for
+    different services.
+
+ -- Use plotasX to control the line thickness for different services.
+
+See the nagiosgraph.conf file for more options and examples.
 
 
 

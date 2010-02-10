@@ -79,7 +79,7 @@ sub debug {
     # Get a lock on the LOG file (blocking call)
     my $rval = eval {
         flock $LOG, LOCK_EX;
-        print ${LOG} "$message\n" or carp("could not write to LOG: $OS_ERROR");
+        print ${LOG} "$message\n" or carp("cannot write to LOG: $OS_ERROR");
         flock $LOG, LOCK_UN;
         return 0;
     };
@@ -194,7 +194,7 @@ sub getparams {
     my %rval;
 
     # these flags are either string or array
-    for my $ii (qw(host service db group graph geom rrdopts offset period expand_period)) {
+    for my $ii (qw(host service db group geom rrdopts offset period expand_period)) {
         if ($cgi->param($ii)) {
             if (ref($cgi->param($ii)) eq 'ARRAY') {
                 my @rval = $cgi->param($ii);
@@ -345,7 +345,6 @@ sub buildurl {
     dumper(DBDEB, 'buildurl opts', $opts);
     my $url = join q(&), 'host=' . $host, 'service=' . $service;
     $url .= arrayorstring($opts, 'db') .
-            arrayorstring($opts, 'graph') .
             arrayorstring($opts, 'geom');
     if (exists $opts->{fixedscale} and $opts->{fixedscale}) {
         $url .= '&fixedscale';
@@ -367,13 +366,15 @@ sub mkfilename {
     $quiet ||= 0;
     if (not $quiet) { debug(DBDEB, "mkfilename($host, $service, $db)"); }
     my ($directory, $filename) = $Config{rrddir};
-    if (not $quiet) { debug(DBDEB + 1, "mkfilename: dbseparator: '$Config{dbseparator}'"); }
+    if (not $quiet) {
+        debug(DBDEB, "mkfilename: dbseparator: '$Config{dbseparator}'");
+    }
     if ($Config{dbseparator} eq 'subdir') {
         $directory .=  q(/) . $host;
         if (not -e $directory) { # Create host specific directories
             debug(DBINF, "mkfilename: creating directory $directory");
             mkdir $directory, 0775; ## no critic (ProhibitMagicNumbers)
-            if (not -w $directory) { croak "$directory not writable"; }
+            if (not -w $directory) { croak "cannot write to $directory"; }
         }
         if ($db) {
             $filename = escape("${service}___${db}") . '.rrd';
@@ -388,7 +389,9 @@ sub mkfilename {
             $filename = escape("${host}_${service}_");
         }
     }
-    if (not $quiet) { debug(DBDEB, "mkfilename: dir=$directory file=$filename"); }
+    if (not $quiet) {
+        debug(DBDEB, "mkfilename: dir=$directory file=$filename");
+    }
     return $directory, $filename;
 }
 
@@ -495,12 +498,12 @@ sub listtodict {
 sub checkdirempty {
     my $directory = shift;
     if (not opendir DIR, $directory) {
-        debug(DBCRT, "couldn't open: $OS_ERROR");
+        debug(DBCRT, "cannot open directory $directory: $OS_ERROR");
         return 0;
     }
     my @files = readdir DIR;
     my $size = scalar @files;
-    closedir DIR;
+    closedir DIR or debug(DBERR, "cannot close $directory: $OS_ERROR");
     return 0 if $size > 2;
     return 1;
 }
@@ -511,13 +514,13 @@ sub readfile {
     debug(DBDEB, "readfile($filename, $debug)");
     my ($FH);
     open $FH, '<', $filename or close $FH and
-        ($Config{ngshared} = "$filename not found") and
+        ($Config{ngshared} = "cannot open $filename: $OS_ERROR") and
         carp $Config{ngshared};
     my ($key, $val);
     while (<$FH>) {
         next if /^\s*#/;        # skip commented lines
         s/^\s+//;               # removes leading whitespace
-        /^([^=]+) \s* = \s* (.*) $/x and do { # splits into key=val pairs
+        /^([^=]+)\s*=\s*(.*)$/x and do { # splits into key=val pairs
             $key = $1;
             $val = $2;
             $key =~ s/\s+$//;   # removes trailing whitespace
@@ -527,7 +530,7 @@ sub readfile {
             debug(DBDEB, "$filename $key:$val");
         };
     }
-    close $FH or debug(DBCRT, "Error closing $INC[0]/$CFGNAME: $OS_ERROR");
+    close $FH or debug(DBERR, "close failed for $filename: $OS_ERROR");
     return;
 }
 
@@ -536,6 +539,7 @@ sub checkrrddir {
     if ($rrdstate eq 'write') {
         # Make sure rrddir exist and is writable
         if (not -w $Config{rrddir}) {
+            debug(DBINF, "checkrrddir: creating directory $Config{rrddir}");
             mkdir $Config{rrddir} or $Config{ngshared} = $OS_ERROR;
         }
         if (not -w $Config{rrddir} and defined $Config{ngshared}) {
@@ -559,7 +563,8 @@ sub readconfig {
     my ($rrdstate, $debug) = @_;
     # Read configuration data
     if ($debug) {
-        open $LOG, '>&=STDERR' or carp "$OS_ERROR\n"; ## no critic (RequireBriefOpen)
+        open $LOG, '>&=STDERR' or ## no critic (RequireBriefOpen)
+            carp "cannot open LOG: $OS_ERROR";
         $Config{debug} = $debug;
         dumper(DBDEB, 'INC', \@INC);
         debug(DBDEB, "readconfig opening $INC[0]/$CFGNAME");
@@ -656,7 +661,7 @@ sub readhostdb {
 
     if (! defined $Config{hostdb} || $Config{hostdb} eq q()) {
         my $msg = 'no hostdb file has been specified in the configuration.';
-        debug(DBDEB, $msg);
+        debug(DBERR, $msg);
         htmlerror($msg);
         croak($msg);
     }
@@ -701,7 +706,7 @@ sub readhostdb {
         close $DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
     } else {
         my $msg = "cannot open hostdb $fn: $!";
-        debug(DBDEB, $msg);
+        debug(DBERR, $msg);
         htmlerror($msg);
         croak($msg);
     }
@@ -730,7 +735,7 @@ sub readservdb {
 
     if (! defined $Config{servdb} || $Config{servdb} eq q()) {
         my $msg = 'no servdb file has been specified in the configuration.';
-        debug(DBDEB, $msg);
+        debug(DBERR, $msg);
         htmlerror($msg);
         croak($msg);
     }
@@ -752,7 +757,7 @@ sub readservdb {
         close $DB or debug(DBERR, "readservdb: close failed for $fn: $OS_ERROR");
     } else {
         my $msg = "cannot open servdb $fn: $!";
-        debug(DBDEB, $msg);
+        debug(DBERR, $msg);
         htmlerror($msg);
         croak($msg);
     }
@@ -798,7 +803,7 @@ sub readgroupdb {
 
     if (! defined $Config{groupdb} || $Config{groupdb} eq q()) {
         my $msg = 'no groupdb file has been specified in the configuration.';
-        debug(DBDEB, $msg);
+        debug(DBERR, $msg);
         htmlerror($msg);
         croak($msg);
     }
@@ -850,7 +855,7 @@ sub readgroupdb {
         close $DB or debug(DBERR, "readgroupdb: close failed for $fn: $OS_ERROR");
     } else {
         my $msg = "cannot open groupdb $fn: $!";
-        debug(DBDEB, $msg);
+        debug(DBERR, $msg);
         htmlerror($msg);
         croak($msg);
     }
@@ -869,7 +874,7 @@ sub readgroupdb {
 sub readdatasetdb {
     if (! defined $Config{datasetdb} || $Config{datasetdb} eq q()) {
         my $msg = 'no datasetdb file has been specified in the configuration.';
-        debug(DBDEB, $msg);
+        debug(DBERR, $msg);
         htmlerror($msg);
         croak($msg);
     }
@@ -893,7 +898,7 @@ sub readdatasetdb {
         close $DB or debug(DBERR, "readdatasetdb: close failed for $fn: $OS_ERROR");
     } else {
         my $msg = "cannot open datasetdb $fn: $!";
-        debug(DBDEB, $msg);
+        debug(DBERR, $msg);
         htmlerror($msg);
         croak($msg);
     }
@@ -920,9 +925,9 @@ sub dbfilelist {
                     push @rrd, unescape($1);
                 }
             }
-            closedir DH or debug(DBCRT, "cannot close $directory: $OS_ERROR");
+            closedir DH or debug(DBERR, "cannot close $directory: $OS_ERROR");
         } else {
-            debug(DBWRN, "cannot open directory $directory: $!");
+            debug(DBERR, "cannot open directory $directory: $!");
         }
     }
     dumper(DBDEB, 'dbfilelist', \@rrd);
@@ -954,7 +959,9 @@ sub getdataitems {
 # Find graphs and values
 sub graphinfo {
     my ($host, $service, $db) = @_;
-    debug(DBDEB, "graphinfo($host, $service)");
+    debug(DBDEB, "graphinfo: host=$host service=$service");
+    dumper(DBDEB, 'graphinfo: db', $db);
+
     my ($hs,                    # host/service
         @rrd,                    # the returned list of hashes
         $ds);
@@ -966,8 +973,7 @@ sub graphinfo {
     }
 
     # Determine which files to read lines from
-    dumper(DBDEB, 'graphinfo: db', $db);
-    if ($db) {
+    if ($db && scalar @{$db} > 0) {
         my ($nn,                # index of @rrd, for inserting entries
             $dbname,            # RRD file name, without extension
             @lines,             # entries after file name from $db
@@ -986,13 +992,13 @@ sub graphinfo {
             }
             $nn++;
         }
-        debug(DBINF, "graphinfo: Specified $hs db files in $Config{rrddir}: "
+        debug(DBDEB, "graphinfo: Specified $hs db files in $Config{rrddir}: "
                      . join ', ', map { $_->{file} } @rrd);
     } else {
         @rrd = map {{ file=>$_ }}
                      map { "${hs}${_}.rrd" }
                      @{dbfilelist($host, $service)};
-        debug(DBINF, "graphinfo: Listing $hs db files in $Config{rrddir}: "
+        debug(DBDEB, "graphinfo: Listing $hs db files in $Config{rrddir}: "
                      . join ', ', map { $_->{file} } @rrd);
     }
 
@@ -1068,10 +1074,10 @@ sub setlabels { ## no critic (ProhibitManyArgs)
 
 sub setdata { ## no critic (ProhibitManyArgs)
     my ($dataset, $fixedscale, $time, $serv, $file, $ds) = @_;
-    debug(DBDEB, "setdata($dataset, $time, $serv, $file)");
+    debug(DBDEB, "setdata($dataset, $fixedscale, $time, $serv, $file)");
     my $format = '%6.2lf%s';
     if ($fixedscale) { $format = '%6.2lf'; }
-    debug(DBDEB, "setdata($format)");
+    debug(DBDEB, "setdata: format=$format");
     if ($time > 120_000) { ## no critic (ProhibitMagicNumbers) long enough to start getting summation
         if (defined $Config{withmaximums}->{$serv}) {
             my $maxcolor = '888888'; #$color;
@@ -1112,32 +1118,47 @@ sub rrdline {
     my ($params) = @_;
     dumper(DBDEB, 'rrdline params', $params);
     my ($graphinfo) = graphinfo($params->{host}, $params->{service}, $params->{db});
-    my ($file,                  # current rrd data file
-        $duration,              # how long the graph covers
-        @ds);                   # array of strings for use as the command line
-    my $directory = $Config{rrddir};
-
-    if ($params->{rrdopts} and $params->{rrdopts} =~ m/snow.(\d+)/) {
+    my $rrdopts = $params->{rrdopts} ? $params->{rrdopts} : q();
+    my $duration = 118_800; ## no critic (ProhibitMagicNumbers)
+    if ($rrdopts =~ /snow.(\d+)/) {
         $duration = $1;
     } else {
-        $duration = 118_800; ## no critic (ProhibitMagicNumbers)
+        $rrdopts .= " -snow-$duration -enow";
     }
-    @ds = (q(-), q(-a), 'PNG', '--start', "-$params->{offset}");
+    my $offset = 0;
+    if (defined $params->{offset} && $params->{offset} ne q()) {
+        $offset = $params->{offset};
+    }
+    my $fixedscale = 0;
+    if (defined $params->{fixedscale}) {
+        $fixedscale = $params->{fixedscale};
+    }
+
+    my @ds = (q(-), q(-a), 'PNG', '--start', "-$offset");
+
     # Identify where to pull data from and what to call it
+    my $directory = $Config{rrddir};
+    # Compute the longest label length
+    my $longest = 0;
     for my $ii (@{$graphinfo}) {
-        $file = $ii->{file};
+        my @labels = sort map { length } keys %{$ii->{line}};
+        my $len = scalar @labels > 0 ? $labels[-1] : 0;
+        if ($len > $longest) {
+            $longest = $len;
+        }
+    }
+    # now get the data and labels
+    for my $ii (@{$graphinfo}) {
+        my $file = $ii->{file};
         dumper(DBDEB, 'rrdline: this graphinfo entry', $ii);
-
-        # Compute the longest label length
-        my $longest = (sort map { length } keys %{$ii->{line}})[-1]; ## no critic (ProhibitMagicNumbers)
-
         for my $dataset (sortnaturally(keys %{$ii->{line}})) {
-            my ($serv, $pos) = ($params->{service}, length($params->{service}) - length $dataset);
+            my ($serv, $pos) = ($params->{service},
+                                length($params->{service}) - length $dataset);
             if (substr($params->{service}, $pos) eq $dataset) {
                 $serv = substr $params->{service}, 0, $pos;
             }
             setlabels($dataset, $longest, $serv, "$directory/$file", \@ds);
-            setdata($dataset, $params->{fixedscale}, $duration, $serv, "$directory/$file", \@ds);
+            setdata($dataset, $fixedscale, $duration, $serv, "$directory/$file", \@ds);
         }
     }
 
@@ -1148,27 +1169,28 @@ sub rrdline {
     } else {
         push @ds, '-w', GRAPHWIDTH; # just make the graph wider than default
     }
+
     # Additional parameters to rrd graph, if specified
-    if ($params->{rrdopts}) {
-        my $opt = q();
-        foreach my $ii (split /\s+/, $params->{rrdopts}) {
-            if (substr($ii, 0, 1) eq q(-)) {
-                $opt = $ii;
-                push @ds, $opt;
+    my $opt = q();
+    foreach my $ii (split /\s+/, $rrdopts) {
+        if (substr($ii, 0, 1) eq q(-)) {
+            $opt = $ii;
+            push @ds, $opt;
+        } else {
+            if ($ds[-1] eq $opt) {
+                push @ds, $ii;
             } else {
-                if ($ds[-1] eq $opt) {
-                    push @ds, $ii;
-                } else {
-                    $ds[-1] .= " $ii";
-                }
+                $ds[-1] .= " $ii";
             }
         }
     }
-    if ($params->{fixedscale}) { push @ds, '-X', '0'; }
+    if ($fixedscale && $rrdopts !~ /-X/) {
+        push @ds, '-X', '0';
+    }
     foreach my $ii (['altautoscale', '-A'], ['altautoscalemin', '-J'],
                     ['altautoscalemax', '-M'], ['nogridfit', '-N'],
                     ['logarithmic', '-o']) {
-        addopt($ii->[0], $params->{service}, $params->{rrdopts}, $ii->[1], \@ds);
+        addopt($ii->[0], $params->{service}, $rrdopts, $ii->[1], \@ds);
     }
     debug(DBDEB, 'rrdline: returning ' . join q( ), @ds);
     return @ds;
@@ -1485,6 +1507,7 @@ sub printgraphlinks {
             }
         }
     }
+    debug(DBDEB, 'printgraphlinks desc = ' . $desc);
 
     # include quite a bit of information in the alt tag - it helps when
     # debugging configuration files.
@@ -1497,8 +1520,8 @@ sub printgraphlinks {
         }
         $alttag .= ' )';
     }
+    debug(DBDEB, 'printgraphlinks alttag = ' . $alttag);
 
-    dumper(DBDEB, 'printgraphlinks rrdopts', $params->{rrdopts});
     my $rrdopts = $params->{rrdopts};
     if ($params->{graphonly}) {
         $rrdopts .= ' -j';
@@ -1519,12 +1542,11 @@ sub printgraphlinks {
             $rrdopts .= ' -t ' . $t;
         }
     }
-    debug(DBDEB, "printgraphlinks rrdopts = $rrdopts");
+    debug(DBDEB, 'printgraphlinks rrdopts = ' . $rrdopts);
 
     my $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?';
     $url .= buildurl($params->{host}, $params->{service},
-                     { graph => $period->[1],
-                       geom => $params->{geom},
+                     { geom => $params->{geom},
                        rrdopts => [$rrdopts],
                        fixedscale => $params->{fixedscale},
                        db => $params->{db}});
@@ -1653,7 +1675,7 @@ sub printfooter {
 sub graphsizes {
     my $conf = shift;
     $conf =~ s/,/ /g; # convert to spaces so we can split on whitespace
-    dumper(DBDEB, 'graphsizes period', $conf);
+    dumper(DBDEB, 'graphsizes: period', $conf);
     my @config_times = split /\s+/, $conf;
 
     # [Label, period span, offset] (in seconds)
@@ -1676,7 +1698,7 @@ sub graphsizes {
 
     # Configuration entry was absent or empty. Use default
     if (not @config_times) {
-        debug(DBDEB, 'cannot determine period, using defaults');
+        debug(DBDEB, 'graphsizes: cannot determine period, using defaults');
         return @default_times;
     }
 
@@ -1694,7 +1716,7 @@ sub graphsizes {
 
     # Final check to see if we matched any known entry or use default
     if (not @final_t) {
-        debug(DBDEB, 'final check for period failed, using defaults');
+        debug(DBDEB, 'graphsizes: check for period failed, using defaults');
         @final_t = @default_times;
     }
 
@@ -1759,10 +1781,12 @@ sub inputdata {
             while (<$PERFLOG>) {
                 push @inputlines, $_;
             }
-            close $PERFLOG or debug(DBCRT, "error closing $worklog: $OS_ERROR");
+            close $PERFLOG or debug(DBERR, "close failed for $worklog: $OS_ERROR");
             unlink $worklog;
         }
-        if (not @inputlines) { debug(DBDEB, "inputdata empty $Config{perflog}"); }
+        if (not @inputlines) {
+            debug(DBDEB, "inputdata empty $Config{perflog}");
+        }
     }
     return @inputlines;
 }
@@ -1822,7 +1846,7 @@ sub createrrd {
 
     if (defined $Config{resolution}) {
         @resolution = split / /, $Config{resolution};
-        dumper(DBINF, 'createrrd resolution',  \@resolution);
+        dumper(DBDEB, 'createrrd resolution',  \@resolution);
     }
 
     ## no critic (ProhibitMagicNumbers)
@@ -1915,7 +1939,6 @@ sub runupdate {
     my $ERR = RRDs::error();
     if ($ERR) {
         debug(DBERR, 'runupdate RRDs::update ERR ' . $ERR);
-        if ($Config{debug} < DBINF) { dumper(DBERR, 'runupdate dataset', $dataset); }
     }
     return;
 }
@@ -1957,11 +1980,11 @@ sub getrules {
     my $file = shift;
     debug(DBDEB, "getrules($file)");
     my ($rval, $FH, @rules, $rules);
-    open $FH, '<', $file or die "$OS_ERROR\n";
+    open $FH, '<', $file or die "cannot open $file: $OS_ERROR\n";
     while (<$FH>) {
         push @rules, $_;
     }
-    close $FH or debug(DBCRT, "error closing $file: $OS_ERROR");
+    close $FH or debug(DBERR, "close failed for $file: $OS_ERROR");
     ## no critic (ValuesAndExpressions)
     $rules = 'sub evalrules { $_ = $_[0];' .
         ' my ($d, @s) = ($_);' .

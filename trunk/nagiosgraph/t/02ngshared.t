@@ -9,7 +9,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 182; }
+BEGIN { plan tests => 197; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -232,40 +232,139 @@ sub testdbfilelist { # Check getting a list of rrd files
 	$Config{debug} = 0;
 }
 
-sub testgraphinfo { # Depends on testcreaterrd making files
-	$Config{debug} = 0;
-	open $LOG, '+>', \$log;
-	$Config{rrddir} = $FindBin::Bin;
-	$Config{dbseparator} = '';
-	$result = graphinfo('testbox', 'procs', 'procs');
-	my $file = $FindBin::Bin . '/testbox_procs_procs.rrd';
-	skip(! -f $file, $result->[0]->{file}, 'testbox_procs_procs.rrd');
-	skip(! -f $file, $result->[0]->{line}->{uwarn}, 1);
-	unlink $file if -f $file;
-	$file = $FindBin::Bin . '/testbox_procs_procs.rrd';
-	unlink  $file if -f $file;
-	$file = $FindBin::Bin . '/testbox_procsusers_procs.rrd';
-	unlink  $file if -f $file;
-	close $LOG;
-	open $LOG, '+>', \$log;
-	$Config{dbseparator} = 'subdir';
-	$result = graphinfo('testbox', 'PING', 'ping');
-	$file = $FindBin::Bin . '/testbox/PING___ping.rrd';
-	skip(! -f $file, $result->[0]->{file}, 'testbox/PING___ping.rrd');
-	skip(! -f $file, $result->[0]->{line}->{rta}, 1);
-	close $LOG;
-	$Config{debug} = 0;
+sub testgraphinfo {
+    $Config{rrddir} = $FindBin::Bin;
+
+    $Config{dbseparator} = '';
+    $testvar = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    $Config{hostservvar} = 'testbox,procs,users';
+    $Config{hostservvarsep} = ';';
+    $Config{hostservvar} = listtodict('hostservvar');
+    ok($Config{hostservvar}->{testbox}->{procs}->{users}, 1);
+    @result = createrrd('testbox', 'procs', 1221495632, $testvar);
+    ok($result[0]->[1], 'testbox_procsusers_procs.rrd');
+    ok(-f $FindBin::Bin . '/testbox_procsusers_procs.rrd');
+    ok(-f $FindBin::Bin . '/testbox_procs_procs.rrd');
+
+    $result = graphinfo('testbox', 'procs', ['procs']);
+    my $file = $FindBin::Bin . '/testbox_procs_procs.rrd';
+    skip(! -f $file, $result->[0]->{file}, 'testbox_procs_procs.rrd');
+    skip(! -f $file, $result->[0]->{line}->{uwarn}, 1);
+    unlink $file if -f $file;
+    $file = $FindBin::Bin . '/testbox_procs_procs.rrd';
+    unlink  $file if -f $file;
+    $file = $FindBin::Bin . '/testbox_procsusers_procs.rrd';
+    unlink  $file if -f $file;
+
+    # create default data file
+    $Config{dbseparator} = 'subdir';
+    $testvar = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd('testbox', 'PING', 1221495632, $testvar);
+    ok($result[0]->[0], 'PING___ping.rrd');
+    ok($result[1]->[0]->[0], 0);
+    ok($result[1]->[0]->[1], 1);
+
+    $result = graphinfo('testbox', 'PING', ['ping']);
+    $file = $FindBin::Bin . '/testbox/PING___ping.rrd';
+    skip(! -f $file, $result->[0]->{file}, 'testbox/PING___ping.rrd');
+    skip(! -f $file, $result->[0]->{line}->{rta}, 1);
 }
 
-sub testrrdline { # TODO: rrdline
-	$Config{debug} = 0;
-	open $LOG, '+>', \$log;
-	$result = getlabels('diskgb', 'test,junk');
-	ok($result->[0], 'Disk Usage in Gigabytes');
-	$result = getlabels('testing', 'tested,Mem%3A%20swap,junk');
-	ok($result->[0], 'Swap Utilization');
-	close $LOG;
-	$Config{debug} = 0;
+sub testgetlabels {
+    $result = getlabels('diskgb', 'test,junk');
+    ok($result->[0], 'Disk Usage in Gigabytes');
+    $result = getlabels('testing', 'tested,Mem%3A%20swap,junk');
+    ok($result->[0], 'Swap Utilization');
+}
+
+sub testrrdline {
+    setuprrd();
+
+    # test a minimal invocation with no data for the host
+    my %params = qw(host host30 service ping);
+    my @ds = rrdline(\%params);
+    ok(Dumper(\@ds), "\$VAR1 = [
+          '-',
+          '-a',
+          'PNG',
+          '--start',
+          '-0',
+          '-w',
+          '600 ',
+          '-snow-118800',
+          '-enow'
+        ];\n");
+
+    # minimal invocation when data exist for the host
+    %params = qw(host host0 service PING);
+    @ds = rrdline(\%params);
+    ok(Dumper(\@ds), "\$VAR1 = [
+          '-',
+          '-a',
+          'PNG',
+          '--start',
+          '-0',
+          'DEF:losspct=/home/src/nagiosgraph/t/host0/PING___ping.rrd:losspct:AVERAGE',
+          'LINE2:losspct#9900FF:losspct',
+          'GPRINT:losspct:MAX:Max\\\\: %6.2lf%s',
+          'GPRINT:losspct:AVERAGE:Avg\\\\: %6.2lf%s',
+          'GPRINT:losspct:MIN:Min\\\\: %6.2lf%s',
+          'GPRINT:losspct:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'DEF:rta=/home/src/nagiosgraph/t/host0/PING___ping.rrd:rta:AVERAGE',
+          'LINE2:rta#CC03CC:rta    ',
+          'GPRINT:rta:MAX:Max\\\\: %6.2lf%s',
+          'GPRINT:rta:AVERAGE:Avg\\\\: %6.2lf%s',
+          'GPRINT:rta:MIN:Min\\\\: %6.2lf%s',
+          'GPRINT:rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          '-w',
+          '600 ',
+          '-snow-118800',
+          '-enow'
+        ];\n");
+
+    # specify a bogus data set
+    $params{db} = ['rta'];
+    @ds = rrdline(\%params);
+    ok(Dumper(\@ds), "\$VAR1 = [
+          '-',
+          '-a',
+          'PNG',
+          '--start',
+          '-0',
+          '-w',
+          '600 ',
+          '-snow-118800',
+          '-enow'
+        ];\n");
+
+    # specify a valid data set
+    $params{db} = ['ping,rta'];
+    @ds = rrdline(\%params);
+    ok(Dumper(\@ds), "\$VAR1 = [
+          '-',
+          '-a',
+          'PNG',
+          '--start',
+          '-0',
+          'DEF:rta=/home/src/nagiosgraph/t/host0/PING___ping.rrd:rta:AVERAGE',
+          'LINE2:rta#CC03CC:rta',
+          'GPRINT:rta:MAX:Max\\\\: %6.2lf%s',
+          'GPRINT:rta:AVERAGE:Avg\\\\: %6.2lf%s',
+          'GPRINT:rta:MIN:Min\\\\: %6.2lf%s',
+          'GPRINT:rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          '-w',
+          '600 ',
+          '-snow-118800',
+          '-enow'
+        ];\n");
+
+#FIXME: test geom
+#FIXME: test rrdopts
+#FIXME: test altautoscale
+#FIXME: test altautoscalemin
+#FIXME: test altautoscalemax
+#FIXME: test nogridfit
+#FIXME: test logarithmic
 }
 
 sub testgetgraphlist { # Does two things: verifies directores and .rrd files.
@@ -1096,9 +1195,11 @@ testinputdata();
 testgetrras();
 testcheckdatasources();
 testcreaterrd();
-testrrdupdate();
+testrrdupdate(); # must be run after createrrd
 testgetrules();
-#testgraphinfo();		# must be after testcreaterrd
+#testgetlabels();
+testrrdline();
+testgraphinfo();
 testprocessdata();
 testtrans();
 testinitperiods();

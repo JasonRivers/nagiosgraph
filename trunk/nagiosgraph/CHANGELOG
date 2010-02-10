@@ -2,6 +2,8 @@ $Id$
 
 TBD
 
+* fixed alignment of graph labels
+* eliminate vestigial 'graph' CGI option.
 * labels for services and data sets are now implemented throughout all cgi
    scripts.  the first place to define them is nagiosgraph.conf.  labels
    can be further specialized by defining them in hostdb.conf and

@@ -4,9 +4,9 @@ Bugs
 
 * The next/prev functions are not coordinated with the data saved to the rrd
     files.  As a result, next/prev do not function as one might expect.
-* The next/prev URLs are broken due to changes in buildurl.
 * showhost and showgroup do not need all the menudata in javascript
-* showgroup does not respect access controls
+* the subroutine 'debug' should be called 'log'
+* need unit tests for rrdline, graphinfo
 
 Desired features.
 
@@ -19,6 +19,6 @@ Desired features.
 * Custom unit labels on the graphs.
 * Units specification beyond what Fixed Scale does.
 * Prefix strings with i18n_ to avoid name clashes with configuration params.
-* Make the date/time handling and formatting robust across locales
 * Either use cookies to maintain GUI state, or design a more robust and
     easier-to-manage CGI/JavaScript way of doing it.
+

@@ -28,13 +28,12 @@ $OUTPUT_AUTOFLUSH = 1;          # Make sure headers arrive before image data
 print $cgi->header(-type => 'image/png') or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
-my @ds = rrdline($params);      # Figure out db files and line labels
+my @ds = rrdline($params);
 dumper(DBDEB, 'RRDs::graph', \@ds);
 
 RRDs::graph(@ds);
 if (RRDs::error) {
     debug(DBERR, 'RRDs::graph ERR ' . RRDs::error);
-    if ($Config{debug} < DBINF) { dumper(DBERR, 'RRDs::graph', \@ds); }
     print decode_base64(       # send a small, clear image on errors
         'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGlj' .
         'Q29udmVydGVyIChJbnRlbCl3h/oZAAAAGUlEQVR4nGL4//8/AzrGEKCCIAAAAP//AwB4w0q2n+sy' .
