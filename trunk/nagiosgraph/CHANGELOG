@@ -2,8 +2,11 @@ $Id$
 
 TBD
 
+* use button instead of toggle to show/hide graph controls (keeps ie8 happy)
+* fixed prev/next behavior
+* added instructions and javascript for doing graphs on mouseovers in nagios
 * rrdopts from config are now respected by showgraph.cgi
-* added sans-serif to css to keep unix clients happy
+* added sans-serif to css to keep (many) unix clients happy
 * fixed alignment of graph labels
 * eliminate vestigial 'graph' CGI option.
 * labels for services and data sets are now implemented throughout all cgi
@@ -64,7 +67,6 @@ TBD
 * adjusted time period title layout
 * added labels to time periods
 * control on each time period to collapse/expand that period
-* (partially) fixed prev/next controls
 * default to collapsed state for controls
 * added time period options to the controls
 * put http refresh interval into config file

@@ -1573,7 +1573,8 @@ sub printgraphlinks {
     if ($params->{hidelegend}) {
         $rrdopts .= ' -g';
     }
-    $rrdopts .= ' -snow-' . $period->[1];
+    my $soff = $period->[1] + $params->{offset};
+    $rrdopts .= ' -snow-' . $soff;
     $rrdopts .= ' -enow-' . $params->{offset};
     $rrdopts =~ tr/ /+/;
     $rrdopts =~ s/#/%23/g;
