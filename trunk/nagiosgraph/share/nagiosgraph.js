@@ -53,25 +53,15 @@ function setDisplay(elem, state) {
 
 function toggleDisplay(elem) {
   if (elem) {
-    if (elem.style.display == 'none') {
-      elem.style.display = 'inline';
-    } else {
+    if (elem.style.display != 'none') {
       elem.style.display = 'none';
+    } else {
+      elem.style.display = 'inline';
     }
   }
 }
 
-function setExpansionStateCB(expanded, panel, chkbox) {
-  if (expanded) {
-    if (panel) panel.style.display = 'inline';
-    if (chkbox) chkbox.checked = true;
-  } else {
-    if (panel) panel.style.display = 'none';
-    if (chkbox) chkbox.checked = false;
-  }
-}
-
-function setExpansionStateB(expanded, panel, button) {
+function setExpansionState(expanded, panel, button) {
   if (expanded) {
     if (panel) panel.style.display = 'inline';
     if (button) button.value = '-';
@@ -89,8 +79,14 @@ function showDBControls(flag) {
 }
 
 // show/hide the secondary controls panel
-function toggleControlsDisplay() {
-  toggleDisplay(document.getElementById('secondary_controls_box'));
+function toggleControlsDisplay(button) {
+  var elem = document.getElementById('secondary_controls_box');
+  toggleDisplay(elem);
+  if (elem.style.display == 'inline') {
+    button.value = '-';
+  } else {
+    button.value = '+';
+  }
 }
 
 // toggle display of the indicated period
@@ -272,7 +268,7 @@ function cfgMenus(host, service, expanded_periods) {
   setControlsGUIState();
   setPeriodGUIStates(expanded_periods);
   selectPeriodItems();
-  selectDBItems(location.search.substring(1));
+  selectDBItems(service, location.search.substring(1));
 }
 
 // Populate the host menu and select the indicated host.
@@ -446,8 +442,9 @@ function selectPeriodItems() {
 }
 
 // highlight the db menu items based on the url query string.
-// specifying nothing is equivalent to selecting all.
-function selectDBItems(query) {
+// if nothing is specified, then check the default selection array.
+// if still nothing specified, then select everything.
+function selectDBItems(service, query) {
   elem = document.menuform.db;
   if(!elem) return;
 
@@ -465,6 +462,24 @@ function selectDBItems(query) {
               elem.options[kk].selected = true;
               found = true;
               break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (! found) {
+    if (defaultds) {
+      for (var ii=0; ii<defaultds.length; ii++) {
+        if (defaultds[ii][0] == service) {
+          for (var jj=1; jj<defaultds[ii].length; jj++) {
+            for (var kk=0; kk<elem.length; kk++) {
+              if (defaultds[ii][jj] == elem.options[kk].value) {
+                elem.options[kk].selected = true;
+                found = true;
+                break;
+              }
             }
           }
         }
@@ -504,9 +519,9 @@ function getSelectedDBItems() {
 // not, then collapse them.  make the other gui controls match the state as
 // well.
 function setControlsGUIState() {
-  setExpansionStateCB(getCGIBoolean('expand_controls'),
-                      document.getElementById('secondary_controls_box'),
-                      document.menuform.showhidecontrols);
+  setExpansionState(getCGIBoolean('expand_controls'),
+                    document.getElementById('secondary_controls_box'),
+                    document.menuform.showhidecontrols);
   var elem = document.menuform.fixedscale;
   if (elem) {
     elem.checked = getCGIBoolean('fixedscale');
@@ -543,9 +558,9 @@ function setPeriodGUIStates(expanded_periods) {
      }
   }
   for (var ii = 0; ii < pflag.length; ii++) {
-    setExpansionStateB(pflag[ii],
-                       document.getElementById('period_data_' + PNAME[ii]),
-                       document.getElementById('toggle_' + PNAME[ii]));
+    setExpansionState(pflag[ii],
+                      document.getElementById('period_data_' + PNAME[ii]),
+                      document.getElementById('toggle_' + PNAME[ii]));
   }
 }
 
@@ -578,7 +593,7 @@ function hostChange() {
     service = servmenu.options[servmenu.selectedIndex].text;
   }
   cfgDBMenu(host, service);
-  selectDBItems(dbitems);
+  selectDBItems(service, dbitems);
 }
 
 // configure everything based on a change to the selected service.  a change
@@ -598,5 +613,5 @@ function serviceChange() {
   }
 
   cfgDBMenu(host, service);
-  selectDBItems('');
+  selectDBItems(service, '');
 }

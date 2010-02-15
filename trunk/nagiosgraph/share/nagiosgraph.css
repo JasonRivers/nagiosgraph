@@ -10,7 +10,7 @@
 body {
   color: black;
   background-color: white;
-  font-family: arial, verdana, serif;
+  font-family: arial, verdana, lucida, helvetica, sans-serif, serif;
   font-weight: normal;
   font-size: 9pt;
 }
