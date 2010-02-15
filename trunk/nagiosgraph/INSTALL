@@ -40,6 +40,9 @@ Installation Preliminaries
   Nagiosgraph uses rrdtool from perl, so both rrdtool and the perl wrapper
   for rrdtool must be installed.
 
+  Nagiosgraph depends on perfdata processing in Nagios using the Nagios
+  directive process_performance_data.
+
   There are two installation layouts for Nagiosgraph: separate or overlay.
   The separated layout has nagiosgraph and nagios in separate directories.
   The overlay places nagiosgraph components with nagios components.
@@ -48,9 +51,6 @@ Installation Preliminaries
   before you start the installation.
 
   Examples of these layouts are in the Sample Installation Layouts section.
-
-  Nagiosgraph depends on perfdata processing in Nagios using the Nagios
-  directive process_performance_data.
 
 
 Installation Instructions
@@ -141,7 +141,7 @@ New Style Processing
    Make sure that location of service_perfdata_file matches that of perflog
    defined in nagiosgraph.conf.
 
- - In checkcommands.cfg or misccommands.cfg, depending on which
+ - In checkcommands.cfg or misccommands.cfg, depending on which is
    defined in nagios.cfg:
 
      define command {
@@ -151,8 +151,8 @@ New Style Processing
 
    Make sure there is only one definition for process-service-perfdata.
 
-   Some installations of Nagios (with embedded perl) requires to specify
-   location of perl. Modify command_line to:
+   Some installations of Nagios (e.g. with embedded perl) require the explicit
+   location of perl.  For these installations, modify command_line to:
 
      command_line /usr/bin/perl /etc/nagios/nagiosgraph/insert.pl
 
@@ -187,7 +187,7 @@ Configuring Graphing and Display
 --------------------------------
 
 First configure the web server to run the nagiosgraph CGI scripts.  For
-example, with Apache do something like this:
+example, with Apache do something like this in the Apache configuration:
 
   ScriptAlias /nagiosgraph/cgi-bin /usr/lib/nagios/cgi-bin
 
@@ -199,7 +199,9 @@ After the CGI scripts are running you can configure nagios.  There are
 a few ways to embed nagiosgraph into nagios.  Nagios will display graph
 icons that, when clicked, will open a new web page displaying nagiosgraph
 graphs.  These icons can be displayed per-host (linked to the showhost.cgi
-script) or per-host-service (linked to the show.cgi script).
+script) or per-host-service (linked to the show.cgi script).  Nagios will
+display graph data when the mouse is moved over host/service action icons.
+And graphs can be displayed directly in the Nagios frames.
 
 
 
@@ -208,7 +210,9 @@ Displaying Per-Service and Per-Host Graph Icons and Links in Nagios
 
 Links to graphs can be embedded in Nagios status pages using the notes or
 actions fields.  The specifics depend on the Nagios version as well as how
-you have configured your host and service definitions.
+you have configured your host and service definitions.  Nagios 2 uses the
+serviceextinfo and hostextinfo construct.  In Nagios 3 the nagiosgraph
+additions go directly in the host and service definitions.
 
  - For Nagios versions < 2.6, define in cgi.cfg the following:
 
@@ -267,19 +271,29 @@ you have configured your host and service definitions.
 Displaying Graphs in Nagios Mouseovers
 --------------------------------------
 
-To display graphs as mouseovers for each host and/or service, do the following
-(these instructions are for Nagios 3.2; they might work with older versions):
+To display graphs as mouseovers for each host and/or service, do the following:
 
   - Copy nagiosgraph.ssi.js to the nagios ssi directory, for example:
       cp share/nagiosgraph.ssi.js /usr/share/nagios/ssi/common-header.ssi
 
-  - Configure services to display graphs on mouseovers, for example:
+  - Configure services to display graphs on mouseovers by adding some 
+    JavaScript to the action or notes url.  For example:
 
      define service {
        name NTP
        use local-service
        action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
      }
+
+    This example displays only the graph data, in a smaller popup:
+
+     define service {
+       name NTP
+       use local-service
+       action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&rrdopts=-w+450-j
+     }
+
+You must restart Nagios for these changes to take effect.
 
 If a service includes multiple data sets, use the datasetdb file (specified
 in nagiosgraph.conf) to indicate which data sets should be displayed by
