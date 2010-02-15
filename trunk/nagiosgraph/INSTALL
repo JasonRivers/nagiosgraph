@@ -10,13 +10,15 @@ This document contains the following sections:
   Installation Preliminaries
   Installation Instructions
   Upgrade Notes
-  Service Perfdata Processing Configuration
+  Configuring Data Processing
     Old Style
     New Style
   Configuring Graphing and Display
-  Displaying Graphs Directly in Nagios
+  Displaying Per-Service and Per-Host Graph Icons in Nagios
+  Displaying Graphs in Nagios Mouseovers
+  Displaying Graphs in Nagios Frames
   Customizing the Graphs
-  Adding New Mapping and Troubleshooting
+  Adding Services and Troubleshooting
   Appendix: Sample Installation Layouts
   Appendix: Web Server Configuration
   Appendix: Platform Specific Notes
@@ -67,7 +69,7 @@ Installation Instructions
  - Edit the perl scripts in the cgi and lib directories, modifying the
    "use lib" lines to point to the directory from the previous step.
 
- - Copy the contents of lib into a location Nagios can execute file in
+ - Copy the contents of lib into a location Nagios can execute files,
    e.g. /usr/lib/nagios/libexec
 
  - Copy the contents of cgi into the Nagios cgi-bin directory,
@@ -85,11 +87,11 @@ Installation Instructions
 
  - Edit nagiosgraph.conf to set paths, debug level etc.
 
- - Update permissions of "rrddir" (as defined in nagiosgraph.conf),
-   so that the *nagios* user can write to it and the *www* user can read it.
+ - Set permissions of "rrddir" (as defined in nagiosgraph.conf) so that
+   the *nagios* user can write to it and the *www* user can read it.
 
- - Update permissions of "logfile" (as defined in nagiosgraph.conf)
-   so that both the *nagios* and *www* users can write to "logfile".
+ - Set permissions of "logfile" (as defined in nagiosgraph.conf) so that
+   both the *nagios* and *www* users can write to "logfile".
 
 
 Upgrade Notes
@@ -101,25 +103,28 @@ Upgrade Notes
    the stylesheet (nagiosgraph.css).
 
  - Use diff, or a similar tool, to update your nagiosgraph.conf with new fields
-   from etc/nagiosgraph.conf.  Note in particular the javascript file,
-   nagiosgraph.js.  The web server must be able to read this file and send it
-   to web clients.
+   from etc/nagiosgraph.conf.
 
  - You may want to look at etc/map to see if there are any new examples that
    you may find useful.
 
 
-Service Perfdata Processing Configuration
------------------------------------------
+Configuring Data Processing
+---------------------------
 
-NOTE: Two ways to define data processing -- the new style and the old style.
+Before nagiosgraph can graph anything it must first collect data.  There are
+two ways to process data - the new style and the old style.  The old style
+typically requires more CPU.
 
-+-----------+
-| New Style |
-+-----------+
+In the new style, performance data are appended to a file, then nagios invokes
+insert.pl at a regular interval to update the rrd files.
 
-In new style, all performance data append to a file,
-then, nagios invokes insert.pl at a regular interval to update rrd files.
+In the old style, nagios invokes insert.pl immediately after each service
+check, thus updating the corresponding rrd files.
+
+
+New Style Processing
+--------------------
 
  - In nagios.cfg set:
 
@@ -152,12 +157,8 @@ then, nagios invokes insert.pl at a regular interval to update rrd files.
      command_line /usr/bin/perl /etc/nagios/nagiosgraph/insert.pl
 
 
-+-----------+
-| Old Style |
-+-----------+
-
-The old style consumes more CPU. Nagios invokes insert.pl immediately after
-every service check, to update the corresponding rrd files.
+Old Style Processing
+--------------------
 
  - In nagios.cfg:
 
@@ -175,7 +176,6 @@ every service check, to update the corresponding rrd files.
        command_line  /usr/local/nagios/nagiosgraph/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
      }
 
-
    Those Nagios with embedded perl might need specifying the location of
    perl so insert the full path to perl binary in the command_line, such as:
 
@@ -189,11 +189,11 @@ Configuring Graphing and Display
 First configure the web server to run the nagiosgraph CGI scripts.  For
 example, with Apache do something like this:
 
-     ScriptAlias /nagiosgraph/cgi-bin /usr/lib/nagios/cgi-bin
+  ScriptAlias /nagiosgraph/cgi-bin /usr/lib/nagios/cgi-bin
 
 Verify that nagiosgraph is working by running show.cgi or showhost.cgi.
 
-    http://server/nagiosgraph/cgi-bin/show.cgi
+  http://server/nagiosgraph/cgi-bin/show.cgi
 
 After the CGI scripts are running you can configure nagios.  There are
 a few ways to embed nagiosgraph into nagios.  Nagios will display graph
@@ -201,15 +201,20 @@ icons that, when clicked, will open a new web page displaying nagiosgraph
 graphs.  These icons can be displayed per-host (linked to the showhost.cgi
 script) or per-host-service (linked to the show.cgi script).
 
-Here are examples of Nagios configurations.  The specifics depend on the
-Nagios version as well as how you have configured your host and service
-definitions.
+
+
+Displaying Per-Service and Per-Host Graph Icons and Links in Nagios
+-------------------------------------------------------------------
+
+Links to graphs can be embedded in Nagios status pages using the notes or
+actions fields.  The specifics depend on the Nagios version as well as how
+you have configured your host and service definitions.
 
  - For Nagios versions < 2.6, define in cgi.cfg the following:
 
      xedtemplate_config_file=/usr/local/etc/nagios/serviceextinfo.cfg
 
- - For Nagios version 2.6 and later.
+ - For Nagios version 2.6:
      Note: This may also be what is required for earlier versions of Nagios.
      It is uncertain as when Nagios started handling extended services
      differently.
@@ -223,9 +228,8 @@ definitions.
      # cfg_file=/etc/nagios/serviceextinfo.cfg
 
      Un-comment the 2 cfg_file= lines.
-     [NOTE: hostextinfo.cfg not required for Nagios 2.9]
 
- - Edit or create hostextinfo.cfg [NOTE: For Nagios 2.9, skip this step.]
+ - Edit/Create hostextinfo.cfg
 
      define hostextinfo {
        host_name  your-host
@@ -234,7 +238,7 @@ definitions.
 
      This must be the host you will use in serviceextinfo.cfg
 
- - Edit serviceextinfo.cfg
+ - Edit/Create serviceextinfo.cfg
 
    Most services can be graphed with no particular configuration like this:
 
@@ -246,40 +250,58 @@ definitions.
        icon_image_alt  View graphs
      }
 
- -- For Nagios 2.9, delete or comment out the two lines of icon_image
-    and icon_image_alt. Replace nagios/images/notes.gif with your own
-    40x40 gif file.
+ - For Nagios 2.9 and Nagios 3, use the action_url for any existing host
+   or service definition.  For example,
 
- -- Some type of services have data values that have big differences in the
-    magnitude. In such cases it's good idea to split up into seperate
-    graphs. Here's an example for ntp for Nagios 2:
-
-     define serviceextinfo {
-       service_description  NTP
-       host_name       server01,server02,server03,server04
-       notes_url       /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&db=ntp,jitter,offset&db=ntp,stratum
-       icon_image      graph.gif
-       icon_image_alt  View graphs
+     define service {
+       name NTP
+       use local-service
+       action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
      }
 
-    For Nagios 3, just add the notes_url to the existing service definition.
+   Optionally replace nagios/images/action.gif with graph.gif from the
+   nagiosgraph distribution.
 
 
 
-Displaying Graphs Directly in Nagios
-------------------------------------
+Displaying Graphs in Nagios Mouseovers
+--------------------------------------
+
+To display graphs as mouseovers for each host and/or service, do the following
+(these instructions are for Nagios 3.2; they might work with older versions):
+
+  - Copy nagiosgraph.ssi.js to the nagios ssi directory, for example:
+      cp share/nagiosgraph.ssi.js /usr/share/nagios/ssi/common-header.ssi
+
+  - Configure services to display graphs on mouseovers, for example:
+
+     define service {
+       name NTP
+       use local-service
+       action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
+     }
+
+If a service includes multiple data sets, use the datasetdb file (specified
+in nagiosgraph.conf) to indicate which data sets should be displayed by
+default for each service, or specify the data set(s) explicity in each
+action_url.
+
+
+
+Displaying Graphs in Nagios Frames
+----------------------------------
 
 To embed nagiosgraph graphs directly into nagios, do the following:
 
   - Modify side.php (e.g. /opt/nagios/share/side.php) by inserting
-    bullets under the 'Trends' heading, one for showing hosts and the
-    other for showing services:
+    bullets under the 'Trends' heading:
 
 <li><a href="<?php echo $cfg["cgi_base_url"];?>/trends.cgi" target="<?php echo $link_target;?>">Trends</a>
 <ul>
 <li><a href="<?php echo $cfg["cgi_base_url"];?>/show.cgi" target="<?php echo $link_target;?>">Graphs</a></li>
 <li><a href="<?php echo $cfg["cgi_base_url"];?>/showhost.cgi" target="<?php echo $link_target;?>">Graphs by Host</a></li>
 <li><a href="<?php echo $cfg["cgi_base_url"];?>/showservice.cgi" target="<?php echo $link_target;?>">Graphs by Service</a></li>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/showgroup.cgi" target="<?php echo $link_target;?>">Graphs by Group</a></li>
 </ul>
 </li>
 
@@ -308,20 +330,30 @@ rrdopts.conf files.  Here are a few examples of what is possible.
  -- Add &fixedscale to set the Y-axis to be in the same units as the
     perf data.  This will also set the legends to be in same units.
 
- -- Add hidelegend (e.g. &hidelegend) to hide the legend.  This is useful
-    for thumbnail graphs.
+ -- Add hidelegend (e.g. &hidelegend) to hide the legend.
 
  -- Use lineformat to control the line thickness and line color for
     different services.
 
+ -- Create stacked area graphs using alpha channel in colors specified
+    in the lineformat directive for each data set or in rrdopts.conf 
+    for specific services and data sets.
+
  -- Use plotasX to control the line thickness for different services.
+
+ -- Some type of services have data values that have big differences in the
+    magnitude. In such cases split the data into seperate graphs. Do this by
+    specifying one or more data sets.  For example, for the NTP service:
+
+    show.cgi?host=HOST&service=NTP&db=ntp,jitter,offset
+    show.cgi?host=HOST&service=NTP&db=ntp,stratum
 
 See the nagiosgraph.conf file for more options and examples.
 
 
 
-Adding New Mapping and Troubleshooting
---------------------------------------
+Adding Services and Troubleshooting
+-----------------------------------
 
  - To add new service types, edit the map file. This contains regular
    expression to identify service types, and defines how to store data in
