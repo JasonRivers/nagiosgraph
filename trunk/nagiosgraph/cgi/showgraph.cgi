@@ -24,6 +24,17 @@ use warnings;
 
 my ($cgi, $params) = init('showgraph');
 
+my $defaultds = readdatasetdb();
+if (scalar @{$params->{db}} == 0) {
+    if ($defaultds->{$params->{service}}
+        && scalar @{$defaultds->{$params->{service}}} > 0) {
+        $params->{db} = $defaultds->{$params->{service}};
+    } elsif ($params->{host} ne q() && $params->{host} ne q(-)
+             && $params->{service} ne q() && $params->{service} ne q(-)) {
+        $params->{db} = dbfilelist($params->{host}, $params->{service});
+    }
+}
+
 $OUTPUT_AUTOFLUSH = 1;          # Make sure headers arrive before image data
 print $cgi->header(-type => 'image/png') or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");

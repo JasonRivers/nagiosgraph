@@ -2,6 +2,7 @@ $Id$
 
 TBD
 
+* rrdopts from config are now respected by showgraph.cgi
 * added sans-serif to css to keep unix clients happy
 * fixed alignment of graph labels
 * eliminate vestigial 'graph' CGI option.

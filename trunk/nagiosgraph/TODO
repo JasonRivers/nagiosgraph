@@ -6,19 +6,13 @@ Bugs
     files.  As a result, next/prev do not function as one might expect.
 * showhost and showgroup do not need all the menudata in javascript
 * the subroutine 'debug' should be called 'log'
-* need unit tests for rrdline, graphinfo
 
 Desired features.
 
 * Customize rrd options for split graphs.
 * Red bar in graph to indicate missing data.
 * Installer - that can configure Nagios (must work with Nagios 2.12 and 3.x).
-* Stacked area graphs like http://oss.oetiker.ch/rrdtool/gallery/ramUsage.png.
-  - This requires configuring a custom graph type for a specific data set,
-    since other data sets may not work well with an area graph type.
 * Custom unit labels on the graphs.
-* Units specification beyond what Fixed Scale does.
 * Prefix strings with i18n_ to avoid name clashes with configuration params.
 * Either use cookies to maintain GUI state, or design a more robust and
     easier-to-manage CGI/JavaScript way of doing it.
-

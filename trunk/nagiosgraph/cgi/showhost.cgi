@@ -24,7 +24,6 @@ my ($cgi, $params) = init('showhost');
 my ($periods, $expanded_periods) = initperiods('host', $params);
 
 my $ginfos = readhostdb($params->{host});
-dumper(DBDEB, 'graphinfos', $ginfos);
 
 # nagios and nagiosgraph may not share the same cgi directory
 my $nagioscgiurl = $Config{nagiosgraphcgiurl};

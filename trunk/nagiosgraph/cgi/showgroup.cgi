@@ -24,8 +24,6 @@ my ($cgi, $params) = init('showgroup');
 my ($periods, $expanded_periods) = initperiods('group', $params);
 
 my ($gnames, $ginfos) = readgroupdb($params->{group});
-dumper(DBDEB, 'groups', $gnames);
-dumper(DBDEB, 'graphinfos', $ginfos);
 
 print printheader($cgi, { title => $params->{group},
                           call => 'group',

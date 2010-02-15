@@ -178,7 +178,7 @@ sub getdebug {
 # db=dataset (may be comma-delimited or specified multiple times)
 # geom=WxH
 # rrdopts=
-# offset=
+# offset=seconds
 # period=(day,week,month,quarter,year)
 # graphonly
 # showgraphtitle
@@ -303,14 +303,6 @@ sub cfgparams {
         $p->{geom} = $dflt->{geom};
     }
     $p->{offset} = $dflt->{offset} ne q() ? $dflt->{offset} : 0;
-
-    if ($service && defined $Config{rrdoptshash}{$service}) {
-        $p->{rrdopts} = $Config{rrdoptshash}{$service};
-    } elsif (defined $Config{rrdoptshash}{global}) {
-        $p->{rrdopts} = $Config{rrdoptshash}{global};
-    } else {
-        $p->{rrdopts} = $dflt->{rrdopts};
-    }
 
     return;
 }
@@ -711,6 +703,7 @@ sub readhostdb {
         croak($msg);
     }
 
+    dumper(DBDEB, 'graphinfos', \@ginfo);
     return \@ginfo;
 }
 
@@ -862,6 +855,8 @@ sub readgroupdb {
 
     my @gnames = sortnaturally(keys %gnames);
 
+    dumper(DBDEB, 'groups', \@gnames);
+    dumper(DBDEB, 'graphinfos', \@ginfo);
     return \@gnames, \@ginfo;
 }
 
@@ -915,7 +910,7 @@ sub dbfilelist {
     my ($host, $serv) = @_;
     my @rrd;
     debug(DBDEB, "dbfilelist($host, $serv)");
-    if ($host ne q() && $serv ne q()) {
+    if ($host ne q() && $host ne q(-) && $serv ne q() && $serv ne q(-)) {
         my ($directory, $filename) = mkfilename($host, $serv);
         debug(DBDEB, "dbfilelist scanning $directory for $filename");
         if (opendir DH, $directory) {
@@ -1047,94 +1042,126 @@ sub getlineattr {
     return $linestyle, $linecolor;
 }
 
-sub setlabels { ## no critic (ProhibitManyArgs)
-    my ($dataset, $longest, $serv, $file, $ds) = @_;
+sub setlabels {
+    my ($dataset, $longest, $serv, $file) = @_;
+    my @ds;
     my $label = sprintf "%-${longest}s", $dataset;
     debug(DBDEB, "setlabels($label)");
     my ($linestyle, $linecolor) = getlineattr($dataset);
     if (defined $Config{maximums}->{$serv}) {
-        push @{$ds}, "DEF:$dataset=$file:$dataset:MAX"
+        push @ds, "DEF:$dataset=$file:$dataset:MAX"
                 , "CDEF:ceil$dataset=$dataset,CEIL"
                 , "$linestyle:${dataset}#$linecolor:$label";
     } elsif (defined $Config{minimums}->{$serv}) {
-        push @{$ds}, "DEF:$dataset=$file:$dataset:MIN"
+        push @ds, "DEF:$dataset=$file:$dataset:MIN"
                 , "CDEF:floor$dataset=$dataset,FLOOR"
                 , "$linestyle:${dataset}#$linecolor:$label";
     } else {
-        push @{$ds}, "DEF:${dataset}=$file:$dataset:AVERAGE";
+        push @ds, "DEF:${dataset}=$file:$dataset:AVERAGE";
         if (defined $Config{negate}->{$dataset}) {
-            push @{$ds}, "CDEF:${dataset}_neg=${dataset},-1,*";
-            push @{$ds}, "$linestyle:${dataset}_neg#$linecolor:$label";
+            push @ds, "CDEF:${dataset}_neg=${dataset},-1,*";
+            push @ds, "$linestyle:${dataset}_neg#$linecolor:$label";
         } else {
-            push @{$ds}, "$linestyle:${dataset}#$linecolor:$label";
+            push @ds, "$linestyle:${dataset}#$linecolor:$label";
         }
     }
-    return;
+    return @ds;
 }
 
-sub setdata { ## no critic (ProhibitManyArgs)
-    my ($dataset, $fixedscale, $time, $serv, $file, $ds) = @_;
-    debug(DBDEB, "setdata($dataset, $fixedscale, $time, $serv, $file)");
+sub setdata {
+    my ($dataset, $fixedscale, $dur, $serv, $file) = @_;
+    debug(DBDEB, "setdata($dataset, $fixedscale, $dur, $serv, $file)");
+    my @ds;
     my $format = '%6.2lf%s';
     if ($fixedscale) { $format = '%6.2lf'; }
     debug(DBDEB, "setdata: format=$format");
-    if ($time > 120_000) { ## no critic (ProhibitMagicNumbers) long enough to start getting summation
+    if ($dur > 120_000) { ## no critic (ProhibitMagicNumbers) long enough to start getting summation
         if (defined $Config{withmaximums}->{$serv}) {
             my $maxcolor = '888888'; #$color;
-            push @{$ds}, "DEF:${dataset}_max=${file}_max:$dataset:MAX"
+            push @ds, "DEF:${dataset}_max=${file}_max:$dataset:MAX"
                     , "LINE1:${dataset}_max#${maxcolor}:maximum";
         }
         if (defined $Config{withminimums}->{$serv}) {
             my $mincolor = 'BBBBBB'; #color;
-            push @{$ds}, "DEF:${dataset}_min=${file}_min:$dataset:MIN"
+            push @ds, "DEF:${dataset}_min=${file}_min:$dataset:MIN"
                     , "LINE1:${dataset}_min#${mincolor}:minimum";
         }
         if (defined $Config{withmaximums}->{$serv}) {
-            push @{$ds}, "CDEF:${dataset}_maxif=${dataset}_max,UN",
+            push @ds, "CDEF:${dataset}_maxif=${dataset}_max,UN",
                     , "CDEF:${dataset}_maxi=${dataset}_maxif,${dataset},${dataset}_max,IF"
                     , "GPRINT:${dataset}_maxi:MAX:Max\\: $format";
         } else {
-            push @{$ds}, "GPRINT:$dataset:MAX:Max\\: $format";
+            push @ds, "GPRINT:$dataset:MAX:Max\\: $format";
         }
-        push @{$ds}, "GPRINT:$dataset:AVERAGE:Avg\\: $format";
+        push @ds, "GPRINT:$dataset:AVERAGE:Avg\\: $format";
         if (defined $Config{withminimums}->{$serv}) {
-            push @{$ds}, "CDEF:${dataset}_minif=${dataset}_min,UN",
+            push @ds, "CDEF:${dataset}_minif=${dataset}_min,UN",
                     , "CDEF:${dataset}_mini=${dataset}_minif,${dataset},${dataset}_min,IF"
                     , "GPRINT:${dataset}_mini:MIN:Min\\: $format\\n"
         } else {
-            push @{$ds}, "GPRINT:$dataset:MIN:Min\\: $format\\n"
+            push @ds, "GPRINT:$dataset:MIN:Min\\: $format\\n"
         }
     } else {
-        push @{$ds}, "GPRINT:$dataset:MAX:Max\\: $format"
+        push @ds, "GPRINT:$dataset:MAX:Max\\: $format"
                 , "GPRINT:$dataset:AVERAGE:Avg\\: $format"
                 , "GPRINT:$dataset:MIN:Min\\: $format"
                 , "GPRINT:$dataset:LAST:Cur\\: ${format}\\n";
     }
-    return;
+    return @ds;
 }
 
 # Generate all the parameters for rrd to produce a graph
 sub rrdline {
     my ($params) = @_;
     dumper(DBDEB, 'rrdline params', $params);
-    my ($graphinfo) = graphinfo($params->{host}, $params->{service}, $params->{db});
-    my $rrdopts = $params->{rrdopts} ? $params->{rrdopts} : q();
-    my $duration = 118_800; ## no critic (ProhibitMagicNumbers)
-    if ($rrdopts =~ /snow.(\d+)/) {
-        $duration = $1;
-    } else {
-        $rrdopts .= " -snow-$duration -enow";
-    }
-    my $offset = 0;
-    if (defined $params->{offset} && $params->{offset} ne q()) {
-        $offset = $params->{offset};
-    }
+
+    ## no critic (ProhibitMagicNumbers)
+
+    my $host = $params->{host};
+    my $service = $params->{service};
+    my $db = $params->{db};
+    my ($graphinfo) = graphinfo($host, $service, $db);
+
+    my $geom = $params->{geom};
     my $fixedscale = 0;
     if (defined $params->{fixedscale}) {
         $fixedscale = $params->{fixedscale};
     }
+    my $duration = 118_800;
+    my $offset = 0;
+    if (defined $params->{offset} && $params->{offset} ne q()) {
+        $offset = $params->{offset};
+    }
 
-    my @ds = (q(-), q(-a), 'PNG', '--start', "-$offset");
+    # start with global rrdopts from the config file
+    my $rrdopts = mergeopts(q(), $Config{rrdoptshash}{global});
+    # add options for the specified service
+    $rrdopts = mergeopts($rrdopts, $Config{rrdoptshash}{$service});
+    # add options from the parameters
+    $rrdopts = mergeopts($rrdopts, $params->{rrdopts});
+
+    # use duration and offset from rrdopts if they were specified there.
+    # this assumes formatting from printgraphicslinks.
+    if ($rrdopts =~ /-enow-(\d+)/) {
+        $offset = $1;
+    }
+    if ($rrdopts =~ /-snow-(\d+)/) {
+        $duration = $1 - $offset;
+    }
+
+    # build the list of arguments for rrdtool
+    my @ds;
+    push @ds, q(-);
+    if (index($rrdopts, '-a') == -1 && index($rrdopts, '--imgformat') == -1) {
+        push @ds, '-a', 'PNG';
+    }
+    if (index($rrdopts, '-s') == -1 && index($rrdopts, '--start') == -1) {
+        my $s = $duration + $offset;
+        push @ds, '-s', "now-$s";
+    }
+    if (index($rrdopts, '-e') == -1 && index($rrdopts, '--end') == -1) {
+        push @ds, '-e', "now-$offset";
+    }
 
     # Identify where to pull data from and what to call it
     my $directory = $Config{rrddir};
@@ -1152,22 +1179,28 @@ sub rrdline {
         my $file = $ii->{file};
         dumper(DBDEB, 'rrdline: this graphinfo entry', $ii);
         for my $dataset (sortnaturally(keys %{$ii->{line}})) {
-            my ($serv, $pos) = ($params->{service},
-                                length($params->{service}) - length $dataset);
-            if (substr($params->{service}, $pos) eq $dataset) {
-                $serv = substr $params->{service}, 0, $pos;
+            my ($serv, $pos) = ($service, length($service) - length $dataset);
+            if (substr($service, $pos) eq $dataset) {
+                $serv = substr $service, 0, $pos;
             }
-            setlabels($dataset, $longest, $serv, "$directory/$file", \@ds);
-            setdata($dataset, $fixedscale, $duration, $serv, "$directory/$file", \@ds);
+            push @ds, setlabels($dataset, $longest, $serv, "$directory/$file");
+            push @ds, setdata($dataset, $fixedscale, $duration, $serv, "$directory/$file");
         }
     }
 
     # Dimensions of graph if geom is specified
-    if ($params->{geom} && $params->{geom} ne 'default') {
-        my ($w, $h) = split /x/, $params->{geom};
-        push @ds, '-w', $w, '-h', $h;
+    if ($geom && $geom ne 'default') {
+        my ($w, $h) = split /x/, $geom;
+        if (index($rrdopts, '-w') == -1) {
+            push @ds, '-w', $w;
+        }
+        if (index($rrdopts, '-h') == -1) {
+            push @ds, '-h', $h;
+        }
     } else {
-        push @ds, '-w', GRAPHWIDTH; # just make the graph wider than default
+        if (index($rrdopts, '-w') == -1) {
+            push @ds, '-w', GRAPHWIDTH; # make the graph wider than default
+        }
     }
 
     # Additional parameters to rrd graph, if specified
@@ -1184,27 +1217,38 @@ sub rrdline {
             }
         }
     }
-    if ($fixedscale && $rrdopts !~ /-X/) {
+    if ($fixedscale && index($rrdopts, '-X') == -1) {
         push @ds, '-X', '0';
     }
-    foreach my $ii (['altautoscale', '-A'], ['altautoscalemin', '-J'],
-                    ['altautoscalemax', '-M'], ['nogridfit', '-N'],
+    foreach my $ii (['altautoscale', '-A'],
+                    ['altautoscalemin', '-J'],
+                    ['altautoscalemax', '-M'],
+                    ['nogridfit', '-N'],
                     ['logarithmic', '-o']) {
-        addopt($ii->[0], $params->{service}, $rrdopts, $ii->[1], \@ds);
+        push @ds, addopt($ii->[0], $service, $rrdopts, $ii->[1]);
     }
     debug(DBDEB, 'rrdline: returning ' . join q( ), @ds);
     return @ds;
 }
 
 sub addopt {
-    my ($conf, $service, $rrdopts, $rrdopt, $ds) = @_;
+    my ($conf, $service, $rrdopts, $rrdopt) = @_;
+    my @ds;
     ## no critic (ProhibitMagicNumbers)
     if (defined $Config{$conf} and
         exists $Config{$conf}{$service} and
         index($rrdopts, $rrdopt) == -1) {
-            push @{$ds}, $rrdopt;
+            push @ds, $rrdopt;
     }
-    return;
+    return @ds;
+}
+
+# FIXME: at some point it might be nice to replace args in a with corresponding
+# args from b.  for now we just append everything in b to a.
+sub mergeopts {
+    my ($a, $b) = @_;
+    $b ||= q();
+    return $a . q( ) . $b;
 }
 
 # Server/service menu routines ################################################

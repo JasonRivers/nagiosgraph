@@ -287,12 +287,12 @@ sub testrrdline {
           '-',
           '-a',
           'PNG',
-          '--start',
-          '-0',
+          '-s',
+          'now-118800',
+          '-e',
+          'now-0',
           '-w',
-          '600 ',
-          '-snow-118800',
-          '-enow'
+          600
         ];\n");
 
     # minimal invocation when data exist for the host
@@ -302,8 +302,10 @@ sub testrrdline {
           '-',
           '-a',
           'PNG',
-          '--start',
-          '-0',
+          '-s',
+          'now-118800',
+          '-e',
+          'now-0',
           'DEF:losspct=/home/src/nagiosgraph/t/host0/PING___ping.rrd:losspct:AVERAGE',
           'LINE2:losspct#9900FF:losspct',
           'GPRINT:losspct:MAX:Max\\\\: %6.2lf%s',
@@ -317,9 +319,7 @@ sub testrrdline {
           'GPRINT:rta:MIN:Min\\\\: %6.2lf%s',
           'GPRINT:rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
           '-w',
-          '600 ',
-          '-snow-118800',
-          '-enow'
+          600
         ];\n");
 
     # specify a bogus data set
@@ -329,12 +329,12 @@ sub testrrdline {
           '-',
           '-a',
           'PNG',
-          '--start',
-          '-0',
+          '-s',
+          'now-118800',
+          '-e',
+          'now-0',
           '-w',
-          '600 ',
-          '-snow-118800',
-          '-enow'
+          600
         ];\n");
 
     # specify a valid data set
@@ -344,8 +344,10 @@ sub testrrdline {
           '-',
           '-a',
           'PNG',
-          '--start',
-          '-0',
+          '-s',
+          'now-118800',
+          '-e',
+          'now-0',
           'DEF:rta=/home/src/nagiosgraph/t/host0/PING___ping.rrd:rta:AVERAGE',
           'LINE2:rta#CC03CC:rta',
           'GPRINT:rta:MAX:Max\\\\: %6.2lf%s',
@@ -353,9 +355,7 @@ sub testrrdline {
           'GPRINT:rta:MIN:Min\\\\: %6.2lf%s',
           'GPRINT:rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
           '-w',
-          '600 ',
-          '-snow-118800',
-          '-enow'
+          600
         ];\n");
 
 #FIXME: test geom
