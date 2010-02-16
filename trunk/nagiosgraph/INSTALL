@@ -18,7 +18,7 @@ This document contains the following sections:
   Displaying Graphs in Nagios Mouseovers
   Displaying Graphs in Nagios Frames
   Customizing the Graphs
-  Adding Services and Troubleshooting
+  Adding Services
   Appendix: Sample Installation Layouts
   Appendix: Web Server Configuration
   Appendix: Platform Specific Notes
@@ -67,7 +67,7 @@ Installation Instructions
    e.g. /etc/nagiosgraph
 
  - Edit the perl scripts in the cgi and lib directories, modifying the
-   "use lib" lines to point to the directory from the previous step.
+   "use lib" line to point to the directory from the previous step.
 
  - Copy the contents of lib into a location Nagios can execute files,
    e.g. /usr/lib/nagios/libexec
@@ -82,10 +82,17 @@ Installation Instructions
    e.g. /usr/share/nagios/stylesheets
 
  - Copy the share/nagiosgraph.js file into a directory served by the web server
-   e.g. /usr/share/nagios, then modify "javascript = /nagios/nagiosgraph.js"
-   in nagiosgraph.conf to the appropriate URL.
+   e.g. /usr/share/nagiosgraph
 
- - Edit nagiosgraph.conf to set paths, debug level etc.
+ - Edit nagiosgraph.conf.  Set at least the following:
+
+     logfile
+     perflog
+     rrddir
+     mapfile
+     nagiosgraphcgiurl
+     javascript
+     stylesheet
 
  - Set permissions of "rrddir" (as defined in nagiosgraph.conf) so that
    the *nagios* user can write to it and the *www* user can read it.
@@ -98,12 +105,12 @@ Upgrade Notes
 -------------
 
  - Follow the steps above, but keep your customizations.  Your changes should
-   be limited to the configuration files (nagiosgraph.conf, servdb.conf,
-   hostdb.conf, rrdopts.conf, and map).  You may also have modifications to
-   the stylesheet (nagiosgraph.css).
+   be limited to the configuration files (map, nagiosgraph.conf, servdb.conf,
+   hostdb.conf, groupdb.conf, datasetdb.conf, rrdopts.conf).  You may also
+   have modifications to the stylesheet (nagiosgraph.css).
 
- - Use diff, or a similar tool, to update your nagiosgraph.conf with new fields
-   from etc/nagiosgraph.conf.
+ - Use diff, or a similar tool, to update your nagiosgraph.conf with any new
+   fields from etc/nagiosgraph.conf.
 
  - You may want to look at etc/map to see if there are any new examples that
    you may find useful.
@@ -273,11 +280,20 @@ Displaying Graphs in Nagios Mouseovers
 
 To display graphs as mouseovers for each host and/or service, do the following:
 
-  - Copy nagiosgraph.ssi.js to the nagios ssi directory, for example:
-      cp share/nagiosgraph.ssi.js /usr/share/nagios/ssi/common-header.ssi
+  - Edit the file share/nagiosgraph.ssi to contain the correct URL to
+    nagiosgraph.js (e.g. /nagiosgraph/nagiosgraph.js)
+
+  - If you have not customized the Nagios SSI, copy share/nagiosgraph.ssi to
+    the nagios ssi directory, and rename it so that Nagios will insert it into
+    each page.  For example:
+
+      cp share/nagiosgraph.ssi /usr/share/nagios/ssi/common-header.ssi
+
+    If you have customized Nagios SSI, add the contents of
+    share/nagiosgraph.ssi to your customized SSI header file(s).
 
   - Configure services to display graphs on mouseovers by adding some 
-    JavaScript to the action or notes url.  For example:
+    JavaScript to action_url or notes_url.  For example:
 
      define service {
        name NTP
@@ -301,7 +317,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
        action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450-j
      }
 
-You must restart Nagios for these changes to take effect.
+You must restart Nagios for changes to service/host defintions to take effect.
 
 If a service includes multiple data sets, use the datasetdb file (specified
 in nagiosgraph.conf) to indicate which data sets should be displayed by
@@ -374,30 +390,34 @@ See the nagiosgraph.conf file for more options and examples.
 
 
 
-Adding Services and Troubleshooting
------------------------------------
+Adding Services
+---------------
 
- - To add new service types, edit the map file. This contains regular
-   expression to identify service types, and defines how to store data in
-   rrd files. Use testentry.pl for testing before inserting in map file.
+To add new service types, edit the map file. This contains regular
+expression to identify service types, and defines how to store data in
+rrd files.
 
-   You can also run the nagios check command from the command line to see
+ - Use testentry.pl for testing before inserting in map file.
+
+ - You can also run the nagios check command from the command line to see
    what is returned.
 
-   NOTE: The current entry in map file for HTTP does not work for Fedora core 6
-   with Nagios 2.6 and later.  This is what did work.
+ - Changes to the map file generally do not require a restart of Nagios.
+
+ - Increase debug level in nagiosgraph.conf to see what is happening.
+   Output will go to the nagiosgraph log file.
+
+ - Keep an eye on the log file. It can grow big. Perhaps rotate it, or
+   decrease log level when everything works fine.
+
+NOTE: The current entry in map file for HTTP does not work for Fedora core 6
+with Nagios 2.6 and later.  This is what did work.
 
 	# Service type: unix-www
 	#   ouput:OK - HTTP/1.1 302 Found - 0.002 second response time |time=0.001920s;;;0.000000 size=126B;;;0
 	/output:.*?HTTP.*?([.0-9]+) sec/
 	and push @s, [ http,
 		[ rt, GAUGE, $1 ] ];
-
- - Restart Nagios. Increase debug level in nagiosgraph.conf if things don't
-   work right away.
-
- - Keep an eye on the log file. It can grow big. Perhaps rotate it, or
-   decrease log level when everything works fine.
 
 
 
