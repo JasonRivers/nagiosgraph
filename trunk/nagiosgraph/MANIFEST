@@ -13,6 +13,7 @@ cgi/showgroup.cgi
 cgi/showhost.cgi
 cgi/showservice.cgi
 cgi/testcolor.cgi
+etc/datasetdb.conf
 etc/groupdb.conf
 etc/hostdb.conf
 etc/map
@@ -27,6 +28,7 @@ examples/nagiosgraph.2.css
 share/action.gif
 share/nagiosgraph.css
 share/nagiosgraph.js
+share/nagiosgraph.ssi.js
 t/01required_modules.t
 t/02ngshared.t
 t/97pod.t

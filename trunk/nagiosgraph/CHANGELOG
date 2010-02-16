@@ -1,7 +1,6 @@
 $Id$
 
-TBD
-
+1.4.1 TBD
 * showgraph.cgi accepts period (which is overridden by any rrdopts)
 * use button instead of toggle to show/hide graph controls (keeps ie8 happy)
 * fixed prev/next behavior
