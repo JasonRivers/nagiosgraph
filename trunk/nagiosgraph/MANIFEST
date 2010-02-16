@@ -28,7 +28,7 @@ examples/nagiosgraph.2.css
 share/action.gif
 share/nagiosgraph.css
 share/nagiosgraph.js
-share/nagiosgraph.ssi.js
+share/nagiosgraph.ssi
 t/01required_modules.t
 t/02ngshared.t
 t/97pod.t
