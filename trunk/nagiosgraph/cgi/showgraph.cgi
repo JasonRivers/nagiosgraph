@@ -78,11 +78,11 @@ host=host_name
 
 service=service_name
 
-graph=118800
-
 geom=default
 
-rrdopts=-u+100+-l+0+-r+-snow-118800+-enow-0
+period=(day | week | month | quarter | year)
+
+rrdopts=<rrdgraph options>
 
 =head1 EXIT STATUS
 

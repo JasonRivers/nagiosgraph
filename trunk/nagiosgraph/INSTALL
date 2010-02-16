@@ -293,6 +293,14 @@ To display graphs as mouseovers for each host and/or service, do the following:
        action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&rrdopts=-w+450-j
      }
 
+    Similar to previous example, but a week of data rather than a day:
+
+     define service {
+       name NTP
+       use local-service
+       action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450-j
+     }
+
 You must restart Nagios for these changes to take effect.
 
 If a service includes multiple data sets, use the datasetdb file (specified

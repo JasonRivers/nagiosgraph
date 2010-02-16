@@ -87,6 +87,8 @@ B<show.cgi>?host=host_name&service=service_name[&db=dataset]
 
 =item period=(day week month quarter year)
 
+=item offset=86400
+
 =item geom=WIDTHxHEIGHT
 
 =item rrdopts=-g

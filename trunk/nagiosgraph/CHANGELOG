@@ -2,6 +2,7 @@ $Id$
 
 TBD
 
+* showgraph.cgi accepts period (which is overridden by any rrdopts)
 * use button instead of toggle to show/hide graph controls (keeps ie8 happy)
 * fixed prev/next behavior
 * added instructions and javascript for doing graphs on mouseovers in nagios

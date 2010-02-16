@@ -10,6 +10,7 @@
 ## no critic (ProhibitCascadingIfElse)
 ## no critic (ProhibitExcessComplexity)
 ## no critic (ProhibitDeepNests)
+## no critic (ProhibitMagicNumbers)
 
 use strict;
 use warnings;
@@ -44,18 +45,32 @@ use constant GEOMETRIES => '500x80,650x150,1000x200';
 use constant COLORS => 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0';
 
 use vars qw(%Config %Navmenu $colorsub $VERSION %Ctrans $LOG); ## no critic (ProhibitPackageVars)
-$colorsub = -1; ## no critic (ProhibitMagicNumbers)
+$colorsub = -1;
 $VERSION = '1.4.1';
 
 my $CFGNAME = 'nagiosgraph.conf';
+
+# Pre-defined available graph periods
+#     Daily      =  33h = 118800s
+#     Weekly     =   9d = 777600s
+#     Monthly    =   5w = 3024000s
+#     Quarterly  =  14w = 8467200s
+#     Yearly     = 400d = 34560000s
+# Period data tuples are [name, period (seconds), offset (seconds)]
+my %PERIODDATA = ('day' => ['day', 118_800, 86_400],
+                  'week' => ['week', 777_600, 604_800],
+                  'month' => ['month', 3_024_000, 2_592_000],
+                  'quarter' => ['quarter', 8_467_200, 7_776_000],
+                  'year' => ['year', 34_560_000, 31_536_000],);
 my @PERIODS = qw(day week month quarter year);
+my @DEFAULT_PERIODS = qw(day week month year);
 
 # Debug/logging support #######################################################
 # Write information to STDERR
 sub stacktrace {
     my $msg = shift;
     warn "$msg\n";
-    my $max_depth = 30; ## no critic (ProhibitMagicNumbers)
+    my $max_depth = 30;
     my $ii = 1;
     warn "--- Begin stack trace ---\n";
     while ((my @call_details = (caller $ii++)) && ($ii < $max_depth)) {
@@ -365,7 +380,7 @@ sub mkfilename {
         $directory .=  q(/) . $host;
         if (not -e $directory) { # Create host specific directories
             debug(DBINF, "mkfilename: creating directory $directory");
-            mkdir $directory, 0775; ## no critic (ProhibitMagicNumbers)
+            mkdir $directory, 0775;
             if (not -w $directory) { croak "cannot write to $directory"; }
         }
         if ($db) {
@@ -418,7 +433,7 @@ sub hashcolor {
     debug(DBDEB, "hashcolor($color)");
 
     # color 9 is user defined (or the default rainbow if nothing userdefined).
-    if ($color == 9) { ## no critic (ProhibitMagicNumbers)
+    if ($color == 9) {
         # Wrap around, if we have more values than given colors
         $colorsub++;
         if ($colorsub >= scalar @{$Config{colors}}) { $colorsub = 0; }
@@ -426,7 +441,6 @@ sub hashcolor {
         return $Config{colors}[$colorsub];
     }
 
-    ## no critic (ProhibitMagicNumbers)
     my ($min, $max, $rval, @rgb) = (0, 0);
     # generate a starting value
     map { $color = (51 * $color + ord) % (216) } split //, $label;
@@ -1075,7 +1089,7 @@ sub setdata {
     my $format = '%6.2lf%s';
     if ($fixedscale) { $format = '%6.2lf'; }
     debug(DBDEB, "setdata: format=$format");
-    if ($dur > 120_000) { ## no critic (ProhibitMagicNumbers) long enough to start getting summation
+    if ($dur > 120_000) { # long enough to start getting summation
         if (defined $Config{withmaximums}->{$serv}) {
             my $maxcolor = '888888'; #$color;
             push @ds, "DEF:${dataset}_max=${file}_max:$dataset:MAX"
@@ -1115,8 +1129,6 @@ sub rrdline {
     my ($params) = @_;
     dumper(DBDEB, 'rrdline params', $params);
 
-    ## no critic (ProhibitMagicNumbers)
-
     my $host = $params->{host};
     my $service = $params->{service};
     my $db = $params->{db};
@@ -1128,6 +1140,9 @@ sub rrdline {
         $fixedscale = $params->{fixedscale};
     }
     my $duration = 118_800;
+    if (defined $params->{period} && $PERIODDATA{$params->{period}}) {
+        $duration = $PERIODDATA{$params->{period}}[1];
+    }
     my $offset = 0;
     if (defined $params->{offset} && $params->{offset} ne q()) {
         $offset = $params->{offset};
@@ -1234,7 +1249,6 @@ sub rrdline {
 sub addopt {
     my ($conf, $service, $rrdopts, $rrdopt) = @_;
     my @ds;
-    ## no critic (ProhibitMagicNumbers)
     if (defined $Config{$conf} and
         exists $Config{$conf}{$service} and
         index($rrdopts, $rrdopt) == -1) {
@@ -1248,7 +1262,7 @@ sub addopt {
 sub mergeopts {
     my ($a, $b) = @_;
     $b ||= q();
-    return $a . q( ) . $b;
+    return $a . ($b eq q() ? q() : q( ) . $b);
 }
 
 # Server/service menu routines ################################################
@@ -1531,6 +1545,7 @@ sub printgraphlinks {
     dumper(DBDEB, 'printgraphlinks params', $params);
     dumper(DBDEB, 'printgraphlinks period', $period);
 
+    my $gtitle = q();
     my $alttag = q();
     my $desc = q();
 
@@ -1555,8 +1570,8 @@ sub printgraphlinks {
 
     # include quite a bit of information in the alt tag - it helps when
     # debugging configuration files.
-    $alttag = trans('graphof') . q( ) . $params->{service} .
-        q( ) . trans('on') . q( ) . $params->{host};
+    $gtitle = $params->{service} . q( ) . trans('on') . q( ) . $params->{host};
+    $alttag = trans('graphof') . q( ) . $gtitle;
     if ($params->{db}) {
         $alttag .= ' (';
         foreach my $ii (sortnaturally(@{$params->{db}})) {
@@ -1573,20 +1588,21 @@ sub printgraphlinks {
     if ($params->{hidelegend}) {
         $rrdopts .= ' -g';
     }
+    # the '-snow' and '-enow' formats matter - they are detected by rrdline
     my $soff = $period->[1] + $params->{offset};
     $rrdopts .= ' -snow-' . $soff;
     $rrdopts .= ' -enow-' . $params->{offset};
-    $rrdopts =~ tr/ /+/;
-    $rrdopts =~ s/#/%23/g;
     if ($showgraphtitle) {
         if ($rrdopts !~ /(-t|--title)/) {
-            my $t = $title;
+            my $t = $gtitle;
             $t =~ s/<br.*//g;     # use only the first line
             $t =~ s/<[^>]+>//g;   # punt any html markup
             $t =~ tr/-/:/;        # hyphens cause problems
             $rrdopts .= ' -t ' . $t;
         }
     }
+    $rrdopts =~ tr/ /+/;
+    $rrdopts =~ s/#/%23/g;
     debug(DBDEB, 'printgraphlinks rrdopts = ' . $rrdopts);
 
     my $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?';
@@ -1715,64 +1731,40 @@ sub printfooter {
 
 # Full page routine ###########################################################
 # Determine the number of graphs that will be displayed on the page
-# and the time period they will cover.  This expects a comma-delimited list
-# of time periods.
+# and the time period they will cover.  This expects a comma-delimited
+# or space-delimited list of period names.
+#
+# returns an array of period data, where each array element is a
+# tuple of name, period, offset.
 sub graphsizes {
     my $conf = shift;
     $conf =~ s/,/ /g; # convert to spaces so we can split on whitespace
     dumper(DBDEB, 'graphsizes: period', $conf);
-    my @config_times = split /\s+/, $conf;
+    my @periods = split /\s+/, $conf;
 
-    # [Label, period span, offset] (in seconds)
-    ## no critic (ProhibitMagicNumbers)
-    # Pre-defined available graph sizes
-    #     Daily      =  33h = 118800s
-    #     Weekly     =   9d = 777600s
-    #     Monthly    =   5w = 3024000s
-    #     Quarterly  =  14w = 8467200s
-    #     Yearly     = 400d = 34560000s
-    my @default_times = (['day', 118_800, 86_400],
-                         ['week', 777_600, 604_800],
-                         ['month', 3_024_000, 2_592_000],
-                         ['year', 34_560_000, 31_536_000],);
-    my %default_times = ('day' => 0,
-                         'week' => 1,
-                         'month' => 2,
-                         'year' => 3,
-                         'quarter' => ['quarter', 8_467_200, 7_776_000],);
-
-    # Configuration entry was absent or empty. Use default
-    if (not @config_times) {
-        debug(DBDEB, 'graphsizes: cannot determine period, using defaults');
-        return @default_times;
+    if (not @periods) {
+        debug(DBDEB, 'graphsizes: no periods found, using defaults');
+        @periods = @DEFAULT_PERIODS;
     }
 
-    # Try to match known entries from configuration file
-    my @final_t;
-    foreach my $ii (@config_times) {
-        chomp $ii;
-        next if not exists $default_times{$ii};
-        if (ref($default_times{$ii}) eq 'ARRAY') {
-            push @final_t, $default_times{$ii};
-        } else {
-            push @final_t, $default_times[$default_times{$ii}];
-        }
+    my @unsorted;
+    foreach my $ii (@periods) {
+        next if not exists $PERIODDATA{$ii};
+        push @unsorted, $PERIODDATA{$ii};
     }
 
-    # Final check to see if we matched any known entry or use default
-    if (not @final_t) {
-        debug(DBDEB, 'graphsizes: check for period failed, using defaults');
-        @final_t = @default_times;
+    if (not @unsorted) {
+        debug(DBDEB, 'graphsizes: no periods found, using defaults');
+        @unsorted = @DEFAULT_PERIODS;
     }
 
-    my @rval = sort {$a->[1] <=> $b->[1]} @final_t;
+    my @rval = sort {$a->[1] <=> $b->[1]} @unsorted;
     return @rval;
 }
 
 # returns three strings: a url for previous period, a label for current
 # display, and a url for the next period.  do not permit voyages into
 # the future.
-# FIXME: prevent going back in time before there are rrd slots (filled or not)
 sub getperiodctrls {
     my ($cgi, $params, $period, $now) = @_;
     debug(DBDEB, "getperiodctrls(now: $now period: @{$period})");
@@ -1867,7 +1859,7 @@ sub runcreate {
 
 sub checkdatasources {
     my ($dsmin, $directory, $filenames, $labels) = @_;
-    if (scalar @{$dsmin} == 3 and scalar @{$filenames} == 1) { ## no critic (ProhibitMagicNumbers)
+    if (scalar @{$dsmin} == 3 and scalar @{$filenames} == 1) {
         debug(DBCRT, "createrrd no data sources defined for $directory/$filenames->[0]");
         dumper(DBCRT, 'createrrd labels', $labels);
         return 0;
@@ -1894,7 +1886,6 @@ sub createrrd {
         dumper(DBDEB, 'createrrd resolution',  \@resolution);
     }
 
-    ## no critic (ProhibitMagicNumbers)
     $rras[0] = defined $resolution[0] ? $resolution[0] : 600;
     $rras[1] = defined $resolution[1] ? $resolution[1] : 700;
     $rras[2] = defined $resolution[2] ? $resolution[2] : 775;
@@ -2166,7 +2157,7 @@ sub trans {
 sub sortnaturally {
     my(@list) = @_;
     return @list[
-        map { unpack 'N', substr $_,-4 } ## no critic (ProhibitMagicNumbers)
+        map { unpack 'N', substr $_,-4 }
         sort
         map {
             my $key = $list[$_];
