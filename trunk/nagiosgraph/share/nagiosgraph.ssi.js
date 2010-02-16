@@ -30,7 +30,8 @@ function hideGraphPopup() {
   }
 }
 function findPos(elem) {
-  var left = top = 0;
+  var left = 0;
+  var top = 0;
   if(elem.offsetParent) {
     do {
       left += elem.offsetLeft;
