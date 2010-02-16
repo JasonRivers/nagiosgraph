@@ -218,7 +218,7 @@ function mkCGIArgs() {
   }
 
   elem = document.menuform.showhidecontrols;
-  if (elem && elem.checked) {
+  if (elem && elem.value == '-') {
     args.push('expand_controls');
   }
 
