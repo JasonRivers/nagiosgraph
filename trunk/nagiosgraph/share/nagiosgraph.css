@@ -14,12 +14,6 @@ body {
   font-weight: normal;
   font-size: 9pt;
 }
-h1 {
-  font-size: 12pt;
-  font-weight: bold;
-  clear: both;
-  padding-top: 1em;
-}
 .period_banner {
   clear: both;
   padding-top: 0.25em;
@@ -38,7 +32,7 @@ h1 {
   padding-right: 10px;
 }
 .period_detail {
-  font-size: 9pt;
+  font-size: 0.9em;
   font-weight: normal;
 }
 .period {
@@ -56,12 +50,11 @@ h1 {
   text-align: right;
 }
 .graph_title {
-  font-size: 10pt;
   font-weight: bold;
   margin-top: 0;
 }
 .graph_description {
-  font-size: 8pt;
+  font-size: 0.9em;
   margin-top: 0;
 }
 #secondary_controls_box {
@@ -83,23 +76,50 @@ h1 {
   font-style: italic;
 }
 
-/* Put the controls at the top of the page.  Controls scroll with page. */
-/* See the nagiosgraph examples directory for other controls positions. */
-.controls {
+
+table.cal {
+  background-color: #eeeeee;
 }
-.primary_controls {
+.dateWeekday {
+  color: #000000;
+  font-weight: bold;
+}
+.dateWeekend {
+  color: #882222;
+  font-weight: bold;
+}
+.dateNonCurrent {
+  color: #888888;
+  font-weight: bold;
+}
+td.calHdrCell {
+  border-bottom: 1px solid #222222;
+}
+#calSelectedCell {
+  background-color: #aabb88;
+}
+#pickerPopup {
+  position: absolute;
+  border: 1px solid #777777;
+  opacity: 0.9;
+}
+
+
+/* float controls in upper right corner of browser window */
+.controls {
   background-color: #efefef;
   border: 1px solid #dddddd;
+  position: fixed;
+  top: 2px;
+  right: 2px;
+}
+.primary_controls {
   padding: 4px 10px 4px 10px;
   float: left;
 }
 .secondary_controls {
-  background-color: #efefef;
-  border: 1px solid #dddddd;
   padding: 4px 10px 4px 10px;
   float: right;
-}
-.selector {
 }
 .executor {
   padding: 4px 10px 4px 10px;
@@ -107,8 +127,4 @@ h1 {
 .controls_toggle {
   text-align: right;
   margin: 0 0 0 0;
-}
-.summary {
-  padding-top: 1em;
-  clear: both;
 }

@@ -11,42 +11,341 @@ var PNAME = [ 'day', 'week', 'month', 'quarter', 'year' ];
 
 // show/hide a graph popup window (for mouseovers)
 var ngpopup;
+var ngpopupT = 16;
+var ngpopupL = 20;
 function showGraphPopup(elem) {
-  if(!elem || !elem.rel) return;
+  if(!elem.rel) return;
   if(ngpopup == null) {
     ngpopup = document.createElement('div');
     ngpopup.style.position = 'absolute';
     ngpopup.style.padding = '3';
-    ngpopup.style.background = '#dddddd';
+    ngpopup.style.backgroundColor = '#dddddd';
     ngpopup.style.border = '1px solid #777777';
     ngpopup.style.filter='alpha(opacity=90)';
     ngpopup.style.opacity='0.90';
     document.body.appendChild(ngpopup);
   }
-  var html = "<div class='graphPopup'>";
+  var html = "<div id='graphPopup'>";
   html += "<img src='" + elem.rel + "' alt='graph data'>";
   html += "</div>";
   ngpopup.innerHTML = html;
   var coord = findPos(elem);
-  ngpopup.style.left = coord[0] + 20;
-  ngpopup.style.top = coord[1] + 16;
+  ngpopup.style.top = coord.top + ngpopupT;
+  ngpopup.style.left = coord.left + ngpopupL;
   ngpopup.style.visibility = 'visible';
 }
+
 function hideGraphPopup() {
   if(ngpopup != null) {
     ngpopup.style.visibility = 'hidden';
   }
 }
+
 function findPos(elem) {
-  var left = 0;
   var top = 0;
+  var left = 0;
   if(elem.offsetParent) {
     do {
-      left += elem.offsetLeft;
       top += elem.offsetTop;
-    } while(elem=elem.offsetParent);
+      left += elem.offsetLeft;
+    } while((elem=elem.offsetParent) != null);
   }
-  return [left, top];
+  var coord = new Object();
+  coord.top = top;
+  coord.left = left;
+  return coord;
+}
+
+// yet another javascript date/time picker
+var ngpicker;
+var ngStartOfWeek = "mon";
+function showDateTimePicker(elem) {
+  if(ngpicker == null) {
+    ngpicker = document.createElement('div');
+    var cb = document.getElementById('secondary_controls_box');
+    cb.appendChild(ngpicker);
+    var html = "<div id='pickerPopup'>";
+    html += dtpCreateHTML();
+    html += "</div>";
+    ngpicker.innerHTML = html;
+  }
+  if(ngpicker.style.visibility == 'visible') {
+    ngpicker.style.visibility = 'hidden';
+  } else {
+    var date = dtpParseDate(document.menuform.enddate.value);
+    dtpConfigCalendar(date);
+    ngpicker.style.visibility = 'visible';
+  }
+}
+
+function hideDateTimePicker() {
+  if(ngpicker != null) {
+    ngpicker.style.visibility = 'hidden';
+  }
+}
+
+function dtpGetSelectedDate() {
+  var date = new Date();
+  date.setSeconds(0);
+  date.setMinutes(document.menuform.minute.value);
+  date.setHours(document.menuform.hour.value);
+  date.setDate(document.menuform.day.value);
+  date.setMonth(document.menuform.month.value);
+  date.setYear(document.menuform.year.value);
+  return date;
+}
+
+// expects the format 'dd.mm.yyyy HH:SS'
+// returns current time if cannot parse.
+function dtpParseDate(str) {
+  var date = new Date();
+  if(str && str != 'now') {
+    var parts = str.split(' ');
+    if(parts.length == 2) {
+      var dstr = parts[0].split('.');
+      var tstr = parts[1].split(':');
+      if(dstr.length == 3 && tstr.length == 2) {
+        date.setSeconds(0);
+        date.setMinutes(tstr[1]);
+        date.setHours(tstr[0]);
+        date.setDate(dstr[0]);
+        date.setMonth(dstr[1]-1);
+        date.setYear(dstr[2]);
+      }
+    }
+  }
+  return date;
+}
+
+function dtpFormatDate(date) {
+  var MM = dtpPrepend(date.getMinutes());
+  var HH = dtpPrepend(date.getHours());
+  var dd = dtpPrepend(date.getDate());
+  var mm = dtpPrepend(date.getMonth() + 1);
+  var yy = date.getFullYear();
+  return dd + '.' + mm + '.' + yy + ' ' + HH + ':' + MM;
+}
+
+function dtpPickDateTime(label) {
+  if(!label) {
+    var date = dtpGetSelectedDate();
+    label = dtpFormatDate(date);
+  }
+  if(document.menuform.enddate) {
+    document.menuform.enddate.value = label;
+  }
+}
+
+function dtpPrepend(x) {
+  return (x < 10 ? "0" : "") + x;
+}
+
+function dtpConfigCalendar(ts) {
+  var currD;
+  var currM;
+  var currY;
+  if(ts) {
+    currD = ts.getDate();
+    currM = ts.getMonth();
+    currY = ts.getFullYear();
+    var MM = 15 * parseInt(ts.getMinutes() / 15);
+    document.menuform.minute.value = dtpPrepend(MM);
+    document.menuform.hour.value = dtpPrepend(ts.getHours());
+    document.menuform.day.value = currD;
+    document.menuform.month.value = currM;
+    document.menuform.year.value = currY;
+  } else {
+    currD = parseInt(document.menuform.day.value);
+    currM = parseInt(document.menuform.month.value);
+    currY = parseInt(document.menuform.year.value);
+  }
+  var date = new Date();
+  date.setFullYear(currY);
+  date.setMonth(currM);
+  date.setDate(1);
+  date.setSeconds(0);
+  var sidx = (ngStartOfWeek == "mon" ? 1 : 0);
+  var prevM = (currM > 0) ? currM - 1 : 11;
+  var d = date.getDay();
+  if(d == 0) { d = 7; }
+  d -= sidx;
+  if(d < 0) { d = 7; }
+  var dates = new Array(42);
+  for(var i=0; i<d; i++) {
+    dates[i] = dtpMaxDays(prevM,currY) - d + i + 1;
+  }
+  var x = 1;
+  for(var i=d; i<=d+dtpMaxDays(currM,currY)-1; i++) {
+    dates[i] = x;
+    x += 1;
+  }
+  x = 1;
+  for(var i=d+dtpMaxDays(currM,currY); i<= 41; i++) {
+    dates[i] = x;
+    x += 1;
+  }
+  var dow = 0;
+  var sat = (ngStartOfWeek == "mon" ? 5 : 6);
+  var sun = (ngStartOfWeek == "mon" ? 6 : 0);
+  for(var i=0; i<42; i++) {
+    var cn = 'dateWeekday';
+    if((i<7 && dates[i]>20) || (i>27 && dates[i]<20)) {
+      cn = 'dateNonCurrent';
+    } else if(dow == sat || dow == sun) {
+      cn = 'dateWeekend';
+    }
+    var elem = document.getElementById('calCell'+i);
+    elem.innerHTML = dates[i];
+    elem.className = cn;
+    dow += 1;
+    if(dow > 6) { dow = 0; }
+  }
+  for(var i=0; i<42; i++) {
+    if(dates[i] == currD) {
+      dtpSelectDay('calCell'+i);
+      break;
+    }
+  }
+}
+
+function dtpSelectDay(id) {
+  var selem = document.getElementById(id);
+  if(!selem)
+    return;
+  if(selem.className != 'dateWeekday' && selem.className != 'dateWeekend')
+    return;
+  if(isNaN(selem.innerHTML))
+    return;
+  var elem = document.getElementById('calUnselectedCell');
+  var bg = deepCSS(elem,'background-color');
+  for(var i=0; i<42; i++) {
+    elem = document.getElementById('calCell'+i);
+    elem.style.backgroundColor = bg;
+  }
+  elem = document.getElementById('calSelectedCell');
+  bg = deepCSS(elem,'background-color');
+  selem.style.backgroundColor = bg;
+  document.menuform.day.value = selem.innerHTML;
+}
+
+// get the actual (computed) CSS value of the indicated property
+// (thank you mrhoo http://codingforums.com/showthread.php?p=920175)
+function deepCSS(elem, prop) {
+  var val;
+  var dv = document.defaultView || window;
+  if(dv.getComputedStyle) {
+    val = dv.getComputedStyle(elem,'').getPropertyValue(prop);
+  } else if(elem.currentStyle) {
+    prop = prop.replace(/\-[a-z]/g, function(w) {
+      return w.charAt(1).toUpperCase() + w.substring(2);
+    });
+    val = elem.currentStyle[prop];
+  }
+  return val;
+}
+
+function dtpCreateHTML() {
+  var ts = new Date();
+  var minute = ts.getMinutes();
+  var hour = ts.getHours();
+  var day = ts.getDate();
+  var month = ts.getMonth();
+  var year = ts.getFullYear();
+
+  var minutes = new Array("00","15","30","45");
+  var hours = new Array();
+  for(var i=0; i<24; i++) {
+    hours[i] = (i < 10 ? "0" + i : i);
+  }
+  var months = new Array("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec");
+  var days = new Array("Sun","Mon","Tue","Wed","Thu","Fri","Sat","Sun");
+  var years = new Array();
+  for(var i=0; i<5; i++) {
+    years[i] = year + i - 4;
+  }
+
+  var txt = "";
+  txt += "<input type='hidden' name='day' value='" + day + "'>";
+  txt += "<table style='display:none'><tr><td id='calSelectedCell'></td><td id='calUnselectedCell'></td></tr></table>";
+  txt += "<table class='cal'>";
+  txt += "<tr><td><table width='100%'>";
+  txt += "<tr><td align='left'>";
+  txt += "<select name='month' onChange='dtpConfigCalendar()'>";
+  for(var i=0; i<months.length; i++) {
+    var selected = (i == month ? " selected" : "");
+    txt += "<option value='" + i + "'" + selected + ">" + months[i] + "</option>";
+  }
+  txt += "</select>";
+  txt += "</td><td align='right'>";
+  txt += "<select name='year' onChange='dtpConfigCalendar()'>";
+  for(var i=0; i<years.length; i++ ) {
+    var selected = (years[i] == year ? " selected" : "");
+    txt += "<option value='" + years[i] + "'" + selected + ">" + years[i] + "</option>";
+  }
+  txt += "</select>";
+  txt += "</td></tr>";
+  txt += "</table></td></tr>";
+  txt += "<tr><td><table>";
+
+  var sidx = (ngStartOfWeek == "mon" ? 1 : 0);
+  var rows = 6;
+  var cols = 7;
+  txt += "<tr class='calHdr'>";
+  for(var j=0; j<cols; j++) {
+    txt += "<td class='calHdrCell'>" + days[j+sidx] + "</td>";
+  }
+  txt += "</tr>";
+  var idx = 0;
+  for(var i=0; i<rows; i++) {
+    txt += "<tr class='calRow'>";
+    for(var j=0; j<cols; j++) {
+      txt += "<td class='calCell' align='right'"
+      txt += " id='calCell" + idx + "' onClick='dtpSelectDay(this.id)'>x";
+      txt += "</td>";
+      idx++;
+    }
+    txt += "</tr>";
+  }
+  txt += "</table></td></tr>";
+  txt += "<tr><td><table width='100%'>";
+  txt += "<tr><td align='left' colspan='2'>";
+  txt += "<select name='hour'>";
+  for(var i=0; i<hours.length; i++) {
+    var selected = (hours[i] == hour ? " selected" : "");
+    txt += "<option value='" + hours[i] + "'" + selected + ">" + hours[i] + "</option>";
+  }
+  txt += "</select>";
+  txt += " : ";
+  txt += "<select name='minute'>";
+  for(var i=0; i<minutes.length; i++) {
+    var selected = (minutes[i] == minute ? " selected" : "");
+    txt += "<option value='" + minutes[i] + "'" + selected + ">" + minutes[i] + "</option>";
+  }
+  txt += "</select>";
+  txt += "</td></tr>";
+  txt += "<tr class='calButtons'><td align='left'>";
+  txt += "<input type='button' name='ok' value='OK' onClick='dtpPickDateTime(); hideDateTimePicker();'/>";
+  txt += "<input type='button' name='now' value='Now' onClick='dtpPickDateTime(\"now\"); hideDateTimePicker();'/>";
+  txt += "</td><td align='right'>";
+  txt += "<input type='button' name='cancel' value='Cancel' onClick='hideDateTimePicker()'/>";
+  txt += "</td></tr></table>";
+  txt += "</td></tr>";
+  txt += "</table>";
+  return txt;
+}
+
+function dtpMaxDays(m, y) {
+  var d = 31;
+  if(m == 3 || m == 5 || m == 8 || m == 10) {
+    d = 30;
+  } else if(m == 1) {
+    if(y/4 - parseInt(y/4) != 0) {
+      d = 28;
+    } else {
+      d = 29;
+    }
+  }
+  return d;
 }
 
 
@@ -82,26 +381,6 @@ function getCGIBoolean(key) {
   return false;
 }
 
-function setDisplay(elem, state) {
-  if (elem) {
-    if (state) {
-      elem.style.display = 'inline';
-    } else {
-      elem.style.display = 'none';
-    }
-  }
-}
-
-function toggleDisplay(elem) {
-  if (elem) {
-    if (elem.style.display != 'none') {
-      elem.style.display = 'none';
-    } else {
-      elem.style.display = 'inline';
-    }
-  }
-}
-
 function setExpansionState(expanded, panel, button) {
   if (expanded) {
     if (panel) panel.style.display = 'inline';
@@ -112,16 +391,8 @@ function setExpansionState(expanded, panel, button) {
   }
 }
 
-// FIXME: this does not work.  i tried making a table row have this id, and
-// that resulted in messed up table layout.  so i wrapped the row in a div.
-// now the layout is ok, but the visibility changes do not work.  sigh.
-function showDBControls(flag) {
-  setDisplay(document.getElementById('db_controls'), flag);
-}
-
-// show/hide the secondary controls panel
-function toggleControlsDisplay(button) {
-  var elem = document.getElementById('secondary_controls_box');
+function toggleExpansionState(id, button) {
+  var elem = document.getElementById(id);
   toggleDisplay(elem);
   if (elem.style.display == 'inline') {
     button.value = '-';
@@ -130,14 +401,21 @@ function toggleControlsDisplay(button) {
   }
 }
 
-// toggle display of the indicated period
+function toggleControlsDisplay(button) {
+  toggleExpansionState('secondary_controls_box', button);
+}
+
 function togglePeriodDisplay(period, button) {
-  var elem = document.getElementById(period);
-  toggleDisplay(elem);
-  if (elem.style.display == 'inline') {
-    button.value = '-';
-  } else {
-    button.value = '+';
+  toggleExpansionState(period, button);
+}
+
+function toggleDisplay(elem) {
+  if (elem) {
+    if (elem.style.display != 'none') {
+      elem.style.display = 'none';
+    } else {
+      elem.style.display = 'inline';
+    }
   }
 }
 
@@ -164,6 +442,8 @@ function clearPeriodSelection() {
 //
 // Why not just use CGI, you ask?  We need this since we maintain the GUI
 // state, e.g. expanded/collapsed state of time periods and controls.
+//
+// FIXME: need to make this future-proof/less-brittle
 function mkCGIArgs() {
   var args = new Array();
 
@@ -209,6 +489,25 @@ function mkCGIArgs() {
         }
         break;
       }
+    }
+  }
+
+  offset = '';
+  elem = document.menuform.enddate;
+  if (elem) {
+    if (elem.value != 'now') {
+      var now = new Date();
+      now.setSeconds(0);
+      var then = dtpParseDate(elem.value);
+      then.setSeconds(0);
+      var value = now.getTime() - then.getTime();
+      value /= 1000;
+      value = parseInt(value);
+      if (value != 0) {
+        offset = 'offset=' + value;
+      }
+    } else {
+      offset = 'now';
     }
   }
 
@@ -274,6 +573,10 @@ function mkCGIArgs() {
       if (geom == '' && value != '' && value != 'default') {
         geom = params[ii];
       }
+    } else if (name == 'offset') {
+      if (offset == '') {
+        offset = params[ii];
+      }
     } else {
       args.push(params[ii]);
     }
@@ -281,6 +584,9 @@ function mkCGIArgs() {
 
   if (geom != '' && geom != 'default') {
     args.push(geom);
+  }
+  if (offset != '' && offset != 'now') {
+    args.push(offset);
   }
 
   var newq = '';
@@ -449,12 +755,7 @@ function cfgDBMenu(host, service) {
     }
   }
 
-  if (menu.length <= 1) {
-    showDBControls(false);
-  } else {
-    menu.size = 5;
-    showDBControls(true);
-  }
+  menu.size = 5;
 }
 
 // highlight the period menu items based on the elements in the page.
@@ -533,12 +834,6 @@ function selectDBItems(service, query) {
       elem.options[kk].selected = true;
     }
   }
-
-  if (elem.length == 1) {
-    showDBControls(false);
-  } else {
-    showDBControls(true);
-  }
 }
 
 // returns a string with the selected data sets.  string is in CGI format.
@@ -575,6 +870,18 @@ function setControlsGUIState() {
         elem.options[ii].selected = true;
         break;
       }
+    }
+  }
+  elem = document.menuform.enddate;
+  if (elem) {
+    var offset = getCGIValue('offset');
+    if (offset) {
+      var now = new Date();
+      now.setSeconds(0);
+      var nows = now.getTime();
+      var date = new Date();
+      date.setTime(nows - offset*1000);
+      elem.value = dtpFormatDate(date);
     }
   }
 }

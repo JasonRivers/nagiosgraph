@@ -5,18 +5,16 @@
            http://www.opensource.org/licenses/artistic-license-2.0.php
   Author:  (c) 2008 Alan Brenner, Ithaka
   Author:  (c) 2010 Matthew Wall
+
+  This stylesheet applies to nagiosgraph 1.4.1
 */
 
 body {
   color: black;
   background-color: white;
-  font-family: arial, verdana, serif;
+  font-family: arial, verdana, lucida, helvetica, sans-serif, serif;
   font-weight: normal;
   font-size: 9pt;
-}
-h1 {
-  font-size: 12pt;
-  font-weight: bold;
 }
 .period_banner {
   clear: both;
@@ -36,7 +34,7 @@ h1 {
   padding-right: 10px;
 }
 .period_detail {
-  font-size: 9pt;
+  font-size: 0.9em;
   font-weight: normal;
 }
 .period {
@@ -54,12 +52,11 @@ h1 {
   text-align: right;
 }
 .graph_title {
-  font-size: 10pt;
   font-weight: bold;
   margin-top: 0;
 }
 .graph_description {
-  font-size: 8pt;
+  font-size: 0.9em;
   margin-top: 0;
 }
 #secondary_controls_box {
@@ -82,8 +79,34 @@ h1 {
 }
 
 
+table.cal {
+  background-color: #eeeeee;
+}
+.dateWeekday {
+  color: #000000;
+  font-weight: bold;
+}
+.dateWeekend {
+  color: #882222;
+  font-weight: bold;
+}
+.dateNonCurrent {
+  color: #888888;
+  font-weight: bold;
+}
+td.calHdrCell {
+  border-bottom: 1px solid #222222;
+}
+#calSelectedCell {
+  background-color: #aabb88;
+}
+#pickerPopup {
+  position: absolute;
+  border: 1px solid #777777;
+  opacity: 0.9;
+}
 
-/* Here are different configurations for the controls.  Use only one! */
+
 
 /* hide the controls */
 /*
@@ -92,41 +115,34 @@ h1 {
 }
 */
 
-/* put the controls in the upper right corner.  controls float above graphs. */
+/* controls in upper right corner, floating above graphs. */
 /*
 .controls {
   background-color: #efefef;
   border: 1px solid #dddddd;
   position: fixed;
-  top: 6em;
-  left: auto;
-  right: 1em;
+  top: 2px;
+  right: 2px;
 }
 .primary_controls {
   padding: 4px 10px 4px 10px;
+  float: left;
 }
 .secondary_controls {
   padding: 4px 10px 4px 10px;
-}
-.selector {
-  text-align: right;
-  padding: 4px 10px 4px 10px;
-  display: block;
+  float: right;
 }
 .executor {
   padding: 4px 10px 4px 10px;
-  display: block;
 }
 .controls_toggle {
-}
-.summary {
+  text-align: right;
+  margin: 0 0 0 0;
 }
 */
 
-/* put the controls at the top of the page.  controls scroll with page. */
+/* controls at top of page, scroll with graphs. */
 /*
-.controls {
-}
 .primary_controls {
   background-color: #efefef;
   border: 1px solid #dddddd;
@@ -139,14 +155,12 @@ h1 {
   padding: 4px 10px 4px 10px;
   float: right;
 }
-.selector {
-}
 .executor {
   padding: 4px 10px 4px 10px;
 }
 .controls_toggle {
   text-align: right;
-  margin: 0px 0px 0px 0px;
+  margin: 0 0 0 0;
 }
 .summary {
   padding-top: 1em;
@@ -154,22 +168,24 @@ h1 {
 }
 */
 
-/* controls at the top of the page.  graphs scroll under the controls. */
+/* controls at the top of the page, float above graphs */
 
 .controls {
   position: fixed;
   top: 0;
   left: 0;
-  width: 60%;
-  background-color: #e0e0e0;
-  border: 1px solid #aaaaaa;
-  padding: 4px 10px 4px 10px;
+  width: 100%;
+  background-color: #efefef;
+  border: 1px solid #dddddd;
+  padding: 4px 0 4px 0;
 }
 .primary_controls {
   float: left;
+  padding-left: 10px;
 }
 .secondary_controls {
   float: right;
+  padding-right: 10px;
 }
 .selector {
 }
@@ -180,12 +196,10 @@ h1 {
   margin: 0 0 0 0;
 }
 .summary {
-  background-color: #e0e0e0;
-  border: 1px solid #aaaaaa;
+  background-color: #efefef;
   position: fixed;
-  top: -1em;
-  right: 0;
-  width: 30%;
+  top: -0.55em;
+  left: 50%;
   padding: 2px 10px 2px 10px;
 }
 .period_banner {

@@ -1,6 +1,8 @@
 $Id$
 
 1.4.1 TBD
+* gave up on hiding data set selector after much (futile) javascript wrangling
+* added date/time picker for specifying arbitrary end date
 * showgraph.cgi accepts period (which is overridden by any rrdopts)
 * use button instead of toggle to show/hide graph controls (keeps ie8 happy)
 * fixed prev/next behavior

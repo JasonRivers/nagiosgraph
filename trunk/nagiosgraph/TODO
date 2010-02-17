@@ -2,10 +2,13 @@ $Id$
 
 Bugs
 
-* The next/prev functions are not coordinated with the data saved to the rrd
-    files.  As a result, next/prev do not function as one might expect.
+* so much for simplicity - javascript is required for show.cgi,
+    showhost.cgi, showservice.cgi, showgroup.cgi (but not showgraph.cgi)
 * showhost and showgroup do not need all the menudata in javascript
+* layouts could degrade more gracefully when no CSS
 * the subroutine 'debug' should be called 'log'
+* per-db labels are not implemented
+* gui controls do not prevent specifying future end date.
 
 Desired features.
 
@@ -14,5 +17,5 @@ Desired features.
 * Installer - that can configure Nagios (must work with Nagios 2.12 and 3.x).
 * Custom unit labels on the graphs.
 * Prefix strings with i18n_ to avoid name clashes with configuration params.
-* Either use cookies to maintain GUI state, or design a more robust and
-    easier-to-manage CGI/JavaScript way of doing it.
+* Use cookies to maintain GUI state - CGI args work but have too many corner
+    cases that cause problems (e.g. stickiness of next/prev URLs)
