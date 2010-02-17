@@ -87,11 +87,11 @@ function hideDateTimePicker() {
 function dtpGetSelectedDate() {
   var date = new Date();
   date.setSeconds(0);
-  date.setMinutes(document.menuform.minute.value);
-  date.setHours(document.menuform.hour.value);
-  date.setDate(document.menuform.day.value);
-  date.setMonth(document.menuform.month.value);
   date.setYear(document.menuform.year.value);
+  date.setMonth(document.menuform.month.value);
+  date.setDate(document.menuform.day.value);
+  date.setHours(document.menuform.hour.value);
+  date.setMinutes(document.menuform.minute.value);
   return date;
 }
 
@@ -105,12 +105,12 @@ function dtpParseDate(str) {
       var dstr = parts[0].split('.');
       var tstr = parts[1].split(':');
       if(dstr.length == 3 && tstr.length == 2) {
-        date.setSeconds(0);
-        date.setMinutes(tstr[1]);
-        date.setHours(tstr[0]);
-        date.setDate(dstr[0]);
-        date.setMonth(dstr[1]-1);
         date.setYear(dstr[2]);
+        date.setMonth(dstr[1]-1);
+        date.setDate(dstr[0]);
+        date.setHours(tstr[0]);
+        date.setMinutes(tstr[1]);
+        date.setSeconds(0);
       }
     }
   }
@@ -164,23 +164,22 @@ function dtpConfigCalendar(ts) {
   date.setMonth(currM);
   date.setDate(1);
   date.setSeconds(0);
-  var sidx = (ngStartOfWeek == "mon" ? 1 : 0);
-  var prevM = (currM > 0) ? currM - 1 : 11;
   var d = date.getDay();
   if(d == 0) { d = 7; }
-  d -= sidx;
+  d -= (ngStartOfWeek == "mon" ? 1 : 0);
   if(d < 0) { d = 7; }
   var dates = new Array(42);
+  var prevM = (currM > 0) ? currM - 1 : 11;
   for(var i=0; i<d; i++) {
-    dates[i] = dtpMaxDays(prevM,currY) - d + i + 1;
+    dates[i] = dtpDiM(prevM,currY) - d + i + 1;
   }
   var x = 1;
-  for(var i=d; i<=d+dtpMaxDays(currM,currY)-1; i++) {
+  for(var i=d; i<=d+dtpDiM(currM,currY)-1; i++) {
     dates[i] = x;
     x += 1;
   }
   x = 1;
-  for(var i=d+dtpMaxDays(currM,currY); i<= 41; i++) {
+  for(var i=d+dtpDiM(currM,currY); i<= 41; i++) {
     dates[i] = x;
     x += 1;
   }
@@ -334,7 +333,7 @@ function dtpCreateHTML() {
   return txt;
 }
 
-function dtpMaxDays(m, y) {
+function dtpDiM(m, y) {
   var d = 31;
   if(m == 3 || m == 5 || m == 8 || m == 10) {
     d = 30;
