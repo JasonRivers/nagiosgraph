@@ -1,6 +1,6 @@
 $Id$
 
-1.4.1 TBD
+1.4.1 2010-02-18
 * gave up on hiding data set selector after much (futile) javascript wrangling
 * added date/time picker for specifying arbitrary end date
 * showgraph.cgi accepts period (which is overridden by any rrdopts)
