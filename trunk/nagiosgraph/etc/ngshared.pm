@@ -125,13 +125,13 @@ sub init {
         htmlerror($Config{ngshared});
         exit;
     }
-    
+
     my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
     $cgi->autoEscape(0);
-    
+
     my $params = getparams($cgi);
     getdebug($app, $params->{host}, $params->{service});
-    
+
     dumper(DBDEB, 'config', \%Config);
     dumper(DBDEB, 'params', $params);
 
@@ -883,9 +883,9 @@ sub readgroupdb {
 sub readdatasetdb {
     if (! defined $Config{datasetdb} || $Config{datasetdb} eq q()) {
         my $msg = 'no datasetdb file has been specified in the configuration.';
-        debug(DBERR, $msg);
-        htmlerror($msg);
-        croak($msg);
+        debug(DBDEB, $msg);
+        my %rval;
+        return \%rval;
     }
 
     my %data;
@@ -1557,7 +1557,7 @@ sub printgraphlinks {
     # the description contains a list of the data set names.  we first see
     # if there is a translation for the complete name, e.g. 'cpu,idle'.  if
     # not, then we try for the smaller part, e.g. 'idle'.  if that fails,
-    # just display the full name, e.g. 'cpu,idle'.  in any case do not 
+    # just display the full name, e.g. 'cpu,idle'.  in any case do not
     # complain about missing translations for these.
     if ($showdesc) {
         if ($params->{db} && $#{$params->{db}} >= 0) {
@@ -2154,7 +2154,7 @@ sub trans {
     return $text
 }
 
-# sort a list naturally using implementation by tye at 
+# sort a list naturally using implementation by tye at
 # http://www.perlmonks.org/?node=442237
 sub sortnaturally {
     my(@list) = @_;
