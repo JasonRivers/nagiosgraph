@@ -110,7 +110,7 @@ Upgrade Notes
    have modifications to the stylesheet (nagiosgraph.css).
 
  - Use diff, or a similar tool, to update your nagiosgraph.conf with any new
-   fields from etc/nagiosgraph.conf.
+   fields from etc/nagiosgraph.conf and the stylesheet.
 
  - You may want to look at etc/map to see if there are any new examples that
    you may find useful.
