@@ -1,0 +1,21 @@
+$Id$
+
+Bugs
+
+* so much for simplicity - javascript is required for show.cgi,
+    showhost.cgi, showservice.cgi, showgroup.cgi (but not showgraph.cgi)
+* showhost and showgroup do not need all the menudata in javascript
+* layouts could degrade more gracefully when no CSS
+* the subroutine 'debug' should be called 'log'
+* per-db labels are not implemented
+* gui controls do not prevent specifying future end date.
+
+Desired features.
+
+* Customize rrd options for split graphs.
+* Red bar in graph to indicate missing data.
+* Installer - that can configure Nagios (must work with Nagios 2.12 and 3.x).
+* Custom unit labels on the graphs.
+* Prefix strings with i18n_ to avoid name clashes with configuration params.
+* Use cookies to maintain GUI state - CGI args work but have too many corner
+    cases that cause problems (e.g. stickiness of next/prev URLs)
