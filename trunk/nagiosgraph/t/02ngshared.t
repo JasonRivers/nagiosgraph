@@ -306,18 +306,18 @@ sub testrrdline {
           'now-118800',
           '-e',
           'now-0',
-          'DEF:losspct=/home/src/nagiosgraph/t/host0/PING___ping.rrd:losspct:AVERAGE',
-          'LINE2:losspct#9900FF:losspct',
-          'GPRINT:losspct:MAX:Max\\\\: %6.2lf%s',
-          'GPRINT:losspct:AVERAGE:Avg\\\\: %6.2lf%s',
-          'GPRINT:losspct:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:losspct:LAST:Cur\\\\: %6.2lf%s\\\\n',
-          'DEF:rta=/home/src/nagiosgraph/t/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:rta#CC03CC:rta    ',
-          'GPRINT:rta:MAX:Max\\\\: %6.2lf%s',
-          'GPRINT:rta:AVERAGE:Avg\\\\: %6.2lf%s',
-          'GPRINT:rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'DEF:ping_losspct=/home/src/nagiosgraph/t/host0/PING___ping.rrd:losspct:AVERAGE',
+          'LINE2:ping_losspct#9900FF:losspct',
+          'GPRINT:ping_losspct:MAX:Max\\\\: %6.2lf%s',
+          'GPRINT:ping_losspct:AVERAGE:Avg\\\\: %6.2lf%s',
+          'GPRINT:ping_losspct:MIN:Min\\\\: %6.2lf%s',
+          'GPRINT:ping_losspct:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'DEF:ping_rta=/home/src/nagiosgraph/t/host0/PING___ping.rrd:rta:AVERAGE',
+          'LINE2:ping_rta#CC03CC:rta    ',
+          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
           '-w',
           600
         ];\n");
@@ -348,12 +348,12 @@ sub testrrdline {
           'now-118800',
           '-e',
           'now-0',
-          'DEF:rta=/home/src/nagiosgraph/t/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:rta#CC03CC:rta',
-          'GPRINT:rta:MAX:Max\\\\: %6.2lf%s',
-          'GPRINT:rta:AVERAGE:Avg\\\\: %6.2lf%s',
-          'GPRINT:rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'DEF:ping_rta=/home/src/nagiosgraph/t/host0/PING___ping.rrd:rta:AVERAGE',
+          'LINE2:ping_rta#CC03CC:rta',
+          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
           '-w',
           600
         ];\n");
@@ -370,27 +370,27 @@ sub testrrdline {
 sub testgetgraphlist { # Does two things: verifies directores and .rrd files.
 	$_ = '..';
 	getgraphlist();
-	ok(%Navmenu, 0, 'Nothing should be set yet');
+	ok(%hsdata, 0, 'Nothing should be set yet');
 	$_ = 'test';
 	mkdir($_, 0755);
 	getgraphlist();
-	ok(%Navmenu, 0, 'Nothing should be set yet');
+	ok(%hsdata, 0, 'Nothing should be set yet');
 	$_ = 'test/test1';
 	open TMP, ">$_";
 	print TMP "test1\n";
 	close TMP;
 	getgraphlist();
-	ok(%Navmenu, 0, 'Nothing should be set yet');
+	ok(%hsdata, 0, 'Nothing should be set yet');
 	$_ = 'test';
 	getgraphlist();
-	ok(Dumper($Navmenu{$_}), qr'{}');
+	ok(Dumper($hsdata{$_}), qr'{}');
 	$_ = 'test/test1.rrd';
 	open TMP, ">$_";
 	print TMP "test1\n";
 	close TMP;
 	$File::Find::dir = $FindBin::Bin;
 	getgraphlist();
-	ok($Navmenu{$FindBin::Bin}{'test/test1.rrd'}[0], undef);
+	ok($hsdata{$FindBin::Bin}{'test/test1.rrd'}[0], undef);
 	unlink 'test/test1';
 	unlink 'test/test1.rrd';
 	rmdir 'test';

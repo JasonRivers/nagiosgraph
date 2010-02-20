@@ -1171,7 +1171,7 @@ sub setdata { ## no critic (ProhibitManyArgs)
         }
         if (defined $Config{withmaximums}->{$serv}) {
             push @ds, "CDEF:${id}_maxif=${id}_max,UN",
-                    , "CDEF:${id}_maxi=${id}_maxif,${dataset},${id}_max,IF"
+                    , "CDEF:${id}_maxi=${id}_maxif,${id},${id}_max,IF"
                     , "GPRINT:${id}_maxi:MAX:Max\\: $format";
         } else {
             push @ds, "GPRINT:$id:MAX:Max\\: $format";
@@ -1179,7 +1179,7 @@ sub setdata { ## no critic (ProhibitManyArgs)
         push @ds, "GPRINT:$id:AVERAGE:Avg\\: $format";
         if (defined $Config{withminimums}->{$serv}) {
             push @ds, "CDEF:${id}_minif=${id}_min,UN",
-                    , "CDEF:${id}_mini=${id}_minif,${dataset},${id}_min,IF"
+                    , "CDEF:${id}_mini=${id}_minif,${id},${id}_min,IF"
                     , "GPRINT:${id}_mini:MIN:Min\\: $format\\n"
         } else {
             push @ds, "GPRINT:$id:MIN:Min\\: $format\\n"
