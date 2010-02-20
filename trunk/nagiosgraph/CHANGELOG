@@ -1,6 +1,7 @@
 $Id$
 
 1.4.1 2010-02-18
+
 * gave up on hiding data set selector after much (futile) javascript wrangling
 * added date/time picker for specifying arbitrary end date
 * showgraph.cgi accepts period (which is overridden by any rrdopts)
@@ -81,6 +82,7 @@ $Id$
 * consolidation of show*.cgi code
 
 1.4.0 2010-01-14
+
 * Most changes from Matthew Wall
 * deal with undefined db in getlabels
 * code formatting to make 80 col editing a bit easier (e.g. my netbook)
