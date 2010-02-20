@@ -16,8 +16,8 @@ with nagiosgraph has several examples for cpu, memory, disk, network etc.
 Most examples follow the same schema of identifying data from either 
 Nagios output or Nagios perfdata and defining a number of rrd data sources.
 
-insert.pl is the script receiving data from Nagios. It formats data for map 
-file by creating one string consisting of three lines of text. This string 
+insert.pl is the script receiving data from Nagios. It formats data for
+by creating one string consisting of three lines of text. This string 
 might look like this:
 
   servicedesc:ping
@@ -26,7 +26,7 @@ might look like this:
 
 Or like this:
 
-  servicedescr:CPU Load 
+  servicedesc:CPU Load 
   output:OK - load average: 0.06, 0.12, 0.10
   perfdata:load1=0;15;30;0 load5=0;10;25;0 load15=0;5;20;0 
 
@@ -35,7 +35,7 @@ name-value pairs with this format:
 
   name=value[units];[warn];[crit];[min];[max]
 
-where units is one of: nothing, s %, B, c
+where units is one of: nothing, s, %, B, c
 
 However, the perfdata is not always set, and the format of perfdata varies
 a great deal from plugin to plugin.  So depending on type of service, the
@@ -74,7 +74,7 @@ PING example above, becomes:
 In this case the database name is called 'ping' and the DS-names stored 
 are losspct and rta. The Nagios output reports round trip time in 
 milliseconds, so the value is multiplied by 1000 to convert to seconds. 
-Both DS type are GAUGE.
+The type for each DS is GAUGE.
 
 Be careful about the database names and DS names. In the code example 
 above the names are barewords, which only works as long as the don't 
@@ -88,12 +88,12 @@ A safer version of the above example is
                 [ 'losspct', 'GAUGE', $1      ],
                 [ 'rta',     'GAUGE', $2/1000 ] ];
 
-After editing map file, the syntax can be checked with
+After editing the map file, the syntax can be checked with
 
   perl -c map
 
-Again a word of caution. If map file has syntax errors, nothing will be 
-inserted into rrd files until the file is fixed. So don't edit production 
+Again a word of caution. If the map file has syntax errors, nothing will be 
+inserted into rrd files until the file is fixed. So do not edit production 
 map files. Instead do something like this:
 
   cp map map.edit
@@ -102,4 +102,4 @@ map files. Instead do something like this:
   mv map.edit map
 
 Share your work. If you have a good map file entry for standard Nagios 
-plugins, then please post it on the forum, or send it to me.
+plugins, then please post it on the forum.

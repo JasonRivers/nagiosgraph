@@ -4,7 +4,6 @@ Bugs
 
 * so much for simplicity - javascript is required for show.cgi,
     showhost.cgi, showservice.cgi, showgroup.cgi (but not showgraph.cgi)
-* showhost and showgroup do not need all the menudata in javascript
 * layouts could degrade more gracefully when no CSS
 * the subroutine 'debug' should be called 'log'
 * per-db labels are not implemented

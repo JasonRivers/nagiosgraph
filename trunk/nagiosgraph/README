@@ -61,7 +61,8 @@ the same graph. With extra configuration, either embedded in the url,
 specified in a configuration file, or using controls in a web page, it is
 possible to display less data or to split values into multiple graphs.
 There is also a general method for specifying arbitrary rrd graph
-options for individual hosts or services.
+options such as line style, color, and scaling for individual hosts or
+services.
 
 
 Files

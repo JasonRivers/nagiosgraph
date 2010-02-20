@@ -228,26 +228,20 @@ you have configured your host and service definitions.  Nagios 2 uses the
 serviceextinfo and hostextinfo construct.  In Nagios 3 the nagiosgraph
 additions go directly in the host and service definitions.
 
- - For Nagios versions < 2.6, define in cgi.cfg the following:
+ - For Nagios 2.6 and earlier,
 
-     xedtemplate_config_file=/usr/local/etc/nagios/serviceextinfo.cfg
-
- - For Nagios version 2.6:
-     Note: This may also be what is required for earlier versions of Nagios.
-     It is uncertain as when Nagios started handling extended services
-     differently.
-
-     If you have these lines in nagios.cfg, then this step is what you need
-     to do instead of the one above.
+     If you have these lines in nagios.cfg, un-comment the 2 cfg_file= lines:
 
      # Extended host/service info definitions are now stored along with
      # other object definitions:
      # cfg_file=/etc/nagios/hostextinfo.cfg
      # cfg_file=/etc/nagios/serviceextinfo.cfg
 
-     Un-comment the 2 cfg_file= lines.
+     Otherwise, define in cgi.cfg the following:
 
- - Edit/Create hostextinfo.cfg
+     xedtemplate_config_file=/usr/local/etc/nagios/serviceextinfo.cfg
+
+   Edit/Create hostextinfo.cfg
 
      define hostextinfo {
        host_name  your-host
@@ -256,9 +250,7 @@ additions go directly in the host and service definitions.
 
      This must be the host you will use in serviceextinfo.cfg
 
- - Edit/Create serviceextinfo.cfg
-
-   Most services can be graphed with no particular configuration like this:
+   Edit/Create serviceextinfo.cfg
 
      define serviceextinfo {
        service_description  DNS
@@ -406,7 +398,7 @@ rrd files.
 
  - Use testentry.pl for testing before inserting in map file.
 
- - You can also run the nagios check command from the command line to see
+ - You can run the nagios check command from the command line to see
    what is returned.
 
  - Changes to the map file generally do not require a restart of Nagios.
@@ -415,9 +407,9 @@ rrd files.
    Output will go to the nagiosgraph log file.
 
  - Keep an eye on the log file. It can grow big. Perhaps rotate it, or
-   decrease log level when everything works fine.
+   decrease log level when everything works.
 
-The README.map file contains details about the map file.
+The README.map file contains details for defining and testing new mappings.
 
 
 
