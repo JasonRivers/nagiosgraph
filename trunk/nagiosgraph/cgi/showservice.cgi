@@ -14,13 +14,14 @@ use lib '/opt/nagiosgraph/etc';
 
 # Main program - change nothing below
 
-use ngshared;
+use ngshared qw(:SHOWSERVICE);
 use CGI qw(-nosticky);
 use English qw(-no_match_vars);
 use strict;
 use warnings;
 
-my ($cgi, $params) = init('showservice');
+my $sts = gettimestamp();
+my ($cgi, $params) = init('showservice', 1);
 my ($periods, $expanded_periods) = initperiods('service', $params);
 
 my $defaultds = readdatasetdb();
@@ -69,7 +70,9 @@ foreach my $period (graphsizes($periods)) {
 print printinitscript(q(), $params->{service}, $expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
-print printfooter($cgi) or
+my $ets = gettimestamp();
+
+print printfooter($cgi, $sts, $ets) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 __END__

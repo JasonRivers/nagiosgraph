@@ -13,11 +13,10 @@ use lib '/opt/nagiosgraph/etc';
 
 # Main program - change nothing below
 
-use ngshared;
+use ngshared qw(:SHOWGRAPH);
 use RRDs;
 use CGI;
 use English qw(-no_match_vars);
-use File::Find;
 use MIME::Base64;
 use strict;
 use warnings;

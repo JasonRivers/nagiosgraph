@@ -23,6 +23,7 @@ use File::Find;
 use File::Basename;
 use RRDs;
 use POSIX;
+use Time::HiRes qw(gettimeofday);
 
 ## no critic (ProhibitConstantPragma)
 use constant DBCRT => 1;
@@ -44,7 +45,7 @@ use constant GEOMETRIES => '500x80,650x150,1000x200';
 # default custom color palette
 use constant COLORS => 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0';
 
-use vars qw(%Config %Navmenu $colorsub $VERSION %Ctrans $LOG); ## no critic (ProhibitPackageVars)
+use vars qw(%Config %hsdata $colorsub $VERSION %Ctrans $LOG); ## no critic (ProhibitPackageVars)
 $colorsub = -1;
 $VERSION = '1.4.1';
 
@@ -116,8 +117,35 @@ sub dumper {
     return;
 }
 
+sub gettimestamp {
+    if (defined $Config{showprocessingtime}
+        && $Config{showprocessingtime} eq 'true') {
+        return (gettimeofday)[1];
+    }
+    return 0;
+}
+
+sub formatelapsedtime {
+    my ($s,$e) = @_;
+    my $ms = $e - $s;
+    my $hh = int $ms / 3_600_000_000;
+    $ms -= $hh * 3_600_000_000;
+    my $mm = int $ms / 60_000_000;
+    $ms -= $mm * 60_000_000;
+    my $ss = int $ms / 1_000_000;
+    $ms -= $ss * 1_000_000;
+    $ms = int $ms / 1_000;
+    if ($hh < 10) { $hh = '0' . $hh; }
+    if ($mm < 10) { $mm = '0' . $mm; }
+    if ($ss < 10) { $ss = '0' . $ss; }
+    if ($ms < 1) { $ms = '000'; }
+    elsif ($ms < 10) { $ms = '00' . $ms; }
+    elsif ($ms < 100) { $ms = '0' . $ms; }
+    return $hh . q(:) . $mm . q(:) . $ss . q(.) . $ms;
+}
+
 sub init {
-    my ($app) = @_;
+    my ($app, $doscan) = @_;
 
     readconfig('read');
     if (defined $Config{ngshared}) {
@@ -134,6 +162,10 @@ sub init {
 
     dumper(DBDEB, 'config', \%Config);
     dumper(DBDEB, 'params', $params);
+
+    if ($doscan) {
+        scanhsdata();
+    }
 
     return $cgi, $params;
 }
@@ -654,6 +686,9 @@ sub getdbname {
 # This returns a list of graph infos for the specified host based on the
 # contents of the hostdb file.
 #
+# If there is no file defined or if the file contains no service lines,
+# return all services for which data exist for the indicated host.
+#
 # Services are defined with this format:
 #
 #   service=name[&db=dataset[&label=text][&db=dataset[&label=text][...]]]
@@ -665,56 +700,66 @@ sub readhostdb {
 
     debug(DBDEB, "readhostdb($host)");
 
-    if (! defined $Config{hostdb} || $Config{hostdb} eq q()) {
-        my $msg = 'no hostdb file has been specified in the configuration.';
-        debug(DBERR, $msg);
-        htmlerror($msg);
-        croak($msg);
+    my $usedefaults = 1;
+    my @ginfo;
+    if (defined $Config{hostdb} && $Config{hostdb} ne q()) {
+        my $fn = $Config{hostdb};
+        if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
+            while (my $line = <$DB>) {
+                chomp $line;
+                debug(DBDEB, "readhostdb: $line");
+                next if $line =~ /^\s*#/;        # skip commented lines
+                $line =~ tr/+/ /;
+                $line =~ s/^\s+//g;
+                my $service = q();
+                my $label = q();
+                my $dbname = q();
+                my @db;
+                if ($line =~ s/^service\s*=\s*([^&]+)//) {
+                    $usedefaults = 0;
+                    $service = $1;
+                    if ($line =~ s/^&label=([^&]+)//) {
+                        $label = $1;
+                    }
+                    ($dbname, @db) = parsedb($line);
+                }
+                next if ! $service;
+                my($dir, $file) = mkfilename($host, $service, $dbname, 1);
+                my $rrdfn = $dir . q(/) . $file;
+                if (-f $rrdfn) {
+                    my %info;
+                    $info{host} = $host;
+                    $info{service} = $service;
+                    if ($label ne q())  { $info{service_label} = $label; }
+                    $info{dbname} = $dbname;
+                    $info{db} = \@db;
+                    $info{filename} = $rrdfn;
+                    push @ginfo, \%info;
+                    debug(DBDEB, "readhostdb: add host:$host service:$service");
+                } else {
+                    debug(DBDEB, "readhostdb: skip host:$host service:$service");
+                }
+            }
+            close $DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
+        } else {
+            my $msg = "cannot open hostdb $fn: $!";
+            debug(DBERR, $msg);
+            htmlerror($msg);
+            croak($msg);
+        }
+    } else {
+        debug(DBERR, 'no hostdb file has been specified');
     }
 
-    my @ginfo;
-    my $fn = $Config{hostdb};
-    if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
-        while (my $line = <$DB>) {
-            chomp $line;
-            debug(DBDEB, "readhostdb: $line");
-            next if $line =~ /^\s*#/;        # skip commented lines
-            $line =~ tr/+/ /;
-            $line =~ s/^\s+//g;
-            my $service = q();
-            my $label = q();
-            my $dbname = q();
-            my @db;
-            if ($line =~ s/^service\s*=\s*([^&]+)//) {
-                $service = $1;
-                if ($line =~ s/^&label=([^&]+)//) {
-                    $label = $1;
-                }
-                ($dbname, @db) = parsedb($line);
-            }
-            next if ! $service;
-            my($dir, $file) = mkfilename($host, $service, $dbname, 1);
-            my $rrdfn = $dir . q(/) . $file;
-            if (-f $rrdfn) {
-                my %info;
-                $info{host} = $host;
-                $info{service} = $service;
-                if ($label ne q())  { $info{service_label} = $label; }
-                $info{dbname} = $dbname;
-                $info{db} = \@db;
-                $info{filename} = $rrdfn;
-                push @ginfo, \%info;
-                debug(DBDEB, "readhostdb: add host:$host service:$service");
-            } else {
-                debug(DBDEB, "readhostdb: skip host:$host service:$service");
-            }
+    if ($usedefaults) {
+        my @services = sortnaturally(keys %{$hsdata{$host}});
+        foreach my $service (@services) {
+            my %info;
+            $info{host} = $host;
+            $info{service} = $service;
+            $info{db} = \@{$hsdata{$host}{$service}};
+            push @ginfo, \%info;
         }
-        close $DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
-    } else {
-        my $msg = "cannot open hostdb $fn: $!";
-        debug(DBERR, $msg);
-        htmlerror($msg);
-        croak($msg);
     }
 
     dumper(DBDEB, 'graphinfos', \@ginfo);
@@ -724,6 +769,9 @@ sub readhostdb {
 # Read the servdb file
 #
 # This returns a list of hosts that have data for the specified service and db.
+#
+# If there is no file defined or if the file contains no hosts,
+# return all hosts for which data exist for the indicated service and db.
 #
 # Hosts are defined with this format:
 #
@@ -740,58 +788,67 @@ sub readservdb {
 
     debug(DBDEB, "readservdb($service, " . join ', ', @dbs . ')');
 
-    if (! defined $Config{servdb} || $Config{servdb} eq q()) {
-        my $msg = 'no servdb file has been specified in the configuration.';
-        debug(DBERR, $msg);
-        htmlerror($msg);
-        croak($msg);
-    }
-
+    my $usedefaults = 1;
     my @allhosts;
-    my @ginfo;
-    my $fn = $Config{servdb};
-    if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
-        while (my $line = <$DB>) {
-            chomp $line;
-            debug(DBDEB, "readservdb: $line");
-            next if $line =~ /^\s*#/;        # skip commented lines
-            $line =~ tr/+/ /;
-            $line =~ s/^\s+//g;
-            if ($line =~ /^host\s*=\s*(.+)/) {
-                push @allhosts, split /\s*,\s*/, $1;
+    my @validhosts;
+    if (defined $Config{servdb} && $Config{servdb} ne q()) {
+        my $fn = $Config{servdb};
+        if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
+            while (my $line = <$DB>) {
+                chomp $line;
+                debug(DBDEB, "readservdb: $line");
+                next if $line =~ /^\s*#/;        # skip commented lines
+                $line =~ s/^\s+//g;
+                if ($line =~ /^host\s*=\s*(.+)/) {
+                    $usedefaults = 0;
+                    push @allhosts, split /\s*,\s*/, $1;
+                }
+            }
+            close $DB or debug(DBERR, "readservdb: close failed for $fn: $OS_ERROR");
+        } else {
+            my $msg = "cannot open servdb $fn: $!";
+            debug(DBERR, $msg);
+            htmlerror($msg);
+            croak($msg);
+        }
+
+        # if a dataset was specified, then do a check for that dataset for each
+        # host.  if not, then read the rrd directory for each host to see if we
+        # have a service match.
+        my $dbname = getdbname(@dbs);
+        foreach my $host (@allhosts) {
+            if ($dbname ne q()) {
+                my($dir, $file) = mkfilename($host, $service, $dbname, 1);
+                my $rrdfn = $dir . q(/) . $file;
+                if (-f $rrdfn) {
+                    push @validhosts, $host;
+                }
+            } else {
+                my $rrds = dbfilelist($host, $service);
+                if (scalar @{$rrds} > 0) {
+                    push @validhosts, $host;
+                }
             }
         }
-        close $DB or debug(DBERR, "readservdb: close failed for $fn: $OS_ERROR");
     } else {
-        my $msg = "cannot open servdb $fn: $!";
-        debug(DBERR, $msg);
-        htmlerror($msg);
-        croak($msg);
+        debug(DBERR, 'no servdb file has been specified');
     }
 
-    # if a dataset was specified, then do a check for that dataset for each
-    # host.  if not, then read the rrd directory for each host to see if we
-    # have a service match.
-    my $dbname = getdbname(@dbs);
-    my @hosts;
-    foreach my $host (@allhosts) {
-        if ($dbname ne q()) {
-            my($dir, $file) = mkfilename($host, $service, $dbname, 1);
-            my $rrdfn = $dir . q(/) . $file;
-            if (-f $rrdfn) {
-                push @hosts, $host;
-            }
-        } else {
-            my $rrds = dbfilelist($host, $service);
-            if (scalar @{$rrds} > 0) {
-                push @hosts, $host;
+    if ($usedefaults) {
+        @allhosts = sortnaturally(keys %hsdata);
+        foreach my $host (@allhosts) {
+            if ($hsdata{$host}{$service}) {
+                my @db = @{$hsdata{$host}{$service}};
+                if (scalar @db > 0) {
+                    push @validhosts, $host;
+                }
             }
         }
     }
 
     dumper(DBDEB, 'readservdb: all hosts', \@allhosts);
-    dumper(DBDEB, 'readservdb: validated hosts', \@hosts);
-    return \@hosts;
+    dumper(DBDEB, 'readservdb: validated hosts', \@validhosts);
+    return \@validhosts;
 }
 
 # Read the groupdb file
@@ -991,6 +1048,7 @@ sub graphinfo {
         for my $dd (@{$db}) {
             ($dbname, @lines) = split /,/, $dd;
             $rrd[$nn]{file} = $hs . escape("$dbname") . '.rrd';
+            $rrd[$nn]{dbname} = $dbname;
             for my $ll (@lines) {
                 ($line, $unit) = split /~/, $ll;
                 if ($unit) {
@@ -1016,9 +1074,18 @@ sub graphinfo {
             foreach my $ii (getdataitems($rrd->{file})) {
                 $rrd->{line}{$ii} = 1;
             }
+            debug(DBDEB, "graphinfo: DS $rrd->{file} lines: "
+                  . join ', ', keys %{$rrd->{line}});
         }
-        debug(DBDEB, "graphinfo: DS $rrd->{file} lines: "
-                     . join ', ', keys %{$rrd->{line}});
+        if (not $rrd->{dbname}) {
+            if ($rrd->{file} =~ /___(.*).rrd/) {
+                $rrd->{dbname} = unescape($1);
+            } elsif ($rrd->{file} =~ /_(.*).rrd/) {
+                $rrd->{dbname} = unescape($1);
+            }
+            debug(DBDEB, "graphinfo: DS $rrd->{file} dbname: "
+                  . $rrd->{dbname});
+        }
     }
     dumper(DBDEB, 'graphinfo: rrd', \@rrd);
     return \@rrd;
@@ -1057,69 +1124,71 @@ sub getlineattr {
 }
 
 sub setlabels {
-    my ($dataset, $longest, $serv, $file) = @_;
+    my ($dataset, $dbname, $file, $serv, $labellength) = @_;
+    debug(DBDEB, "setlabels($dataset, $dbname, $file, $serv, $labellength)");
     my @ds;
-    my $label = sprintf "%-${longest}s", $dataset;
-    debug(DBDEB, "setlabels($label)");
+    my $id = $dbname . '_' . $dataset;
+    my $label = sprintf "%-${labellength}s", $dataset;
     my ($linestyle, $linecolor) = getlineattr($dataset);
     if (defined $Config{maximums}->{$serv}) {
-        push @ds, "DEF:$dataset=$file:$dataset:MAX"
-                , "CDEF:ceil$dataset=$dataset,CEIL"
-                , "$linestyle:${dataset}#$linecolor:$label";
+        push @ds, "DEF:$id=$file:$dataset:MAX"
+                , "CDEF:ceil$id=$id,CEIL"
+                , "$linestyle:${id}#$linecolor:$label";
     } elsif (defined $Config{minimums}->{$serv}) {
-        push @ds, "DEF:$dataset=$file:$dataset:MIN"
-                , "CDEF:floor$dataset=$dataset,FLOOR"
-                , "$linestyle:${dataset}#$linecolor:$label";
+        push @ds, "DEF:$id=$file:$dataset:MIN"
+                , "CDEF:floor$id=$id,FLOOR"
+                , "$linestyle:${id}#$linecolor:$label";
     } else {
-        push @ds, "DEF:${dataset}=$file:$dataset:AVERAGE";
+        push @ds, "DEF:${id}=$file:$dataset:AVERAGE";
         if (defined $Config{negate}->{$dataset}) {
-            push @ds, "CDEF:${dataset}_neg=${dataset},-1,*";
-            push @ds, "$linestyle:${dataset}_neg#$linecolor:$label";
+            push @ds, "CDEF:${id}_neg=${id},-1,*";
+            push @ds, "$linestyle:${id}_neg#$linecolor:$label";
         } else {
-            push @ds, "$linestyle:${dataset}#$linecolor:$label";
+            push @ds, "$linestyle:${id}#$linecolor:$label";
         }
     }
     return @ds;
 }
 
-sub setdata {
-    my ($dataset, $fixedscale, $dur, $serv, $file) = @_;
-    debug(DBDEB, "setdata($dataset, $fixedscale, $dur, $serv, $file)");
+sub setdata { ## no critic (ProhibitManyArgs)
+    my ($dataset, $dbname, $file, $serv, $fixedscale, $dur) = @_;
+    debug(DBDEB, "setdata($dataset, $dbname, $file, $serv, $fixedscale, $dur)");
     my @ds;
+    my $id = $dbname . '_' . $dataset;
     my $format = '%6.2lf%s';
     if ($fixedscale) { $format = '%6.2lf'; }
     debug(DBDEB, "setdata: format=$format");
     if ($dur > 120_000) { # long enough to start getting summation
         if (defined $Config{withmaximums}->{$serv}) {
             my $maxcolor = '888888'; #$color;
-            push @ds, "DEF:${dataset}_max=${file}_max:$dataset:MAX"
-                    , "LINE1:${dataset}_max#${maxcolor}:maximum";
+            push @ds, "DEF:${id}_max=${file}_max:$dataset:MAX"
+                    , "LINE1:${id}_max#${maxcolor}:maximum";
         }
         if (defined $Config{withminimums}->{$serv}) {
             my $mincolor = 'BBBBBB'; #color;
-            push @ds, "DEF:${dataset}_min=${file}_min:$dataset:MIN"
-                    , "LINE1:${dataset}_min#${mincolor}:minimum";
+            push @ds, "DEF:${id}_min=${file}_min:$dataset:MIN"
+                    , "LINE1:${id}_min#${mincolor}:minimum";
         }
         if (defined $Config{withmaximums}->{$serv}) {
-            push @ds, "CDEF:${dataset}_maxif=${dataset}_max,UN",
-                    , "CDEF:${dataset}_maxi=${dataset}_maxif,${dataset},${dataset}_max,IF"
-                    , "GPRINT:${dataset}_maxi:MAX:Max\\: $format";
+            push @ds, "CDEF:${id}_maxif=${id}_max,UN",
+                    , "CDEF:${id}_maxi=${id}_maxif,${dataset},${id}_max,IF"
+                    , "GPRINT:${id}_maxi:MAX:Max\\: $format";
         } else {
-            push @ds, "GPRINT:$dataset:MAX:Max\\: $format";
+            push @ds, "GPRINT:$id:MAX:Max\\: $format";
         }
-        push @ds, "GPRINT:$dataset:AVERAGE:Avg\\: $format";
+        push @ds, "GPRINT:$id:AVERAGE:Avg\\: $format";
         if (defined $Config{withminimums}->{$serv}) {
-            push @ds, "CDEF:${dataset}_minif=${dataset}_min,UN",
-                    , "CDEF:${dataset}_mini=${dataset}_minif,${dataset},${dataset}_min,IF"
-                    , "GPRINT:${dataset}_mini:MIN:Min\\: $format\\n"
+            push @ds, "CDEF:${id}_minif=${id}_min,UN",
+                    , "CDEF:${id}_mini=${id}_minif,${dataset},${id}_min,IF"
+                    , "GPRINT:${id}_mini:MIN:Min\\: $format\\n"
         } else {
-            push @ds, "GPRINT:$dataset:MIN:Min\\: $format\\n"
+            push @ds, "GPRINT:$id:MIN:Min\\: $format\\n"
         }
     } else {
-        push @ds, "GPRINT:$dataset:MAX:Max\\: $format"
-                , "GPRINT:$dataset:AVERAGE:Avg\\: $format"
-                , "GPRINT:$dataset:MIN:Min\\: $format"
-                , "GPRINT:$dataset:LAST:Cur\\: ${format}\\n";
+        push @ds, "GPRINT:$id:MAX:Max\\: $format"
+                , "GPRINT:$id:AVERAGE:Avg\\: $format"
+                , "GPRINT:$id:MIN:Min\\: $format"
+                , "GPRINT:$id:LAST:Cur\\: ${format}\\n";
     }
     return @ds;
 }
@@ -1183,39 +1252,44 @@ sub rrdline {
     # Compute the longest label length
     my $longest = 0;
     for my $ii (@{$graphinfo}) {
-        my @labels = sort map { length } keys %{$ii->{line}};
-        my $len = scalar @labels > 0 ? $labels[-1] : 0;
-        if ($len > $longest) {
-            $longest = $len;
+        foreach my $label (keys %{$ii->{line}}) {
+            if (length $label > $longest) {
+                $longest = length $label;
+            }
         }
     }
     # now get the data and labels
     for my $ii (@{$graphinfo}) {
         my $file = $ii->{file};
+        my $dbname = $ii->{dbname};
+        $dbname =~ tr|/|_|; # keep rrdgraph happy
+        my $fn = "$directory/$file";
         dumper(DBDEB, 'rrdline: this graphinfo entry', $ii);
         for my $dataset (sortnaturally(keys %{$ii->{line}})) {
             my ($serv, $pos) = ($service, length($service) - length $dataset);
             if (substr($service, $pos) eq $dataset) {
                 $serv = substr $service, 0, $pos;
             }
-            push @ds, setlabels($dataset, $longest, $serv, "$directory/$file");
-            push @ds, setdata($dataset, $fixedscale, $duration, $serv, "$directory/$file");
+            push @ds, setlabels($dataset, $dbname, "$fn", $serv, $longest);
+            push @ds, setdata($dataset, $dbname, "$fn", $serv, $fixedscale, $duration);
         }
     }
 
-    # Dimensions of graph if geom is specified
+    # Dimensions of graph
+    my $w = 0;
+    my $h = 0;
     if ($geom && $geom ne 'default') {
-        my ($w, $h) = split /x/, $geom;
-        if (index($rrdopts, '-w') == -1) {
-            push @ds, '-w', $w;
-        }
-        if (index($rrdopts, '-h') == -1) {
-            push @ds, '-h', $h;
-        }
+        ($w, $h) = split /x/, $geom;
+    } elsif (defined $Config{default_geometry}) {
+        ($w, $h) = split /x/, $Config{default_geometry};
     } else {
-        if (index($rrdopts, '-w') == -1) {
-            push @ds, '-w', GRAPHWIDTH; # make the graph wider than default
-        }
+        $w = GRAPHWIDTH; # make graph wider than rrdtool default
+    }
+    if ($w > 0 && index($rrdopts, '-w') == -1) {
+        push @ds, '-w', $w;
+    }
+    if ($h > 0 && index($rrdopts, '-h') == -1) {
+        push @ds, '-h', $h;
     }
 
     # Additional parameters to rrd graph, if specified
@@ -1242,7 +1316,6 @@ sub rrdline {
                     ['logarithmic', '-o']) {
         push @ds, addopt($ii->[0], $service, $rrdopts, $ii->[1]);
     }
-    debug(DBDEB, 'rrdline: returning ' . join q( ), @ds);
     return @ds;
 }
 
@@ -1266,6 +1339,17 @@ sub mergeopts {
 }
 
 # Server/service menu routines ################################################
+# scan the rrd files and populate the hsdata object with the result.
+sub scanhsdata {
+    if (defined $Config{dbseparator} && $Config{dbseparator} eq 'subdir') {
+        File::Find::find(\&getgraphlist, $Config{rrddir});
+    }
+# FIXME: implement the non-subdir option
+
+    #dumper(DBDEB, 'scanhsdata: hsdata', \%hsdata);
+    return;
+}
+
 # Assumes subdir as separator
 sub getgraphlist {
     # Builds a hash for available servers/services to graph
@@ -1273,7 +1357,7 @@ sub getgraphlist {
     my $extension = '.rrd';
     my $rrdlen = 0 - length $extension;
     if (-d $current and substr($current, 0, 1) ne q(.)) { # Directories are for hostnames
-        if (not checkdirempty($current)) { %{$Navmenu{$current}} = (); }
+        if (not checkdirempty($current)) { %{$hsdata{$current}} = (); }
     } elsif (-f $current && substr($current, $rrdlen) eq $extension) { # Files are for services
         my ($host, $service, $dataset);
         $dataset = $File::Find::dir; # this stops the only used once message
@@ -1283,10 +1367,10 @@ sub getgraphlist {
         ($service, $dataset) = split /___/, $current;
         if ($dataset) { $dataset = substr $dataset, 0, $rrdlen; }
         #debug(DBDEB, "getgraphlist: service = $service, dataset = $dataset");
-        if (not exists $Navmenu{$host}{unescape($service)}) {
-            @{$Navmenu{$host}{unescape($service)}} = (unescape($dataset));
+        if (not exists $hsdata{$host}{unescape($service)}) {
+            @{$hsdata{$host}{unescape($service)}} = (unescape($dataset));
         } else {
-            push @{$Navmenu{$host}{unescape($service)}}, unescape($dataset);
+            push @{$hsdata{$host}{unescape($service)}}, unescape($dataset);
         }
     }
     return;
@@ -1304,18 +1388,18 @@ sub getserverlist {
     if ($Config{userdb} and $userid) {
         my %authz;
         tie %authz, $Config{dbfile}, $Config{userdb}, O_RDONLY or return; ## no critic (ProhibitTies)
-        foreach my $ii (sortnaturally(keys %Navmenu)) {
+        foreach my $ii (sortnaturally(keys %hsdata)) {
             if (checkperms($ii, $userid, \%authz)) { push @hosts, $ii; }
         }
         untie %authz;
     } else {
-        @hosts = sortnaturally(keys %Navmenu);
+        @hosts = sortnaturally(keys %hsdata);
     }
 
     foreach my $ii (@hosts) {
-        @services = sortnaturally(keys %{$Navmenu{$ii}});
+        @services = sortnaturally(keys %{$hsdata{$ii}});
         foreach my $jj (@services) {
-            foreach my $kk (@{$Navmenu{$ii}{$jj}}) {
+            foreach my $kk (@{$hsdata{$ii}{$jj}}) {
                 @dataitems = getdataitems(join q(/), mkfilename($ii, $jj, $kk, 1));
                 if (not exists $hostserv{$ii}) {
                     $hostserv{$ii} = {};
@@ -1357,7 +1441,7 @@ sub printmenudatascript {
     my $rval = "menudata = new Array();\n";
     for my $ii (0 .. @{$hosts} - 1) {
         $rval .= "menudata[$ii] = [\"$hosts->[$ii]\"\n";
-        my @services = sortnaturally(keys %{$Navmenu{$hosts->[$ii]}});
+        my @services = sortnaturally(keys %{$hsdata{$hosts->[$ii]}});
         #dumper(DBDEB, 'printmenudatascript: keys', \@services);
         foreach my $jj (@services) {
             $rval .= " ,[\"$jj\",";
@@ -1695,14 +1779,6 @@ sub printheader {
                               -head => getrefresh($cgi),
                               getstyle());
 
-    # Print Navigation Menu if we have a separator set that will allow
-    # navigation menu to correctly split the filenames/filepaths in
-    # host/service/db names.
-    if (defined $Config{dbseparator} && $Config{dbseparator} eq 'subdir') {
-        File::Find::find(\&getgraphlist, $Config{rrddir});
-        #dumper(DBDEB, 'printheader: Navmenu', \%Navmenu);
-    }
-
     my %result = getserverlist($cgi->remote_user());
     my(@servers) = @{$result{host}};
     my(%servers) = %{$result{hostserv}};
@@ -1723,11 +1799,18 @@ sub printheader {
 }
 
 sub printfooter {
-    my ($cgi) = @_;
+    my ($cgi,$sts,$ets) = @_;
+    $sts ||= 0;
+    $ets ||= 0;
+    my $tstr = (defined $Config{showprocessingtime}
+                && $Config{showprocessingtime} eq 'true')
+        ? $cgi->br() . formatelapsedtime($sts, $ets)
+        : q();
     return $cgi->div({-class => 'footer'}, q(), # or instead of q() $cgi->hr()
-    	$cgi->small(trans('createdby') . q( ) .
-    	$cgi->a({href => NAGIOSGRAPHURL },
-    	'Nagiosgraph ' . $VERSION) . q(.) )) . $cgi->end_html();
+                     trans('createdby') . q( ) .
+                     $cgi->a({href => NAGIOSGRAPHURL },
+                             'Nagiosgraph ' . $VERSION) . $tstr )
+        . $cgi->end_html();
 }
 
 # Full page routine ###########################################################

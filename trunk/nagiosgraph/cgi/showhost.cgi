@@ -20,9 +20,9 @@ use English qw(-no_match_vars);
 use strict;
 use warnings;
 
-my ($cgi, $params) = init('showhost');
+my $sts = gettimestamp();
+my ($cgi, $params) = init('showhost', 1);
 my ($periods, $expanded_periods) = initperiods('host', $params);
-
 my $ginfos = readhostdb($params->{host});
 
 # nagios and nagiosgraph may not share the same cgi directory
@@ -34,8 +34,6 @@ print printheader($cgi, { title => $params->{host},
                           host => $params->{host},
                           hosturl => $nagioscgiurl . '/extinfo.cgi?type=1&host=' . $params->{host} }) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
-
-# FIXME: db= handling is not consistent
 
 my $now = time;
 foreach my $period (graphsizes($periods)) {
@@ -67,7 +65,9 @@ foreach my $period (graphsizes($periods)) {
 print printinitscript($params->{host},$params->{service},$expanded_periods) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
-print printfooter($cgi) or
+my $ets = gettimestamp();
+
+print printfooter($cgi, $sts, $ets) or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 __END__

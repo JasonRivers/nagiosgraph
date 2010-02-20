@@ -1,5 +1,24 @@
 $Id$
 
+1.4.2 TBD
+
+* enable display of data sets from multiple rrd files into a single graph.
+* prevent name clashes between data set names by using qualified identifiers
+   rather than just data names in graph definitions.
+* new configuration options (see nagiosgraph.conf for details):
+     showprocessingtime
+     default_geometry
+* optionally report processing time
+* optionally specify a default width and height
+* hostdb.conf and servdb.conf are now optional.  if these files are not 
+   specified, or if they contain no entries, then data for every service
+   (showhost.cgi) and data for every host (showservice.cgi) will be
+   displayed.  use the hostdb and servdb files to filter graphs and
+   control the order in which graphs are shown.
+* started refactoring of code to eliminate redundant trips to disk for 
+   host/service/dataset listings and to enable pattern matching in
+   the *db.conf files.
+
 1.4.1 2010-02-18
 
 * gave up on hiding data set selector after much (futile) javascript wrangling
