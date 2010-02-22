@@ -5,6 +5,9 @@ nagiosgraph Installation       Author:  (c) 2005 Soren Dossing
                                Author:  (c) 2010 Matthew Wall
 
 These are the installation and configuration instructions for nagiosgraph.
+See Principles of Operation in the README file for an overview of how
+nagiosgraph is designed to work.
+
 This document contains the following sections:
 
   Installation Preliminaries
@@ -18,7 +21,8 @@ This document contains the following sections:
     Displaying Graphs in Nagios Mouseovers
     Displaying Graphs in Nagios Frames
   Customizing the Graphs
-  Adding Services
+  Adding Service Types
+  Managing Data and RRD Files
   Appendix: Sample Installation Layouts
   Appendix: Web Server Configuration
   Appendix: Platform Specific Notes
@@ -27,9 +31,6 @@ This document contains the following sections:
 
 The instructions below are mainly for Nagios 2.x and 3.x and might differ
 in other versions of Nagios.
-
-See Principles of Operation in the README file for an overview of how
-Nagiosgraph is designed to work.
 
 
 Installation Preliminaries
@@ -44,7 +45,7 @@ Installation Preliminaries
   Nagiosgraph uses rrdtool from perl, so both rrdtool and the perl wrapper
   for rrdtool must be installed.
 
-  There are two installation layouts for Nagiosgraph: separate or overlay.
+  There are two installation layouts for nagiosgraph: separate or overlay.
   The separated layout has nagiosgraph and nagios in separate directories.
   The overlay places nagiosgraph components with nagios components.
   Note also that nagios and nagiosgraph can be installed in just about
@@ -60,7 +61,7 @@ Installation Instructions
  - Check required packages: nagios, nagios-plugins, rrdtool, perl,
    perl-CGI, and perl-rrdtool
 
- - Extract the Nagiosgraph tarball into a temporary location:
+ - Extract nagiosgraph into a temporary location:
      cd /tmp
      tar xzvf nagiosgraph-x.y.z.tgz
 
@@ -76,14 +77,11 @@ Installation Instructions
  - Copy the contents of cgi into the Nagios cgi-bin directory,
    e.g. /usr/lib/nagios/cgi-bin
 
- - Copy the share/action.gif file into the Nagios image directory,
-   e.g. /usr/share/nagios/images
-
- - Copy the share/nagiosgraph.css file into the Nagios stylesheets directory,
+ - Copy share/nagiosgraph.css into a directory served by the web server
    e.g. /usr/share/nagios/stylesheets
 
- - Copy the share/nagiosgraph.js file into a directory served by the web server
-   e.g. /usr/share/nagiosgraph
+ - Copy share/nagiosgraph.js into a directory served by the web server
+   e.g. /usr/share/nagios
 
  - Edit nagiosgraph.conf.  Set at least the following:
 
@@ -99,7 +97,7 @@ Installation Instructions
    the *nagios* user can write to it and the *www* user can read it.
 
  - Set permissions of "logfile" (as defined in nagiosgraph.conf) so that
-   both the *nagios* and *www* users can write to "logfile".
+   both the *nagios* and *www* users can write to it.
 
 
 Upgrade Notes
@@ -355,61 +353,254 @@ Customizing the Graphs
 ----------------------
 
 Graphs can be customized individually by specifying CGI arguments, or they
-can be customized overall by specifying values in the nagiosgraph.conf or
-rrdopts.conf files.  Here are a few examples of what is possible.
+can be customized overall by specifying values in the configuration files.
+Here are a few examples of what is possible.
 
- -- Add geom option (e.g. &geom=350x100) for custom sizes of graphs.
+  - Use the geom option (e.g. &geom=350x100) for custom sizes of graphs.
 
- -- Add rrdopts option (e.g. &rrdopts=%2Dl%200%20%2Du%20100 (meaning:
+  - Use the rrdopts option (e.g. &rrdopts=%2Dl%200%20%2Du%20100 (meaning:
     "-l 0 -u 100")) for custom Y axis ranges. Any rrdgraph options can
     be specified, but has to be url encoded.
 
- -- Add &fixedscale to set the Y-axis to be in the same scale as the
+  - Add &fixedscale to set the Y-axis to be in the same scale as the
     perf data.  This will also set the legends to be in same scale.
 
- -- Add hidelegend (e.g. &hidelegend) to hide the legend.
+  - Use hidelegend (e.g. &hidelegend) to hide the legend.
 
- -- Use lineformat to control the line thickness and line color for
+  - Use lineformat to control the line thickness and line color for
     different services.
 
- -- Create stacked area graphs using alpha channel in colors specified
+  - Create stacked area graphs using alpha channel in colors specified
     in the lineformat directive for each data set or in rrdopts.conf 
     for specific services and data sets.
 
- -- Use plotasX to control the line thickness for different services.
+  - Use plotasX to control the line thickness for different services.
 
- -- Some type of services have data values that have big differences in the
-    magnitude. In such cases split the data into seperate graphs. Do this by
-    specifying one or more data sets.  For example, for the NTP service:
+  - Some services emit multiple data sets with big differences in magnitude.
+    Others emit data with different units.  In such cases, split the data
+    into seperate graphs by specifying one or more data sets.  For example,
+    for the NTP service, jitter and offset are typically in the same range,
+    while stratum is orders of magnitude larger.  So we specify two
+    different graphs:
 
-    show.cgi?host=HOST&service=NTP&db=ntp,jitter,offset
-    show.cgi?host=HOST&service=NTP&db=ntp,stratum
+      show.cgi?host=HOST&service=NTP&db=ntp,jitter&db=ntp,offset
+      show.cgi?host=HOST&service=NTP&db=ntp,stratum
+
+    This assumes that jitter, offset, and stratum are all stored in a
+    single rrd file using a map entry such as:
+
+      /output:NTP.*Offset ([-.0-9]+).*jitter ([-.0-9]+).*stratum (\d+)/
+      and push @s, [ 'ntp',
+                     [ 'offset',  GAUGE, $1      ],
+                     [ 'jitter',  GAUGE, $2/1000 ],
+                     [ 'stratum', GAUGE, $3+1    ] ];
 
 See the nagiosgraph.conf file for more options and examples.
 
 
 
-Adding Services
----------------
+Adding Service Types
+--------------------
 
-To add new service types, edit the map file. This contains regular
-expression to identify service types, and defines how to store data in
-rrd files.
+Service types are added by creating rules in the 'map' file.  The map file
+determines how data from Nagios will be stored.  Each rule determines how
+output and performance data should be recorded.
 
- - Use testentry.pl for testing before inserting in map file.
+The map file contains regular expressions to identify service types
+and define content in RRD databases. All entries are written in perl, so 
+editing, adding or deleting entries requires some perl programming 
+knowledge. Knowledge of RRD is also helpful.
 
- - You can run the nagios check command from the command line to see
-   what is returned.
+There has to be one entry for each type of service. The map file included 
+with nagiosgraph has several examples for cpu, memory, disk, network etc.
+Most examples follow the of identifying data from either Nagios output or
+Nagios perfdata and defining a number of rrd data sources.
+
+insert.pl receives data from Nagios.  It formats data into a string consisting
+of three lines of text.  This string might look like this:
+
+  servicedesc:ping
+  output:PING OK - Packet loss = 0%, RTA = 0.00 ms
+  perfdata:
+
+Or like this:
+
+  servicedesc:CPU Load 
+  output:OK - load average: 0.06, 0.12, 0.10
+  perfdata:load1=0;15;30;0 load5=0;10;25;0 load15=0;5;20;0 
+
+The official perfdata format is a space-delimited list of qualified
+name-value pairs with this format:
+
+  name=value[units];[warn];[crit];[min];[max]
+
+where units is one of: nothing, s, %, B, c
+
+However, the perfdata is not always set, and the format of perfdata varies
+a great deal from plugin to plugin.  So depending on type of service, the
+most useful data can be in either the output or perfdata line.
+
+For the ping example above, data can be extracted from the output line 
+with a regular expression like this:
+
+  /output:PING.*?(\d+)%.+?([.\d]+)\sms/
+
+In this case, two values are extracted and available in $1 and $2. We can 
+then create a data structure describing the content of the database. The 
+general format is
+
+  [ db-name,
+    [ DS-name, TYPE, DS-value ],
+    [ DS-name, TYPE, DS-value ],
+    ...
+  ]
+
+Where DS-name is the name that will be assigned to a line showing on rrd 
+graphs. TYPE is either GAUGE or DERIVE. the DS value is the data 
+extracted in the regular expression. The DS value can be an expression, 
+for example to normalize to SI units.
+
+Each database definition must be added to the @s array.
+
+So the complete code to define and insert into and rrd database for the 
+PING example above, becomes:
+
+  /output:PING.*?(\d+)%.+?([.\d]+)\sms/
+  and push @s, [ ping,
+                [ losspct, GAUGE, $1      ],
+                [ rta,     GAUGE, $2/1000 ] ];
+
+In this case the database name is called 'ping' and the DS-names stored 
+are losspct and rta. The Nagios output reports round trip time in 
+milliseconds, so the value is multiplied by 1000 to convert to seconds. 
+The type for each DS is GAUGE.
+
+Be careful about the database names and DS names. In the code example 
+above the names are barewords, which only works as long as the don't 
+conflict with perl functions or subroutines. For example the word 'sleep' 
+will not work without quoting.
+
+A safer version of the above example is
+
+  /output:PING.*?(\d+)%.+?([.\d]+)\sms/
+  and push @s, [ 'ping',
+                [ 'losspct', 'GAUGE', $1      ],
+                [ 'rta',     'GAUGE', $2/1000 ] ];
+
+After editing the map file, the syntax can be checked with
+
+  perl -c map
+
+Again a word of caution. If the map file has syntax errors, nothing will be 
+inserted into rrd files until the file is fixed. So do not edit production 
+map files. Instead do something like this:
+
+  cp map map.edit
+  vi map.edit
+  perl -c map.edit
+  mv map.edit map
+
+Use testentry.pl to test a rule before putting it into production.  First run
+the nagios check command from the command line to see what is returned.  Copy
+this output and paste it into testentry.pl.  Paste the rule into testentry.pl.
+Run testentry.pl to see how the output will be handled.
 
  - Changes to the map file generally do not require a restart of Nagios.
 
+ - It may take awhile for data from a map entry to show up in an rrd file.
+   This is partly due to the service check scheduling in Nagios, and partly
+   due to the perfdata buffering of service_perfdata_file_processing_interval
+
  - Increase debug level in nagiosgraph.conf to see what is happening.
-   Output will go to the nagiosgraph log file.
+   The debug_insert parameter determines the log level for collecting data.
+   Output will go to the nagiosgraph log file.  Keep an eye on the log file;
+   it can grow big.  Perhaps rotate it, or decrease log level when everything
+   works.
 
- - Keep an eye on the log file. It can grow big. Perhaps rotate it, or
-   decrease log level when everything works.
+Share your work. If you have a good map file entry for standard Nagios 
+plugins, then please post it on the forum.
 
-The README.map file contains details for defining and testing new mappings.
+
+
+Managing Data and RRD Files
+---------------------------
+
+nagiosgraph saves data in rrd files in the rrddir directory (specified in
+nagiosgraph.conf).  By default, nagiosgraph uses a directory for each host,
+and the rrd files are named based on the service description (from Nagios)
+and the data names (from the map file).  For example, the default 
+configuration for the PING service results in rrd files like this:
+
+  /var/nagiosgraph/rrd/host/PING___pingloss.rrd
+  /var/nagiosgraph/rrd/host/PING___pingrta.rrd
+
+Older versions of nagiosgraph kept all rrd files in a single directory.
+This is controlled by the dbseparator variable in nagiosgraph.conf.
+
+Use the 'dump' and 'restore' options to rrdtool if you need to restructure
+rrd files.  You might want to split data from a single rrd file into 
+multiple files, or you might want to combine data from multiple rrd files
+into a single file.  Or you might simply want to change the name of a 
+data set.  The dump option will emit data in XML format:
+
+  rrdtool dump service___db.rrd > service_db.xml
+
+You can modify the XML with any text editor, the convert to rrd format:
+
+  rrdtool restore service_db.xml service___db-new.rrd
+
+Unfortunately the rrd file schema is not dynamic.  If an rrd file is created
+with 2 data sets, more data sets cannot be added automatically.  For example,
+you start recording UPS temperature to an rrd file using the following
+map rule:
+
+/perfdata:temperature=([.\d]+)/
+and push @s, [ 'temp',
+               [ 'temperature', GAUGE, $1 ] ];
+
+Later you decide to include critical and warning temperatures using this
+map rule:
+
+/perfdata:temperature=([.\d]+);([.\d]+);([.\d]+)/
+and push @s, [ 'temp',
+               [ 'temperature', GAUGE, $1 ],
+               [ 'warn',  GAUGE, $2 ],
+               [ 'crit',  GAUGE, $3 ] ];
+
+The new rule will still record temperature, but critical and warning values
+will be discarded, because they are not defined in the rrd file.  You must do
+a dump/edit/restore on the rrd file if you want to add critical/warning while
+maintaining existing temperature data.  Alternatively you can simply delete
+the existing rrd data file and let the new map rule create the new rrd file.
+
+What is the 'right' way to configure rrd files?  Should all data from a single
+service go into a single rrd file?  Should each rrd file contain a single set
+of data?  Some best practices have evolved over the past 10 years, but as of
+this writing (febrary 2010) there is no single 'right' way.
+
+Some people prefer to put all data from a single service into a single rrd
+file, even if the data have different units.  For example, for the PING 
+service their rrd files look something like this:
+
+  PING___ping.rrd (losspct, losswarn, losscrit, rta, rtawarn, rtacrit)
+
+Others prefer a separate file for each set of data:
+
+  PING___losspct.rrd (losspct)
+  PING___losswarn.rrd (losswarn)
+  PING___losscrit.rrd (losscrit)
+  PING___rta.rrd (rta)
+  PING___rtawarn.rrd (rtawarn)
+  PING___rtacrit.rrd (rtacrit)
+
+And others prefer something in between:
+
+  PING___loss.rrd (losspct, losswarn, losscrit)
+  PING___rta.rrd (rta, rtawarn, rtacrit)
+
+It is a good idea to plan your configuration before you start recording data.
+Although it is possible to reconfigure data after the rrd files are full,
+doing so is somewhat tedious, especially for large numbers of hosts/services.
 
 
 

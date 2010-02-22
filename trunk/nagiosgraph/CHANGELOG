@@ -18,6 +18,7 @@ $Id$
 * started refactoring of code to eliminate redundant trips to disk for 
    host/service/dataset listings and to enable pattern matching in
    the *db.conf files.
+* contents of README.map are now in INSTALL
 
 1.4.1 2010-02-18
 

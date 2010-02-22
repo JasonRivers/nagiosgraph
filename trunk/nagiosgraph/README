@@ -69,9 +69,8 @@ Files
 ------
 
 CHANGELOG             - History of changes
-INSTALL               - How to install and use nagiosgraph
+INSTALL               - How to install, configure, and use nagiosgraph
 README                - This file
-README.map            - Instructions to create map file entries.
 TODO                  - A list of potential improvements to nagiosgraph.
 install.pl            - An initial stab at an installer (for the brave only).
 lib/insert.pl         - Reads nagios perfdata log and insert into rrd files.

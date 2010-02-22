@@ -184,7 +184,7 @@ copyfiles('share', $destdir, $conf);
 
 my $file = $destdir . $conf->{ngshare};
 if (not -d $file) { mkpath $file, 0, RWPATH; }
-foreach my $ii (qw(AUTHORS CHANGELOG INSTALL README README.map TODO)) {
+foreach my $ii (qw(AUTHORS CHANGELOG INSTALL README TODO)) {
     print "installing $ii to $file/$ii\n"; ## no critic (RequireCheckedSyscalls)
     copy($ii, "$file/$ii");
 }
