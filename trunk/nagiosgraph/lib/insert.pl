@@ -17,38 +17,33 @@ use RRDs;
 use strict;
 use warnings;
 
-use constant SLEEP => 30; ## no critic (ProhibitConstantPragma)
+use constant SLEEP => 30;    ## no critic (ProhibitConstantPragma)
 
 use vars qw($VERSION);
 $VERSION = '2.0';
 
-my (@perfdata);                 # data returned by inputdata for processdata
-
-readconfig('write');            # specify 'write' to check creation of RRD files
-if (defined $Config{ngshared}) { # ngshared is set on an error
-    debug(DBCRT, $Config{ngshared});
-    exit;
-}
-if (defined $Config{debug_insert}) {
-    $Config{debug} = $Config{debug_insert};
-}                               # processdata sets debug for specific hosts, etc
+my $errmsg = readconfig();
+if ( $errmsg ne q() ) { croak $errmsg; }
+initlog('insert');
+$errmsg = checkrrddir('write');
+if ( $errmsg ne q() ) { croak $errmsg; }
 
 # Read the map file and define a subroutine that parses performance data
-getrules($Config{mapfile}) and exit;
+getrules( $Config{mapfile} ) and exit;
 
-if ($Config{perfloop}) {
-    while (1) {                 # check the file every 30 seconds and load data
-        @perfdata = inputdata();
-         if (@perfdata) { processdata(@perfdata); }
-        debug(DBDEB, 'insert.pl waiting for more input');
+if ( $Config{perfloop} ) {
+    while (1) {    # check the file every 30 seconds and load data
+        my @perfdata = inputdata();
+        if (@perfdata) { processdata(@perfdata); }
+        debug( DBDEB, 'insert.pl waiting for more input' );
         sleep SLEEP;
     }
-} else {                        # run once with the line at $ARGV[0]
-    @perfdata = inputdata();
+} else {           # run once with the line at $ARGV[0]
+    my @perfdata = inputdata();
     if (@perfdata) { processdata(@perfdata); }
 }
 
-debug(DBDEB, 'insert.pl exited');
+debug( DBDEB, 'insert.pl exited' );
 
 __END__
 

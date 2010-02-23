@@ -10,7 +10,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 198; }
+BEGIN { plan tests => 222; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -22,6 +22,22 @@ sub dumpdata {
     }
 	print $TMP $log;
 	close $TMP;
+}
+
+sub readtestfile {
+    my ($fn) = @_;
+    my $contents = q();
+    if (open FILE, '<', $fn) {
+        while(<FILE>) {
+            $contents .= $_;
+        }
+        close FILE;
+    }
+    return $contents;
+}
+
+sub gettestrrddir {
+    return $FindBin::Bin . q(/) . 'rrd';
 }
 
 sub testdebug { # Test the logger.
@@ -107,6 +123,34 @@ sub testgetdebug {
 	$Config{debug} = 0;
 }
 
+sub testhtmlerror {
+    open SAVEOUT, ">&STDOUT";
+    my $fn = $FindBin::Bin . q(/) . 'foo.txt';
+    open STDOUT, '>', $fn;
+    htmlerror('test');
+    close STDOUT;
+    open STDOUT, ">&SAVEOUT";
+    close SAVEOUT;
+    $result = readtestfile($fn);
+    ok($result, "Content-Type: text/html; charset=ISO-8859-1\r
+\r
+<!DOCTYPE html
+\tPUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\"
+\t \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">
+<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en-US\" xml:lang=\"en-US\">
+<head>
+<title>NagiosGraph Error</title>
+<style type=\"text/css\">.error { font-family: sans-serif; padding: 0.75em; background-color: #fff6f3; border: solid 1px #cc3333; }</style>
+<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\" />
+</head>
+<body id=\"nagiosgraph\">
+<div class=\"error\">test</div>
+
+</body>
+</html>");
+    unlink $fn;
+}
+
 # ensure that asking about host data does not create host directory
 sub testdircreation {
     $Config{rrddir} = $FindBin::Bin;
@@ -116,6 +160,7 @@ sub testdircreation {
     my ($d,$f) = mkfilename($host,$service);
     my $dir = $FindBin::Bin . q(/) . $host;
     ok(! -d $dir);
+    rmdir $dir if -d $dir;
 }
 
 sub testmkfilename { # Test getting the file and directory for a database.
@@ -137,16 +182,6 @@ sub testmkfilename { # Test getting the file and directory for a database.
 	ok($result[1], 'Partition%3A%20%2F___diskgb.rrd');
 	ok(! -d $result[0]);
 	rmdir $result[0] if -d $result[0];
-}
-
-sub testhtmlerror { # We can't really test htmlerror, since it just prints to STDOUT.
-	# I tried this:
-	#open SAVEOUT, ">&STDOUT";
-	#open STDOUT, '+>', \$log;
-	#htmlerror('test');
-	#ok($result, '');
-	#close STDOUT;
-	#open STDOUT, ">&SAVEOUT";
 }
 
 sub testhashcolor { # With 16 generated colors, the default rainbow and one custom.
@@ -192,7 +227,6 @@ sub testcheckdirempty { # Test with an empty directory, then one with a file.
 
 sub testreadfile {
     my $fn = "$FindBin::Bin/test.conf";
-    my $cwd = $FindBin::Bin;
 
     open TEST, ">$fn";
     print TEST "name0 = value0\n";
@@ -281,15 +315,9 @@ sub testgraphinfo {
     skip(! -f $file, $result->[0]->{line}->{rta}, 1);
 }
 
-sub testgetlabels {
-    $result = getlabels('diskgb', 'test,junk');
-    ok($result->[0], 'Disk Usage in Gigabytes');
-    $result = getlabels('testing', 'tested,Mem%3A%20swap,junk');
-    ok($result->[0], 'Swap Utilization');
-}
-
 sub testrrdline {
     setuprrd();
+    my $rrddir = gettestrrddir();
 
     # test a minimal invocation with no data for the host
     my %params = qw(host host30 service ping);
@@ -307,13 +335,13 @@ sub testrrdline {
           'now-118800',
           '-e',
           'now-0',
-          'DEF:ping_losspct=/home/src/nagiosgraph/t/host0/PING___ping.rrd:losspct:AVERAGE',
+          'DEF:ping_losspct=$rrddir/host0/PING___ping.rrd:losspct:AVERAGE',
           'LINE2:ping_losspct#9900FF:losspct',
           'GPRINT:ping_losspct:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_losspct:AVERAGE:Avg\\\\: %6.2lf%s',
           'GPRINT:ping_losspct:MIN:Min\\\\: %6.2lf%s',
           'GPRINT:ping_losspct:LAST:Cur\\\\: %6.2lf%s\\\\n',
-          'DEF:ping_rta=/home/src/nagiosgraph/t/host0/PING___ping.rrd:rta:AVERAGE',
+          'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
           'LINE2:ping_rta#CC03CC:rta    ',
           'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
@@ -339,7 +367,7 @@ sub testrrdline {
           'now-118800',
           '-e',
           'now-0',
-          'DEF:ping_rta=/home/src/nagiosgraph/t/host0/PING___ping.rrd:rta:AVERAGE',
+          'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
           'LINE2:ping_rta#CC03CC:rta',
           'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
@@ -359,35 +387,132 @@ sub testrrdline {
 }
 
 sub testgetgraphlist { # Does two things: verifies directores and .rrd files.
-	$_ = '..';
-	getgraphlist();
-	ok(%hsdata, 0, 'Nothing should be set yet');
-	$_ = 'test';
-	mkdir($_, 0755);
-	getgraphlist();
-	ok(%hsdata, 0, 'Nothing should be set yet');
-	$_ = 'test/test1';
-	open TMP, ">$_";
-	print TMP "test1\n";
-	close TMP;
-	getgraphlist();
-	ok(%hsdata, 0, 'Nothing should be set yet');
-	$_ = 'test';
-	getgraphlist();
-	ok(Dumper($hsdata{$_}), qr'{}');
-	$_ = 'test/test1.rrd';
-	open TMP, ">$_";
-	print TMP "test1\n";
-	close TMP;
-	$File::Find::dir = $FindBin::Bin;
-	getgraphlist();
-	ok($hsdata{$FindBin::Bin}{'test/test1.rrd'}[0], undef);
-	unlink 'test/test1';
-	unlink 'test/test1.rrd';
-	rmdir 'test';
+    $_ = '..';
+    getgraphlist();
+    ok(%hsdata, 0, 'Nothing should be set yet');
+    $_ = 'test';
+    mkdir($_, 0755);
+    getgraphlist();
+    ok(%hsdata, 0, 'Nothing should be set yet');
+    $_ = 'test/test1';
+    open TMP, ">$_";
+    print TMP "test1\n";
+    close TMP;
+    getgraphlist();
+    ok(%hsdata, 0, 'Nothing should be set yet');
+    $_ = 'test';
+    getgraphlist();
+    ok(Dumper($hsdata{$_}), qr'{}');
+    $_ = 'test/test1.rrd';
+    open TMP, ">$_";
+    print TMP "test1\n";
+    close TMP;
+    $File::Find::dir = $FindBin::Bin;
+    getgraphlist();
+    ok($hsdata{$FindBin::Bin}{'test/test1.rrd'}[0], undef);
+    unlink 'test/test1';
+    unlink 'test/test1.rrd';
+    rmdir 'test';
+    undef %hsdata;
 }
 
-sub testprintNavMenu { # printNavMenu is like htmlerror--not really testable.
+sub testgetserverlist {
+    setuprrd();
+    scanhsdata();
+    my $rrddir = gettestrrddir();
+
+    $Config{userdb} = '';
+    my %result = getserverlist('');
+    my $dd = Data::Dumper->new([\%result]);
+    $dd->Indent(1);
+    ok($dd->Dump, "\$VAR1 = {
+  'hostserv' => {
+    'host0' => {
+      'HTTP' => [
+        [
+          'http',
+          'Bps'
+        ]
+      ],
+      'PING' => [
+        [
+          'ping',
+          'rta',
+          'losspct'
+        ]
+      ]
+    },
+    'host3' => {
+      'ping' => [
+        [
+          'loss',
+          'losscrit',
+          'losspct',
+          'losswarn'
+        ],
+        [
+          'rta',
+          'rtacrit',
+          'rtawarn',
+          'rtapct'
+        ]
+      ]
+    },
+    'host2' => {
+      'PING' => [
+        [
+          'ping',
+          'rta',
+          'losspct'
+        ]
+      ]
+    },
+    'host1' => {
+      'HTTP' => [
+        [
+          'http',
+          'Bps'
+        ]
+      ]
+    }
+  },
+  'host' => [
+    'host0',
+    'host1',
+    'host2',
+    'host3'
+  ]
+};
+");
+}
+
+sub testprintmenudatascript {
+    setuprrd();
+    scanhsdata();
+
+    $Config{userdb} = '';
+    my $rrddir = gettestrrddir();
+    my %result = getserverlist('');
+    my(@servers) = @{$result{host}};
+    my(%servers) = %{$result{hostserv}};
+    $result = printmenudatascript(\@servers, \%servers);
+    ok($result, "<script type=\"text/javascript\">
+menudata = new Array();
+menudata[0] = [\"host0\"
+ ,[\"HTTP\",[\"http\",\"Bps\"]]
+ ,[\"PING\",[\"ping\",\"losspct\",\"rta\"]]
+];
+menudata[1] = [\"host1\"
+ ,[\"HTTP\",[\"http\",\"Bps\"]]
+];
+menudata[2] = [\"host2\"
+ ,[\"PING\",[\"ping\",\"losspct\",\"rta\"]]
+];
+menudata[3] = [\"host3\"
+ ,[\"ping\",[\"loss\",\"losscrit\",\"losspct\",\"losswarn\"],[\"rta\",\"rtacrit\",\"rtapct\",\"rtawarn\"]]
+];
+</script>
+");
 }
 
 sub testgraphsizes {
@@ -525,9 +650,11 @@ sub testprocessdata { # depends on testcreaterdd and testgetrules
     unlink $FindBin::Bin . '/testbox_procsusers_procs.rrd';
 }
 
+# test for the primary string literals.  do not test for error strings.
 sub testtrans {
     $Config{debug} = 0;
     open $LOG, '+>', \$log;
+
     ok(trans('day'), 'Today');
     ok(trans('daily'), 'Daily');
     ok(trans('week'), 'This Week');
@@ -536,6 +663,28 @@ sub testtrans {
     ok(trans('monthly'), 'Monthly');
     ok(trans('year'), 'This Year');
     ok(trans('yearly'), 'Yearly');
+
+    ok(trans('asof'), 'as of');
+    ok(trans('clear'), 'Clear');
+    ok(trans('createdby'), 'Created by');
+    ok(trans('graphof'), 'Graph of');
+    ok(trans('i18n_enddate'), 'End Date:');
+    ok(trans('i18n_fixedscale'), 'Fixed Scale');
+    ok(trans('on'), 'on');
+    ok(trans('perfforgroup'), 'Data for group');
+    ok(trans('perfforhost'), 'Data for host');
+    ok(trans('perfforserv'), 'Data for service');
+    ok(trans('periods'), 'Periods:');
+    ok(trans('selectds'), 'Data Sets:');
+    ok(trans('selectgroup'), 'Group:');
+    ok(trans('selecthost'), 'Host:');
+    ok(trans('selectserv'), 'Service:');
+    ok(trans('service'), 'service');
+    ok(trans('submit'), 'Update Graphs');
+    ok(trans('testcolor'), 'Show Colors');
+    ok(trans('typesome'), 'Enter names separated by spaces');
+    ok(trans('zoom'), 'Size:');
+
     close $LOG;
     $Config{debug} = 0;
 }
@@ -639,8 +788,9 @@ sub testdbname {
 
 # create rrd files used in the read*db tests
 sub setuprrd {
-    $Config{rrddir} = $FindBin::Bin;
     $Config{dbseparator} = 'subdir';
+    $Config{rrddir} = gettestrrddir();
+    mkdir $Config{rrddir};
 
     my $testvar = ['ping',
                    ['losspct', 'GAUGE', 0],
@@ -672,18 +822,14 @@ sub setuprrd {
 }
 
 sub cleanuprrd {
-    rmtree($FindBin::Bin . q(/) . 'bogus');
-    rmtree($FindBin::Bin . q(/) . 'host0');
-    rmtree($FindBin::Bin . q(/) . 'host1');
-    rmtree($FindBin::Bin . q(/) . 'host2');
-    rmtree($FindBin::Bin . q(/) . 'host3');
+    rmtree($FindBin::Bin . q(/) . 'rrd');
 }
 
 sub testreadhostdb {
     setuprrd();
 
     my $fn = "$FindBin::Bin/db.conf";
-    my $cwd = $FindBin::Bin;
+    my $rrddir = gettestrrddir();
     $Config{hostdb} = $fn;
     my $result;
 
@@ -721,7 +867,7 @@ sub testreadhostdb {
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
           {
-            'filename' => '$cwd/host0/PING___ping.rrd',
+            'filename' => '$rrddir/host0/PING___ping.rrd',
             'db' => [
                       'ping'
                     ],
@@ -746,7 +892,7 @@ sub testreadhostdb {
     ok(@{$result}, 3);
     ok(Dumper($result), "\$VAR1 = [
           {
-            'filename' => '$cwd/host2/PING___ping.rrd',
+            'filename' => '$rrddir/host2/PING___ping.rrd',
             'db' => [
                       'ping'
                     ],
@@ -755,7 +901,7 @@ sub testreadhostdb {
             'host' => 'host2'
           },
           {
-            'filename' => '$cwd/host2/PING___ping.rrd',
+            'filename' => '$rrddir/host2/PING___ping.rrd',
             'db' => [
                       'ping,rta'
                     ],
@@ -764,7 +910,7 @@ sub testreadhostdb {
             'host' => 'host2'
           },
           {
-            'filename' => '$cwd/host2/PING___ping.rrd',
+            'filename' => '$rrddir/host2/PING___ping.rrd',
             'db' => [
                       'ping,losspct'
                     ],
@@ -778,7 +924,7 @@ sub testreadhostdb {
     ok(@{$result}, 2);
     ok(Dumper($result), "\$VAR1 = [
           {
-            'filename' => '$cwd/host3/ping___rta.rrd',
+            'filename' => '$rrddir/host3/ping___rta.rrd',
             'db' => [
                       'rta'
                     ],
@@ -787,7 +933,7 @@ sub testreadhostdb {
             'host' => 'host3'
           },
           {
-            'filename' => '$cwd/host3/ping___loss.rrd',
+            'filename' => '$rrddir/host3/ping___loss.rrd',
             'db' => [
                       'loss'
                     ],
@@ -818,7 +964,7 @@ sub testreadhostdb {
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
           {
-            'filename' => '$cwd/host2/PING___ping.rrd',
+            'filename' => '$rrddir/host2/PING___ping.rrd',
             'db' => [
                       'ping,losspct',
                       'ping,rtapct'
@@ -833,7 +979,7 @@ sub testreadhostdb {
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
           {
-            'filename' => '$cwd/host3/ping___rta.rrd',
+            'filename' => '$rrddir/host3/ping___rta.rrd',
             'db' => [
                       'rta',
                       'loss'
@@ -855,7 +1001,7 @@ sub testreadhostdb {
     ok(Dumper($result), "\$VAR1 = [
           {
             'service_label' => 'PING Loss Percentage',
-            'filename' => '$cwd/host3/ping___loss.rrd',
+            'filename' => '$rrddir/host3/ping___loss.rrd',
             'db' => [
                       'loss'
                     ],
@@ -907,9 +1053,13 @@ sub testreadservdb {
     print TEST "\n";
     close TEST;
 
-    # nothing when nothing in file
+    # when nothing in file, use defaults
     $result = readservdb('PING');
-    ok(@{$result}, 0);
+    ok(@{$result}, 2);
+    ok(Dumper($result), "\$VAR1 = [
+          'host0',
+          'host2'
+        ];\n");
 
     open TEST, ">$fn";
     print TEST "host=host0\n";
@@ -1010,7 +1160,7 @@ sub testreadgroupdb {
     setuprrd();
 
     my $fn = "$FindBin::Bin/db.conf";
-    my $cwd = $FindBin::Bin;
+    my $rrddir = gettestrrddir();
     $Config{groupdb} = $fn;
     my $names;
     my $infos;
@@ -1063,7 +1213,7 @@ sub testreadgroupdb {
     ok(@{$infos}, 3);
     ok(Dumper($infos), "\$VAR1 = [
           {
-            'filename' => '$cwd/host0/PING___ping.rrd',
+            'filename' => '$rrddir/host0/PING___ping.rrd',
             'db' => [
                       'ping,losspct'
                     ],
@@ -1072,7 +1222,7 @@ sub testreadgroupdb {
             'host' => 'host0'
           },
           {
-            'filename' => '$cwd/host0/HTTP___http.rrd',
+            'filename' => '$rrddir/host0/HTTP___http.rrd',
             'db' => [
                       'http'
                     ],
@@ -1081,7 +1231,7 @@ sub testreadgroupdb {
             'host' => 'host0'
           },
           {
-            'filename' => '$cwd/host1/HTTP___http.rrd',
+            'filename' => '$rrddir/host1/HTTP___http.rrd',
             'db' => [
                       'http'
                     ],
@@ -1106,7 +1256,7 @@ sub testreadgroupdb {
     ok(Dumper($infos), "\$VAR1 = [
           {
             'service_label' => 'PING RTA',
-            'filename' => '$cwd/host0/PING___ping.rrd',
+            'filename' => '$rrddir/host0/PING___ping.rrd',
             'db' => [
                       'ping,rta'
                     ],
@@ -1115,7 +1265,7 @@ sub testreadgroupdb {
             'host' => 'host0'
           },
           {
-            'filename' => '$cwd/host0/PING___ping.rrd',
+            'filename' => '$rrddir/host0/PING___ping.rrd',
             'db' => [
                       'ping,losspct'
                     ],
@@ -1132,7 +1282,6 @@ sub testreaddatasetdb {
     setuprrd();
 
     my $fn = "$FindBin::Bin/db.conf";
-    my $cwd = $FindBin::Bin;
     $Config{datasetdb} = $fn;
     my $result;
 
@@ -1181,6 +1330,7 @@ sub testreaddatasetdb {
 testdebug();
 testdumper();
 testgetdebug();
+testhtmlerror();
 testdircreation();
 testmkfilename();
 testhashcolor();
@@ -1190,6 +1340,8 @@ testcheckdirempty();
 testreadfile();
 testreadconfig();
 testdbfilelist();
+testgetserverlist();
+testprintmenudatascript();
 testgraphsizes();
 testinputdata();
 testgetrras();
@@ -1197,7 +1349,6 @@ testcheckdatasources();
 testcreaterrd();
 testrrdupdate(); # must be run after createrrd
 testgetrules();
-#testgetlabels();
 testrrdline();
 testgraphinfo();
 testprocessdata();

@@ -28,8 +28,6 @@ use warnings;
 # 5x5 clear image
 use constant IMG => 'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGljQ29udmVydGVyIChJbnRlbCl3h/oZAAAAGUlEQVR4nGL4//8/AzrGEKCCIAAAAP//AwB4w0q2n+syHQAAAABJRU5ErkJggg==';
 
-## no critic (ProhibitExcessComplexity)
-
 my ($cgi, $params) = init('showgraph');
 
 if (($params->{host} ne q() && $params->{host} ne q(-))
@@ -60,7 +58,7 @@ if (($params->{host} ne q() && $params->{host} ne q(-))
     }
     
     if ($errmsg ne q()) {
-        debug(DBERR, $errmsg);
+        debug(DBWRN, $errmsg);
         my $rval = eval { require GD; };
         if (defined $rval && $rval == 1) {
             my @lines = split /\n/, $errmsg; ## no critic (RegularExpressions)
@@ -71,10 +69,8 @@ if (($params->{host} ne q() && $params->{host} ne q(-))
             my $height = 2 * $pad + $maxh * scalar @lines;
             my $img = new GD::Image($width,$height);
             my $wht = $img->colorAllocate(255,255,255);
-            my $blk = $img->colorAllocate(0,0,0);
             my $red = $img->colorAllocate(255,0,0);
             $img->transparent($wht);
-            $img->rectangle(0,0,$width-1,$height-1,$blk);
             $img->rectangle(2,2,$width-3,$height-3,$wht);
             my $y = $pad;
             foreach my $line (@lines) {

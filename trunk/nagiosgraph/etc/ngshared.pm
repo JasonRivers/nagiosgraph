@@ -105,7 +105,6 @@ sub debug {
     return;
 }
 
-# Dump to log the files read from Nagios
 sub dumper {
     my ($level, $label, $vals) = @_;
     return if ($level > $Config{debug});
@@ -147,11 +146,16 @@ sub formatelapsedtime {
 sub init {
     my ($app, $doscan) = @_;
 
-    readconfig('read');
-    if (defined $Config{ngshared}) {
-        debug(DBCRT, $Config{ngshared});
-        htmlerror($Config{ngshared});
-        exit;
+    my $errmsg = readconfig();
+    if ($errmsg ne q()) {
+        htmlerror($errmsg);
+        croak($errmsg);
+    }
+    initlog($app, $Config{cgilogfile});
+    $errmsg = checkrrddir('read');
+    if ($errmsg ne q()) {
+        htmlerror($errmsg);
+        croak($errmsg);
     }
 
     my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
@@ -168,6 +172,29 @@ sub init {
     }
 
     return $cgi, $params;
+}
+
+# If logging is enabled, make sure we can write to the log file.
+# Attempt to write to the log file.  If that fails, write to STDERR.
+# CGI scripts will typically fail to write to the log file (unless
+# the web server user has write permissions on it), so output will
+# go to the web server logs.
+sub initlog {
+    my ($app, $logfn) = @_;
+    if (defined $Config{'debug_' . $app}) {
+        $Config{debug} = $Config{'debug_' . $app};
+    }
+    if (! $logfn) {
+        $logfn = $Config{logfile};
+    }
+    if ($Config{debug} > 0) {
+        if (not open $LOG, '>>', $logfn) { ## no critic (RequireBriefOpen)
+            open $LOG, '>&=STDERR' or ## no critic (RequireBriefOpen)
+                croak 'Cannot log to file or STDERR';
+            debug(DBCRT, "Cannot write to $logfn, using STDERR instead");
+        }
+    }
+    return;
 }
 
 # we must have a type (the CGI script that is being invoked).  we may or may
@@ -375,9 +402,6 @@ sub arrayorstring {
 sub buildurl {
     my ($host, $service, $opts) = @_;
     if (not $host or not $service) {
-        debug(DBWRN, 'buildurl called without host or service');
-        if ($host) { debug(DBDEB, "buildurl got host: $host"); }
-        if ($service) { debug(DBDEB, "buildurl got host: $service"); }
         return q();
     }
     debug(DBDEB, "buildurl($host, $service)");
@@ -426,20 +450,15 @@ sub mkfilename {
 # error we encounter.  stylesheet is hard-coded so no dependencies on anything
 # external.
 sub htmlerror {
-    my ($msg, $bconf) = @_;
+    my ($msg) = @_;
     my $cgi = new CGI; ## no critic (ProhibitIndirectSyntax)
+    my $cfgfn = $INC[0] . q(/) . $CFGNAME;
     print $cgi->header(-type => 'text/html', -expires => 0) .
         $cgi->start_html(-id => 'nagiosgraph',
                          -title => 'NagiosGraph Error',
-                         -head => $cgi->style({-type => 'text/css'},
-                                              ERRSTYLE)) or
-        debug(DBCRT, "could not write to STDOUT: $OS_ERROR");
-    if (not $bconf) {
-        print $cgi->div({-class => 'error'},
-                        ERRMSG . $INC[0] . q(/) . $CFGNAME) . "\n" or
-            debug(DBCRT, "could not write to STDOUT: $OS_ERROR");
-    }
-    print $cgi->div({-class=>'error'}, $msg) . "\n" . $cgi->end_html() or
+                         -head => $cgi->style({-type=>'text/css'}, ERRSTYLE)) .
+        $cgi->div({-class=>'error'}, $msg) . "\n" .
+        $cgi->end_html() or
         debug(DBCRT, "could not write to STDOUT: $OS_ERROR");
     return;
 }
@@ -534,14 +553,16 @@ sub checkdirempty {
     return 1;
 }
 
+# pass a debug value if you want to debug the initial config file parsing.
+# otherwise the debug level will be set by whatever is found in the config.
 sub readfile {
     my ($filename, $hashref, $debug) = @_;
     $debug ||= 0;
     debug(DBDEB, "readfile($filename, $debug)");
-    my ($FH);
-    open $FH, '<', $filename or close $FH and
-        ($Config{ngshared} = "cannot open $filename: $OS_ERROR") and
-        carp $Config{ngshared};
+    if ($debug) { $Config{debug} = $debug; }
+    open my $FH, '<', $filename or ## no critic (RequireBriefOpen)
+        return "cannot open $filename: $OS_ERROR";
+    my $cfgdebug;
     my ($key, $val);
     while (<$FH>) {
         next if /^\s*#/;        # skip commented lines
@@ -551,64 +572,59 @@ sub readfile {
             $val = $2;
             $key =~ s/\s+$//;   # removes trailing whitespace
             $val =~ s/\s+$//;   # removes trailing whitespace
-            $hashref->{$key} = $val;
-            if ($key eq 'debug' and defined $debug) { $Config{debug} = $debug; }
+            if ($key eq 'debug') {
+                $cfgdebug = $val;
+            } else {
+                $hashref->{$key} = $val;
+            }
             debug(DBDEB, "$filename $key:$val");
         };
     }
-    close $FH or debug(DBERR, "close failed for $filename: $OS_ERROR");
-    return;
+    close $FH or return "close failed for $filename: $OS_ERROR";
+    if (defined $cfgdebug) {
+        $hashref->{debug} = $cfgdebug;
+    }
+    return q();
 }
 
+# check status of the rrd directory.  this expects either 'write' or 'read'.
 sub checkrrddir {
     my ($rrdstate) = @_;
+    my $errmsg = q();
     if ($rrdstate eq 'write') {
-        # Make sure rrddir exist and is writable
-        if (not -w $Config{rrddir}) {
+        # Make sure rrddir exists and is writable
+        if (not -d $Config{rrddir}) {
             debug(DBINF, "checkrrddir: creating directory $Config{rrddir}");
-            mkdir $Config{rrddir} or $Config{ngshared} = $OS_ERROR;
-        }
-        if (not -w $Config{rrddir} and defined $Config{ngshared}) {
-            $Config{ngshared} = "rrd dir $Config{rrddir} not writable";
+            mkdir $Config{rrddir} or
+                $errmsg = "Cannot create rrd directory: $OS_ERROR";
+        } elsif (not -w $Config{rrddir}) {
+            $errmsg = "Cannot write to rrd directory $Config{rrddir}";
         }
     } else {
         # Make sure rrddir is readable and not empty
-        if (-r $Config{rrddir} ) {
-            if (checkdirempty($Config{rrddir})) {
-                $Config{ngshared} = "$Config{rrddir} is empty";
-            }
-            return;
+        if (! -r $Config{rrddir} ) {
+            $errmsg = "Cannot read rrd directory $Config{rrddir}";
+        } elsif (checkdirempty($Config{rrddir})) {
+            $errmsg = "No data in rrd directory $Config{rrddir}";
         }
-        $Config{ngshared} = "rrd dir $Config{rrddir} not readable";
     }
-    return;
+    if ($errmsg ne q()) { debug(DBCRT, $errmsg); }
+    return $errmsg;
 }
 
 # Read in the config file, check the log file and rrd directory
 sub readconfig {
-    my ($rrdstate, $debug) = @_;
-    # Read configuration data
-    if ($debug) {
-        open $LOG, '>&=STDERR' or ## no critic (RequireBriefOpen)
-            carp "cannot open LOG: $OS_ERROR";
-        $Config{debug} = $debug;
-        dumper(DBDEB, 'INC', \@INC);
-        debug(DBDEB, "readconfig opening $INC[0]/$CFGNAME");
-    } else {
-        $debug = 1;
-    }
-    readfile($INC[0] . q(/) . $CFGNAME, \%Config, $debug);
+    my $debug = 0; # set this higher to debug config file parsing
+    my $errstr = readfile($INC[0] . q(/) . $CFGNAME, \%Config, $debug);
+    if ($errstr ne q()) { return $errstr; }
 
-    # From Craig Dunn, with modifications by Alan Brenner to use an eval, to
-    # allow continuing on failure to open the file, while logging the error
     $Config{rrdoptshash}{global} =
         defined $Config{rrdopts} ? $Config{rrdopts} : q();
     if ( defined $Config{rrdoptsfile} ) {
-        my $rval = eval {
-            readfile($Config{rrdoptsfile}, $Config{rrdoptshash});
-            return 0;
-        };
-        if ($rval or $EVAL_ERROR) { debug(DBCRT, $rval . q( ) . $EVAL_ERROR); }
+        $errstr = readfile($Config{rrdoptsfile}, $Config{rrdoptshash});
+        if ($errstr ne q()) {
+            debug(DBCRT, $errstr);
+        }
     }
 
     foreach my $ii ('maximums', 'minimums', 'withmaximums', 'withminimums',
@@ -637,20 +653,11 @@ sub readconfig {
     }
     $Config{colors} = [split /\s*,\s*/, $Config{colors}];
 
-    # If debug is set make sure we can write to the log file
-    if ($Config{debug} > 0) {
-        if (not open $LOG, '>>', $Config{logfile}) { ## no critic (RequireBriefOpen)
-            return open $LOG, '>&=STDERR' and ## no critic (RequireBriefOpen)
-                $Config{ngshared} = "cannot append to $Config{logfile}";
-        }
-        dumper(DBDEB, 'Config', \%Config);
-    }
-    checkrrddir($rrdstate);
     if ($Config{dbfile}) {
         require $Config{dbfile};
         $Config{userdb} = $Config{rrddir} . '/users';
     }
-    return;
+    return q();
 }
 
 sub parsedb {
@@ -1386,14 +1393,13 @@ sub getserverlist {
     my ($userid) = @_;
     debug(DBDEB, "getserverlist($userid)");
     my (@hosts,               # host list in order
-        %hostserv,            # hash of hosts -> list of services
-        @services,            # list of services on a host
-        @dataitems);          # list of values in the current data set
+        %hostserv);           # hash of hosts -> list of services
 
     # Verify the connected user is allowed to see this host.
     if ($Config{userdb} and $userid) {
         my %authz;
-        tie %authz, $Config{dbfile}, $Config{userdb}, O_RDONLY or return; ## no critic (ProhibitTies)
+        tie %authz, $Config{dbfile}, $Config{userdb}, O_RDONLY or ## no critic (ProhibitTies)
+            return ( host => [@hosts], hostserv => \%hostserv );
         foreach my $ii (sortnaturally(keys %hsdata)) {
             if (checkperms($ii, $userid, \%authz)) { push @hosts, $ii; }
         }
@@ -1403,10 +1409,11 @@ sub getserverlist {
     }
 
     foreach my $ii (@hosts) {
-        @services = sortnaturally(keys %{$hsdata{$ii}});
+        my @services = sortnaturally(keys %{$hsdata{$ii}});
         foreach my $jj (@services) {
             foreach my $kk (@{$hsdata{$ii}{$jj}}) {
-                @dataitems = getdataitems(join q(/), mkfilename($ii, $jj, $kk));
+                my @dataitems =
+                    getdataitems(join q(/), mkfilename($ii, $jj, $kk));
                 if (not exists $hostserv{$ii}) {
                     $hostserv{$ii} = {};
                 }
@@ -1987,7 +1994,7 @@ sub createrrd {
     if (not -e $directory) { # ensure we can write to data directory
         debug(DBINF, "createrrd: creating directory $directory");
         mkdir $directory, 0775;
-        if (not -w $directory) { croak 'cannot write to ' . $directory; }
+        if (not -w $directory) { croak "cannot write to $directory"; }
     }
     debug(DBDEB, "createrrd checking $directory/$filenames[0]");
     @ds = ("$directory/$filenames[0]", '--start', $start);
@@ -2147,7 +2154,7 @@ sub processdata {
         $debug = $Config{debug};
         getdebug('insert', $data[1], $data[2]);
         dumper(DBDEB, 'processdata data', \@data);
-        $_ = "servicedescr:$data[2]\noutput:$data[3]\nperfdata:$data[4]";
+        $_ = "servicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";
         for my $s ( evalrules($_) ) {
             ($rrds, $sets) = createrrd($data[1], $data[2], $data[0] - 1, $s);
             next if not $rrds;
@@ -2178,50 +2185,25 @@ sub processdata {
     # These are used as is, in the source. Verify with:
     # grep trans cgi/* etc/* | sed -e 's/^.*trans(\([^)]*\).*/\1/' | sort -u
     asof => 'as of',
-    clear => 'clear',
+    clear => 'Clear',
     createdby => 'Created by',
-    graph => 'Graph',
     graphof => 'Graph of',
-    nohostgiven => 'no host specified',
-    noservicegiven => 'no service specified',
+    i18n_enddate => 'End Date:',
+    i18n_fixedscale => 'Fixed Scale',
     on => 'on',
     perfforgroup => 'Data for group',
     perfforhost => 'Data for host',
     perfforserv => 'Data for service',
-    periods => 'Periods: ',
-    selectds => 'Data Sets: ',
-    selectgroup => 'Group: ',
-    selecthost => 'Host: ',
-    selectserv => 'Service: ',
+    periods => 'Periods:',
+    selectds => 'Data Sets:',
+    selectgroup => 'Group:',
+    selecthost => 'Host:',
+    selectserv => 'Service:',
     service => 'service',
-    i18n_enddate => 'End Date: ',
-    i18n_fixedscale => 'Fixed Scale',
     submit => 'Update Graphs',
     testcolor => 'Show Colors',
     typesome => 'Enter names separated by spaces',
-    zoom => 'Size: ',
-
-    # These come from Nagios, so are just from what I use.
-    apcupsd => 'Uninterruptible Power Supply Status',
-    bps => 'Bits Per Second',
-    clamdb => 'Clam Database',
-    diskgb => 'Disk Usage in GigaBytes',
-    diskpct => 'Disk Usage in Percent',
-    http => 'Bits Per Second',
-    load => 'System Load Average',
-    losspct => 'Loss Percentage',
-    'Mem: swap' => 'Swap Utilization',
-    swap => 'Swap Utilization',
-    mailq => 'Pending Output E-mail Messages',
-    memory => 'Memory Usage',
-    ping => 'Ping Loss Percentage and Round Trip Average',
-    pingloss => 'Ping Loss Percentage',
-    pingrta => 'Ping Round Trip Average',
-    PLW => 'Perl Log Watcher Events',
-    procs => 'Processes',
-    qsize => 'Messages in Outbound Queue',
-    rta => 'Round Trip Average',
-    smtp => 'E-mail Status',
+    zoom => 'Size:',
 );
 
 sub trans {

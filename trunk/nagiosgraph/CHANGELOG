@@ -8,6 +8,7 @@ $Id$
 * new configuration options (see nagiosgraph.conf for details):
      showprocessingtime
      default_geometry
+     cgilogfile
 * optionally report processing time
 * optionally specify a default width and height
 * hostdb.conf and servdb.conf are now optional.  if these files are not 
@@ -23,6 +24,10 @@ $Id$
    error messages whether or not GD is installed.
 * do not create data directories unless we really have to do so (fixes a
    longstanding permissions bug)
+* use separate cgi log file to avoid permissions conflicts.  attempt to
+   fallback gracefully when permissions are not configured properly.
+* consolidated log file initialization.
+* refactored error handling and reporting, should be more consistent now.
 
 1.4.1 2010-02-18
 

@@ -22,15 +22,12 @@ use warnings;
 use constant COLS => 9; ## no critic (ProhibitConstantPragma)
 
 # Read the configuration to get any custom color scheme
-readconfig('read');
-if (defined $Config{ngshared}) {
-    debug(DBCRT, $Config{ngshared});
-    htmlerror($Config{ngshared});
-    exit;
+my $errmsg = readconfig();
+if ($errmsg ne q()) {
+    htmlerror($errmsg);
+    croak($errmsg);
 }
-
-# See if we have custom debug level
-getdebug('testcolor');
+initlog('testcolor', $Config{cgilogfile});
 
 my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
 $cgi->autoEscape(0);
@@ -68,7 +65,7 @@ if ( $cgi->param('words') ) {
             debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
         for my $c (1..COLS) {
             my $h = hashcolor($w, $c);
-            print $cgi->td({bgcolor => "#$h"}, '&nbsp;') or
+            print $cgi->td({bgcolor => "#$h", width => '20'}, '&nbsp;') or
                 debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
         }
         print "</tr>\n" or
