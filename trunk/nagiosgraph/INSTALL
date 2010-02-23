@@ -23,6 +23,7 @@ This document contains the following sections:
   Customizing the Graphs
   Adding Service Types
   Managing Data and RRD Files
+  Appendix: Troubleshooting
   Appendix: Sample Installation Layouts
   Appendix: Web Server Configuration
   Appendix: Platform Specific Notes
@@ -601,6 +602,64 @@ And others prefer something in between:
 It is a good idea to plan your configuration before you start recording data.
 Although it is possible to reconfigure data after the rrd files are full,
 doing so is somewhat tedious, especially for large numbers of hosts/services.
+
+
+
+Troubleshooting
+---------------
+
+First identify whether your problem is on the data collection side of things
+or the data display side of things.
+
+Are perfdata being collected by Nagios?  Run a nagios plugin directly and
+make sure that it is working properly.  For example:
+
+  check_ping -H host -w 100,10% -c 200,20%
+
+Are perfdata being collected by nagiosgraph?  In nagiosgraph.conf, set
+debug_insert=3 then look at the nagiosgraph log file.  Ensure that insert.pl
+is being called as expected.
+
+Are data being saved into RRD files?  With debug_insert=3, look in the
+nagiosgraph log file for errors or warnings from insert.pl.  Problems with
+map rules should be reported in the log file.  If necessary, increase the
+log level to debug_insert=5.
+
+Are the RRD files being created?  The nagios user must have write permission
+on the rrd directory.
+
+Are the RRD files being modified?  Check the RRD file timestamp.
+
+Are the RRD file contents sane?  Use 'rrdtool dump filename.rrd'.  It is
+normal for a new RRD file to be full of NaN.  As the file is updated those
+should be replaced with proper values.  Ensure that the data set names in
+the RRD file correspond to the names in the map rule.
+
+Are permissions set correctly?  The nagios user must be able to write to
+the rrd directory.  The nagios user must be able to write to the nagiosgraph
+log file.  The web server user must be able to write to the nagiosgraph cgi
+log file (which might be the same as the nagiosgraph log file for older
+nagiosgraph installations).  If the web server user does not have permission
+to modify the log file, nagiosgraph cgi logging will end up in the web server
+error log.
+
+Are there old or unused rrd files lying about?  Older versions of nagiosgraph
+can be confused by multiple rrd files with the same data set for a single
+host.  If you change the map rule for a service, you might want to move the
+old rrd files out of the rrd directory.
+
+If graphs are not being displayed, start by graphing a single host and service
+with showgraph.cgi, for example showgraph.cgi?host=HOST&service=SERVICE.  Set
+debug_showgraph=3 in nagiosgraph.conf, then look for output in the nagiosgraph
+cgi log file or the web server error log.
+
+To isolate problems in other CGI scripts, use debug_show (show.cgi), 
+debug_showhost (showhost.cgi), debug_showservice (showservice.cgi), or
+debug_showgroup (showgroup.cgi) as appropriate.
+
+For installations with many hosts and services, use the host/service
+extensions (e.g. debug_showgraph_host = host) to make the log information
+easier to grok.
 
 
 

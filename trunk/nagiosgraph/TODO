@@ -18,3 +18,5 @@ Desired features.
     cases that cause problems (e.g. stickiness of next/prev URLs)
 * Internationalization of all string constants
 * Separate config file for service, data, and axis labels
+* re-do the default map rules to match the plugins shipped in standard, current
+    nagios configurations for mainstream distros
