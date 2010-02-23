@@ -11,6 +11,7 @@
 ## no critic (ProhibitExcessComplexity)
 ## no critic (ProhibitDeepNests)
 ## no critic (ProhibitMagicNumbers)
+## no critic (ProhibitConstantPragma)
 
 use strict;
 use warnings;
@@ -25,7 +26,6 @@ use RRDs;
 use POSIX;
 use Time::HiRes qw(gettimeofday);
 
-## no critic (ProhibitConstantPragma)
 use constant DBCRT => 1;
 use constant DBERR => 2;
 use constant DBWRN => 3;
@@ -35,8 +35,8 @@ use constant DBDEB => 5;
 use constant GRAPHWIDTH => 600;
 use constant PROG => basename($PROGRAM_NAME);
 use constant NAGIOSGRAPHURL => 'http://nagiosgraph.wiki.sourceforge.net/';
-use constant ERRSTYLE => '.error { padding: 0.75em; background-color: #fff6f3; border: solid 1px #cc3333; }';
-use constant ERRMSG => 'Nagiosgraph has detected an error in the configuration file: ';
+use constant ERRSTYLE => '.error { font-family: sans-serif; padding: 0.75em; background-color: #fff6f3; border: solid 1px #cc3333; }';
+use constant ERRMSG => 'Error in nagiosgraph configuration file: ';
 use constant DBLISTROWS => 3;
 use constant PERIODLISTROWS => 5;
 
@@ -396,25 +396,16 @@ sub buildurl {
 # construct the filename to RRD data file.  this requires at least a valid
 # host and service to work.
 sub mkfilename {
-    my ($host, $service, $db, $quiet) = @_;
+    my ($host, $service, $db) = @_;
     if (not $host or not $service) {
         debug(DBWRN, 'cannot construct filename: missing host or service');
         return 'BOGUSDIR', 'BOGUSFILE';
     }
     $db ||= q();
-    $quiet ||= 0;
-    if (not $quiet) { debug(DBDEB, "mkfilename($host, $service, $db)"); }
-    my ($directory, $filename) = $Config{rrddir};
-    if (not $quiet) {
-        debug(DBDEB, "mkfilename: dbseparator: '$Config{dbseparator}'");
-    }
+    my $directory = $Config{rrddir};
+    my $filename = q();
     if ($Config{dbseparator} eq 'subdir') {
         $directory .=  q(/) . $host;
-        if (not -e $directory) { # Create host specific directories
-            debug(DBINF, "mkfilename: creating directory $directory");
-            mkdir $directory, 0775;
-            if (not -w $directory) { croak "cannot write to $directory"; }
-        }
         if ($db) {
             $filename = escape("${service}___${db}") . '.rrd';
         } else {
@@ -423,13 +414,10 @@ sub mkfilename {
     } else {
         # Build filename for traditional separation
         if ($db) {
-            return $directory, escape("${host}_${service}_${db}") . '.rrd'
+            $filename = escape("${host}_${service}_${db}") . '.rrd'
         } else {
             $filename = escape("${host}_${service}_");
         }
-    }
-    if (not $quiet) {
-        debug(DBDEB, "mkfilename: dir=$directory file=$filename");
     }
     return $directory, $filename;
 }
@@ -724,7 +712,7 @@ sub readhostdb {
                     ($dbname, @db) = parsedb($line);
                 }
                 next if ! $service;
-                my($dir, $file) = mkfilename($host, $service, $dbname, 1);
+                my($dir, $file) = mkfilename($host, $service, $dbname);
                 my $rrdfn = $dir . q(/) . $file;
                 if (-f $rrdfn) {
                     my %info;
@@ -818,7 +806,7 @@ sub readservdb {
         my $dbname = getdbname(@dbs);
         foreach my $host (@allhosts) {
             if ($dbname ne q()) {
-                my($dir, $file) = mkfilename($host, $service, $dbname, 1);
+                my($dir, $file) = mkfilename($host, $service, $dbname);
                 my $rrdfn = $dir . q(/) . $file;
                 if (-f $rrdfn) {
                     push @validhosts, $host;
@@ -900,7 +888,7 @@ sub readgroupdb {
             next if ! $group || ! $host || ! $service;
             $gnames{$group} = 1;
             next if $group ne $g;
-            my($dir, $file) = mkfilename($host, $service, $dbname, 1);
+            my($dir, $file) = mkfilename($host, $service, $dbname);
             my $rrdfn = $dir . q(/) . $file;
             if (-f $rrdfn) {
                 my %info;
@@ -973,7 +961,7 @@ sub readdatasetdb {
     return \%data;
 }
 
-# show.cgi subroutines here for unit testability ##############################
+
 # Shared routines #############################################################
 # Get list of matching rrd files
 # unescape the filenames as we read in since they should be escaped on disk
@@ -1087,6 +1075,7 @@ sub graphinfo {
                   . $rrd->{dbname});
         }
     }
+
     dumper(DBDEB, 'graphinfo: rrd', \@rrd);
     return \@rrd;
 }
@@ -1198,10 +1187,28 @@ sub rrdline {
     my ($params) = @_;
     dumper(DBDEB, 'rrdline params', $params);
 
+    my @ds;
     my $host = $params->{host};
     my $service = $params->{service};
     my $db = $params->{db};
     my ($graphinfo) = graphinfo($host, $service, $db);
+
+    my $errmsg = q();
+    if (scalar @{$graphinfo} == 0) {
+        $errmsg = 'No data available: host=' . $host . ' service=' . $service;
+        if ($db) { $errmsg .= ' db=' . join q(,), @{$db}; }
+    } else {
+        foreach my $ii (@{$graphinfo}) {
+            my @lines = keys %{$ii->{line}};
+            if (scalar @lines == 0) {
+                if ($errmsg ne q()) { $errmsg .= "\n"; }
+                $errmsg .= 'No data available: host=' . $host . ' service=' . $service . ' db=' . $ii->{dbname};
+            }
+        }
+    }
+    if ($errmsg ne q()) {
+        return \@ds, $errmsg;
+    }
 
     my $geom = $params->{geom};
     my $fixedscale = 0;
@@ -1234,7 +1241,6 @@ sub rrdline {
     }
 
     # build the list of arguments for rrdtool
-    my @ds;
     push @ds, q(-);
     if (index($rrdopts, '-a') == -1 && index($rrdopts, '--imgformat') == -1) {
         push @ds, '-a', 'PNG';
@@ -1316,7 +1322,7 @@ sub rrdline {
                     ['logarithmic', '-o']) {
         push @ds, addopt($ii->[0], $service, $rrdopts, $ii->[1]);
     }
-    return @ds;
+    return \@ds, q();
 }
 
 sub addopt {
@@ -1400,7 +1406,7 @@ sub getserverlist {
         @services = sortnaturally(keys %{$hsdata{$ii}});
         foreach my $jj (@services) {
             foreach my $kk (@{$hsdata{$ii}{$jj}}) {
-                @dataitems = getdataitems(join q(/), mkfilename($ii, $jj, $kk, 1));
+                @dataitems = getdataitems(join q(/), mkfilename($ii, $jj, $kk));
                 if (not exists $hostserv{$ii}) {
                     $hostserv{$ii} = {};
                 }
@@ -1944,8 +1950,8 @@ sub runcreate {
 sub checkdatasources {
     my ($dsmin, $directory, $filenames, $labels) = @_;
     if (scalar @{$dsmin} == 3 and scalar @{$filenames} == 1) {
-        debug(DBCRT, "createrrd no data sources defined for $directory/$filenames->[0]");
-        dumper(DBCRT, 'createrrd labels', $labels);
+        debug(DBCRT, "no data sources defined for $directory/$filenames->[0]");
+        dumper(DBCRT, 'labels', $labels);
         return 0;
     }
     return 1;
@@ -1978,6 +1984,11 @@ sub createrrd {
 
     $db = shift @{$labels};
     ($directory, $filenames[0]) = mkfilename($host, $service, $db);
+    if (not -e $directory) { # ensure we can write to data directory
+        debug(DBINF, "createrrd: creating directory $directory");
+        mkdir $directory, 0775;
+        if (not -w $directory) { croak 'cannot write to ' . $directory; }
+    }
     debug(DBDEB, "createrrd checking $directory/$filenames[0]");
     @ds = ("$directory/$filenames[0]", '--start', $start);
     @dsmin = ("$directory/$filenames[0]_min", '--start', $start);
@@ -1991,7 +2002,7 @@ sub createrrd {
         if (defined $Config{hostservvar}->{$host} and
             defined $Config{hostservvar}->{$host}->{$service} and
             defined $Config{hostservvar}->{$host}->{$service}->{$labels->[$ii]->[0]}) {
-            my $filename = (mkfilename($host, $service . $labels->[$ii]->[0], $db, 1))[1];
+            my $filename = (mkfilename($host, $service . $labels->[$ii]->[0], $db))[1];
             push @filenames, $filename;
             push @datasets, [$ii];
             if (not -e "$directory/$filename") {
@@ -2066,11 +2077,12 @@ sub runupdate {
 sub rrdupdate {
     my ($file, $time, $values, $host, $dataset) = @_;
     debug(DBDEB, "rrdupdate($file, $time, $host)");
-    my ($directory, @dataset, $ii, $service) = ($Config{rrddir});
+    my $directory = $Config{rrddir};
 
     # Select target folder depending on config settings
     if ($Config{dbseparator} eq 'subdir') { $directory .= "/$host"; }
 
+    my @dataset;
     push @dataset, "$directory/$file",  $time;
     for my $ii (0 .. @{$values} - 1) {
         for (@{$dataset}) {
@@ -2083,7 +2095,7 @@ sub rrdupdate {
     }
     runupdate(\@dataset);
 
-    $service = (split /_/, $file)[0];
+    my $service = (split /_/, $file)[0];
     if (defined $Config{withminimums}->{$service}) {
         $dataset[0] = "$directory/${file}_min";
         runupdate(\@dataset);

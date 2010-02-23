@@ -21,33 +21,79 @@ use MIME::Base64;
 use strict;
 use warnings;
 
+## no critic (ProhibitMagicNumbers)
+## no critic (ProhibitMagicNumbers)
+## no critic (ProhibitConstantPragma)
+
+# 5x5 clear image
+use constant IMG => 'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGljQ29udmVydGVyIChJbnRlbCl3h/oZAAAAGUlEQVR4nGL4//8/AzrGEKCCIAAAAP//AwB4w0q2n+syHQAAAABJRU5ErkJggg==';
+
+## no critic (ProhibitExcessComplexity)
+
 my ($cgi, $params) = init('showgraph');
 
-my $defaultds = readdatasetdb();
-if (scalar @{$params->{db}} == 0) {
-    if ($defaultds->{$params->{service}}
-        && scalar @{$defaultds->{$params->{service}}} > 0) {
-        $params->{db} = $defaultds->{$params->{service}};
-    } elsif ($params->{host} ne q() && $params->{host} ne q(-)
-             && $params->{service} ne q() && $params->{service} ne q(-)) {
-        $params->{db} = dbfilelist($params->{host}, $params->{service});
+if (($params->{host} ne q() && $params->{host} ne q(-))
+    || ($params->{service} ne q() && $params->{service} ne q(-))) {
+    my $defaultds = readdatasetdb();
+    if (scalar @{$params->{db}} == 0) {
+        if ($defaultds->{$params->{service}}
+            && scalar @{$defaultds->{$params->{service}}} > 0) {
+            $params->{db} = $defaultds->{$params->{service}};
+        } elsif ($params->{host} ne q() && $params->{host} ne q(-)
+                 && $params->{service} ne q() && $params->{service} ne q(-)) {
+            $params->{db} = dbfilelist($params->{host}, $params->{service});
+        }
     }
-}
 
-$OUTPUT_AUTOFLUSH = 1;          # Make sure headers arrive before image data
-print $cgi->header(-type => 'image/png') or
-    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
-
-my @ds = rrdline($params);
-dumper(DBDEB, 'RRDs::graph', \@ds);
-
-RRDs::graph(@ds);
-if (RRDs::error) {
-    debug(DBERR, 'RRDs::graph ERR ' . RRDs::error);
-    print decode_base64(       # send a small, clear image on errors
-        'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGlj' .
-        'Q29udmVydGVyIChJbnRlbCl3h/oZAAAAGUlEQVR4nGL4//8/AzrGEKCCIAAAAP//AwB4w0q2n+sy' .
-        'HQAAAABJRU5ErkJggg==') or
+    $OUTPUT_AUTOFLUSH = 1;     # Make sure headers arrive before image data
+    print $cgi->header(-type => 'image/png') or
+        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+    
+    my ($ds, $errmsg) = rrdline($params);
+    dumper(DBDEB, 'RRDs::graph', $ds);
+    
+    if ($errmsg eq q()) {
+        RRDs::graph(@{$ds});
+        if (RRDs::error) {
+              $errmsg = RRDs::error;
+        }
+    }
+    
+    if ($errmsg ne q()) {
+        debug(DBERR, $errmsg);
+        my $rval = eval { require GD; };
+        if (defined $rval && $rval == 1) {
+            my @lines = split /\n/, $errmsg; ## no critic (RegularExpressions)
+            my $pad = 4;
+            my $maxw = 600;
+            my $maxh = 15;
+            my $width = 2 * $pad + $maxw;
+            my $height = 2 * $pad + $maxh * scalar @lines;
+            my $img = new GD::Image($width,$height);
+            my $wht = $img->colorAllocate(255,255,255);
+            my $blk = $img->colorAllocate(0,0,0);
+            my $red = $img->colorAllocate(255,0,0);
+            $img->transparent($wht);
+            $img->rectangle(0,0,$width-1,$height-1,$blk);
+            $img->rectangle(2,2,$width-3,$height-3,$wht);
+            my $y = $pad;
+            foreach my $line (@lines) {
+                $img->string(GD->gdSmallFont,$pad,$y,"$line",$red);
+                $y += $maxh;
+            }
+            print $img->png or
+                debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+        } else {
+            print decode_base64(IMG) or
+                debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+        }
+    }
+} else {
+    # if host or service is not specified, send an empty image
+    $OUTPUT_AUTOFLUSH = 1;
+    print $cgi->header(-type => 'image/png') or
+        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+    print decode_base64(IMG) or
         debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 

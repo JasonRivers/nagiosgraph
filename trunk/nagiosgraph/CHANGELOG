@@ -19,6 +19,10 @@ $Id$
    host/service/dataset listings and to enable pattern matching in
    the *db.conf files.
 * contents of README.map are now in INSTALL
+* display rrdgraph and other error messages if GD is installed.  log the
+   error messages whether or not GD is installed.
+* do not create data directories unless we really have to do so (fixes a
+   longstanding permissions bug)
 
 1.4.1 2010-02-18
 

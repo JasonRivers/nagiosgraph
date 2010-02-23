@@ -12,9 +12,9 @@ Bugs
 Desired features.
 
 * Customize rrd options for split graphs.
-* Red bar in graph to indicate missing data.
 * Installer - that can configure Nagios (must work with Nagios 2.12 and 3.x).
 * Custom unit labels on the graphs.
-* Prefix strings with i18n_ to avoid name clashes with configuration params.
 * Use cookies to maintain GUI state - CGI args work but have too many corner
     cases that cause problems (e.g. stickiness of next/prev URLs)
+* Internationalization of all string constants
+* Separate config file for service, data, and axis labels

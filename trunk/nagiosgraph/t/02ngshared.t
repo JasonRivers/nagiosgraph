@@ -4,12 +4,13 @@ use strict;
 use CGI qw(:standard escape unescape);
 use Data::Dumper;
 use File::Find;
+use File::Path qw(rmtree);
 use Test;
 use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 197; }
+BEGIN { plan tests => 198; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -106,9 +107,19 @@ sub testgetdebug {
 	$Config{debug} = 0;
 }
 
+# ensure that asking about host data does not create host directory
+sub testdircreation {
+    $Config{rrddir} = $FindBin::Bin;
+    $Config{dbseparator} = 'subdir';
+    my $host = 'xxx';
+    my $service = 'yyy';
+    my ($d,$f) = mkfilename($host,$service);
+    my $dir = $FindBin::Bin . q(/) . $host;
+    ok(! -d $dir);
+}
+
 sub testmkfilename { # Test getting the file and directory for a database.
-	# Make rrddir where we run from, since the 'subdir' configuration wants to
-	# create missing subdirectories
+	# Make rrddir where we run from
 	$Config{rrddir} = $FindBin::Bin;
 	$Config{dbseparator} = '';
 	@result = mkfilename('testbox', 'Partition: /');
@@ -124,7 +135,7 @@ sub testmkfilename { # Test getting the file and directory for a database.
 	@result = mkfilename('testbox', 'Partition: /', 'diskgb');
 	ok($result[0], $FindBin::Bin . '/testbox');
 	ok($result[1], 'Partition%3A%20%2F___diskgb.rrd');
-	ok(-d $result[0]);
+	ok(! -d $result[0]);
 	rmdir $result[0] if -d $result[0];
 }
 
@@ -282,23 +293,13 @@ sub testrrdline {
 
     # test a minimal invocation with no data for the host
     my %params = qw(host host30 service ping);
-    my @ds = rrdline(\%params);
-    ok(Dumper(\@ds), "\$VAR1 = [
-          '-',
-          '-a',
-          'PNG',
-          '-s',
-          'now-118800',
-          '-e',
-          'now-0',
-          '-w',
-          600
-        ];\n");
+    my ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [];\n");
 
     # minimal invocation when data exist for the host
     %params = qw(host host0 service PING);
-    @ds = rrdline(\%params);
-    ok(Dumper(\@ds), "\$VAR1 = [
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
           '-',
           '-a',
           'PNG',
@@ -324,23 +325,13 @@ sub testrrdline {
 
     # specify a bogus data set
     $params{db} = ['rta'];
-    @ds = rrdline(\%params);
-    ok(Dumper(\@ds), "\$VAR1 = [
-          '-',
-          '-a',
-          'PNG',
-          '-s',
-          'now-118800',
-          '-e',
-          'now-0',
-          '-w',
-          600
-        ];\n");
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [];\n");
 
     # specify a valid data set
     $params{db} = ['ping,rta'];
-    @ds = rrdline(\%params);
-    ok(Dumper(\@ds), "\$VAR1 = [
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
           '-',
           '-a',
           'PNG',
@@ -678,6 +669,14 @@ sub setuprrd {
                 ['rtawarn', 'GAUGE', 0.1],
                 ['rtacrit', 'GAUGE', 0.5] ];
     @result = createrrd('host3', 'ping', 1221495632, $testvar);
+}
+
+sub cleanuprrd {
+    rmtree($FindBin::Bin . q(/) . 'bogus');
+    rmtree($FindBin::Bin . q(/) . 'host0');
+    rmtree($FindBin::Bin . q(/) . 'host1');
+    rmtree($FindBin::Bin . q(/) . 'host2');
+    rmtree($FindBin::Bin . q(/) . 'host3');
 }
 
 sub testreadhostdb {
@@ -1182,6 +1181,7 @@ sub testreaddatasetdb {
 testdebug();
 testdumper();
 testgetdebug();
+testdircreation();
 testmkfilename();
 testhashcolor();
 testgetgraphlist();
@@ -1209,3 +1209,4 @@ testreadhostdb();
 testreadservdb();
 testreadgroupdb();
 testreaddatasetdb();
+cleanuprrd();
