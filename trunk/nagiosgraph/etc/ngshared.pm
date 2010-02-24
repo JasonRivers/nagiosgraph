@@ -190,13 +190,13 @@ sub initlog {
         $Config{debug} = $Config{'debug_' . $app};
     }
     if (! $logfn) {
-        $logfn = $Config{logfile};
+        $logfn = defined $Config{logfile} ? $Config{logfile} : q();
     }
     if ($Config{debug} > 0) {
         if (not open $LOG, '>>', $logfn) { ## no critic (RequireBriefOpen)
             open $LOG, '>&=STDERR' or ## no critic (RequireBriefOpen)
                 croak 'Cannot log to file or STDERR';
-            debug(DBCRT, "Cannot write to $logfn, using STDERR instead");
+            debug(DBCRT, "Cannot write to '$logfn', using STDERR instead");
         }
     }
     return;
@@ -504,7 +504,7 @@ sub hashcolor {
 }
 
 # Configuration subroutines ###################################################
-# parse the min/max list into a dictionary for quick lookup
+# parse string values and store them as a data structure
 sub listtodict {
     my ($val, $sep, $commasplit) = @_;
     $sep ||= q(,);
@@ -616,6 +616,7 @@ sub checkrrddir {
 }
 
 # read the config file.  get the log initialized as soon as possible.
+# ensure sane default values for everything, even if not specified.
 sub readconfig {
     my ($app, $logid) = @_;
     if (! $logid) { $logid = 'logfile'; }
@@ -625,6 +626,9 @@ sub readconfig {
     if ($errstr ne q()) { return $errstr; }
 
     initlog($app, $Config{$logid});
+
+    $Config{rrdoptshash}{global} =
+        defined $Config{rrdopts} ? $Config{rrdopts} : q();
 
     foreach my $ii ('maximums', 'minimums', 'withmaximums', 'withminimums',
                     'altautoscale', 'nogridfit', 'logarithmic', 'negate',
@@ -656,8 +660,6 @@ sub readconfig {
 }
 
 sub readrrdoptsfile {
-    $Config{rrdoptshash}{global} =
-        defined $Config{rrdopts} ? $Config{rrdopts} : q();
     if ( defined $Config{rrdoptsfile} ) {
         my $errstr = readfile($Config{rrdoptsfile}, $Config{rrdoptshash});
         if ($errstr ne q()) {

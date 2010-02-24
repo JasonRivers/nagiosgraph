@@ -268,7 +268,21 @@ additions go directly in the host and service definitions.
        action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
      }
 
-   Optionally replace nagios/images/action.gif with graph.gif from the
+   To apply graph links to multiple services, define a template such as this:
+
+     define service {
+       name graphed-service
+       action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
+     }
+
+   Then use it in services like this:
+
+     define service {
+       name NTP
+       use local-service,graphed-service
+     }
+
+ - Optionally replace nagios/images/action.gif with graph.gif from the
    nagiosgraph distribution.
 
 
