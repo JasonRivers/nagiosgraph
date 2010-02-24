@@ -22,12 +22,11 @@ use warnings;
 use constant COLS => 9; ## no critic (ProhibitConstantPragma)
 
 # Read the configuration to get any custom color scheme
-my $errmsg = readconfig();
+my $errmsg = readconfig('testcolor', 'cgilogfile');
 if ($errmsg ne q()) {
     htmlerror($errmsg);
     croak($errmsg);
 }
-initlog('testcolor', $Config{cgilogfile});
 
 my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
 $cgi->autoEscape(0);

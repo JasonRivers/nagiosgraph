@@ -47,7 +47,7 @@ use constant COLORS => 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0';
 
 use vars qw(%Config %hsdata $colorsub $VERSION %Ctrans $LOG); ## no critic (ProhibitPackageVars)
 $colorsub = -1;
-$VERSION = '1.4.1';
+$VERSION = '1.4.2';
 
 my $CFGNAME = 'nagiosgraph.conf';
 
@@ -117,11 +117,7 @@ sub dumper {
 }
 
 sub gettimestamp {
-    if (defined $Config{showprocessingtime}
-        && $Config{showprocessingtime} eq 'true') {
-        return (gettimeofday)[1];
-    }
-    return 0;
+    return (gettimeofday)[1];
 }
 
 sub formatelapsedtime {
@@ -146,13 +142,22 @@ sub formatelapsedtime {
 sub init {
     my ($app, $doscan) = @_;
 
-    my $errmsg = readconfig();
+    my $errmsg = readconfig($app, 'cgilogfile');
     if ($errmsg ne q()) {
         htmlerror($errmsg);
         croak($errmsg);
     }
-    initlog($app, $Config{cgilogfile});
     $errmsg = checkrrddir('read');
+    if ($errmsg ne q()) {
+        htmlerror($errmsg);
+        croak($errmsg);
+    }
+    $errmsg = readrrdoptsfile();
+    if ($errmsg ne q()) {
+        htmlerror($errmsg);
+        croak($errmsg);
+    }
+    $errmsg = readpermsfile();
     if ($errmsg ne q()) {
         htmlerror($errmsg);
         croak($errmsg);
@@ -547,10 +552,8 @@ sub checkdirempty {
         return 0;
     }
     my @files = readdir DIR;
-    my $size = scalar @files;
     closedir DIR or debug(DBERR, "cannot close $directory: $OS_ERROR");
-    return 0 if $size > 2;
-    return 1;
+    return (scalar @files > 2) ? 0 : 1;
 }
 
 # pass a debug value if you want to debug the initial config file parsing.
@@ -612,20 +615,16 @@ sub checkrrddir {
     return $errmsg;
 }
 
-# Read in the config file, check the log file and rrd directory
+# read the config file.  get the log initialized as soon as possible.
 sub readconfig {
+    my ($app, $logid) = @_;
+    if (! $logid) { $logid = 'logfile'; }
+
     my $debug = 0; # set this higher to debug config file parsing
     my $errstr = readfile($INC[0] . q(/) . $CFGNAME, \%Config, $debug);
     if ($errstr ne q()) { return $errstr; }
 
-    $Config{rrdoptshash}{global} =
-        defined $Config{rrdopts} ? $Config{rrdopts} : q();
-    if ( defined $Config{rrdoptsfile} ) {
-        $errstr = readfile($Config{rrdoptsfile}, $Config{rrdoptshash});
-        if ($errstr ne q()) {
-            debug(DBCRT, $errstr);
-        }
-    }
+    initlog($app, $Config{$logid});
 
     foreach my $ii ('maximums', 'minimums', 'withmaximums', 'withminimums',
                     'altautoscale', 'nogridfit', 'logarithmic', 'negate',
@@ -653,9 +652,29 @@ sub readconfig {
     }
     $Config{colors} = [split /\s*,\s*/, $Config{colors}];
 
+    return q();
+}
+
+sub readrrdoptsfile {
+    $Config{rrdoptshash}{global} =
+        defined $Config{rrdopts} ? $Config{rrdopts} : q();
+    if ( defined $Config{rrdoptsfile} ) {
+        my $errstr = readfile($Config{rrdoptsfile}, $Config{rrdoptshash});
+        if ($errstr ne q()) {
+            return $errstr;
+        }
+    }
+    return q();
+}
+
+sub readpermsfile {
     if ($Config{dbfile}) {
-        require $Config{dbfile};
-        $Config{userdb} = $Config{rrddir} . '/users';
+        my $rval = eval { require $Config{dbfile}; };
+        if (defined $rval && $rval == 1) {
+            $Config{userdb} = $Config{rrddir} . '/users';
+        } else {
+            return "Cannot load permissions file $Config{dbfile}: $OS_ERROR";
+        }
     }
     return q();
 }
@@ -968,8 +987,6 @@ sub readdatasetdb {
     return \%data;
 }
 
-
-# Shared routines #############################################################
 # Get list of matching rrd files
 # unescape the filenames as we read in since they should be escaped on disk
 sub dbfilelist {
@@ -1000,14 +1017,13 @@ sub dbfilelist {
 sub getdataitems {
     my ($file) = @_;
     my ($ds,                 # return value from RRDs::info
-        $ERR,                # RRDs error value
         %dupes);             # temporary hash to filter duplicate values with
     if (-f $file) {
         $ds = RRDs::info($file);
     } else {
         $ds = RRDs::info("$Config{rrddir}/$file");
     }
-    $ERR = RRDs::error();
+    my $ERR = RRDs::error();
     if ($ERR) {
         debug(DBERR, 'getdataitems: RRDs::info ERR ' . $ERR);
         dumper(DBERR, 'getdataitems: ds', $ds);

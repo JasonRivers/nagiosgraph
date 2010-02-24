@@ -22,9 +22,8 @@ use constant SLEEP => 30;    ## no critic (ProhibitConstantPragma)
 use vars qw($VERSION);
 $VERSION = '2.0';
 
-my $errmsg = readconfig();
+my $errmsg = readconfig('insert');
 if ( $errmsg ne q() ) { croak $errmsg; }
-initlog('insert');
 $errmsg = checkrrddir('write');
 if ( $errmsg ne q() ) { croak $errmsg; }
 

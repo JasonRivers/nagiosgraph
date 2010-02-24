@@ -10,7 +10,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 222; }
+BEGIN { plan tests => 238; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -121,6 +121,22 @@ sub testgetdebug {
 	getdebug('test', 'testbox', 'smtp');
 	ok($Config{debug}, -1);		# _service not, so no change
 	$Config{debug} = 0;
+}
+
+sub testformatelapsedtime {
+    my $s = gettimestamp();
+    $result = formatelapsedtime($s, $s+3_000_000);
+    ok($result, "00:00:03.000");
+    $result = formatelapsedtime($s, $s+60_000_000);
+    ok($result, "00:01:00.000");
+    $result = formatelapsedtime($s, $s+3_600_000_000);
+    ok($result, "01:00:00.000");
+    $result = formatelapsedtime($s, $s+7_260_000_000);
+    ok($result, "02:01:00.000");
+    $result = formatelapsedtime($s, $s+1_000);
+    ok($result, "00:00:00.001");
+    $result = formatelapsedtime($s, $s+10);
+    ok($result, "00:00:00.000");
 }
 
 sub testhtmlerror {
@@ -277,6 +293,24 @@ sub testdbfilelist { # Check getting a list of rrd files
 	$Config{debug} = 0;
 }
 
+sub testgetdataitems {
+    setuprrd();
+    my $rrddir = gettestrrddir();
+    my $fn = $rrddir . q(/) . 'host0/HTTP___http.rrd';
+    my @rval = getdataitems($fn);
+    ok(Dumper(\@rval), "\$VAR1 = [
+          'Bps'
+        ];
+");
+    $fn = $rrddir . q(/) . 'host2/PING___ping.rrd';
+    @rval = getdataitems($fn);
+    ok(Dumper(\@rval), "\$VAR1 = [
+          'rta',
+          'losspct'
+        ];
+");
+}
+
 sub testgraphinfo {
     $Config{rrddir} = $FindBin::Bin;
 
@@ -313,6 +347,30 @@ sub testgraphinfo {
     $file = $FindBin::Bin . '/testbox/PING___ping.rrd';
     skip(! -f $file, $result->[0]->{file}, 'testbox/PING___ping.rrd');
     skip(! -f $file, $result->[0]->{line}->{rta}, 1);
+}
+
+sub testgetlineattr {
+    $Config{plotas} = 'LINE1';
+    $Config{plotasLINE1} = {'avg5min' => 1, 'avg15min' => 1};
+    $Config{plotasLINE2} = {'a' => 1};
+    $Config{plotasLINE3} = {'b' => 1};
+    $Config{plotasAREA} = {'ping' => 1};
+    $Config{plotasTICK} = {'http' => 1};
+
+    my ($linestyle, $linecolor) = getlineattr("foo");
+    ok($linestyle, "LINE1");
+    ok($linecolor, "000399");
+    ($linestyle, $linecolor) = getlineattr("ping");
+    ok($linestyle, "AREA");
+    ok($linecolor, "990333");
+    ($linestyle, $linecolor) = getlineattr("http");
+    ok($linestyle, "TICK");
+    ok($linecolor, "000099");
+    ($linestyle, $linecolor) = getlineattr("avg15min");
+    ok($linestyle, "LINE1");
+    ok($linecolor, "6600FF");
+
+    $Config{plotas} = 'LINE2';
 }
 
 sub testrrdline {
@@ -1330,6 +1388,7 @@ sub testreaddatasetdb {
 testdebug();
 testdumper();
 testgetdebug();
+testformatelapsedtime();
 testhtmlerror();
 testdircreation();
 testmkfilename();
@@ -1340,6 +1399,7 @@ testcheckdirempty();
 testreadfile();
 testreadconfig();
 testdbfilelist();
+testgetdataitems();
 testgetserverlist();
 testprintmenudatascript();
 testgraphsizes();
@@ -1349,6 +1409,7 @@ testcheckdatasources();
 testcreaterrd();
 testrrdupdate(); # must be run after createrrd
 testgetrules();
+testgetlineattr();
 testrrdline();
 testgraphinfo();
 testprocessdata();
