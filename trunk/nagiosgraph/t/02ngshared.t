@@ -1,4 +1,11 @@
 #!/usr/bin/perl
+# $Id$
+# License: OSI Artistic License
+#          http://www.opensource.org/licenses/artistic-license-2.0.php
+# Author:  (c) Soren Dossing, 2005
+# Author:  (c) Alan Brenner, Ithaka Harbors, 2008
+# Author:  (c) Matthew Wall, 2010
+
 use FindBin;
 use strict;
 use CGI qw(:standard escape unescape);
@@ -10,7 +17,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 238; }
+BEGIN { plan tests => 246; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -22,6 +29,13 @@ sub dumpdata {
     }
 	print $TMP $log;
 	close $TMP;
+}
+
+sub dumpd {
+    my ($data) = @_;
+    my $dd = Data::Dumper->new([$data]);
+    $dd->Indent(1);
+    return $dd->Dump;
 }
 
 sub readtestfile {
@@ -309,6 +323,7 @@ sub testgetdataitems {
           'losspct'
         ];
 ");
+    teardownrrd();
 }
 
 sub testgraphinfo {
@@ -442,36 +457,8 @@ sub testrrdline {
 #FIXME: test altautoscalemax
 #FIXME: test nogridfit
 #FIXME: test logarithmic
-}
 
-sub testgetgraphlist { # Does two things: verifies directores and .rrd files.
-    $_ = '..';
-    getgraphlist();
-    ok(%hsdata, 0, 'Nothing should be set yet');
-    $_ = 'test';
-    mkdir($_, 0755);
-    getgraphlist();
-    ok(%hsdata, 0, 'Nothing should be set yet');
-    $_ = 'test/test1';
-    open TMP, ">$_";
-    print TMP "test1\n";
-    close TMP;
-    getgraphlist();
-    ok(%hsdata, 0, 'Nothing should be set yet');
-    $_ = 'test';
-    getgraphlist();
-    ok(Dumper($hsdata{$_}), qr'{}');
-    $_ = 'test/test1.rrd';
-    open TMP, ">$_";
-    print TMP "test1\n";
-    close TMP;
-    $File::Find::dir = $FindBin::Bin;
-    getgraphlist();
-    ok($hsdata{$FindBin::Bin}{'test/test1.rrd'}[0], undef);
-    unlink 'test/test1';
-    unlink 'test/test1.rrd';
-    rmdir 'test';
-    undef %hsdata;
+    teardownrrd();
 }
 
 sub testgetserverlist {
@@ -542,10 +529,13 @@ sub testgetserverlist {
   ]
 };
 ");
+
+    teardownrrd();
 }
 
 sub testprintmenudatascript {
     setuprrd();
+    undef %hsdata;
     scanhsdata();
 
     $Config{userdb} = '';
@@ -571,6 +561,9 @@ menudata[3] = [\"host3\"
 ];
 </script>
 ");
+
+    teardownrrd();
+    undef %hsdata;
 }
 
 sub testgraphsizes {
@@ -846,8 +839,12 @@ sub testdbname {
 
 # create rrd files used in the read*db tests
 sub setuprrd {
-    $Config{dbseparator} = 'subdir';
+    my ($format) = @_;
+    if (! $format) { $format = 'subdir'; }
+    $Config{dbseparator} = $format;
+
     $Config{rrddir} = gettestrrddir();
+    rmtree($Config{rrddir});
     mkdir $Config{rrddir};
 
     my $testvar = ['ping',
@@ -879,12 +876,14 @@ sub setuprrd {
     @result = createrrd('host3', 'ping', 1221495632, $testvar);
 }
 
-sub cleanuprrd {
-    rmtree($FindBin::Bin . q(/) . 'rrd');
+sub teardownrrd {
+    rmtree(gettestrrddir());
 }
 
 sub testreadhostdb {
     setuprrd();
+    undef %hsdata;
+    scanhsdata();
 
     my $fn = "$FindBin::Bin/db.conf";
     my $rrddir = gettestrrddir();
@@ -1098,10 +1097,13 @@ sub testreadhostdb {
     close TEST;
 
     unlink $fn;
+    teardownrrd();
 }
 
 sub testreadservdb {
     setuprrd();
+    undef %hsdata;
+    scanhsdata();
 
     my $fn = "$FindBin::Bin/db.conf";
     $Config{servdb} = $fn;
@@ -1212,6 +1214,7 @@ sub testreadservdb {
         ];\n");
 
     unlink $fn;
+    teardownrrd();
 }
 
 sub testreadgroupdb {
@@ -1334,6 +1337,7 @@ sub testreadgroupdb {
         ];\n");
 
     unlink $fn;
+    teardownrrd();
 }
 
 sub testreaddatasetdb {
@@ -1383,7 +1387,183 @@ sub testreaddatasetdb {
         };\n");
 
     unlink $fn;
+    teardownrrd();
 }
+
+# build hash from rrd files in a single directory
+sub testscandirectory {
+    my $rrddir = 'testrrddir';
+    mkdir($rrddir, 0755);
+
+    undef %hsdata;
+    $_ = '..';
+    scandirectory();
+    ok(%hsdata, 0, 'Nothing should be set yet');
+    $_ = $rrddir;
+    mkdir($_, 0755);
+    scandirectory();
+    ok(%hsdata, 0, 'Nothing should be set yet');
+    $_ = $rrddir . '/test1.rrd';
+    open TMP, ">$_";
+    print TMP "test1\n";
+    close TMP;
+    scandirectory();
+    ok(Dumper(\%hsdata), "\$VAR1 = {};\n");
+    $_ = $rrddir . '/host0_ping_rta.rrd';
+    open TMP, ">$_";
+    print TMP "test1\n";
+    close TMP;
+    scandirectory();
+    ok(Dumper(\%hsdata), "\$VAR1 = {
+          'testrrddir/host0' => {
+                                  'ping' => [
+                                              'rta'
+                                            ]
+                                }
+        };
+");
+    $_ = $rrddir . '/host1_ping_rta.rrd';
+    open TMP, ">$_";
+    print TMP "test1\n";
+    close TMP;
+    scandirectory();
+    ok(Dumper(\%hsdata), "\$VAR1 = {
+          'testrrddir/host1' => {
+                                  'ping' => [
+                                              'rta'
+                                            ]
+                                },
+          'testrrddir/host0' => {
+                                  'ping' => [
+                                              'rta'
+                                            ]
+                                }
+        };
+");
+
+    undef %hsdata;
+    $_ = $rrddir . '/host0_ping_Round%20Trip%20Average.rrd';
+    open TMP, ">$_";
+    print TMP "test1\n";
+    close TMP;
+    scandirectory();
+    ok(Dumper(\%hsdata), "\$VAR1 = {
+          'testrrddir/host0' => {
+                                  'ping' => [
+                                              'Round Trip Average'
+                                            ]
+                                }
+        };
+");
+
+    undef %hsdata;
+    rmtree($rrddir);
+}
+
+# build hash from rrd files in a directory hierarchy
+sub testscanhierarchy {
+    undef %hsdata;
+    $_ = '..';
+    scanhierarchy();
+    ok(%hsdata, 0, 'Nothing should be set yet');
+    $_ = 'test';
+    mkdir($_, 0755);
+    scanhierarchy();
+    ok(%hsdata, 0, 'Nothing should be set yet');
+    $_ = 'test/test1';
+    open TMP, ">$_";
+    print TMP "test1\n";
+    close TMP;
+    scanhierarchy();
+    ok(%hsdata, 0, 'Nothing should be set yet');
+    $_ = 'test';
+    scanhierarchy();
+    ok(Dumper($hsdata{$_}), qr'{}');
+    $_ = 'test/test1.rrd';
+    open TMP, ">$_";
+    print TMP "test1\n";
+    close TMP;
+    $File::Find::dir = $FindBin::Bin;
+    scanhierarchy();
+    ok($hsdata{$FindBin::Bin}{'test/test1.rrd'}[0], undef);
+    unlink 'test/test1';
+    unlink 'test/test1.rrd';
+    rmdir 'test';
+    undef %hsdata;
+}
+
+# ensure that scanning host/service data works.  do it with both subdir and
+# old style configurations.
+sub testscanhsdata {
+    setuprrd('subdir');
+    undef %hsdata;
+    scanhsdata();
+    ok(dumpd(\%hsdata), "\$VAR1 = {
+  'host0' => {
+    'HTTP' => [
+      'http'
+    ],
+    'PING' => [
+      'ping'
+    ]
+  },
+  'host2' => {
+    'PING' => [
+      'ping'
+    ]
+  },
+  'host3' => {
+    'ping' => [
+      'loss',
+      'rta'
+    ]
+  },
+  'host1' => {
+    'HTTP' => [
+      'http'
+    ]
+  }
+};
+");
+    undef %hsdata;
+    teardownrrd();
+
+    setuprrd('_');
+    undef %hsdata;
+    scanhsdata();
+    ok(dumpd(\%hsdata), "\$VAR1 = {
+  'host0' => {
+    'HTTP' => [
+      'http'
+    ],
+    'PING' => [
+      'ping'
+    ]
+  },
+  'host2' => {
+    'PING' => [
+      'ping'
+    ]
+  },
+  'host3' => {
+    'ping' => [
+      'rta',
+      'loss'
+    ]
+  },
+  'host1' => {
+    'HTTP' => [
+      'http'
+    ]
+  }
+};
+");
+    undef %hsdata;
+    teardownrrd();
+}
+
+
+
 
 testdebug();
 testdumper();
@@ -1393,7 +1573,6 @@ testhtmlerror();
 testdircreation();
 testmkfilename();
 testhashcolor();
-testgetgraphlist();
 testlisttodict();
 testcheckdirempty();
 testreadfile();
@@ -1421,4 +1600,6 @@ testreadhostdb();
 testreadservdb();
 testreadgroupdb();
 testreaddatasetdb();
-cleanuprrd();
+testscandirectory();
+testscanhierarchy();
+testscanhsdata();

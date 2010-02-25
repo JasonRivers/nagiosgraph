@@ -36,9 +36,9 @@ use constant GRAPHWIDTH => 600;
 use constant PROG => basename($PROGRAM_NAME);
 use constant NAGIOSGRAPHURL => 'http://nagiosgraph.wiki.sourceforge.net/';
 use constant ERRSTYLE => '.error { font-family: sans-serif; padding: 0.75em; background-color: #fff6f3; border: solid 1px #cc3333; }';
-use constant ERRMSG => 'Error in nagiosgraph configuration file: ';
 use constant DBLISTROWS => 3;
 use constant PERIODLISTROWS => 5;
+use constant RRDEXT => '.rrd';
 
 # default geometries
 use constant GEOMETRIES => '500x80,650x150,1000x200';
@@ -174,6 +174,7 @@ sub init {
 
     if ($doscan) {
         scanhsdata();
+        #dumper(DBDEB, 'host/service data', \%hsdata);
     }
 
     return $cgi, $params;
@@ -436,14 +437,14 @@ sub mkfilename {
     if ($Config{dbseparator} eq 'subdir') {
         $directory .=  q(/) . $host;
         if ($db) {
-            $filename = escape("${service}___${db}") . '.rrd';
+            $filename = escape("${service}___${db}") . RRDEXT;
         } else {
             $filename = escape("${service}___");
         }
     } else {
         # Build filename for traditional separation
         if ($db) {
-            $filename = escape("${host}_${service}_${db}") . '.rrd'
+            $filename = escape("${host}_${service}_${db}") . RRDEXT;
         } else {
             $filename = escape("${host}_${service}_");
         }
@@ -1060,7 +1061,7 @@ sub graphinfo {
             $unit) = (0);       # value split from $ll
         for my $dd (@{$db}) {
             ($dbname, @lines) = split /,/, $dd;
-            $rrd[$nn]{file} = $hs . escape("$dbname") . '.rrd';
+            $rrd[$nn]{file} = $hs . escape("$dbname") . RRDEXT;
             $rrd[$nn]{dbname} = $dbname;
             for my $ll (@lines) {
                 ($line, $unit) = split /~/, $ll;
@@ -1373,23 +1374,22 @@ sub mergeopts {
 # scan the rrd files and populate the hsdata object with the result.
 sub scanhsdata {
     if (defined $Config{dbseparator} && $Config{dbseparator} eq 'subdir') {
-        File::Find::find(\&getgraphlist, $Config{rrddir});
+        File::Find::find(\&scanhierarchy, $Config{rrddir});
+    } else {
+        File::Find::find(\&scandirectory, $Config{rrddir});
     }
-# FIXME: implement the non-subdir option
-
-    #dumper(DBDEB, 'scanhsdata: hsdata', \%hsdata);
     return;
 }
 
-# Assumes subdir as separator
-sub getgraphlist {
-    # Builds a hash for available servers/services to graph
+# scan for rrd files in a directory hierarchy.  build a hash with the result.
+sub scanhierarchy {
     my $current = $_;
-    my $extension = '.rrd';
-    my $rrdlen = 0 - length $extension;
-    if (-d $current and substr($current, 0, 1) ne q(.)) { # Directories are for hostnames
+    my $rrdlen = 0 - length RRDEXT;
+    if (-d $current and substr($current, 0, 1) ne q(.)) {
+        # Directories are for hostnames
         if (not checkdirempty($current)) { %{$hsdata{$current}} = (); }
-    } elsif (-f $current && substr($current, $rrdlen) eq $extension) { # Files are for services
+    } elsif (-f $current && substr($current, $rrdlen) eq RRDEXT) {
+        # Files are for services
         my ($host, $service, $dataset);
         $dataset = $File::Find::dir; # this stops the only used once message
         ($host = $File::Find::dir) =~ s|^$Config{rrddir}/||;
@@ -1402,6 +1402,24 @@ sub getgraphlist {
             @{$hsdata{$host}{unescape($service)}} = (unescape($dataset));
         } else {
             push @{$hsdata{$host}{unescape($service)}}, unescape($dataset);
+        }
+    }
+    return;
+}
+
+# scan for rrd files in a single directory.  build a hash with the result.
+sub scandirectory {
+    my $current = $_;
+    my $rrdlen = 0 - length RRDEXT;
+    if (-f $current && substr($current, $rrdlen) eq RRDEXT) {
+        my $fn = substr $current, 0, $rrdlen;
+        my ($host, $service, $dataset) = split /_/, $fn;
+        if ($host && $service && $dataset) {
+            if (not exists $hsdata{$host}{unescape($service)}) {
+                @{$hsdata{$host}{unescape($service)}} = (unescape($dataset));
+            } else {
+                push @{$hsdata{$host}{unescape($service)}}, unescape($dataset);
+            }
         }
     }
     return;

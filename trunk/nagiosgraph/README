@@ -129,6 +129,15 @@ easier.
       perl Makefile.PL
       make test
 
+- test coverage
+
+  To generate code coverage reports, install Devel::Cover then run tests:
+
+      PERL5OPT=-MDevel::Cover make test
+
+  This will generate a cover_db directory with code coverage metrics.  Use
+  cover to generate reports from the cover_db data.
+
 - configurations
 
   Be consistent in configuration files and documentation about where the
@@ -150,3 +159,35 @@ easier.
       /nagiosgraph/cgi-bin/show.cgi
       /nagiosgraph/nagiosgraph.css
       /nagiosgraph/nagiosgraph.js
+
+As of 24feb2010, the codebase for nagiosgraph looks like this:
+
+ lines  words  bytes
+   198    668   5537 cgi/show.cgi
+   195    656   5503 cgi/showgraph.cgi
+   192    689   5386 cgi/showgroup.cgi
+   202    734   5750 cgi/showhost.cgi
+   194    686   5400 cgi/showservice.cgi
+   177    745   5509 cgi/testcolor.cgi
+  2369   9826  83967 etc/ngshared.pm
+   173    555   4152 lib/insert.pl
+  3700  14559 121204 total
+
+    12     41    251 t/01required_modules.t
+  1605   4221  42661 t/02ngshared.t
+    11     27    346 t/97pod.t
+     6     20    178 t/98podcoverage.t
+     7     19    162 t/99kwalitee.t
+  1641   4328  43598 total
+
+    14     70    546 etc/datasetdb.conf
+    61    233   2181 etc/groupdb.conf
+    38    116   1301 etc/hostdb.conf
+   364   1815  11593 etc/nagiosgraph.conf
+    20    119    660 etc/rrdopts.conf
+    15     74    454 etc/servdb.conf
+   512   2427  16735 total
+
+Test coverage looks like this:
+file              stmt  bran  cond  sub   pod  time   total
+etc/ngshared.pm   68.4  49.3  42.0  76.5  n/a  100.0  60.7
