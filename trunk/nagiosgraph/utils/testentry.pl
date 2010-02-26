@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 
+# $Id$
 # File:    $Id$
 # Author:  (c) Soren Dossing, 2005
 # License: OSI Artistic License
@@ -8,8 +9,13 @@
 # Modify this script to test map entries before inserting into real
 # map file. Run the script and check if the output is as expected.
 
+## no critic (ProhibitNoStrict,ProhibitProlongedStrictureOverride)
+## no critic (RequireCheckingReturnValueOfEval)
+## no critic (RegularExpressions)
+## no critic (RequireCheckedSyscalls)
+
 use strict;
-no strict 'subs'; ## no critic (ProhibitNoStrict,ProhibitProlongedStrictureOverride)
+no strict 'subs';
 use warnings;
 use Data::Dumper;
 
@@ -18,18 +24,16 @@ $VERSION = '2.0';
 
 my @s;
 
-# Insert servicesdescr, output and perfdata here as it appears in log file.
-#
+# Insert servicesdesc, output and perfdata here as it appears in perflog file.
 $_ = <<'DATA';
 servicedescr:ping
 output:Total RX Bytes: 4058.14 MB, Total TX Bytes: 2697.28 MB<br>Average Traffic: 3.57 kB/s (0.0%) in, 4.92 kB/s (0.0%) out| inUsage=0.0,85,98 outUsage=0.0,85,98
 perfdata:
 DATA
 
-eval { ## no critic (RequireCheckingReturnValueOfEval)
+eval {
 
 # Insert here a map entry to parse the nagios plugin data above.
-## no critic (RegularExpressions)
 /output:.*Average Traffic.*?([.\d]+) kB.+?([.\d]+) kB/
 and push @s, [ 'rxbytes',
                [ 'in',  GAUGE, $1 ],
@@ -37,17 +41,19 @@ and push @s, [ 'rxbytes',
 
 };
 
-print Data::Dumper->Dump([\@s], [qw(*s)]); ## no critic (RequireCheckedSyscalls)
+print Data::Dumper->Dump( [\@s], [qw(*s)] );
 
 __END__
 
 =head1 NAME
 
-testentry.pl - Install nagiosgraph.
+testentry.pl - manually test individual map entries
 
 =head1 DESCRIPTION
 
 =head1 USAGE
+
+Edit this file to include output from the Nagios perflog and the map rule that is to be tested.  Then run it.
 
 B<testentry.pl>
 
@@ -63,26 +69,15 @@ B<testentry.pl>
 
 =head1 DEPENDENCIES
 
-=over 4
-
-=item B<Nagios>
-
-This provides the data collection system.
-
-=back
-
 =head1 INCOMPATIBILITIES
 
 =head1 BUGS AND LIMITATIONS
-
-Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this
-simple and tested.
 
 =head1 AUTHOR
 
 Soren Dossing, the original author in 2005.
 
-Alan Brenner - alan.brenner@ithaka.org, added perldoc and other changes.
+Alan Brenner - alan.brenner@ithaka.org
 
 =head1 LICENSE AND COPYRIGHT
 

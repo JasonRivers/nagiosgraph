@@ -20,7 +20,7 @@ my @svrs;
 my @svcs;
 my @unknown;
 
-## no critic (RequireCheckedSyscalls,Capitalization)
+## no critic (RequireCheckedSyscalls,ProhibitMixedCaseSubs)
 print 80 x q(-). "\n"; ## no critic (ProhibitMagicNumbers)
 print "NagiosGraph has changed the organization of RRD Databases in this release\n";
 print "Now the rrdir parameter specifies the top-folder where a directory for each\n";
