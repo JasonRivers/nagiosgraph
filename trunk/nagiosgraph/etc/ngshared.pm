@@ -824,7 +824,7 @@ sub filterdb {
 # older distributions included escaped labels in the sample configs.
 sub cleanline {
     my ($line) = @_;
-    $line =~ unescape($line);
+    $line = unescape($line);
     $line =~ tr/+/ /;
     $line =~ s/^\s+//g;
     $line =~ s/\s+$//g;
@@ -1931,7 +1931,6 @@ sub printgraphlinks {
 sub printperiodlinks {
     my($cgi, $params, $period, $now, $content) = @_;
     my (@navstr) = getperiodctrls($cgi, $params, $period, $now);
-    my $label = ucfirst $period->[0];
     my $id = 'period_data_' . $period->[0];
     return $cgi->div({-class => 'period_banner'},
                      $cgi->span({-class => 'period_title'},
@@ -1939,7 +1938,7 @@ sub printperiodlinks {
                                              -label => q(-),
                                              -onClick => 'togglePeriodDisplay(\'' . $id . '\', this)'),
                                 $cgi->a({ -id => $period->[0] },
-                                        _($label))),
+                                        _($PERIOD_LABELS{$period->[0]}))),
                      $cgi->span({-class => 'period_controls'},
                                 $navstr[0],
                                 $cgi->span({-class => 'period_detail'},

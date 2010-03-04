@@ -925,39 +925,43 @@ easier.
       /nagiosgraph/nagiosgraph.css
       /nagiosgraph/nagiosgraph.js
 
-As of 24feb2010, the codebase for nagiosgraph looks like this:
+As of 03mar2010, the codebase for nagiosgraph looks like this:
 
  lines  words  bytes
-   198    668   5537 cgi/show.cgi
-   195    656   5503 cgi/showgraph.cgi
-   192    689   5386 cgi/showgroup.cgi
-   202    734   5750 cgi/showhost.cgi
-   194    686   5400 cgi/showservice.cgi
-   177    745   5509 cgi/testcolor.cgi
-  2369   9826  83967 etc/ngshared.pm
+   198    667   5534 cgi/show.cgi
+   215    713   6025 cgi/showgraph.cgi
+   201    754   5414 cgi/showgroup.cgi
+   203    732   5748 cgi/showhost.cgi
+   193    685   5396 cgi/showservice.cgi
+   178    753   5602 cgi/testcolor.cgi
+  2472  10308  87273 etc/ngshared.pm
    173    555   4152 lib/insert.pl
-  3700  14559 121204 total
+  3833  15167 125144 total
 
-   130    269   2122 share/nagiosgraph.css
-   964   3544  27010 share/nagiosgraph.js
+   130    269    2122 share/nagiosgraph.css
+   968   3562  27323 share/nagiosgraph.js
      1      3     75 share/nagiosgraph.ssi
-  1095   3816  29207 total
+  1099   3834  29520 total
 
     12     41    251 t/01required_modules.t
-  1605   4221  42661 t/02ngshared.t
+  2038   5340  53258 t/02ngshared.t
     11     27    346 t/97pod.t
      6     20    178 t/98podcoverage.t
      7     19    162 t/99kwalitee.t
-  1641   4328  43598 total
+  2074   5447  54195 total
 
-    14     70    546 etc/datasetdb.conf
-    61    233   2181 etc/groupdb.conf
-    38    116   1301 etc/hostdb.conf
-   364   1815  11593 etc/nagiosgraph.conf
+    19     82    669 etc/datasetdb.conf
+    62    245   2229 etc/groupdb.conf
+    41    160   1426 etc/hostdb.conf
+    83    331   2013 etc/labels.conf
+   260   1440   9403 etc/nagiosgraph.conf
+    52     81    793 etc/nagiosgraph_de.conf
+    52     92    865 etc/nagiosgraph_es.conf
+    52    102    935 etc/nagiosgraph_fr.conf
     20    119    660 etc/rrdopts.conf
     15     74    454 etc/servdb.conf
-   512   2427  16735 total
+   656   2726  19447 total
 
 Test coverage looks like this:
 File                           stmt   bran   cond    sub    pod   time  total
-etc/ngshared.pm                70.8   52.7   43.5   83.2    n/a  100.0   63.6
+etc/ngshared.pm                70.5   52.6   43.5   83.5    n/a  100.0   63.4
