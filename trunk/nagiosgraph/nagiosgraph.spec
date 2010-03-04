@@ -6,7 +6,7 @@
 
 Summary: A Nagios data archiver and grapher.
 Name: nagiosgraph
-Version: 1.4.1
+Version: 1.4.2
 Release: 1
 Group: Applications/System
 Source: %{name}-%{version}.tar.gz

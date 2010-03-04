@@ -15,8 +15,12 @@ cgi/testcolor.cgi
 etc/datasetdb.conf
 etc/groupdb.conf
 etc/hostdb.conf
+etc/labels.conf
 etc/map
 etc/nagiosgraph.conf
+etc/nagiosgraph_de.conf
+etc/nagiosgraph_es.conf
+etc/nagiosgraph_fr.conf
 etc/ngshared.pm
 etc/servdb.conf
 lib/insert.pl

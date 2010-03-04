@@ -21,7 +21,7 @@ use strict;
 use warnings;
 
 my $sts = gettimestamp();
-my ($cgi, $params) = init('showservice', 1);
+my ($cgi, $params) = init('showservice');
 my ($periods, $expanded_periods) = initperiods('service', $params);
 
 my $defaultds = readdatasetdb();
@@ -30,7 +30,6 @@ if (scalar @{$params->{db}} == 0
     && scalar @{$defaultds->{$params->{service}}} > 0) {
     $params->{db} = $defaultds->{$params->{service}};
 }
-
 my $hosts = readservdb($params->{service}, $params->{db});
 
 cfgparams($params, $params, $params->{service});

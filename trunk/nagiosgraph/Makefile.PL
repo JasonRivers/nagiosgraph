@@ -29,5 +29,9 @@ sub MY::postamble {
 '
 critic:
 	perlcritic -1 etc/ngshared.pm cgi/show.cgi cgi/showhost.cgi cgi/showservice.cgi cgi/showgroup.cgi cgi/testcolor.cgi lib/insert.pl
+
+test-coverage:
+	PERL5OPT=-MDevel::Cover make test
+	cover cover_db
 ';
 }

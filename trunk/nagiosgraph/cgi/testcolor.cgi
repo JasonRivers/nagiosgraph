@@ -27,26 +27,27 @@ if ($errmsg ne q()) {
     htmlerror($errmsg);
     croak($errmsg);
 }
-
 my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
 $cgi->autoEscape(0);
+my $lang = $cgi->param('language') ? $cgi->param('language') : q();
+$errmsg = readi18nfile($lang);
+if ($errmsg ne q()) {
+    debug(DBWRN, $errmsg);
+}
 
 # Suggest some commonly used keywords
 my $w = $cgi->param('words')
     ? join q( ), $cgi->param('words') : 'response rta pctfree';
 
-# Start each page with an input field
-my @style;
-if ($Config{stylesheet}) {
-    @style = ( -style => {-src => "$Config{stylesheet}"} );
-}
 print $cgi->header,
     $cgi->start_html(-id => 'nagiosgraph',
-                     -title => 'nagiosgraph: ' . trans('testcolor'),
-                     @style) . "\n" .
-    $cgi->start_form . $cgi->p(trans('typesome') . q(:)) .
+                     -title => 'nagiosgraph: ' . _('Show Colors'),
+                     getstyle()) . "\n" .
+    $cgi->start_form . $cgi->p(_('Enter names separated by spaces') . q(:)) .
     $cgi->textfield({name => 'words', size => '80', value => $w}) . q( ) .
-    $cgi->submit . $cgi->end_form . $cgi->br() . "\n" or
+    $cgi->submit .
+    $cgi->hidden({name => 'language', value => $lang}) .
+    $cgi->end_form . $cgi->br() . "\n" or
     debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 # Render a table of colors of all schemes for each keyword

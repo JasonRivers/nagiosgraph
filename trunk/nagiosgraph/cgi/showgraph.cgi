@@ -28,7 +28,27 @@ use warnings;
 # 5x5 clear image
 use constant IMG => 'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGljQ29udmVydGVyIChJbnRlbCl3h/oZAAAAGUlEQVR4nGL4//8/AzrGEKCCIAAAAP//AwB4w0q2n+syHQAAAABJRU5ErkJggg==';
 
-my ($cgi, $params) = init('showgraph');
+my $errmsg = readconfig('showgraph', 'cgilogfile');
+if ($errmsg ne q()) {
+    htmlerror($errmsg);
+    croak($errmsg);
+}
+my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
+$cgi->autoEscape(0);
+$errmsg = checkrrddir('read');
+if ($errmsg ne q()) {
+    htmlerror($errmsg);
+    croak($errmsg);
+}
+$errmsg = readrrdoptsfile();
+if ($errmsg ne q()) {
+    htmlerror($errmsg);
+    croak($errmsg);
+}
+my $params = getparams($cgi);
+getdebug('showgraph', $params->{host}, $params->{service});
+
+# FIXME: respect permissions
 
 if (($params->{host} ne q() && $params->{host} ne q(-))
     || ($params->{service} ne q() && $params->{service} ne q(-))) {

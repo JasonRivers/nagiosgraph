@@ -2,15 +2,34 @@ $Id$
 
 1.4.2 TBD
 
+* new configuration options (see nagiosgraph.conf for details):
+     language (optional)
+     showprocessingtime (optional)
+     default_geometry (optional)
+     cgilogfile (optional)
+* added i18n.  this is a very basic, no-dependencies implementation.  the
+   intent is to be completely self contained, add minimal overhead, and not
+   break existing installations.  error messages are not translated.  the
+   language is detected from the HTTP_ACCEPT_LANGUAGE variable.  this can
+   be overridden by explicit cgi argument.  language can be forced by
+   specifying it in the nagiosgraph configuration file.
+* added labels file.  labels can be specified individually via cgi arguments
+   or via configuration files for specific combinations of host/service/data.
+   labels can be overridden for individual languages, independenly of i18n.
+   labels in nagiosgraph.conf are now ignored.  move them to the labels file.
+* recognize relative paths for configuration filenames.  prepend the config
+   dir when relative paths are specified.
+* include a line with the hostname in the input to the map rules.  this
+   enables the use of map rules that are host-specific.  this is a significant
+   change from the previous 3-line behavior, but it will not break existing
+   map rules unless they depend on the line count.  having the host information
+   also makes it easier to diagnose parsing issues when processing data.
 * enable display of data sets from multiple rrd files into a single graph.
 * prevent name clashes between data set names by using qualified identifiers
    rather than just data names in graph definitions.
-* new configuration options (see nagiosgraph.conf for details):
-     showprocessingtime
-     default_geometry
-     cgilogfile
-* optionally report processing time
-* optionally specify a default width and height
+* optionally report processing time.  processing time does *not* include the
+   time required by showgraph.cgi to generate all of the graphs.
+* optionally specify a default width and height.
 * hostdb.conf and servdb.conf are now optional.  if these files are not 
    specified, or if they contain no entries, then data for every service
    (showhost.cgi) and data for every host (showservice.cgi) will be
@@ -28,6 +47,7 @@ $Id$
    fallback gracefully when permissions are not configured properly.
 * consolidated log file initialization.
 * refactored error handling and reporting, should be more consistent now.
+* refer to 'new style' and 'old style' processing as 'batch' and 'immediate'
 
 1.4.1 2010-02-18
 

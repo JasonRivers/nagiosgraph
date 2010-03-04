@@ -21,60 +21,69 @@ use strict;
 use warnings;
 
 my $sts = gettimestamp();
-my ($cgi, $params) = init('showgroup', 1);
-my ($periods, $expanded_periods) = initperiods('group', $params);
+my ( $cgi, $params ) = init('showgroup');
+my ( $periods, $expanded_periods ) = initperiods( 'group', $params );
 
-my ($gnames, $ginfos) = readgroupdb($params->{group});
+my ( $gnames, $ginfos ) = readgroupdb( $params->{group} );
 
-print printheader($cgi, { title => $params->{group},
-                          call => 'group',
-                          group => $params->{group},
-                          grouplist => \@{$gnames} }) or
-    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+print printheader(
+    $cgi,
+    {
+        title     => $params->{group},
+        call      => 'group',
+        group     => $params->{group},
+        grouplist => \@{$gnames}
+    }
+) or debug( DBCRT, "error sending HTML to web server: $OS_ERROR" );
 
 my $now = time;
-foreach my $period (graphsizes($periods)) {
-    dumper(DBDEB, 'period', $period);
+foreach my $period ( graphsizes($periods) ) {
+    dumper( DBDEB, 'period', $period );
     my $str = q();
-    foreach my $info (@{$ginfos}) {
-        cfgparams($info, $params, $info->{service});
+    foreach my $info ( @{$ginfos} ) {
+        cfgparams( $info, $params, $info->{service} );
 
-        my $sstr = 'service=' . $cgi->escape($info->{service});
-        if ($info->{db}) {
-            foreach my $db (@{$info->{db}}) {
+        my $sstr = 'service=' . $cgi->escape( $info->{service} );
+        if ( $info->{db} ) {
+            foreach my $db ( @{ $info->{db} } ) {
                 $sstr .= '&db=' . $db;
             }
             $sstr =~ tr/ /+/;
         }
-        my $hstr = 'host=' . $cgi->escape($info->{host});
+        my $hstr = 'host=' . $cgi->escape( $info->{host} );
 
-        my $burl = $Config{nagiosgraphcgiurl} . '/show.cgi' .
-            q(?) . $hstr . q(&) . $sstr;
+        my $burl =
+            $Config{nagiosgraphcgiurl}
+          . '/show.cgi' . q(?)
+          . $hstr . q(&)
+          . $sstr;
         my $surl = $Config{nagiosgraphcgiurl} . '/showservice.cgi?' . $sstr;
         my $hurl = $Config{nagiosgraphcgiurl} . '/showhost.cgi?' . $hstr;
 
-        my $link = $cgi->a({href => $burl},
-                           trans($info->{service}, 1) .
-                           q( ) . trans('on') . q( ) .
-                           $info->{host}) .
-                   $cgi->br() .
-                   $cgi->a({href => $surl}, trans($info->{service}, 1)) .
-                   q( - ) .
-                   $cgi->a({href => $hurl}, $info->{host});
+        my $label =
+            $info->{service_label}
+          ? $info->{service_label}
+          : getlabel( $info->{service} );
 
-        $str .= printgraphlinks($cgi, $info, $period, $link) . "\n";
+        my $link = $cgi->a( { href => $burl },
+            $label . q( ) . _('on') . q( ) . $info->{host} )
+          . $cgi->br()
+          . $cgi->a( { href => $surl }, $label ) . q( - )
+          . $cgi->a( { href => $hurl }, $info->{host} );
+
+        $str .= printgraphlinks( $cgi, $info, $period, $link ) . "\n";
     }
-    print printperiodlinks($cgi, $params, $period, $now, $str) or
-        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+    print printperiodlinks( $cgi, $params, $period, $now, $str )
+      or debug( DBCRT, "error sending HTML to web server: $OS_ERROR" );
 }
 
-print printinitscript(q(), q(), $expanded_periods) or
-    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+print printinitscript( q(), q(), $expanded_periods )
+  or debug( DBCRT, "error sending HTML to web server: $OS_ERROR" );
 
 my $ets = gettimestamp();
 
-print printfooter($cgi, $sts, $ets) or
-    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+print printfooter( $cgi, $sts, $ets )
+  or debug( DBCRT, "error sending HTML to web server: $OS_ERROR" );
 
 __END__
 

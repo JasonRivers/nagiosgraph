@@ -5,8 +5,12 @@ nagiosgraph Installation       Author:  (c) 2005 Soren Dossing
                                Author:  (c) 2010 Matthew Wall
 
 These are the installation and configuration instructions for nagiosgraph.
-See Principles of Operation in the README file for an overview of how
-nagiosgraph is designed to work.
+
+Nagios monitors one or more services on each host.  nagiosgraph extracts
+information from the Nagios output, processes it, then inserts it into one
+or more round-robin database (RRD) files.  Each database contains one or
+more data sets.  nagiosgraph cgi scripts display data from the RRD files
+as web pages.
 
 This document contains the following sections:
 
@@ -14,8 +18,8 @@ This document contains the following sections:
   Installation Instructions
   Upgrade Notes
   Configuring Data Processing
-    Old Style
-    New Style
+    Batch Processing
+    Immediate Processing
   Configuring Graphing and Display
     Displaying Per-Service and Per-Host Graph Icons in Nagios
     Displaying Graphs in Nagios Mouseovers
@@ -24,24 +28,21 @@ This document contains the following sections:
   Adding Service Types
   Managing Data and RRD Files
   Appendix: Troubleshooting
+  Appendix: Internationalization
   Appendix: Sample Installation Layouts
   Appendix: Web Server Configuration
   Appendix: Platform Specific Notes
     CentOS 5 and Nagiosgraph 0.9:
     Fedora Core 6, Nagios 2.6+, and HTTP output parsing
-
-The instructions below are mainly for Nagios 2.x and 3.x and might differ
-in other versions of Nagios.
+  Appendix: Notes For Developers
 
 
 Installation Preliminaries
 --------------------------
 
   Nagiosgraph will not function without a working Nagios installation, so
-  first ensure that Nagios works.
-
-  Nagiosgraph depends on perfdata processing in Nagios using the Nagios
-  directive process_performance_data.
+  first ensure that Nagios works.  Nagiosgraph depends on perfdata processing
+  in Nagios using the Nagios directive process_performance_data.
 
   Nagiosgraph uses rrdtool from perl, so both rrdtool and the perl wrapper
   for rrdtool must be installed.
@@ -72,16 +73,16 @@ Installation Instructions
  - Edit the perl scripts in the cgi and lib directories, modifying the
    "use lib" line to point to the directory from the previous step.
 
- - Copy the contents of lib into a location Nagios can execute files,
+ - Copy the contents of lib into a location from which they can be executed,
    e.g. /usr/lib/nagios/libexec
 
- - Copy the contents of cgi into the Nagios cgi-bin directory,
+ - Copy the contents of cgi into a cgi-bin directory served by the web server,
    e.g. /usr/lib/nagios/cgi-bin
 
- - Copy share/nagiosgraph.css into a directory served by the web server
+ - Copy share/nagiosgraph.css into a directory served by the web server,
    e.g. /usr/share/nagios/stylesheets
 
- - Copy share/nagiosgraph.js into a directory served by the web server
+ - Copy share/nagiosgraph.js into a directory served by the web server,
    e.g. /usr/share/nagios
 
  - Edit nagiosgraph.conf.  Set at least the following:
@@ -110,7 +111,8 @@ Upgrade Notes
    have modifications to the stylesheet (nagiosgraph.css).
 
  - Use diff, or a similar tool, to update your nagiosgraph.conf with any new
-   fields from etc/nagiosgraph.conf and the stylesheet.
+   fields from etc/nagiosgraph.conf and your nagiosgraph.css with changes from
+   share/nagiosgraph.css.
 
  - You may want to look at etc/map to see if there are any new examples that
    you may find useful.
@@ -120,18 +122,18 @@ Configuring Data Processing
 ---------------------------
 
 Before nagiosgraph can graph anything it must first collect data.  There are
-two ways to process data - the new style and the old style.  The old style
-typically requires more CPU.
+two ways to process data - batch and immediate.  Immedate processing typically
+requires more CPU.
 
-In the new style, performance data are appended to a file, then nagios invokes
-insert.pl at a regular interval to update the rrd files.
+In batch processing, performance data are appended to a file, then nagios
+invokes insert.pl at a regular interval to update the rrd files.
 
-In the old style, nagios invokes insert.pl immediately after each service
-check, thus updating the corresponding rrd files.
+In immediate processing, nagios invokes insert.pl immediately after each
+service check, thus updating the corresponding rrd files.
 
 
-New Style Processing
---------------------
+Batch Processing
+----------------
 
  - In nagios.cfg set:
 
@@ -153,7 +155,7 @@ New Style Processing
 
      define command {
        command_name  process-service-perfdata
-       command_line  /usr/local/nagios/nagiosgraph/insert.pl
+       command_line  /usr/lib/nagios/libexec/insert.pl
      }
 
    Make sure there is only one definition for process-service-perfdata.
@@ -161,10 +163,10 @@ New Style Processing
    Some installations of Nagios (e.g. with embedded perl) require the explicit
    location of perl.  For these installations, use a command_line such as:
 
-     command_line /usr/bin/perl /etc/nagios/nagiosgraph/insert.pl
+     command_line /usr/bin/perl /usr/lib/nagios/libexec/insert.pl
 
 
-Old Style Processing
+Immediate Processing
 --------------------
 
  - In nagios.cfg:
@@ -180,13 +182,13 @@ Old Style Processing
 
      define command{
        command_name  process-service-perfdata
-       command_line  /usr/local/nagios/nagiosgraph/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
+       command_line  /usr/lib/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
      }
 
    Some installations of Nagios (e.g. with embedded perl) require the explicit
    location of perl.  For these installations, use a command_line such as:
 
-     command_line /usr/bin/perl /etc/nagios/nagiosgraph/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
+     command_line /usr/bin/perl /usr/lib/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
 
 
 
@@ -207,6 +209,9 @@ example, with Apache do something like this in the Apache configuration:
 Verify that nagiosgraph is working by running show.cgi or showhost.cgi.
 
   http://server/nagiosgraph/cgi-bin/show.cgi
+
+This should display a web page with a list of your hosts and services.
+Note that it might take a few minutes for data to collect.
 
 After the CGI scripts are running you can configure nagios.  There are
 a few ways to embed nagiosgraph into nagios.  Nagios will display graph
@@ -432,14 +437,16 @@ Most examples follow the of identifying data from either Nagios output or
 Nagios perfdata and defining a number of rrd data sources.
 
 insert.pl receives data from Nagios.  It formats data into a string consisting
-of three lines of text.  This string might look like this:
+of four lines of text.  This string might look like this:
 
+  hostname:host0
   servicedesc:ping
   output:PING OK - Packet loss = 0%, RTA = 0.00 ms
   perfdata:
 
 Or like this:
 
+  hostname:host0
   servicedesc:CPU Load 
   output:OK - load average: 0.06, 0.12, 0.10
   perfdata:load1=0;15;30;0 load5=0;10;25;0 load15=0;5;20;0 
@@ -622,27 +629,27 @@ doing so is somewhat tedious, especially for large numbers of hosts/services.
 Troubleshooting
 ---------------
 
-First identify whether your problem is on the data collection side of things
-or the data display side of things.
+First identify whether your problem is with data collection or data display.
 
 Are perfdata being collected by Nagios?  Run a nagios plugin directly and
 make sure that it is working properly.  For example:
 
   check_ping -H host -w 100,10% -c 200,20%
 
-Are perfdata being collected by nagiosgraph?  In nagiosgraph.conf, set
-debug_insert=3 then look at the nagiosgraph log file.  Ensure that insert.pl
-is being called as expected.
-
-Are data being saved into RRD files?  With debug_insert=3, look in the
-nagiosgraph log file for errors or warnings from insert.pl.  Problems with
-map rules should be reported in the log file.  If necessary, increase the
-log level to debug_insert=5.
+Is nagiosgraph running?  In nagiosgraph.conf, set debug_insert=5 then look
+at the nagiosgraph log file.  You should see messages from insert.pl.  Ensure
+that insert.pl is being called as expected, either periodically by Nagios or
+in a loop.
 
 Are the RRD files being created?  The nagios user must have write permission
 on the rrd directory.
 
 Are the RRD files being modified?  Check the RRD file timestamp.
+
+Are data being saved into RRD files?  With debug_insert=3, look in the
+nagiosgraph log file for errors or warnings from insert.pl.  Problems with
+map rules should be reported in the log file.  If necessary, increase the
+log level to debug_insert=5.
 
 Are the RRD file contents sane?  Use 'rrdtool dump filename.rrd'.  It is
 normal for a new RRD file to be full of NaN.  As the file is updated those
@@ -665,15 +672,47 @@ old rrd files out of the rrd directory.
 If graphs are not being displayed, start by graphing a single host and service
 with showgraph.cgi, for example showgraph.cgi?host=HOST&service=SERVICE.  Set
 debug_showgraph=3 in nagiosgraph.conf, then look for output in the nagiosgraph
-cgi log file or the web server error log.
+log file or the web server error log.
 
-To isolate problems in other CGI scripts, use debug_show (show.cgi), 
+To isolate problems in individual CGI scripts, use debug_show (show.cgi), 
 debug_showhost (showhost.cgi), debug_showservice (showservice.cgi), or
 debug_showgroup (showgroup.cgi) as appropriate.
 
 For installations with many hosts and services, use the host/service
 extensions (e.g. debug_showgraph_host = host) to make the log information
 easier to grok.
+
+
+
+Internationalization
+--------------------
+
+Translations are in a single file, with one file per language.  Strings for
+both the cgi and javascript are in the same file.  The javascript translations
+and language detection are controlled by the cgi scripts.
+
+In order to minimize dependencies and overhead, nagiosgraph uses its own
+system for internationalization.  It has a syntax similar to gettext.
+Strings are defined in english within the perl and javascript code.  There
+is no support for complex lexical structures - only string literals.  The
+user interface to nagiosgraph is (so far) simple enough that this suffices.
+
+To create a new translation, copy an existing translation file to a file
+with the appropriate extension.  For example, nagiosgraph_es.conf is the
+file for generic spanish.
+
+Error messages are not translated.
+
+Language is detected from the HTTP_ACCEPT_LANGUAGE environment variable.  The
+first language in this list is the language used.  If a language is specified
+in the nagiosgraph configuration file, that language overrides anything in
+the environment.
+
+The language can be specified as an argument to each cgi script, for example:
+
+  show.cgi?language=es
+
+Language specified in this manner overrides any environment or configuration.
 
 
 
@@ -807,3 +846,118 @@ with Nagios 2.6 and later.  This is what did work.
 	/output:.*?HTTP.*?([.0-9]+) sec/
 	and push @s, [ http,
 		[ rt, GAUGE, $1 ] ];
+
+
+
+Notes For Developers
+--------------------
+
+If you would like to contribute to nagiosgraph, there are a few things you
+should do to make your life and the lives of the other nagiosgraph developers
+easier.
+
+- please respect these design goals:
+   - do not break existing installations
+   - minimize dependencies
+   - keep it simple
+
+- perlcritic
+
+  Run perlcritic and fix all warnings before you commit.  Be brutal:
+
+      perlcritic -1 cgi/*.cgi
+      perlcritic -1 etc/*.pm
+
+  or use the make rule to run them all:
+
+      perl Makefile.PL
+      make critic
+
+- unit tests
+
+  Run the unit tests before modifying existing functionality.  Write unit
+  tests before you add code.
+
+      perl Makefile.PL
+      make test
+
+- test coverage
+
+  To generate code coverage reports, install Devel::Cover then run tests:
+
+      perl Makefile.PL
+      make test-coverage
+
+  This will generate a cover_db directory with code coverage metrics.
+
+- internationalization (i18n)
+
+  To get a list of all translated string constants, do the following:
+
+      grep '_(' cgi/*.cgi etc/*.pm | sed -e 's/.*_(\([^)]*\).*/\1/' | sort -u
+      grep '_(' share/*.js | sed -e 's/.*_(\([^)]*\).*/\1/' | sort -u
+
+  nagiosgraph uses a bare bones, home-grown, standalone implementation of
+  i18n.  If you add strings to the user interface or error handling, please
+  follow the pattern used for other strings in the code.  All translations
+  reside in a single file, with one file per language.  Each file is used
+  by the cgi (directly) and the javascript (via the cgi).
+
+- configurations
+
+  Be consistent in configuration files and documentation about where the
+  nagiosgraph files are installed, regardless of what you use.  Use the
+  non-overlay layout:
+
+  file system:
+
+      /etc/nagiosgraph/nagiosgraph.conf
+      /etc/nagiosgraph/ngshared.pm
+      /usr/lib/nagiosgraph/cgi-bin/show.cgi
+      /usr/lib/nagiosgraph/libexec/insert.pl
+      /usr/share/nagiosgraph/nagiosgraph.css
+      /usr/share/nagiosgraph/nagiosgraph.js
+      /var/nagiosgraph/rrd/
+
+  URLs:
+
+      /nagiosgraph/cgi-bin/show.cgi
+      /nagiosgraph/nagiosgraph.css
+      /nagiosgraph/nagiosgraph.js
+
+As of 24feb2010, the codebase for nagiosgraph looks like this:
+
+ lines  words  bytes
+   198    668   5537 cgi/show.cgi
+   195    656   5503 cgi/showgraph.cgi
+   192    689   5386 cgi/showgroup.cgi
+   202    734   5750 cgi/showhost.cgi
+   194    686   5400 cgi/showservice.cgi
+   177    745   5509 cgi/testcolor.cgi
+  2369   9826  83967 etc/ngshared.pm
+   173    555   4152 lib/insert.pl
+  3700  14559 121204 total
+
+   130    269   2122 share/nagiosgraph.css
+   964   3544  27010 share/nagiosgraph.js
+     1      3     75 share/nagiosgraph.ssi
+  1095   3816  29207 total
+
+    12     41    251 t/01required_modules.t
+  1605   4221  42661 t/02ngshared.t
+    11     27    346 t/97pod.t
+     6     20    178 t/98podcoverage.t
+     7     19    162 t/99kwalitee.t
+  1641   4328  43598 total
+
+    14     70    546 etc/datasetdb.conf
+    61    233   2181 etc/groupdb.conf
+    38    116   1301 etc/hostdb.conf
+   364   1815  11593 etc/nagiosgraph.conf
+    20    119    660 etc/rrdopts.conf
+    15     74    454 etc/servdb.conf
+   512   2427  16735 total
+
+Test coverage looks like this:
+File                           stmt   bran   cond    sub    pod   time  total
+etc/ngshared.pm                70.8   52.7   43.5   83.2    n/a  100.0   63.6

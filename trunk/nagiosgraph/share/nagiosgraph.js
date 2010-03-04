@@ -9,6 +9,15 @@
 
 var PNAME = [ 'day', 'week', 'month', 'quarter', 'year' ];
 
+// dead simple i18n
+// based on http://24ways.org/2007/javascript-internationalisation
+function _(s) {
+  if (typeof(i18n) != 'undefined' && i18n[s]) {
+    return i18n[s];
+  }
+  return s;
+}
+
 // show/hide a graph popup window (for mouseovers)
 var ngpopup;
 var ngpopupT = 16;
@@ -26,7 +35,7 @@ function showGraphPopup(elem) {
     document.body.appendChild(ngpopup);
   }
   var html = "<div id='graphPopup'>";
-  html += "<img src='" + elem.rel + "' alt='graph data'>";
+  html += "<img src='" + elem.rel + "' alt='" + _('graph data') + "'>";
   html += "</div>";
   ngpopup.innerHTML = html;
   var coord = findPos(elem);
@@ -58,7 +67,7 @@ function findPos(elem) {
 
 // yet another javascript date/time picker
 var ngpicker;
-var ngStartOfWeek = "mon";
+var ngStartOfWeek = "mon";  // 'mon' or 'sun'
 function showDateTimePicker(elem) {
   if(ngpicker == null) {
     ngpicker = document.createElement('div');
@@ -99,19 +108,17 @@ function dtpGetSelectedDate() {
 // returns current time if cannot parse.
 function dtpParseDate(str) {
   var date = new Date();
-  if(str && str != 'now') {
-    var parts = str.split(' ');
-    if(parts.length == 2) {
-      var dstr = parts[0].split('.');
-      var tstr = parts[1].split(':');
-      if(dstr.length == 3 && tstr.length == 2) {
-        date.setYear(dstr[2]);
-        date.setMonth(dstr[1]-1);
-        date.setDate(dstr[0]);
-        date.setHours(tstr[0]);
-        date.setMinutes(tstr[1]);
-        date.setSeconds(0);
-      }
+  var parts = str.split(' ');
+  if(parts.length == 2) {
+    var dstr = parts[0].split('.');
+    var tstr = parts[1].split(':');
+    if(dstr.length == 3 && tstr.length == 2) {
+      date.setYear(dstr[2]);
+      date.setMonth(dstr[1]-1);
+      date.setDate(dstr[0]);
+      date.setHours(tstr[0]);
+      date.setMinutes(tstr[1]);
+      date.setSeconds(0);
     }
   }
   return date;
@@ -256,8 +263,8 @@ function dtpCreateHTML() {
   for(var i=0; i<24; i++) {
     hours[i] = (i < 10 ? "0" + i : i);
   }
-  var months = new Array("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec");
-  var days = new Array("Sun","Mon","Tue","Wed","Thu","Fri","Sat","Sun");
+  var months = new Array(_('Jan'),_('Feb'),_('Mar'),_('Apr'),_('May'),_('Jun'),_('Jul'),_('Aug'),_('Sep'),_('Oct'),_('Nov'),_('Dec'));
+  var days = new Array(_('Sun'),_('Mon'),_('Tue'),_('Wed'),_('Thu'),_('Fri'),_('Sat'),_('Sun'));
   var years = new Array();
   for(var i=0; i<5; i++) {
     years[i] = year + i - 4;
@@ -323,10 +330,10 @@ function dtpCreateHTML() {
   txt += "</select>";
   txt += "</td></tr>";
   txt += "<tr class='calButtons'><td align='left'>";
-  txt += "<input type='button' name='ok' value='OK' onClick='dtpPickDateTime(); hideDateTimePicker();'/>";
-  txt += "<input type='button' name='now' value='Now' onClick='dtpPickDateTime(\"now\"); hideDateTimePicker();'/>";
+  txt += "<input type='button' name='ok' value='" + _('OK') + "' onClick='dtpPickDateTime(); hideDateTimePicker();'/>";
+  txt += "<input type='button' name='now' value='" + _('Now') + "' onClick='dtpPickDateTime(\"now\"); hideDateTimePicker();'/>";
   txt += "</td><td align='right'>";
-  txt += "<input type='button' name='cancel' value='Cancel' onClick='hideDateTimePicker()'/>";
+  txt += "<input type='button' name='cancel' value='" + _('Cancel') + "' onClick='hideDateTimePicker()'/>";
   txt += "</td></tr></table>";
   txt += "</td></tr>";
   txt += "</table>";
@@ -481,10 +488,10 @@ function mkCGIArgs() {
   if (elem) {
     for (var ii = 0; ii < elem.length; ii++) {
       if (elem.options[ii].selected) {
-        if (elem.options[ii].text == 'default') {
+        if (elem.options[ii].value == 'default') {
           geom = 'default';
         } else {
-          geom = 'geom=' + escape(elem.options[ii].text);
+          geom = 'geom=' + escape(elem.options[ii].value);
         }
         break;
       }
@@ -526,7 +533,7 @@ function mkCGIArgs() {
     for (var ii = 0; ii < elem.length; ii++) {
       if (elem.options[ii].selected) {
         if (str != '') str += ',';
-        str += elem.options[ii].text;
+        str += elem.options[ii].value;
       }
     }
     if (str != '') {
@@ -630,16 +637,6 @@ function cfgHostMenu(host) {
       menu.options[ii+1].selected = true;
     }
   }
-}
-
-//Converts -, etc in input to _ for matching array name
-function findName(entry) {
-  for (var ii = 0; ii < menudata.length; ii++) {
-    if (menudata[ii][0] == entry) {
-      return ii;
-    }
-  }
-  throw entry + " not found in the configured hosts and services"
 }
 
 // Populate the service menu and select the indicated service.
@@ -816,7 +813,14 @@ function selectDBItems(service, query) {
         if (defaultds[ii][0] == service) {
           for (var jj=1; jj<defaultds[ii].length; jj++) {
             for (var kk=0; kk<elem.length; kk++) {
-              if (defaultds[ii][jj] == elem.options[kk].value) {
+              var match = false;
+              if (defaultds[ii][jj].indexOf(",") < 0) {
+                var ids = elem.options[kk].value.split(',');
+                if (defaultds[ii][jj] == ids[0]) {
+                  elem.options[kk].selected = true;
+                  found = true;
+                }
+              } else if (defaultds[ii][jj] == elem.options[kk].value) {
                 elem.options[kk].selected = true;
                 found = true;
                 break;
@@ -865,7 +869,7 @@ function setControlsGUIState() {
   if (elem) {
     var geom = getCGIValue('geom');
     for (var ii=0; ii<elem.length; ii++) {
-      if (elem.options[ii].text == geom) {
+      if (elem.options[ii].value == geom) {
         elem.options[ii].selected = true;
         break;
       }

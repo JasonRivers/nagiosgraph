@@ -20,7 +20,7 @@ use strict;
 use warnings;
 
 my $sts = gettimestamp();
-my ($cgi, $params) = init('show', 1);
+my ($cgi, $params) = init('show');
 my ($periods, $expanded_periods) = initperiods('both', $params);
 
 my $defaultds = readdatasetdb();

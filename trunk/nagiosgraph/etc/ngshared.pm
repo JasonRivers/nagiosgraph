@@ -32,20 +32,24 @@ use constant DBWRN => 3;
 use constant DBINF => 4;
 use constant DBDEB => 5;
 
-use constant GRAPHWIDTH => 600;
 use constant PROG => basename($PROGRAM_NAME);
 use constant NAGIOSGRAPHURL => 'http://nagiosgraph.wiki.sourceforge.net/';
-use constant ERRSTYLE => '.error { font-family: sans-serif; padding: 0.75em; background-color: #fff6f3; border: solid 1px #cc3333; }';
+use constant ERRSTYLE => '.error { font-family: sans-serif; font-size: 0.8em; padding: 0.5em; background-color: #fff6f3; border: solid 1px #cc3333; }';
 use constant DBLISTROWS => 3;
 use constant PERIODLISTROWS => 5;
 use constant RRDEXT => '.rrd';
+use constant DEFAULT => 'default';
 
-# default geometries
+# default values for configuration options
 use constant GEOMETRIES => '500x80,650x150,1000x200';
-# default custom color palette
+use constant GRAPHWIDTH => 600;
 use constant COLORS => 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0';
+use constant COLORSCHEME => 1;
+use constant HEARTBEAT => 600;
+use constant RESOLUTIONS => '600 700 775 797';
+use constant PERIODS => 'day week month year';
 
-use vars qw(%Config %hsdata $colorsub $VERSION %Ctrans $LOG); ## no critic (ProhibitPackageVars)
+use vars qw(%Config %Labels %i18n %authhosts %hsdata $colorsub $VERSION $LOG); ## no critic (ProhibitPackageVars)
 $colorsub = -1;
 $VERSION = '1.4.2';
 
@@ -58,13 +62,19 @@ my $CFGNAME = 'nagiosgraph.conf';
 #     Quarterly  =  14w = 8467200s
 #     Yearly     = 400d = 34560000s
 # Period data tuples are [name, period (seconds), offset (seconds)]
-my %PERIODDATA = ('day' => ['day', 118_800, 86_400],
-                  'week' => ['week', 777_600, 604_800],
-                  'month' => ['month', 3_024_000, 2_592_000],
-                  'quarter' => ['quarter', 8_467_200, 7_776_000],
-                  'year' => ['year', 34_560_000, 31_536_000],);
-my @PERIODS = qw(day week month quarter year);
-my @DEFAULT_PERIODS = qw(day week month year);
+my @PERIOD_KEYS = qw(day week month quarter year);
+my %PERIOD_DATA = ('day' => ['day', 118_800, 86_400],
+                   'week' => ['week', 777_600, 604_800],
+                   'month' => ['month', 3_024_000, 2_592_000],
+                   'quarter' => ['quarter', 8_467_200, 7_776_000],
+                   'year' => ['year', 34_560_000, 31_536_000],);
+my %PERIOD_LABELS =qw(day Day week Week month Month quarter Quarter year Year);
+
+# keys for string literals in the javascript
+my @JSLABELS = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
+push @JSLABELS, qw(Mon Tue Wed Thu Fri Sat Sun);
+push @JSLABELS, qw(OK Now Cancel);
+push @JSLABELS, 'now', 'graph data';
 
 # Debug/logging support #######################################################
 # Write information to STDERR
@@ -120,6 +130,16 @@ sub gettimestamp {
     return (gettimeofday)[1];
 }
 
+# if a filename is relative, we look for it in the configuration directory.
+# otherwise use the complete filename.
+sub getcfgfn {
+    my ($fn) = @_;
+    if ( substr($fn, 0, 1) ne q(/) ) {
+        $fn = $INC[0] . q(/) . $fn;
+    }
+    return $fn;
+}
+
 sub formatelapsedtime {
     my ($s,$e) = @_;
     my $ms = $e - $s;
@@ -140,12 +160,24 @@ sub formatelapsedtime {
 }
 
 sub init {
-    my ($app, $doscan) = @_;
+    my ($app) = @_;
 
     my $errmsg = readconfig($app, 'cgilogfile');
     if ($errmsg ne q()) {
         htmlerror($errmsg);
         croak($errmsg);
+    }
+
+    my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
+    $cgi->autoEscape(0);
+
+    $errmsg = readi18nfile($cgi->param('language'));
+    if ($errmsg ne q()) {
+        debug(DBWRN, $errmsg);
+    }
+    $errmsg = readlabelsfile();
+    if ($errmsg ne q()) {
+        debug(DBWRN, $errmsg);
     }
     $errmsg = checkrrddir('read');
     if ($errmsg ne q()) {
@@ -163,19 +195,18 @@ sub init {
         croak($errmsg);
     }
 
-    my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
-    $cgi->autoEscape(0);
-
     my $params = getparams($cgi);
     getdebug($app, $params->{host}, $params->{service});
 
     dumper(DBDEB, 'config', \%Config);
     dumper(DBDEB, 'params', $params);
+    dumper(DBDEB, 'i18n', \%i18n);
+    dumper(DBDEB, 'labels', \%Labels);
 
-    if ($doscan) {
-        scanhsdata();
-        #dumper(DBDEB, 'host/service data', \%hsdata);
-    }
+    scanhsdata();
+    #dumper(DBDEB, 'all host/service data', \%hsdata);
+    %authhosts = getserverlist($cgi->remote_user());
+    #dumper(DBDEB, 'data for ' . $cgi->remote_user(), \%authhosts);
 
     return $cgi, $params;
 }
@@ -349,12 +380,11 @@ sub getstyle {
 }
 
 sub getrefresh {
-    my ($cgi) = @_;
-    my $refresh = (defined $Config{refresh})
-        ? $cgi->meta({ -http_equiv => 'Refresh',
-                       -content => "$Config{refresh}" })
-        : q();
-    return $refresh;
+    my @refresh;
+    if ($Config{refresh}) {
+        @refresh = (-http_equiv => 'Refresh', -content => "$Config{refresh}");
+    }
+    return @refresh;
 }
 
 # configure parameters with something that we are sure will work.  grab values
@@ -453,12 +483,10 @@ sub mkfilename {
 }
 
 # this is completely self-contained so that it can be called no matter what
-# error we encounter.  stylesheet is hard-coded so no dependencies on anything
-# external.
+# error we encounter.  stylesheet is hard-coded so no dependencies.
 sub htmlerror {
     my ($msg) = @_;
     my $cgi = new CGI; ## no critic (ProhibitIndirectSyntax)
-    my $cfgfn = $INC[0] . q(/) . $CFGNAME;
     print $cgi->header(-type => 'text/html', -expires => 0) .
         $cgi->start_html(-id => 'nagiosgraph',
                          -title => 'NagiosGraph Error',
@@ -510,19 +538,19 @@ sub listtodict {
     my ($val, $sep, $commasplit) = @_;
     $sep ||= q(,);
     $commasplit ||= 0;
-    debug(DBDEB, "listtodict($val, $sep, $commasplit)");
+    #debug(DBDEB, "listtodict($val, $sep, $commasplit)");
     my (%rval);
     $Config{$val} ||= q();
     if (ref $Config{$val} eq 'HASH') {
-        debug(DBDEB, 'listtodict returning existing hash');
+        #debug(DBDEB, 'listtodict returning existing hash');
         return $Config{$val};
     }
     $Config{$val . 'sep'} ||= $sep;
-    debug(DBDEB, 'listtodict splitting "' . $Config{$val} . '" on "' . $Config{$val . 'sep'} . q(")); # "
+    #debug(DBDEB, 'listtodict splitting "' . $Config{$val} . '" on "' . $Config{$val . 'sep'} . q(")); # "
     foreach my $ii (split $Config{$val . 'sep'}, $Config{$val}) {
         if ($val eq 'hostservvar') {
             my @data = split /,/, $ii;
-            dumper(DBDEB, 'listtodict hostservvar data', \@data);
+            #dumper(DBDEB, 'listtodict hostservvar data', \@data);
             if (defined $rval{$data[0]}) {
                 if (defined $rval{$data[0]}->{$data[1]}) {
                     $rval{$data[0]}->{$data[1]}->{$data[2]} = 1;
@@ -534,14 +562,14 @@ sub listtodict {
             }
         } elsif ($commasplit) {
             my @data = split /,/, $ii;
-            dumper(DBDEB, 'listtodict commasplit data', \@data);
+            #dumper(DBDEB, 'listtodict commasplit data', \@data);
             $rval{$data[0]} = $data[1];
         } else {
             $rval{$ii} = 1;
         }
     }
     $Config{$val} = \%rval;
-    dumper(DBDEB, 'listtodict rval', $Config{$val});
+    #dumper(DBDEB, 'listtodict rval', $Config{$val});
     return $Config{$val};
 }
 
@@ -581,7 +609,7 @@ sub readfile {
             } else {
                 $hashref->{$key} = $val;
             }
-            debug(DBDEB, "$filename $key:$val");
+            #debug(DBDEB, "$filename $key:$val");
         };
     }
     close $FH or return "close failed for $filename: $OS_ERROR";
@@ -648,11 +676,16 @@ sub readconfig {
     foreach my $ii (['timeall', 'day week month'],
                     ['timehost', 'day'],
                     ['timeservice', 'day'],
+                    ['timegroup', 'day'],
                     ['expand_timeall', 'day week month'],
                     ['expand_timehost', 'day'],
                     ['expand_timeservice', 'day'],
+                    ['expand_timegroup', 'day'],
                     ['geometries', GEOMETRIES],
-                    ['colors', COLORS],) {
+                    ['colorscheme', COLORSCHEME],
+                    ['colors', COLORS],
+                    ['resolution', RESOLUTIONS],
+                    ['heartbeat', HEARTBEAT],) {
         if (not $Config{$ii->[0]}) { $Config{$ii->[0]} = $ii->[1]; }
     }
     $Config{colors} = [split /\s*,\s*/, $Config{colors}];
@@ -662,7 +695,8 @@ sub readconfig {
 
 sub readrrdoptsfile {
     if ( defined $Config{rrdoptsfile} ) {
-        my $errstr = readfile($Config{rrdoptsfile}, $Config{rrdoptshash});
+        my $errstr = readfile(getcfgfn($Config{rrdoptsfile}),
+                              $Config{rrdoptshash});
         if ($errstr ne q()) {
             return $errstr;
         }
@@ -682,20 +716,119 @@ sub readpermsfile {
     return q();
 }
 
+sub readlabelsfile {
+    if ( defined $Config{labelfile} ) {
+        my $errstr = readfile(getcfgfn($Config{labelfile}), \%Labels);
+        if ($errstr ne q()) {
+            return $errstr;
+        }
+    }
+    return q();
+}
+
+# get the i18n strings.  use the language we are given.  if there is none, use
+# the language from the config file.  if there is none, use the environment.
+# if that fails, warn.  if there is no file corresponding to the language,
+# warn about it so someone can create a translation.  if someone defines a
+# specialized en file, use it, but do not complain if we do not find en since
+# that is what we fall back to.
+sub readi18nfile {
+    my ($lang) = @_;
+    if ( ! $lang ) {
+        $lang = $Config{language};
+    }
+    if ( ! $lang ) {
+        ($lang) = ($ENV{HTTP_ACCEPT_LANGUAGE}
+                   ? split /,/, $ENV{HTTP_ACCEPT_LANGUAGE} : q());
+    }
+    if ( $lang && $lang ne q()) {
+        my $fn = getcfgfn( mki18nfilename( $lang ));
+        if ( ! -f $fn  && $lang =~ /(..)-/ ) {
+            $lang = $1;
+            $fn = getcfgfn( mki18nfilename( $lang ));
+        }
+        if ( -f $fn ) {
+            my $errstr = readfile( $fn, \%i18n );
+            if ( $errstr ne q() ) {
+                return $errstr;
+            }
+        } elsif ( substr($lang, 0, 2) ne q(en)) {
+            return "No translations for $lang in file $fn";
+        }
+    } else {
+        return 'Cannot determine language';
+    }
+    return q();
+}
+
+sub mki18nfilename {
+    my ($key) = @_;
+    return 'nagiosgraph_' . $key . '.conf';
+}
+
 sub parsedb {
     my ($line) = @_;
     $line =~ s/^&db=//;
     my @db = split /&db=/, $line;
-    return getdbname(@db), @db;
+    my %labels;
+    for my $i (0 .. @db - 1) {
+        if ($db[$i] =~ /([^&]+)&label=(.*)/) {
+            $db[$i] = $1;
+            $labels{$db[$i]} = $2;
+        }
+    }
+    return \@db, \%labels;
 }
 
-sub getdbname {
-    my (@db) = @_;
-    my $dbname = q();
-    if (@db && $db[0] =~ /(^[^,]+)/) {
-        $dbname = $1;
+# return all databases for the indiated host-service pair
+sub getdbs {
+    my ($host, $service, $data) = @_;
+    my @db;
+    if ($data->{$host}{$service}) {
+        @db = @{$data->{$host}{$service}};
     }
-    return $dbname;
+    return \@db;
+}
+
+# return the subset of the specified databases for which we actually have data.
+sub filterdb {
+    my ($host, $service, $dblist, $data) = @_;
+    my @actualdb;
+    if ($data->{$host}{$service} && $dblist) {
+        my @dbs = @{$data->{$host}{$service}};
+        foreach my $x (@{$dblist}) {
+            my $found = 0;
+            my ($db,$ds) = split /,/, $x;
+            for my $i (0 .. @dbs-1) {
+                my @known = @{$dbs[$i]};
+                if ($db eq $known[0]) {
+                    if ($ds) {
+                        for my $i (1 .. @known-1) {
+                            if ($ds eq $known[$i]) {
+                                push @actualdb, $x;
+                                last;
+                            }
+                        }
+                    } else {
+                        push @actualdb, $x;
+                    }
+                }
+            }
+        }
+    }
+    return \@actualdb;
+}
+
+# remove leading and trailing spaces.  there is no need to escape the strings
+# in the config files, but we unescape just in case someone has done this.
+# older distributions included escaped labels in the sample configs.
+sub cleanline {
+    my ($line) = @_;
+    $line =~ unescape($line);
+    $line =~ tr/+/ /;
+    $line =~ s/^\s+//g;
+    $line =~ s/\s+$//g;
+    return $line;
 }
 
 # Read hostdb file
@@ -708,7 +841,7 @@ sub getdbname {
 #
 # Services are defined with this format:
 #
-#   service=name[&db=dataset[&label=text][&db=dataset[&label=text][...]]]
+#   service=name[&db=db[,ds][&label=text][&db=db[,ds][&label=text][...]]]
 #
 sub readhostdb {
     my ($host) = @_;
@@ -720,46 +853,45 @@ sub readhostdb {
     my $usedefaults = 1;
     my @ginfo;
     if (defined $Config{hostdb} && $Config{hostdb} ne q()) {
-        my $fn = $Config{hostdb};
+        my $fn = getcfgfn($Config{hostdb});
         if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
             while (my $line = <$DB>) {
                 chomp $line;
-                debug(DBDEB, "readhostdb: $line");
                 next if $line =~ /^\s*#/;        # skip commented lines
-                $line =~ tr/+/ /;
-                $line =~ s/^\s+//g;
+                $line = cleanline($line);
                 my $service = q();
                 my $label = q();
-                my $dbname = q();
-                my @db;
                 if ($line =~ s/^service\s*=\s*([^&]+)//) {
-                    $usedefaults = 0;
                     $service = $1;
                     if ($line =~ s/^&label=([^&]+)//) {
                         $label = $1;
                     }
-                    ($dbname, @db) = parsedb($line);
                 }
                 next if ! $service;
-                my($dir, $file) = mkfilename($host, $service, $dbname);
-                my $rrdfn = $dir . q(/) . $file;
-                if (-f $rrdfn) {
-                    my %info;
-                    $info{host} = $host;
-                    $info{service} = $service;
-                    if ($label ne q())  { $info{service_label} = $label; }
-                    $info{dbname} = $dbname;
-                    $info{db} = \@db;
-                    $info{filename} = $rrdfn;
-                    push @ginfo, \%info;
-                    debug(DBDEB, "readhostdb: add host:$host service:$service");
+                $usedefaults = 0;
+                my ($db, $dblabel);
+                if ($line ne q()) {
+                    ($db, $dblabel) = parsedb($line);
+                    $db = filterdb($host, $service, $db, $authhosts{hostserv});
+                    next if scalar @{$db} == 0;
                 } else {
-                    debug(DBDEB, "readhostdb: skip host:$host service:$service");
+                    # find out if there are data for this host-service, but
+                    # do not specify the databases explicitly.
+                    my $x = getdbs($host, $service, \%hsdata);
+                    next if scalar @{$x} == 0;
                 }
+                my %info;
+                $info{host} = $host;
+                $info{service} = $service;
+                if ($label ne q())  { $info{service_label} = $label; }
+                $info{db} = $db;
+                $info{db_label} = $dblabel;
+                push @ginfo, \%info;
+                debug(DBDEB, "readhostdb: match for $host $service $line");
             }
             close $DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
         } else {
-            my $msg = "cannot open hostdb $fn: $!";
+            my $msg = "cannot open hostdb $fn: $OS_ERROR";
             debug(DBERR, $msg);
             htmlerror($msg);
             croak($msg);
@@ -769,12 +901,18 @@ sub readhostdb {
     }
 
     if ($usedefaults) {
+        debug(DBDEB, 'readhostdb: using defaults');
+        my $defaultds = readdatasetdb();
         my @services = sortnaturally(keys %{$hsdata{$host}});
         foreach my $service (@services) {
             my %info;
             $info{host} = $host;
             $info{service} = $service;
-            $info{db} = \@{$hsdata{$host}{$service}};
+            if ($defaultds && $defaultds->{$service}) {
+                $info{db} = $defaultds->{$service};
+            } else {
+                $info{db} = \@{$hsdata{$host}{$service}};
+            }
             push @ginfo, \%info;
         }
     }
@@ -798,24 +936,20 @@ sub readservdb {
     my ($service, $dblist) = @_;
     $service ||= q();
     if ($service eq q() || $service eq q(-)) { return (); }
-    my @dbs;
-    if ($dblist) {
-        @dbs = @{$dblist};
-    }
 
-    debug(DBDEB, "readservdb($service, " . join ', ', @dbs . ')');
+    debug(DBDEB, "readservdb($service, " .
+          ($dblist ? join ', ', @{$dblist} : q()) . ')');
 
     my $usedefaults = 1;
     my @allhosts;
     my @validhosts;
     if (defined $Config{servdb} && $Config{servdb} ne q()) {
-        my $fn = $Config{servdb};
+        my $fn = getcfgfn($Config{servdb});
         if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
             while (my $line = <$DB>) {
                 chomp $line;
-                debug(DBDEB, "readservdb: $line");
                 next if $line =~ /^\s*#/;        # skip commented lines
-                $line =~ s/^\s+//g;
+                $line = cleanline($line);
                 if ($line =~ /^host\s*=\s*(.+)/) {
                     $usedefaults = 0;
                     push @allhosts, split /\s*,\s*/, $1;
@@ -823,26 +957,22 @@ sub readservdb {
             }
             close $DB or debug(DBERR, "readservdb: close failed for $fn: $OS_ERROR");
         } else {
-            my $msg = "cannot open servdb $fn: $!";
+            my $msg = "cannot open servdb $fn: $OS_ERROR";
             debug(DBERR, $msg);
             htmlerror($msg);
             croak($msg);
         }
 
-        # if a dataset was specified, then do a check for that dataset for each
-        # host.  if not, then read the rrd directory for each host to see if we
-        # have a service match.
-        my $dbname = getdbname(@dbs);
+        # check to see if there is a valid database for the host/service
         foreach my $host (@allhosts) {
-            if ($dbname ne q()) {
-                my($dir, $file) = mkfilename($host, $service, $dbname);
-                my $rrdfn = $dir . q(/) . $file;
-                if (-f $rrdfn) {
+            if ($dblist) {
+                my $db = filterdb($host,$service,$dblist,$authhosts{hostserv});
+                if ($db && scalar @{$db} > 0) {
                     push @validhosts, $host;
                 }
             } else {
-                my $rrds = dbfilelist($host, $service);
-                if (scalar @{$rrds} > 0) {
+                my $x = getdbs($host, $service, \%hsdata);
+                if (scalar @{$x} > 0) {
                     push @validhosts, $host;
                 }
             }
@@ -852,13 +982,12 @@ sub readservdb {
     }
 
     if ($usedefaults) {
+        debug(DBDEB, 'readservdb: using defaults');
         @allhosts = sortnaturally(keys %hsdata);
         foreach my $host (@allhosts) {
-            if ($hsdata{$host}{$service}) {
-                my @db = @{$hsdata{$host}{$service}};
-                if (scalar @db > 0) {
-                    push @validhosts, $host;
-                }
+            if ($hsdata{$host}{$service}
+                && scalar @{$hsdata{$host}{$service}} > 0) {
+                push @validhosts, $host;
             }
         }
     }
@@ -875,7 +1004,7 @@ sub readservdb {
 #
 # Groups are defined with this format:
 #
-#   groupname=host,service[&db=dataset[&label=text][...]]
+#   groupname=host,service[&label=text][&db=db[,ds][&label=text][...]]
 #
 sub readgroupdb {
     my ($g) = @_;
@@ -889,22 +1018,18 @@ sub readgroupdb {
         croak($msg);
     }
 
-    my $fn = $Config{groupdb};
+    my $fn = getcfgfn($Config{groupdb});
     my %gnames;
     my @ginfo;
     if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
         while (my $line = <$DB>) {
             chomp $line;
-            debug(DBDEB, "readgroupdb: $line");
             next if $line =~ /^\s*#/;        # skip commented lines
-            $line =~ tr/+/ /;
-            $line =~ s/^\s+//g;
+            $line = cleanline($line);
             my $group = q();
             my $host = q();
             my $service = q();
             my $label = q();
-            my $dbname = q();
-            my @db;
             if ($line =~ s/^([^=]+)\s*=\s*([^,]+)\s*,\s*([^&]+)//) {
                 $group = $1;
                 $host = $2;
@@ -912,30 +1037,33 @@ sub readgroupdb {
                 if ($line =~ s/^&label=([^&]+)//) {
                     $label = $1;
                 }
-                ($dbname, @db) = parsedb($line);
             }
             next if ! $group || ! $host || ! $service;
             $gnames{$group} = 1;
             next if $group ne $g;
-            my($dir, $file) = mkfilename($host, $service, $dbname);
-            my $rrdfn = $dir . q(/) . $file;
-            if (-f $rrdfn) {
-                my %info;
-                $info{host} = $host;
-                $info{service} = $service;
-                if ($label ne q())  { $info{service_label} = $label; }
-                $info{dbname} = $dbname;
-                $info{db} = \@db;
-                $info{filename} = $rrdfn;
-                push @ginfo, \%info;
-                debug(DBDEB, "readgroupdb: add host:$host service:$service");
+            my ($db, $dblabel);
+            if ($line ne q()) {
+                ($db, $dblabel) = parsedb($line);
+                $db = filterdb($host, $service, $db, $authhosts{hostserv});
+                next if scalar @{$db} == 0;
             } else {
-                debug(DBDEB, "readgroupdb: skip host:$host service:$service");
+                # find out if there are data for this host-service, but
+                # do not specify the databases explicitly.
+                my $x = getdbs($host, $service, \%hsdata);
+                next if scalar @{$x} == 0;
             }
+            my %info;
+            $info{host} = $host;
+            $info{service} = $service;
+            if ($label ne q())  { $info{service_label} = $label; }
+            $info{db} = $db;
+            $info{db_label} = $dblabel;
+            push @ginfo, \%info;
+            debug(DBDEB, "readgroupdb: match for $host $service $line");
         }
         close $DB or debug(DBERR, "readgroupdb: close failed for $fn: $OS_ERROR");
     } else {
-        my $msg = "cannot open groupdb $fn: $!";
+        my $msg = "cannot open groupdb $fn: $OS_ERROR";
         debug(DBERR, $msg);
         htmlerror($msg);
         croak($msg);
@@ -950,37 +1078,36 @@ sub readgroupdb {
 
 # Default datasets for services are defined using lines with this format:
 #
-#   service=name&db=dataset[&db=dataset[...]]
+#   service=name&db=database[,dataset][&db=database[,dataset][...]]
 #
 # Data sets from the db file are used only if no data sets are specified as
 # an argument to this subroutine.
 sub readdatasetdb {
     if (! defined $Config{datasetdb} || $Config{datasetdb} eq q()) {
-        my $msg = 'no datasetdb file has been specified in the configuration.';
+        my $msg = 'no datasetdb file has been specified';
         debug(DBDEB, $msg);
         my %rval;
         return \%rval;
     }
 
     my %data;
-    my $fn = $Config{datasetdb};
+    my $fn = getcfgfn($Config{datasetdb});
     if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
         while (my $line = <$DB>) {
             chomp $line;
-            debug(DBDEB, "readdatasetdb: $line");
             next if $line =~ /^\s*#/;        # skip commented lines
-            $line =~ tr/+/ /;
-            $line =~ s/^\s+//g;
+            $line = cleanline($line);
             if ($line =~ /^service\s*=\s*([^&]+)(.+)/) {
                 my $service = $1;
                 my $dbstr = $2;
-                my ($dbname, @dbs) = parsedb($dbstr);
-                $data{$service} = \@dbs;
+                my ($db, $dblabel) = parsedb($dbstr);
+                $data{$service} = $db;
+                debug(DBDEB, 'readdatasetdb: match for ' . $line);
             }
         }
         close $DB or debug(DBERR, "readdatasetdb: close failed for $fn: $OS_ERROR");
     } else {
-        my $msg = "cannot open datasetdb $fn: $!";
+        my $msg = "cannot open datasetdb $fn: $OS_ERROR";
         debug(DBERR, $msg);
         htmlerror($msg);
         croak($msg);
@@ -1008,7 +1135,7 @@ sub dbfilelist {
             }
             closedir DH or debug(DBERR, "cannot close $directory: $OS_ERROR");
         } else {
-            debug(DBERR, "cannot open directory $directory: $!");
+            debug(DBERR, "cannot open directory $directory: $OS_ERROR");
         }
     }
     dumper(DBDEB, 'dbfilelist', \@rrd);
@@ -1242,8 +1369,8 @@ sub rrdline {
         $fixedscale = $params->{fixedscale};
     }
     my $duration = 118_800;
-    if (defined $params->{period} && $PERIODDATA{$params->{period}}) {
-        $duration = $PERIODDATA{$params->{period}}[1];
+    if (defined $params->{period} && $PERIOD_DATA{$params->{period}}) {
+        $duration = $PERIOD_DATA{$params->{period}}[1];
     }
     my $offset = 0;
     if (defined $params->{offset} && $params->{offset} ne q()) {
@@ -1310,7 +1437,7 @@ sub rrdline {
     # Dimensions of graph
     my $w = 0;
     my $h = 0;
-    if ($geom && $geom ne 'default') {
+    if ($geom && $geom ne DEFAULT) {
         ($w, $h) = split /x/, $geom;
     } elsif (defined $Config{default_geometry}) {
         ($w, $h) = split /x/, $Config{default_geometry};
@@ -1390,18 +1517,16 @@ sub scanhierarchy {
         if (not checkdirempty($current)) { %{$hsdata{$current}} = (); }
     } elsif (-f $current && substr($current, $rrdlen) eq RRDEXT) {
         # Files are for services
-        my ($host, $service, $dataset);
-        $dataset = $File::Find::dir; # this stops the only used once message
-        ($host = $File::Find::dir) =~ s|^$Config{rrddir}/||;
+        my $host = $File::Find::dir;
+        $host =~ s|^$Config{rrddir}/||;
         # We got the server to associate with and now
         # we get the service name by splitting on separator
-        ($service, $dataset) = split /___/, $current;
-        if ($dataset) { $dataset = substr $dataset, 0, $rrdlen; }
-        #debug(DBDEB, "getgraphlist: service = $service, dataset = $dataset");
+        my ($service, $db) = split /___/, $current;
+        if ($db) { $db = substr $db, 0, $rrdlen; }
         if (not exists $hsdata{$host}{unescape($service)}) {
-            @{$hsdata{$host}{unescape($service)}} = (unescape($dataset));
+            @{$hsdata{$host}{unescape($service)}} = (unescape($db));
         } else {
-            push @{$hsdata{$host}{unescape($service)}}, unescape($dataset);
+            push @{$hsdata{$host}{unescape($service)}}, unescape($db);
         }
     }
     return;
@@ -1413,12 +1538,12 @@ sub scandirectory {
     my $rrdlen = 0 - length RRDEXT;
     if (-f $current && substr($current, $rrdlen) eq RRDEXT) {
         my $fn = substr $current, 0, $rrdlen;
-        my ($host, $service, $dataset) = split /_/, $fn;
-        if ($host && $service && $dataset) {
+        my ($host, $service, $db) = split /_/, $fn;
+        if ($host && $service && $db) {
             if (not exists $hsdata{$host}{unescape($service)}) {
-                @{$hsdata{$host}{unescape($service)}} = (unescape($dataset));
+                @{$hsdata{$host}{unescape($service)}} = (unescape($db));
             } else {
-                push @{$hsdata{$host}{unescape($service)}}, unescape($dataset);
+                push @{$hsdata{$host}{unescape($service)}}, unescape($db);
             }
         }
     }
@@ -1427,7 +1552,7 @@ sub scandirectory {
 
 sub getserverlist {
     my ($userid) = @_;
-    debug(DBDEB, "getserverlist($userid)");
+    debug(DBDEB, 'getserverlist userid=' . ($userid ? $userid : q()));
     my (@hosts,               # host list in order
         %hostserv);           # hash of hosts -> list of services
 
@@ -1483,11 +1608,28 @@ sub checkperms {
     return 0;
 }
 
+# Create Javascript i18n string constants
+sub printi18nscript {
+    if ( ! defined $Config{javascript} || $Config{javascript} eq q() ) {
+        return q();
+    }
+    my $rval = "var i18n = {\n";
+    foreach my $ii (@JSLABELS) {
+        $rval .= '  "' . $ii . '": \'' . _($ii) . "',\n";
+    }
+    $rval .= "};\n";
+    return "<script type=\"text/javascript\">\n" . $rval . "</script>\n";
+}
+
 # Create Javascript Arrays for client-side menu navigation
 sub printmenudatascript {
     my ($hosts, $lookup) = @_;
 
-    my $rval = "menudata = new Array();\n";
+    if ( ! defined $Config{javascript} || $Config{javascript} eq q() ) {
+        return q();
+    }
+
+    my $rval .= "menudata = new Array();\n";
     for my $ii (0 .. @{$hosts} - 1) {
         $rval .= "menudata[$ii] = [\"$hosts->[$ii]\"\n";
         my @services = sortnaturally(keys %{$hsdata{$hosts->[$ii]}});
@@ -1533,6 +1675,10 @@ sub printmenudatascript {
 sub printdatasetscript {
     my ($dsref) = @_;
 
+    if ( ! defined $Config{javascript} || $Config{javascript} eq q() ) {
+        return q();
+    }
+
     my $rval = "defaultds = new Array();\n";
     if ($dsref) {
         my %dsdata = %{$dsref};
@@ -1549,9 +1695,10 @@ sub printdatasetscript {
 }
 
 sub printincludescript {
-    return (defined $Config{javascript} && $Config{javascript} ne q())
-        ? "<script type=\"text/javascript\" src=\"$Config{javascript}\"></script>\n"
-        : q();
+    if ( ! defined $Config{javascript} || $Config{javascript} eq q() ) {
+        return q();
+    }
+    return "<script type=\"text/javascript\" src=\"$Config{javascript}\"></script>\n";
 }
 
 # emit the javascript that configures the web page.  this has to be at the
@@ -1559,6 +1706,9 @@ sub printincludescript {
 # before the javascript is invoked.
 sub printinitscript {
     my ($host, $service, $expanded_periods) = @_;
+    if ( ! defined $Config{javascript} || $Config{javascript} eq q() ) {
+        return q();
+    }
     return "<script type=\"text/javascript\">cfgMenus(\'$host\',\'$service\',\'$expanded_periods\');</script>\n";
 }
 
@@ -1583,20 +1733,28 @@ sub printcontrols {
     my $action = $Config{nagiosgraphcgiurl} . q(/) . $script{$context};
 
     # preface the geometry list with a default entry no matter what
-    my @geom = ('default', split /,/, $Config{geometries});
+    my @geom = (DEFAULT, split /,/, $Config{geometries});
+    my %geom_labels;
+    foreach my $i (@geom) {
+        $geom_labels{$i} = _($i);
+    }
+    my %period_labels;
+    foreach my $i (@PERIOD_KEYS) {
+        $period_labels{$i} = _($PERIOD_LABELS{$i});
+    }
 
     my $menustr = q();
     if ($context eq 'both') {
         my $host = $opts->{host};
         my $service = $opts->{service};
         $menustr = $cgi->span({-class => 'selector'},
-                              trans('selecthost') . q( ) .
+                              _('Host:') . q( ) .
                               $cgi->popup_menu(-name => 'servidors',
                                                -onChange => 'hostChange()',
                                                -values => [$host],
                                                -default => $host)) . "\n";
         $menustr .= $cgi->span({-class => 'selector'},
-                               trans('selectserv') . q( ) .
+                               _('Service:') . q( ) .
                                $cgi->popup_menu(-name => 'services',
                                                 -onChange => 'serviceChange()',
                                                 -values => [$service],
@@ -1604,14 +1762,14 @@ sub printcontrols {
     } elsif ($context eq 'host') {
         my $host = $opts->{host};
         $menustr = $cgi->span({-class => 'selector'},
-                              trans('selecthost') . q( ) .
+                              _('Host:') . q( ) .
                               $cgi->popup_menu(-name => 'servidors',
                                                -values => [$host],
                                                -default => $host));
     } elsif ($context eq 'service') {
         my $service = $opts->{service};
         $menustr = $cgi->span({-class => 'selector'},
-                              trans('selectserv') . q( ) .
+                              _('Service:') . q( ) .
                               $cgi->popup_menu(-name => 'services',
                                                -onChange => 'serviceChange()',
                                                -values => [$service],
@@ -1620,7 +1778,7 @@ sub printcontrols {
         my $group = $opts->{group};
         my @groups = (q(-), @{$opts->{grouplist}});
         $menustr = $cgi->span({-class => 'selector'},
-                              trans('selectgroup') . q( ) .
+                              _('Group:') . q( ) .
                               $cgi->popup_menu(-name => 'groups',
                                                -values => [@groups],
                                                -default => $group));
@@ -1635,7 +1793,7 @@ sub printcontrols {
                       $menustr . "\n",
                       $cgi->span({-class => 'executor'},
                                  $cgi->button(-name => 'go',
-                                              -label => trans('submit'),
+                                              -label => _('Update Graphs'),
                                               -onClick => 'jumpto()')
                                  ) . "\n"), "\n",
             $cgi->div({-class => 'secondary_controls'}, "\n" .
@@ -1646,26 +1804,26 @@ sub printcontrols {
                       $cgi->div({-id => 'secondary_controls_box'}, "\n" .
                                 $cgi->table(($context eq 'both' || $context eq 'service')
                                             ? $cgi->Tr({-valign => 'top', -id => 'db_controls' },
-                                                       $cgi->td({-class => 'control_label'},trans('selectds')),
+                                                       $cgi->td({-class => 'control_label'}, _('Data Sets:')),
                                                        $cgi->td($cgi->popup_menu(-name => 'db', -values => [], -size => DBLISTROWS, -multiple => 1)),
-                                                       $cgi->td($cgi->button(-name => 'clear', -label => trans('clear'), -onClick => 'clearDBSelection()')),
+                                                       $cgi->td($cgi->button(-name => 'clear', -label => _('Clear'), -onClick => 'clearDBSelection()')),
                                                        )
                                             : q(),
                                             $cgi->Tr({-valign => 'top'},
-                                                     $cgi->td({-class => 'control_label'},trans('periods')),
-                                                     $cgi->td($cgi->popup_menu(-name => 'period', -values => [@PERIODS], -size => PERIODLISTROWS, -multiple => 1)),
-                                                     $cgi->td($cgi->button(-name => 'clear', -label => trans('clear'), -onClick => 'clearPeriodSelection()')),
+                                                     $cgi->td({-class => 'control_label'}, _('Periods:')),
+                                                     $cgi->td($cgi->popup_menu(-name => 'period', -values => [@PERIOD_KEYS], -labels => \%period_labels, -size => PERIODLISTROWS, -multiple => 1)),
+                                                     $cgi->td($cgi->button(-name => 'clear', -label => _('Clear'), -onClick => 'clearPeriodSelection()')),
                                                      ),
-                                            $cgi->Tr($cgi->td({-class => 'control_label'},trans('i18n_enddate')),
+                                            $cgi->Tr($cgi->td({-class => 'control_label'}, _('End Date:')),
                                                      $cgi->td({-colspan => '2'}, $cgi->button(-name => 'enddate', -label => 'now', -onClick => 'showDateTimePicker(this)')),
                                                      ),
-                                            $cgi->Tr($cgi->td({-class => 'control_label'},trans('zoom')),
-                                                     $cgi->td($cgi->popup_menu(-name => 'geom', -values => [@geom])),
+                                            $cgi->Tr($cgi->td({-class => 'control_label'}, _('Size:')),
+                                                     $cgi->td($cgi->popup_menu(-name => 'geom', -values => [@geom], -labels => \%geom_labels)),
                                                      $cgi->td(q( )),
                                                      ),
                                             $cgi->Tr({-valign => 'top'},
                                                      $cgi->td(q( )),
-                                                     $cgi->td($cgi->checkbox(-name => 'fixedscale', -label => trans('i18n_fixedscale'), -checked => $opts->{fixedscale})),
+                                                     $cgi->td($cgi->checkbox(-name => 'fixedscale', -label => _('Fixed Scale'), -checked => $opts->{fixedscale})),
                                                      $cgi->td(q( )),
                                                      ),
                                             )) . "\n",
@@ -1688,15 +1846,24 @@ sub printgraphlinks {
     my $showgraphtitle = $params->{showgraphtitle};
 
     # the description contains a list of the data set names.  we first see
-    # if there is a translation for the complete name, e.g. 'cpu,idle'.  if
+    # if there is a label for the complete name, e.g. 'cpu,idle'.  if
     # not, then we try for the smaller part, e.g. 'idle'.  if that fails,
-    # just display the full name, e.g. 'cpu,idle'.  in any case do not
-    # complain about missing translations for these.
+    # just display the full name, e.g. 'cpu,idle'.
     if ($showdesc) {
-        if ($params->{db} && $#{$params->{db}} >= 0) {
+        if ($params->{db} && scalar @{$params->{db}} > 0) {
             foreach my $ii (sortnaturally(@{$params->{db}})) {
                 if ($desc ne q()) { $desc .= $cgi->br(); }
-                $desc .= trans($ii, 1);
+                my $x = getlabel($ii);
+                if ($x eq $ii) {
+                    my ($db,$ds) = split /,/, $ii;
+                    if ($ds) {
+                        my $y = getlabel($ds);
+                        if ($y ne $ds) {
+                            $x = $y;
+                        }
+                    }
+                }
+                $desc .= $x;
             }
         }
     }
@@ -1704,8 +1871,8 @@ sub printgraphlinks {
 
     # include quite a bit of information in the alt tag - it helps when
     # debugging configuration files.
-    $gtitle = $params->{service} . q( ) . trans('on') . q( ) . $params->{host};
-    $alttag = trans('graphof') . q( ) . $gtitle;
+    $gtitle = $params->{service} . q( ) . _('on') . q( ) . $params->{host};
+    $alttag = _('Graph of') . q( ) . $gtitle;
     if ($params->{db}) {
         $alttag .= ' (';
         foreach my $ii (sortnaturally(@{$params->{db}})) {
@@ -1764,7 +1931,7 @@ sub printgraphlinks {
 sub printperiodlinks {
     my($cgi, $params, $period, $now, $content) = @_;
     my (@navstr) = getperiodctrls($cgi, $params, $period, $now);
-    my $label = (($period->[0] eq 'day') ? 'dai' : $period->[0]) . 'ly';
+    my $label = ucfirst $period->[0];
     my $id = 'period_data_' . $period->[0];
     return $cgi->div({-class => 'period_banner'},
                      $cgi->span({-class => 'period_title'},
@@ -1772,7 +1939,7 @@ sub printperiodlinks {
                                              -label => q(-),
                                              -onClick => 'togglePeriodDisplay(\'' . $id . '\', this)'),
                                 $cgi->a({ -id => $period->[0] },
-                                        trans($label))),
+                                        _($label))),
                      $cgi->span({-class => 'period_controls'},
                                 $navstr[0],
                                 $cgi->span({-class => 'period_detail'},
@@ -1783,38 +1950,37 @@ sub printperiodlinks {
                      $content) . "\n";
 }
 
-# quietly translate services and groups, but not hosts.
 sub printsummary {
     my($cgi, $opts) = @_;
 
     my $s = q();
     if ($opts->{call} eq 'both') {
-        $s = trans('perfforhost') . q( ) .
+        $s = _('Data for host') . q( ) .
             $cgi->span({-class => 'item_label'},
                        $cgi->a({href => $opts->{hosturl}},
                                $opts->{host})) .
             ', ' .
-            trans('service') . q( ) .
+            _('service') . q( ) .
             $cgi->span({-class => 'item_label'},
                        $cgi->a({href => $opts->{serviceurl}},
-                               trans($opts->{service}, 1)));
+                               getlabel($opts->{service})));
     } elsif ($opts->{call} eq 'host') {
-        $s = trans('perfforhost') . q( ) .
+        $s = _('Data for host') . q( ) .
             $cgi->span({-class => 'item_label'},
                        $cgi->a({href => $opts->{hosturl}},
                                $opts->{host}));
     } elsif ($opts->{call} eq 'service') {
-        $s = trans('perfforserv') . q( ) .
+        $s = _('Data for service') . q( ) .
             $cgi->span({-class => 'item_label'},
-                       trans($opts->{service}, 1));
+                       getlabel($opts->{service}));
     } elsif ($opts->{call} eq 'group') {
-        $s = trans('perfforgroup') . q( ) .
+        $s = _('Data for group') . q( ) .
             $cgi->span({-class => 'item_label'},
-                       trans($opts->{group}, 1));
+                       getlabel($opts->{group}));
     }
 
     return $cgi->p({ -class => 'summary' },
-                   $s . q( ) . trans('asof') . q( ) .
+                   $s . q( ) . _('as of') . q( ) .
                    $cgi->span({ -class => 'timestamp' },
                               formattime(time, 'timeformat_now')));
 }
@@ -1825,13 +1991,10 @@ sub printheader {
     my $rval = $cgi->header;
     $rval .= $cgi->start_html(-id => 'nagiosgraph',
                               -title => "nagiosgraph: $opts->{title}",
-                              -head => getrefresh($cgi),
+                              -head => $cgi->meta( { getrefresh() } ),
                               getstyle());
 
-    my %result = getserverlist($cgi->remote_user());
-    my(@servers) = @{$result{host}};
-    my(%servers) = %{$result{hostserv}};
-    $rval .= printmenudatascript(\@servers, \%servers);
+    $rval .= printmenudatascript($authhosts{host}, $authhosts{hostserv});
     if ($opts->{defaultdatasets}) {
         $rval .= printdatasetscript($opts->{defaultdatasets});
     }
@@ -1856,7 +2019,7 @@ sub printfooter {
         ? $cgi->br() . formatelapsedtime($sts, $ets)
         : q();
     return $cgi->div({-class => 'footer'}, q(), # or instead of q() $cgi->hr()
-                     trans('createdby') . q( ) .
+                     _('Created by') . q( ) .
                      $cgi->a({href => NAGIOSGRAPHURL },
                              'Nagiosgraph ' . $VERSION) . $tstr )
         . $cgi->end_html();
@@ -1871,28 +2034,20 @@ sub printfooter {
 # tuple of name, period, offset.
 sub graphsizes {
     my $conf = shift;
-    $conf =~ s/,/ /g; # convert to spaces so we can split on whitespace
+    $conf =~ s/,/ /g; # we will split on whitespace
     dumper(DBDEB, 'graphsizes: period', $conf);
-    my @periods = split /\s+/, $conf;
-
-    if (not @periods) {
-        debug(DBDEB, 'graphsizes: no periods found, using defaults');
-        @periods = @DEFAULT_PERIODS;
-    }
-
     my @unsorted;
-    foreach my $ii (@periods) {
-        next if not exists $PERIODDATA{$ii};
-        push @unsorted, $PERIODDATA{$ii};
+    foreach my $ii (split /\s+/, $conf) {
+        next if not exists $PERIOD_DATA{$ii};
+        push @unsorted, $PERIOD_DATA{$ii};
     }
-
     if (not @unsorted) {
-        debug(DBDEB, 'graphsizes: no periods found, using defaults');
-        @unsorted = @DEFAULT_PERIODS;
+        debug(DBDEB, 'graphsizes: no period data found, using defaults');
+        foreach my $ii (split / /, PERIODS) {
+            push @unsorted, $PERIOD_DATA{$ii};
+        }
     }
-
-    my @rval = sort {$a->[1] <=> $b->[1]} @unsorted;
-    return @rval;
+    return sort {$a->[1] <=> $b->[1]} @unsorted;
 }
 
 # returns three strings: a url for previous period, a label for current
@@ -1903,7 +2058,7 @@ sub getperiodctrls {
     debug(DBDEB, "getperiodctrls(now: $now period: @{$period})");
 
     # strip any offset from the url
-    my $url = $ENV{REQUEST_URI};
+    my $url = $ENV{REQUEST_URI} ? $ENV{REQUEST_URI} : q();
     $url =~ s/&*offset=[^&]*//;
 
     # now calculate and inject our own offset
@@ -2011,8 +2166,7 @@ sub createrrd {
         @resolution,            # temporary hold for configuration values
         @ds,                    # rrd create options for regular data
         @dsmin,                 # rrd create options for minimum points
-        @dsmax,                 # rrd create options for maximum points
-        $ds);                    # data set ID string
+        @dsmax);                # rrd create options for maximum points
 
     if (defined $Config{resolution}) {
         @resolution = split / /, $Config{resolution};
@@ -2040,8 +2194,8 @@ sub createrrd {
     for my $ii (0 .. @{$labels} - 1) {
         next if not $labels->[$ii];
         dumper(DBDEB, "labels->[$ii]", $labels->[$ii]);
-        $ds = join q(:), ('DS', $labels->[$ii]->[0], $labels->[$ii]->[1],
-            $Config{heartbeat}, $labels->[$ii]->[1] eq 'DERIVE' ? '0' : 'U', 'U');
+        my $ds = join q(:), ('DS', $labels->[$ii]->[0], $labels->[$ii]->[1],
+                             $Config{heartbeat}, $labels->[$ii]->[1] eq 'DERIVE' ? '0' : 'U', 'U');
         if (defined $Config{hostservvar}->{$host} and
             defined $Config{hostservvar}->{$host}->{$service} and
             defined $Config{hostservvar}->{$host}->{$service}->{$labels->[$ii]->[0]}) {
@@ -2152,24 +2306,24 @@ sub rrdupdate {
 
 # Read the map file and define a subroutine that parses performance data
 sub getrules {
-    my $file = shift;
+    my $file = getcfgfn(shift);
     debug(DBDEB, "getrules($file)");
-    my ($rval, $FH, @rules, $rules);
-    open $FH, '<', $file or die "cannot open $file: $OS_ERROR\n";
+    my (@rules);
+    open my $FH, '<', $file or die "cannot open $file: $OS_ERROR\n";
     while (<$FH>) {
         push @rules, $_;
     }
     close $FH or debug(DBERR, "close failed for $file: $OS_ERROR");
     ## no critic (ValuesAndExpressions)
-    $rules = 'sub evalrules { $_ = $_[0];' .
+    my $rules = 'sub evalrules { $_ = $_[0];' .
         ' my ($d, @s) = ($_);' .
         ' no strict "subs";' .
         join(q(), @rules) .
         ' use strict "subs";' .
         ' return () if ($#s > -1 && $s[0] eq "ignore");' .
-        ' debug(3, "perfdata not recognized: " . $d) unless @s;'.
+        ' debug(3, "perfdata not recognized:\n" . $d) unless @s;'.
         ' return @s; }';
-    $rval = eval $rules; ## no critic (ProhibitStringyEval)
+    my $rval = eval $rules; ## no critic (ProhibitStringyEval)
     if ($EVAL_ERROR or $rval) {
         debug(DBCRT, "Map file eval error: $EVAL_ERROR in: $rules");
     }
@@ -2180,19 +2334,18 @@ sub getrules {
 sub processdata {
     my (@lines) = @_;
     debug(DBDEB, 'processdata(' . scalar(@lines) . ')');
-    my (@data, $debug, $rrds, $sets);
     for my $line (@lines) {
-        @data = split /\|\|/, $line;
+        my @data = split /\|\|/, $line;
         # Suggested by Andrew McGill for 0.9.0, but I'm (Alan Brenner) not sure
         # it is still needed due to urlencoding in file names by mkfilename.
         # replace spaces with - in the description so rrd doesn't choke
         # $data[2] =~ s/\W+/-/g;
-        $debug = $Config{debug};
+        my $debug = $Config{debug};
         getdebug('insert', $data[1], $data[2]);
         dumper(DBDEB, 'processdata data', \@data);
-        $_ = "servicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";
+        $_ = "hostname:$data[1]\nservicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";
         for my $s ( evalrules($_) ) {
-            ($rrds, $sets) = createrrd($data[1], $data[2], $data[0] - 1, $s);
+            my ($rrds, $sets) = createrrd($data[1], $data[2], $data[0]-1, $s);
             next if not $rrds;
             for my $ii (0 .. @{$rrds} - 1) {
                 rrdupdate($rrds->[$ii], $data[0], $s, $data[1], $sets->[$ii]);
@@ -2203,68 +2356,19 @@ sub processdata {
     return;
 }
 
-# I18N ########################################################################
-%Ctrans = (
-    # These come from the timeall, timehost and timeservice values defined in
-    # the configuration file. +ly is the adverb form.
-    day => 'Today',
-    daily => 'Daily',
-    week => 'This Week',
-    weekly => 'Weekly',
-    month => 'This Month',
-    monthly => 'Monthly',
-    quarter => 'This Quarter',
-    quarterly => 'Quarterly',
-    year => 'This Year',
-    yearly => 'Yearly',
+# return a translation for the indicated key.  if there is no translation,
+# return the key.
+sub _ {
+    my ($key) = @_;
+    return $i18n{$key} ? $i18n{$key} : $key;
+}
 
-    # These are used as is, in the source. Verify with:
-    # grep trans cgi/* etc/* | sed -e 's/^.*trans(\([^)]*\).*/\1/' | sort -u
-    asof => 'as of',
-    clear => 'Clear',
-    createdby => 'Created by',
-    graphof => 'Graph of',
-    i18n_enddate => 'End Date:',
-    i18n_fixedscale => 'Fixed Scale',
-    on => 'on',
-    perfforgroup => 'Data for group',
-    perfforhost => 'Data for host',
-    perfforserv => 'Data for service',
-    periods => 'Periods:',
-    selectds => 'Data Sets:',
-    selectgroup => 'Group:',
-    selecthost => 'Host:',
-    selectserv => 'Service:',
-    service => 'service',
-    submit => 'Update Graphs',
-    testcolor => 'Show Colors',
-    typesome => 'Enter names separated by spaces',
-    zoom => 'Size:',
-);
-
-sub trans {
-    my ($text, $quiet) = @_;
-    if (! defined($text) || $text eq q()) { return q(); }
-    my $hexslash = '%2F';
-    return unescape($text) if substr $text, 0, length($hexslash) eq $hexslash;
-    return $Config{$text} if $Config{$text};
-    return $Config{escape($text)} if $Config{escape($text)};
-    if (not $Config{warned} and not $quiet) {
-        debug(DBWRN, 'define "' . escape($text) . '" in ' . $CFGNAME);
-        $Config{warned} = 1;
-    }
-    # The hope is not to get to here except in the case of upgrades where
-    # the configuration file doesn't have the translation values.
-    return $Ctrans{$text} if $Ctrans{$text};
-    if (not $Config{ctrans}
-        and not $quiet
-        and $text !~ /%2F/
-        and $text !~ /^\//) {
-        debug(DBCRT, "please define '$text' in $CFGNAME and report it");
-        $Config{ctrans} = 1;
-    }
-    # This can get ugly, so make sure %Ctrans has everything.
-    return $text
+# labels use the same lookup mechanism as translations, but labels are not
+# necessarily defined with a specific language.  we keep separate functions
+# to make explicit the difference between a label and a translation.
+sub getlabel {
+    my ($key) = @_;
+    return $Labels{$key} ? $Labels{$key} : $key;
 }
 
 # sort a list naturally using implementation by tye at

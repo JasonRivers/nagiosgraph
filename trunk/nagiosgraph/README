@@ -10,14 +10,10 @@ directly into Nagios so that graphs show up just like other trend reports.
 
 The INSTALL file contains installation and configuration instructions.
 
+For help, visit the forum at:
+  http://sourceforge.net/projects/nagiosgraph/forums/forum/394748
+
 Note: Nagios is a registered trademark of Ethan Galstad.
-
-
-Getting Help
-------------
-
-Visit the help forum -- http://sourceforge.net/forum/forum.php?forum_id=394748
-See also the project wiki -- http://nagiosgraph.wiki.sourceforge.net
 
 
 Principles of Operations
@@ -85,6 +81,7 @@ cgi/showservice.cgi   - Generates an html page for the service specified,
 cgi/testcolor.cgi     - Preview of colors for keywords in each color scheme
 etc/datasetdb.conf    - Optional configuration for data sets
 etc/nagiosgraph.conf  - Primary configuration file for nagiosgraph
+etc/nagiosgraph_*     - Translations
 etc/groupdb.conf      - Configuration specific to showgroup.cgi
 etc/hostdb.conf       - Configuration specific to showhost.cgi
 etc/servdb.conf       - Configuration specific to showservice.cgi
@@ -100,99 +97,3 @@ share/nagiosgraph.ssi - HTML for Nagios pages to enable graphs on mouseover.
 t/*                   - perl test scripts
 utils/testentry.pl    - A script for testing new map file entries.
 utils/upgrade.pl      - A script for upgrading RRD data from flat to hierarchy.
-
-
-For Developers
---------------
-
-If you would like to contribute to nagiosgraph, there are a few things you
-should do to make your life and the lives of the other nagiosgraph developers
-easier.
-
-- perlcritic
-
-  Run perlcritic before you commit and fix all of the warnings.  Be brutal:
-
-     perlcritic -1 etc/ngshared.pm
-     perlcritic -1 cgi/show.cgi
-
-  or use the make rule to run them all:
-
-     perl Makefile.PL
-     make critic
-
-- unit tests
-
-  Run the unit tests before modifying existing functionality.  Write unit
-  tests before you start adding to the code.
-
-      perl Makefile.PL
-      make test
-
-- test coverage
-
-  To generate code coverage reports, install Devel::Cover then run tests:
-
-      PERL5OPT=-MDevel::Cover make test
-
-  This will generate a cover_db directory with code coverage metrics.  Use
-  cover to generate reports from the cover_db data.
-
-- configurations
-
-  Be consistent in configuration files and documentation about where the
-  nagiosgraph files are installed, regardless of what you use.  Use this
-  layout:
-
-  file system:
-
-      /etc/nagiosgraph/nagiosgraph.conf
-      /etc/nagiosgraph/ngshared.pm
-      /usr/lib/nagiosgraph/cgi-bin/show.cgi
-      /usr/lib/nagiosgraph/libexec/insert.pl
-      /usr/share/nagiosgraph/nagiosgraph.css
-      /usr/share/nagiosgraph/nagiosgraph.js
-      /var/nagiosgraph/rrd/
-
-  URLs:
-
-      /nagiosgraph/cgi-bin/show.cgi
-      /nagiosgraph/nagiosgraph.css
-      /nagiosgraph/nagiosgraph.js
-
-As of 24feb2010, the codebase for nagiosgraph looks like this:
-
- lines  words  bytes
-   198    668   5537 cgi/show.cgi
-   195    656   5503 cgi/showgraph.cgi
-   192    689   5386 cgi/showgroup.cgi
-   202    734   5750 cgi/showhost.cgi
-   194    686   5400 cgi/showservice.cgi
-   177    745   5509 cgi/testcolor.cgi
-  2369   9826  83967 etc/ngshared.pm
-   173    555   4152 lib/insert.pl
-  3700  14559 121204 total
-
-   130    269   2122 share/nagiosgraph.css
-   964   3544  27010 share/nagiosgraph.js
-     1      3     75 share/nagiosgraph.ssi
-  1095   3816  29207 total
-
-    12     41    251 t/01required_modules.t
-  1605   4221  42661 t/02ngshared.t
-    11     27    346 t/97pod.t
-     6     20    178 t/98podcoverage.t
-     7     19    162 t/99kwalitee.t
-  1641   4328  43598 total
-
-    14     70    546 etc/datasetdb.conf
-    61    233   2181 etc/groupdb.conf
-    38    116   1301 etc/hostdb.conf
-   364   1815  11593 etc/nagiosgraph.conf
-    20    119    660 etc/rrdopts.conf
-    15     74    454 etc/servdb.conf
-   512   2427  16735 total
-
-Test coverage looks like this:
-file              stmt  bran  cond  sub   pod  time   total
-etc/ngshared.pm   68.4  49.3  42.0  76.5  n/a  100.0  60.7

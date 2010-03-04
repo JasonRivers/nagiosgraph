@@ -21,8 +21,9 @@ use strict;
 use warnings;
 
 my $sts = gettimestamp();
-my ($cgi, $params) = init('showhost', 1);
+my ($cgi, $params) = init('showhost');
 my ($periods, $expanded_periods) = initperiods('host', $params);
+
 my $ginfos = readhostdb($params->{host});
 
 # nagios and nagiosgraph may not share the same cgi directory
@@ -53,7 +54,7 @@ foreach my $period (graphsizes($periods)) {
             $url =~ tr/ /+/;
         }
         my $label = $info->{service_label} ?
-            $info->{service_label} : trans($info->{service}, 1);
+            $info->{service_label} : getlabel($info->{service});
         my $link = $cgi->a({href => $url}, $label);
 
         $str .= printgraphlinks($cgi, $info, $period, $link) . "\n";
