@@ -2158,45 +2158,51 @@ sub createrrd {
     my ($host, $service, $start, $labels) = @_;
     debug(DBDEB, "createrrd($host, $service, $start, $labels->[0])");
     my ($directory,             # modifiable directory name for rrd database
-        @filenames,             # rrd file name(s)
-        @datasets,
-        $db,                    # value of $labels->[0]
-        @rras,                  # number of rows of data kept in each data set
-        @resolution,            # temporary hold for configuration values
-        @ds,                    # rrd create options for regular data
-        @dsmin,                 # rrd create options for minimum points
-        @dsmax);                # rrd create options for maximum points
+        @filenames);            # rrd file name(s)
 
+    my @rras = split / /, RESOLUTIONS;
     if (defined $Config{resolution}) {
-        @resolution = split / /, $Config{resolution};
-        dumper(DBDEB, 'createrrd resolution',  \@resolution);
+        my @r = split / /, $Config{resolution};
+        if (scalar @r == 4) {
+            @rras = @r;
+        }
     }
+    debug(DBDEB, 'createrrd resolutions: ' . join q( ), @rras);
 
-    $rras[0] = defined $resolution[0] ? $resolution[0] : 600;
-    $rras[1] = defined $resolution[1] ? $resolution[1] : 700;
-    $rras[2] = defined $resolution[2] ? $resolution[2] : 775;
-    $rras[3] = defined $resolution[3] ? $resolution[3] : 797;
-    ## use critic
+    my $heartbeat = HEARTBEAT;
+    if (defined $Config{heartbeat}) {
+        $heartbeat = $Config{heartbeat};
+    }
+    debug(DBDEB, 'createrrd heartbeat: ' . $heartbeat);
 
-    $db = shift @{$labels};
+    my $db = shift @{$labels};
     ($directory, $filenames[0]) = mkfilename($host, $service, $db);
+    debug(DBDEB, "createrrd checking $directory/$filenames[0]");
     if (not -e $directory) { # ensure we can write to data directory
         debug(DBINF, "createrrd: creating directory $directory");
         mkdir $directory, 0775;
-        if (not -w $directory) { croak "cannot write to $directory"; }
     }
-    debug(DBDEB, "createrrd checking $directory/$filenames[0]");
-    @ds = ("$directory/$filenames[0]", '--start', $start);
-    @dsmin = ("$directory/$filenames[0]_min", '--start', $start);
-    @dsmax = ("$directory/$filenames[0]_max", '--start', $start);
-    push @datasets, [];
+    if (not -w $directory) {
+        croak "cannot write to $directory";
+    }
+
+    my @ds = ("$directory/$filenames[0]", '--start', $start);
+    my @dsmin = ("$directory/$filenames[0]_min", '--start', $start);
+    my @dsmax = ("$directory/$filenames[0]_max", '--start', $start);
+    if (defined $Config{stepsize}) {
+        debug(DBDEB, 'createrrd stepsize: ' . $Config{stepsize});
+        push @ds, '--step', $Config{stepsize};
+        push @dsmin, '--step', $Config{stepsize};
+        push @dsmax, '--step', $Config{stepsize};
+    }
+    my @datasets = [];
     for my $ii (0 .. @{$labels} - 1) {
         next if not $labels->[$ii];
         dumper(DBDEB, "labels->[$ii]", $labels->[$ii]);
         my $ds = join q(:), ('DS',
                              $labels->[$ii]->[0],
                              $labels->[$ii]->[1],
-                             $Config{heartbeat},
+                             $heartbeat,
                              $labels->[$ii]->[1] eq 'DERIVE' ? '0' : 'U',
                              'U');
         if (defined $Config{hostservvar}->{$host} and
