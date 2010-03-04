@@ -2193,8 +2193,12 @@ sub createrrd {
     for my $ii (0 .. @{$labels} - 1) {
         next if not $labels->[$ii];
         dumper(DBDEB, "labels->[$ii]", $labels->[$ii]);
-        my $ds = join q(:), ('DS', $labels->[$ii]->[0], $labels->[$ii]->[1],
-                             $Config{heartbeat}, $labels->[$ii]->[1] eq 'DERIVE' ? '0' : 'U', 'U');
+        my $ds = join q(:), ('DS',
+                             $labels->[$ii]->[0],
+                             $labels->[$ii]->[1],
+                             $Config{heartbeat},
+                             $labels->[$ii]->[1] eq 'DERIVE' ? '0' : 'U',
+                             'U');
         if (defined $Config{hostservvar}->{$host} and
             defined $Config{hostservvar}->{$host}->{$service} and
             defined $Config{hostservvar}->{$host}->{$service}->{$labels->[$ii]->[0]}) {
@@ -2202,23 +2206,27 @@ sub createrrd {
             push @filenames, $filename;
             push @datasets, [$ii];
             if (not -e "$directory/$filename") {
-                runcreate(["$directory/$filename", '--start', $start, $ds,
-                    getrras($service, \@rras)]);
+                runcreate(["$directory/$filename", '--start', $start,
+                           $ds, getrras($service, \@rras)]);
             }
             if (checkminmax('min', $service, $directory, $filename)) {
-                runcreate(["$directory/${filename}_min", '--start', $start, $ds,
-                    getrras($service, \@rras, 'MIN')]);
+                runcreate(["$directory/${filename}_min", '--start', $start,
+                           $ds, getrras($service, \@rras, 'MIN')]);
             }
             if (checkminmax('max', $service, $directory, $filename)) {
-                runcreate(["$directory/${filename}_max", '--start', $start, $ds,
-                    getrras($service, \@rras, 'MAX')]);
+                runcreate(["$directory/${filename}_max", '--start', $start,
+                           $ds, getrras($service, \@rras, 'MAX')]);
             }
             next;
         } else {
             push @ds, $ds;
             push @{$datasets[0]}, $ii;
-            if (defined $Config{withminimums}->{$service}) { push @dsmin, $ds; }
-            if (defined $Config{withmaximums}->{$service}) { push @dsmax, $ds; }
+            if (defined $Config{withminimums}->{$service}) {
+                push @dsmin, $ds;
+            }
+            if (defined $Config{withmaximums}->{$service}) {
+                push @dsmax, $ds;
+            }
         }
     }
     if (not -e "$directory/$filenames[0]" and
@@ -2334,6 +2342,7 @@ sub processdata {
     my (@lines) = @_;
     debug(DBDEB, 'processdata(' . scalar(@lines) . ')');
     for my $line (@lines) {
+        chomp $line;
         my @data = split /\|\|/, $line;
         # Suggested by Andrew McGill for 0.9.0, but I'm (Alan Brenner) not sure
         # it is still needed due to urlencoding in file names by mkfilename.

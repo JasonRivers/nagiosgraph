@@ -71,9 +71,11 @@ show.cgi - Graph Nagios data
 
 Run this via a web server to generate a page of graph data.
 
+The showgraph.cgi script generates the graphs themselves.
+
 =head1 USAGE
 
-B<show.cgi>?host=host_name&service=service_name[&db=dataset]
+B<show.cgi>?host=host_name&service=service_name
 
 =head1 REQUIRED ARGUMENTS
 
@@ -85,15 +87,13 @@ B<show.cgi>?host=host_name&service=service_name[&db=dataset]
 
 =item service=service_description
 
-=item db=dataset
+=item db=database[,dataset[,dataset[,dataset[...]]]]
 
 =item period=(day week month quarter year)
 
-=item offset=86400
-
 =item geom=WIDTHxHEIGHT
 
-=item rrdopts=-g
+=item rrdopts=<rrdgraph options>
 
 =back
 
@@ -103,7 +103,7 @@ B<show.cgi>?host=host_name&service=service_name[&db=dataset]
 
 Use the debug_show setting from B<nagiosgraph.conf> to control the amount
 of debug information that will be emitted by this script.  Debug output will
-go to the web server error log.
+go to the nagiosgraph log or web server error log.
 
 =head1 CONFIGURATION
 

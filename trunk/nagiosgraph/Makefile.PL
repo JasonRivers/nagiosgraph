@@ -16,8 +16,8 @@ WriteMakefile(
     'dist'          => { 'SUFFIX'       => ".gz",
                          'DIST_DEFAULT' => 'all tardist',
                          'COMPRESS'     => "gzip -9f" },
-    'realclean'     => { 'FILES' => '' },
-    'clean'         => { 'FILES' => 'test.*' },
+    'realclean'     => { 'FILES' => 'cover_db Debian_CPANTS.txt Makefile.old' },
+    'clean'         => { 'FILES' => 'perltidy.ERR test.*' },
 );
 
 sub MY::install {

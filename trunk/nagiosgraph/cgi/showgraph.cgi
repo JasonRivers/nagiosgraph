@@ -135,15 +135,21 @@ service
 
 =head1 OPTIONS
 
-host=host_name
+=over 4
 
-service=service_name
+=item host=host_name
 
-geom=default
+=item service=service_name
 
-period=(day | week | month | quarter | year)
+=item db=database[,dataset[,dataset[,dataset[...]]]]
 
-rrdopts=<rrdgraph options>
+=item period=(day | week | month | quarter | year)
+
+=item geom=WIDTHxHEIGHT
+
+=item rrdopts=<rrdgraph options>
+
+=back
 
 =head1 EXIT STATUS
 

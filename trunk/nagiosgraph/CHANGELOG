@@ -24,6 +24,7 @@ $Id$
    change from the previous 3-line behavior, but it will not break existing
    map rules unless they depend on the line count.  having the host information
    also makes it easier to diagnose parsing issues when processing data.
+* remove trailing newline from perfdata string.
 * enable display of data sets from multiple rrd files into a single graph.
 * prevent name clashes between data set names by using qualified identifiers
    rather than just data names in graph definitions.

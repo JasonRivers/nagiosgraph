@@ -624,6 +624,17 @@ It is a good idea to plan your configuration before you start recording data.
 Although it is possible to reconfigure data after the rrd files are full,
 doing so is somewhat tedious, especially for large numbers of hosts/services.
 
+There are a few rrdtool parameters that affect size of the rrd files and the
+resolution of data:
+
+  stepsize
+  resolution
+  heartbeat
+
+These parameters are used only when an rrd file is created.  To modify these
+values for an existing rrd file you must do a dump/edit/restore.  See the
+rrdtool documentation for details.
+
 
 
 Troubleshooting

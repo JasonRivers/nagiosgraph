@@ -91,7 +91,7 @@ The showgraph.cgi script generates the graphs themselves.
 
 =head1 USAGE
 
-B<showservice.cgi>?service=service_description[&db=dataset]
+B<showservice.cgi>?service=service_description
 
 =head1 REQUIRED ARGUMENTS
 
@@ -101,13 +101,13 @@ B<showservice.cgi>?service=service_description[&db=dataset]
 
 =item service=service_description
 
-=item db=dataset
+=item db=database[,dataset[,dataset[,dataset[...]]]]
 
 =item period=(day week month quarter year)
 
 =item geom=WIDTHxHEIGHT
 
-=item rrdopts=-g
+=item rrdopts=<rrdgraph options>
 
 =back
 
@@ -116,7 +116,8 @@ B<showservice.cgi>?service=service_description[&db=dataset]
 =head1 DIAGNOSTICS
 
 Use the debug_showservice setting from B<nagiosgraph.conf> to control the 
-amount of debug information that will be emitted by this script.
+amount of debug information that will be emitted by this script.  Output will
+go to the nagiosgraph log or web server error log.
 
 =head1 CONFIGURATION
 

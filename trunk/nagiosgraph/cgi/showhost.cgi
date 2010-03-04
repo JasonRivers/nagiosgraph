@@ -101,7 +101,7 @@ B<showhost.cgi>?host=host_name
 
 =item geom=WIDTHxHEIGHT
 
-=item rrdopts=-g
+=item rrdopts=<rrdgraph options>
 
 =back
 

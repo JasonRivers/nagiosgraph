@@ -89,7 +89,7 @@ __END__
 
 =head1 NAME
 
-showgroup.cgi - Graph Nagios data for a given host or service group
+showgroup.cgi - Graph Nagios data for groups of hosts and services
 
 =head1 DESCRIPTION
 
@@ -116,7 +116,7 @@ B<showgroup.cgi>?group=group_name
 
 =item geom=WIDTHxHEIGHT
 
-=item rrdopts=-g
+=item rrdopts=<rrdgraph options>
 
 =back
 
@@ -126,7 +126,7 @@ B<showgroup.cgi>?group=group_name
 
 Use the debug_showgroup setting from B<nagiosgraph.conf> to control the amount
 of debug information that will be emitted by this script.  Debug output will
-go to the web server error log.
+go to the nagiosgraph log or web server error log.
 
 =head1 CONFIGURATION
 
