@@ -1182,17 +1182,13 @@ sub graphinfo {
 
     # Determine which files to read lines from
     if ($db && scalar @{$db} > 0) {
-        my ($nn,                # index of @rrd, for inserting entries
-            $dbname,            # RRD file name, without extension
-            @lines,             # entries after file name from $db
-            $line,              # value split from $ll
-            $unit) = (0);       # value split from $ll
+        my $nn = 0;
         for my $dd (@{$db}) {
-            ($dbname, @lines) = split /,/, $dd;
+            my ($dbname, @lines) = split /,/, $dd; # db filename, data sources
             $rrd[$nn]{file} = $hs . escape("$dbname") . RRDEXT;
             $rrd[$nn]{dbname} = $dbname;
             for my $ll (@lines) {
-                ($line, $unit) = split /~/, $ll;
+                my ($line, $unit) = split /~/, $ll;
                 if ($unit) {
                     $rrd[$nn]{line}{$line}{unit} = $unit;
                 } else {

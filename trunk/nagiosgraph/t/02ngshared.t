@@ -17,7 +17,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 335; }
+BEGIN { plan tests => 439; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -361,12 +361,133 @@ sub testreadfile {
     unlink $fn;
 }
 
-sub testreadconfig { # Check the default configuration
-	open $LOG, '+>', \$log;
-	readconfig('read');
-	ok($Config{colorscheme}, 1);
-	ok($Config{minimums}{'Mem: free'});
-	close $LOG;
+# Check the default configuration.  this is coded into a test to help ensure
+# backward compatibility and no regressions.  if there is a change, we need
+# to know about it and handle it explicitly.
+sub testreadconfig {
+    open $LOG, '+>', \$log;
+    readconfig('read');
+    ok($Config{logfile}, '/var/log/nagiosgraph.log');
+    ok($Config{cgilogfile}, undef);
+    ok($Config{perflog}, '/var/nagios/perfdata.log');
+    ok($Config{rrddir}, '/var/nagiosgraph/rrd');
+    ok($Config{mapfile}, '/etc/nagiosgraph/map');
+    ok($Config{labelfile}, undef);
+    ok($Config{hostdb}, undef);
+    ok($Config{servdb}, undef);
+    ok($Config{groupdb}, '/etc/nagiosgraph/groupdb.conf');
+    ok($Config{datasetdb}, undef);
+    ok($Config{nagiosgraphcgiurl}, '/nagiosgraph/cgi-bin');
+    ok($Config{nagioscgiurl}, undef);
+    ok($Config{javascript}, '/nagiosgraph/nagiosgraph.js');
+    ok($Config{stylesheet}, '/nagiosgraph/nagiosgraph.css');
+    ok($Config{debug}, 3);
+    ok($Config{debug_insert}, undef);
+    ok($Config{debug_insert_host}, undef);
+    ok($Config{debug_insert_service}, undef);
+    ok($Config{debug_show}, undef);
+    ok($Config{debug_show_host}, undef);
+    ok($Config{debug_show_service}, undef);
+    ok($Config{debug_showhost}, undef);
+    ok($Config{debug_showhost_host}, undef);
+    ok($Config{debug_showhost_service}, undef);
+    ok($Config{debug_showservice}, undef);
+    ok($Config{debug_showservice_host}, undef);
+    ok($Config{debug_showservice_service}, undef);
+    ok($Config{debug_showgroup}, undef);
+    ok($Config{debug_showgroup_host}, undef);
+    ok($Config{debug_showgroup_service}, undef);
+    ok($Config{debug_showgraph}, undef);
+    ok($Config{debug_showgraph_host}, undef);
+    ok($Config{debug_showgraph_service}, undef);
+    ok($Config{debug_testcolor}, undef);
+    ok($Config{geometries}, '650x50,800x100,1000x200,2000x100');
+    ok($Config{default_geometry}, undef);
+    ok($Config{colorscheme}, 1);
+    ok(Dumper($Config{colors}), "\$VAR1 = [
+          'D05050',
+          'D08050',
+          'D0D050',
+          '50D050',
+          '50D0D0',
+          '5050D0',
+          'D050D0',
+          '505050'
+        ];\n");
+    ok($Config{plotas}, 'LINE2');
+    ok(Dumper($Config{plotasLINE1}), "\$VAR1 = {
+          'avg15min' => 1,
+          'avg5min' => 1
+        };\n");
+    ok(Dumper($Config{plotasLINE2}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{plotasLINE3}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{plotasAREA}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{plotasTICK}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{lineformat}), "\$VAR1 = {
+          'warn,LINE1,D0D050' => 1,
+          'rtacrit,LINE1,D05050' => 1,
+          'rtawarn,LINE1,D0D050' => 1,
+          'losswarn,LINE1,D0D050' => 1,
+          'crit,LINE1,D05050' => 1,
+          'losscrit,LINE1,D05050' => 1
+        };\n");
+    ok($Config{timeall}, 'day,week,month,year');
+    ok($Config{timehost}, 'day,week,month');
+    ok($Config{timeservice}, 'day,week');
+    ok($Config{timegroup}, 'day,week');
+    ok($Config{expand_timeall}, 'day,week,month,year');
+    ok($Config{expand_timehost}, 'week');
+    ok($Config{expand_timeservice}, 'week');
+    ok($Config{expand_timegroup}, 'day');
+    ok($Config{timeformat_now}, "'%H:%M:%S %d %b %Y %Z'");
+    ok($Config{timeformat_day}, "'%H:%M %e %b'");
+    ok($Config{timeformat_week}, "'%e %b'");
+    ok($Config{timeformat_month}, "'week %U'");
+    ok($Config{timeformat_quarter}, "'week %U'");
+    ok($Config{timeformat_year}, "'%b %Y'");
+    ok($Config{refresh}, undef);
+    ok($Config{hidengtitle}, undef);
+    ok($Config{showprocessingtime}, undef);
+    ok($Config{showtitle}, 'true');
+    ok($Config{showdesc}, undef);
+    ok($Config{showgraphtitle}, undef);
+    ok($Config{hidelegend}, undef);
+    ok($Config{graphonly}, undef);
+    ok(Dumper($Config{maximums}), "\$VAR1 = {
+          'Procs: total' => 1,
+          'PLW' => 1,
+          'Current Load' => 1,
+          'Procs: zombie' => 1,
+          'User Count' => 1
+        };\n");
+    ok(Dumper($Config{minimums}), "\$VAR1 = {
+          'Mem: swap' => 1,
+          'APCUPSD' => 1,
+          'Mem: free' => 1
+        };\n");
+    ok(Dumper($Config{withmaximums}), "\$VAR1 = {
+          'PING' => 1
+        };\n");
+    ok(Dumper($Config{withminimums}), "\$VAR1 = {
+          'PING' => 1
+        };\n");
+    ok(Dumper($Config{negate}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{hostservvar}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{altautoscale}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{altautoscalemin}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{altautoscalemax}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{nogridfit}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{logarithmic}), "\$VAR1 = {};\n");
+    ok($Config{rrdopts}, undef);
+    ok($Config{rrdoptsfile}, undef);
+    ok($Config{perfloop}, undef);
+    ok($Config{heartbeat}, 600);
+    ok($Config{stepsize}, undef);
+    ok($Config{resolution}, '600 700 775 797');
+    ok($Config{dbseparator}, 'subdir');
+    ok($Config{dbfile}, undef);
+    ok($Config{language}, undef);
+    close $LOG;
 }
 
 sub testdbfilelist { # Check getting a list of rrd files
@@ -452,20 +573,44 @@ sub testgetlineattr {
     $Config{plotasAREA} = {'ping' => 1};
     $Config{plotasTICK} = {'http' => 1};
 
-    my ($linestyle, $linecolor) = getlineattr("foo");
-    ok($linestyle, "LINE1");
-    ok($linecolor, "000399");
-    ($linestyle, $linecolor) = getlineattr("ping");
-    ok($linestyle, "AREA");
-    ok($linecolor, "990333");
-    ($linestyle, $linecolor) = getlineattr("http");
-    ok($linestyle, "TICK");
-    ok($linecolor, "000099");
-    ($linestyle, $linecolor) = getlineattr("avg15min");
-    ok($linestyle, "LINE1");
-    ok($linecolor, "6600FF");
+    my ($linestyle, $linecolor) = getlineattr('foo');
+    ok($linestyle, 'LINE1');
+    ok($linecolor, '000399');
+    ($linestyle, $linecolor) = getlineattr('ping');
+    ok($linestyle, 'AREA');
+    ok($linecolor, '990333');
+    ($linestyle, $linecolor) = getlineattr('http');
+    ok($linestyle, 'TICK');
+    ok($linecolor, '000099');
+    ($linestyle, $linecolor) = getlineattr('avg15min');
+    ok($linestyle, 'LINE1');
+    ok($linecolor, '6600FF');
+    ($linestyle, $linecolor) = getlineattr('a');
+    ok($linestyle, 'LINE2');
+    ok($linecolor, 'CC00CC');
+    ($linestyle, $linecolor) = getlineattr('b');
+    ok($linestyle, 'LINE3');
+    ok($linecolor, 'CC00FF');
+
+    $Config{lineformat} = 'warn,LINE1,D0D050;crit,LINE2,D05050;total,AREA,dddddd88';
+    listtodict('lineformat', q(;));
+    ($linestyle, $linecolor) = getlineattr('warn');
+    ok($linestyle, 'LINE1');
+    ok($linecolor, 'D0D050');
+    ($linestyle, $linecolor) = getlineattr('crit');
+    ok($linestyle, 'LINE2');
+    ok($linecolor, 'D05050');
+    ($linestyle, $linecolor) = getlineattr('total');
+    ok($linestyle, 'AREA');
+    ok($linecolor, 'dddddd88');
 
     $Config{plotas} = 'LINE2';
+}
+
+# return a set of parameters for testing rrdline
+sub getrrdlineparams {
+    my %params = qw(host host0 service PING);
+    return %params;
 }
 
 sub testrrdline {
@@ -478,7 +623,7 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [];\n");
 
     # minimal invocation when data exist for the host
-    %params = qw(host host0 service PING);
+    %params = getrrdlineparams();
     ($ds,$err) = rrdline(\%params);
     ok(Dumper($ds), "\$VAR1 = [
           '-',
@@ -505,11 +650,13 @@ sub testrrdline {
         ];\n");
 
     # specify a bogus data set
+    %params = getrrdlineparams();
     $params{db} = ['rta'];
     ($ds,$err) = rrdline(\%params);
     ok(Dumper($ds), "\$VAR1 = [];\n");
 
-    # specify a valid data set
+    # specify a valid data source
+    %params = getrrdlineparams();
     $params{db} = ['ping,rta'];
     ($ds,$err) = rrdline(\%params);
     ok(Dumper($ds), "\$VAR1 = [
@@ -530,7 +677,89 @@ sub testrrdline {
           600
         ];\n");
 
-#FIXME: test geom
+    # test geometry
+    %params = getrrdlineparams();
+    $params{db} = ['ping,rta'];
+    $params{geom} = '100x100';
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          '-',
+          '-a',
+          'PNG',
+          '-s',
+          'now-118800',
+          '-e',
+          'now-0',
+          'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
+          'LINE2:ping_rta#CC03CC:rta',
+          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          '-w',
+          100,
+          '-h',
+          100
+        ];\n");
+
+    # test the period
+    %params = getrrdlineparams();
+    $params{db} = ['ping,rta'];
+    $params{geom} = '100x100';
+    $params{period} = 'week';
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          '-',
+          '-a',
+          'PNG',
+          '-s',
+          'now-777600',
+          '-e',
+          'now-0',
+          'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
+          'LINE2:ping_rta#CC03CC:rta',
+          'DEF:ping_rta_max=$rrddir/host0/PING___ping.rrd_max:rta:MAX',
+          'LINE1:ping_rta_max#888888:maximum',
+          'DEF:ping_rta_min=$rrddir/host0/PING___ping.rrd_min:rta:MIN',
+          'LINE1:ping_rta_min#BBBBBB:minimum',
+          'CDEF:ping_rta_maxif=ping_rta_max,UN',
+          'CDEF:ping_rta_maxi=ping_rta_maxif,ping_rta,ping_rta_max,IF',
+          'GPRINT:ping_rta_maxi:MAX:Max\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
+          'CDEF:ping_rta_minif=ping_rta_min,UN',
+          'CDEF:ping_rta_mini=ping_rta_minif,ping_rta,ping_rta_min,IF',
+          'GPRINT:ping_rta_mini:MIN:Min\\\\: %6.2lf%s\\\\n',
+          '-w',
+          100,
+          '-h',
+          100
+        ];\n");
+
+    # test fixedscale
+    %params = getrrdlineparams();
+    $params{db} = ['ping,rta'];
+    $params{fixedscale} = 1;
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          '-',
+          '-a',
+          'PNG',
+          '-s',
+          'now-118800',
+          '-e',
+          'now-0',
+          'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
+          'LINE2:ping_rta#CC03CC:rta',
+          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf',
+          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf\\\\n',
+          '-w',
+          600,
+          '-X',
+          '0'
+        ];\n");
+
 #FIXME: test rrdopts
 #FIXME: test altautoscale
 #FIXME: test altautoscalemin
@@ -622,6 +851,14 @@ sub testprintmenudatascript {
     my %result = getserverlist('');
     my(@servers) = @{$result{host}};
     my(%servers) = %{$result{hostserv}};
+
+    # when no javascript, print nothing
+    undef $Config{javascript};
+    $result = printmenudatascript(\@servers, \%servers);
+    ok($result, "");
+
+    # when we have javascript, we should have menudata
+    $Config{javascript} = 'foo';
     $result = printmenudatascript(\@servers, \%servers);
     ok($result, "<script type=\"text/javascript\">
 menudata = new Array();
@@ -879,6 +1116,11 @@ sub testi18n {
 }
 
 sub testprinti18nscript {
+    undef $Config{javascript};
+    $result = printi18nscript();
+    ok($result, "");
+
+    $Config{javascript} = 'foo';
     $result = printi18nscript();
     ok($result, "<script type=\"text/javascript\">
 var i18n = {
@@ -1072,6 +1314,10 @@ sub testreadhostdb {
     # nothing when no file defined
     undef $Config{hostdb};
     my $result = readhostdb();
+    ok(@{$result}, 0);
+
+    $Config{hostdb} = '';
+    $result = readhostdb();
     ok(@{$result}, 0);
 
     my $fn = "$FindBin::Bin/db.conf";
@@ -1396,6 +1642,10 @@ sub testreadservdb {
     my $result = readservdb();
     ok(@{$result}, 0);
 
+    $Config{servdb} = '';
+    $result = readservdb();
+    ok(@{$result}, 0);
+
     my $fn = "$FindBin::Bin/db.conf";
     $Config{servdb} = $fn;
 
@@ -1686,6 +1936,10 @@ sub testreaddatasetdb {
     my $result = readdatasetdb();
     ok(keys %{$result}, 0);
 
+    $Config{datasetdb} = '';
+    $result = readdatasetdb();
+    ok(keys %{$result}, 0);
+
     my $fn = "$FindBin::Bin/db.conf";
     $Config{datasetdb} = $fn;
 
@@ -1734,12 +1988,17 @@ sub testreaddatasetdb {
 }
 
 sub testreadrrdoptsfile {
+    # do nothing if file not defined
+    undef $Config{rrdoptsfile};
+    my $errstr = readrrdoptsfile();
+    ok($errstr, "");
+
     my $fn = "$FindBin::Bin/db.conf";
     $Config{rrdoptsfile} = $fn;
 
     undef $Config{rrdoptshash};
     $Config{rrdoptshash}{global} = q();
-    my $errstr = readrrdoptsfile();
+    $errstr = readrrdoptsfile();
     ok($errstr, "cannot open $fn: No such file or directory");
     ok(Dumper($Config{rrdoptshash}), "\$VAR1 = {
           'global' => ''
