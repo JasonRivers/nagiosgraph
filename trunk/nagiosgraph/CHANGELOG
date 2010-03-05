@@ -49,6 +49,9 @@ $Id$
 * consolidated log file initialization.
 * refactored error handling and reporting, should be more consistent now.
 * refer to 'new style' and 'old style' processing as 'batch' and 'immediate'
+* removed fixedscale from GUI.  it remains as a cgi argument for backward
+   compatibility, but it is better to define fixed scale using rrdopts.
+   the syntax is '-X 0'.
 
 1.4.1 2010-02-18
 

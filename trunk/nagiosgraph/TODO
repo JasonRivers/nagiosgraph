@@ -17,8 +17,6 @@ Desired features.
 * re-do the default map rules to match the plugins shipped in standard, current
     nagios configurations for mainstream distros
 * do authorization using a single text file instead of perl code
-* remove fixedscale from the gui
-* change definition of fixedscale to have pattern of other rrdopts
 * do pattern matching in the groupdb and hostdb files
 * data labels should be applied to graphs, not just html
 * do test coverage on the cgi scripts, not just ngshared.pm

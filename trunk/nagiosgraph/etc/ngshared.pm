@@ -294,7 +294,7 @@ sub getdebug {
 # graphonly
 # showgraphtitle
 # hidelegend
-# fixedscale
+# fixedscale (for backward compatibility)
 # showtitle
 # showdesc
 # expand_controls
@@ -1819,11 +1819,6 @@ sub printcontrols {
                                                      ),
                                             $cgi->Tr($cgi->td({-class => 'control_label'}, _('Size:')),
                                                      $cgi->td($cgi->popup_menu(-name => 'geom', -values => [@geom], -labels => \%geom_labels)),
-                                                     $cgi->td(q( )),
-                                                     ),
-                                            $cgi->Tr({-valign => 'top'},
-                                                     $cgi->td(q( )),
-                                                     $cgi->td($cgi->checkbox(-name => 'fixedscale', -label => _('Fixed Scale'), -checked => $opts->{fixedscale})),
                                                      $cgi->td(q( )),
                                                      ),
                                             )) . "\n",

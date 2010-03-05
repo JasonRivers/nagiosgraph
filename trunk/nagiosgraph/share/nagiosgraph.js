@@ -517,11 +517,6 @@ function mkCGIArgs() {
     }
   }
 
-  elem = document.menuform.fixedscale;
-  if (elem && elem.checked) {
-    args.push('fixedscale');
-  }
-
   elem = document.menuform.showhidecontrols;
   if (elem && elem.value == '-') {
     args.push('expand_controls');
@@ -570,7 +565,6 @@ function mkCGIArgs() {
         || name == 'service'
         || name == 'group'
         || name == 'db'
-        || name == 'fixedscale'
         || name == 'expand_controls'
         || name == 'period'
         || name == 'expand_period') {
@@ -861,10 +855,6 @@ function setControlsGUIState() {
   setExpansionState(getCGIBoolean('expand_controls'),
                     document.getElementById('secondary_controls_box'),
                     document.menuform.showhidecontrols);
-  var elem = document.menuform.fixedscale;
-  if (elem) {
-    elem.checked = getCGIBoolean('fixedscale');
-  }
   elem = document.menuform.geom;
   if (elem) {
     var geom = getCGIValue('geom');
