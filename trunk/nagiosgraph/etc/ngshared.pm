@@ -742,8 +742,9 @@ sub readi18nfile {
                    ? split /,/, $ENV{HTTP_ACCEPT_LANGUAGE} : q());
     }
     if ( $lang && $lang ne q()) {
+        $lang =~ tr/-/_/;
         my $fn = getcfgfn( mki18nfilename( $lang ));
-        if ( ! -f $fn  && $lang =~ /(..)-/ ) {
+        if ( ! -f $fn  && $lang =~ /(..)_/ ) {
             $lang = $1;
             $fn = getcfgfn( mki18nfilename( $lang ));
         }

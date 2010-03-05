@@ -380,7 +380,7 @@ Here are a few examples of what is possible.
 
   - Use the rrdopts option (e.g. &rrdopts=%2Dl%200%20%2Du%20100 (meaning:
     "-l 0 -u 100")) for custom Y axis ranges. Any rrdgraph options can
-    be specified, but has to be url encoded.
+    be specified, but has to be url encoded when specified via CGI.
 
   - Add &fixedscale to set the Y-axis to be in the same scale as the
     perf data.  This will also set the legends to be in same scale.
@@ -415,7 +415,21 @@ Here are a few examples of what is possible.
                      [ 'jitter',  GAUGE, $2/1000 ],
                      [ 'stratum', GAUGE, $3+1    ] ];
 
-See the nagiosgraph.conf file for more options and examples.
+  - Data are identified by host, service, database, and data source.  It is
+    possible to graph all sources from a single database, a single source
+    from a database, selected sources from a single database, or selected
+    sources from multiple databases.  In each case, the host and service
+    must match.  For example:
+
+      showgraph.cgi?host=HOST&service=SERVICE&db=loss
+      showgraph.cgi?hsot=HOST&service=SERVICE&db=loss,losspct
+      showgraph.cgi?host=HOST&service=SERVICE&db=ntp,jitter,offset
+      showgraph.cgi?host=HOST&service=SERVICE&db=loss,losspct&db=rta,rta
+
+    These options apply to showgraph.cgi, show.cgi, and showservice.cgi and
+    in the configuration files hostdb.conf, groupdb.conf, and datasetdb.conf.
+
+See the configuration files for more options and examples.
 
 
 

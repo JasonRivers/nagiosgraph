@@ -17,7 +17,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 317; }
+BEGIN { plan tests => 335; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -221,12 +221,12 @@ sub testformatelapsedtime {
     my $s = gettimestamp();
     $result = formatelapsedtime($s, $s+3_000_000);
     ok($result, "00:00:03.000");
-    $result = formatelapsedtime($s, $s+60_000_000);
-    ok($result, "00:01:00.000");
-    $result = formatelapsedtime($s, $s+3_600_000_000);
-    ok($result, "01:00:00.000");
-    $result = formatelapsedtime($s, $s+7_260_000_000);
-    ok($result, "02:01:00.000");
+    $result = formatelapsedtime($s, $s+60_010_000);
+    ok($result, "00:01:00.010");
+    $result = formatelapsedtime($s, $s+36_610_000_000);
+    ok($result, "10:10:10.000");
+    $result = formatelapsedtime($s, $s+7_260_100_000);
+    ok($result, "02:01:00.100");
     $result = formatelapsedtime($s, $s+1_000);
     ok($result, "00:00:00.001");
     $result = formatelapsedtime($s, $s+10);
@@ -694,16 +694,28 @@ sub testgetrras {
 	@testdata = (1, 2, 3, 4);
 	# $Config{maximums}
 	@result = main::getrras('Current Load', \@testdata);
-	ok(Dumper(\@result), "\$VAR1 = [\n          'RRA:MAX:0.5:1:1',\n          'RRA:MAX:0.5:6:2',\n          'RRA:MAX:0.5:24:3',\n          'RRA:MAX:0.5:288:4'\n        ];\n");
+	ok(Dumper(\@result), "\$VAR1 = [
+          'RRA:MAX:0.5:1:1',
+          'RRA:MAX:0.5:6:2',
+          'RRA:MAX:0.5:24:3',
+          'RRA:MAX:0.5:288:4'
+        ];\n");
 	# $Config{minimums}
 	@result = main::getrras('APCUPSD', \@testdata);
-	ok(Dumper(\@result), "\$VAR1 = [\n          'RRA:MIN:0.5:1:1',\n          'RRA:MIN:0.5:6:2',\n          'RRA:MIN:0.5:24:3',\n          'RRA:MIN:0.5:288:4'\n        ];\n");
+	ok(Dumper(\@result), "\$VAR1 = [
+          'RRA:MIN:0.5:1:1',
+          'RRA:MIN:0.5:6:2',
+          'RRA:MIN:0.5:24:3',
+          'RRA:MIN:0.5:288:4'
+        ];\n");
 	# default
 	@result = main::getrras('other value', \@testdata);
-	ok(Dumper(\@result), "\$VAR1 = [\n          'RRA:AVERAGE:0.5:1:1',\n          'RRA:AVERAGE:0.5:6:2',\n          'RRA:AVERAGE:0.5:24:3',\n          'RRA:AVERAGE:0.5:288:4'\n        ];\n");
-}
-
-sub testruncreate {				# runcreate tested as part of createrrd
+	ok(Dumper(\@result), "\$VAR1 = [
+          'RRA:AVERAGE:0.5:1:1',
+          'RRA:AVERAGE:0.5:6:2',
+          'RRA:AVERAGE:0.5:24:3',
+          'RRA:AVERAGE:0.5:288:4'
+        ];\n");
 }
 
 sub testcheckdatasources {
@@ -743,9 +755,6 @@ sub testcreaterrd {
 	ok($result[1]->[0]->[1], 1);
 	close $LOG;
 	$Config{debug} = 0;
-}
-
-sub testrunupdate {				# like runcreate, it doesn't do much
 }
 
 sub testrrdupdate { # depends on testcreaterrd making a file
@@ -810,9 +819,34 @@ sub testi18n {
     ok(_('Size:'), 'Size:');
     ok(_('Update Graphs'), 'Update Graphs');
 
+    my $cwd = $FindBin::Bin;
+
+    undef %i18n;
+    $ENV{HTTP_ACCEPT_LANGUAGE} = '';
+    my $errstr = readi18nfile();
+    ok($errstr, 'Cannot determine language');
+
+    $errstr = readi18nfile('bogus');
+    ok($errstr, "No translations for bogus in file $cwd/../etc/nagiosgraph_bogus.conf");
+
+    $errstr = readi18nfile('en');
+    ok($errstr, "");
+
+    undef %i18n;
+    $ENV{HTTP_ACCEPT_LANGUAGE} = 'es-mx,es';
+    $errstr = readi18nfile();
+    ok($errstr, "");
+    ok(_('Day'), 'Diario');
+
+    undef %i18n;
+    $ENV{HTTP_ACCEPT_LANGUAGE} = 'es_mx,es';
+    $errstr = readi18nfile();
+    ok($errstr, "");
+    ok(_('Day'), 'Diario');
+
     undef %i18n;
     $Config{language} = 'es';
-    my $errstr = readi18nfile();
+    $errstr = readi18nfile();
     ok($errstr, "");
     ok(_('Day'), 'Diario');
     ok(_('Week'), 'Semanal');
@@ -978,7 +1012,7 @@ sub testparsedb {
           'ping,loss'
         ];\n");
 
-    # multiple data sources
+    # multiple data sources in db,ds pairs
     $str = '&db=ping,rta&db=ping,loss&db=ping,crit&db=ping,warn';
     ($db, $dblabel) = parsedb($str);
     ok(Dumper($db), "\$VAR1 = [
@@ -986,6 +1020,14 @@ sub testparsedb {
           'ping,loss',
           'ping,crit',
           'ping,warn'
+        ];\n");
+
+    # multiple data sources in single list
+    $str = '&db=ping,rta&db=loss,losspct,losswarn,losscrit';
+    ($db, $dblabel) = parsedb($str);
+    ok(Dumper($db), "\$VAR1 = [
+          'ping,rta',
+          'loss,losspct,losswarn,losscrit'
         ];\n");
 
     # multiple data sources with labels
@@ -1006,6 +1048,15 @@ sub testparsedb {
     $Config{debug} = 0;
 }
 
+# ensure that we unescape properly anything that is thrown at us
+sub testcleanline {
+    my $ostr = cleanline('&db=ping,rta&label=Real+Time Astronaut');
+    ok($ostr, '&db=ping,rta&label=Real Time Astronaut');
+
+    $ostr = cleanline('&db=ping,rta&label=Real%20Time%20Astronaut');
+    ok($ostr, '&db=ping,rta&label=Real Time Astronaut');
+}
+
 sub testgetcfgfn {
     my $cwd = $FindBin::Bin;
     my $fn = getcfgfn('/home/file.txt');
@@ -1018,10 +1069,14 @@ sub testreadhostdb {
     setuprrd();
     setupauthhosts();
 
+    # nothing when no file defined
+    undef $Config{hostdb};
+    my $result = readhostdb();
+    ok(@{$result}, 0);
+
     my $fn = "$FindBin::Bin/db.conf";
     my $rrddir = gettestrrddir();
     $Config{hostdb} = $fn;
-    my $result;
 
     # nothing when nothing in file
     open TEST, ">$fn";
@@ -1032,6 +1087,7 @@ sub testreadhostdb {
 
     # specify ping service with ping db
     open TEST, ">$fn";
+    print TEST "#this is a comment\n";
     print TEST "service=PING&db=ping\n";
     close TEST;
 
@@ -1125,7 +1181,7 @@ sub testreadhostdb {
         ];\n");
 
 
-    # valid service, bogus dataset
+    # valid service, bogus data source
     open TEST, ">$fn";
     print TEST "service=PING&db=foo\n";
     close TEST;
@@ -1135,7 +1191,7 @@ sub testreadhostdb {
     ok(@{$result}, 0);
 
 
-    # test multiple datasets per line
+    # test multiple data sources per line
     open TEST, ">$fn";
     print TEST "service=ping&db=rta&db=loss\n";
     print TEST "service=PING&db=ping,losspct&db=ping,rta\n";
@@ -1168,7 +1224,7 @@ sub testreadhostdb {
         ];\n");
 
 
-    # test database versus dataset
+    # test database versus data source
     open TEST, ">$fn";
     print TEST "service=PING&db=ping\n";
     close TEST;
@@ -1205,13 +1261,32 @@ sub testreadhostdb {
     $result = readhostdb('host2');
     ok(@{$result}, 0);
     ok(Dumper($result), "\$VAR1 = [];\n");
-    # bogus dataset should result in no match
+    # bogus data source should result in no match
     open TEST, ">$fn";
     print TEST "service=PING&db=ping,bogus\n";
     close TEST;
     $result = readhostdb('host2');
     ok(@{$result}, 0);
     ok(Dumper($result), "\$VAR1 = [];\n");
+
+    
+    # test multiple data sets alternative syntax
+    open TEST, ">$fn";
+    print TEST "service=ping&db=loss,losspct,losswarn&db=rta,rtawarn,rtacrit\n";
+    close TEST;
+    $result = readhostdb('host3');
+    ok(@{$result}, 1);
+    ok(Dumper($result), "\$VAR1 = [
+          {
+            'db' => [
+                      'loss,losspct,losswarn',
+                      'rta,rtawarn,rtacrit'
+                    ],
+            'db_label' => {},
+            'service' => 'ping',
+            'host' => 'host3'
+          }
+        ];\n");
 
 
     # test service labels parsing
@@ -1249,7 +1324,7 @@ sub testreadhostdb {
         ];\n");
 
 
-    # test dataset labels parsing
+    # test data source labels parsing
     open TEST, ">$fn";
     print TEST "service=PING&db=ping&label=Ping Loss Percentage\n";
     close TEST;
@@ -1307,26 +1382,6 @@ sub testreadhostdb {
           }
         ];\n");
 
-
-    # test for spaces in label names and CGI escaping
-    open TEST, ">$fn";
-    print TEST "service=PING&db=ping,rta&label=Real+Time Astronaut\n";
-    print TEST "service=PING&db=ping,losspct&label=Loser\n";
-    close TEST;
-
-
-    # ensure that labels override those in cfg file
-    open TEST, ">$fn";
-    print TEST "service=PING&db=ping,rta&label=Real+Time+Astronaut\n";
-    print TEST "service=PING&db=ping,losspct&label=Loser\n";
-    close TEST;
-
-
-    # test labels for multiple data sets
-    open TEST, ">$fn";
-    print TEST "service=PING&db=ping,losspct&label=A&db=ping,rta&label=B\n";
-    close TEST;
-
     unlink $fn;
     teardownrrd();
     teardownauthhosts();
@@ -1336,9 +1391,13 @@ sub testreadservdb {
     setuprrd();
     setupauthhosts();
 
+    # nothing when no file defined
+    undef $Config{servdb};
+    my $result = readservdb();
+    ok(@{$result}, 0);
+
     my $fn = "$FindBin::Bin/db.conf";
     $Config{servdb} = $fn;
-    my $result;
 
     # when nothing in file, use defaults
 
@@ -1362,6 +1421,7 @@ sub testreadservdb {
     ok(@{$result}, 0);
 
     open TEST, ">$fn";
+    print TEST "#this is a comment\n";
     print TEST "host=host0\n";
     print TEST "host=host1\n";
     print TEST "host=host2\n";
@@ -1401,7 +1461,7 @@ sub testreadservdb {
           'host3'
         ];\n");
 
-    # check database/dataset specialization
+    # check database/source specialization
 
     $result = readservdb('ping', ['loss']);
     ok(@{$result}, 1);
@@ -1484,18 +1544,17 @@ sub testreadgroupdb {
     my $fn = "$FindBin::Bin/db.conf";
     my $rrddir = gettestrrddir();
     $Config{groupdb} = $fn;
-    my $names;
-    my $infos;
 
     # nothing when nothing in file
 
     open TEST, ">$fn";
     print TEST "\n";
     close TEST;
-    ($names,$infos) = readgroupdb('PING');
+    my ($names,$infos) = readgroupdb('PING');
     ok(@{$names}, 0);
 
     open TEST, ">$fn";
+    print TEST "#this is a comment\n";
     print TEST "PING=host1,PING&db=ping,rta\n";
     print TEST "PING=host1,PING&db=ping,losspct\n";
     print TEST "PING=host2,PING&db=ping,losspct\n";
@@ -1560,6 +1619,26 @@ sub testreadgroupdb {
           }
         ];\n");
 
+    
+    # test multiple data sources from multiple databases
+
+    open TEST, ">$fn";
+    print TEST "PING=host3,ping&db=loss,losspct,losscrit,losswarn&db=rta,rtacrit\n";
+    close TEST;
+    ($names,$infos) = readgroupdb('PING');
+    ok(@{$infos}, 1);
+    ok(Dumper($infos), "\$VAR1 = [
+          {
+            'db' => [
+                      'loss,losspct,losscrit,losswarn',
+                      'rta,rtacrit'
+                    ],
+            'db_label' => {},
+            'service' => 'ping',
+            'host' => 'host3'
+          }
+        ];\n");
+
     # test service and data labels
 
     open TEST, ">$fn";
@@ -1602,9 +1681,13 @@ sub testreadgroupdb {
 sub testreaddatasetdb {
     setuprrd();
 
+    # nothing when no file defined
+    undef $Config{datasetdb};
+    my $result = readdatasetdb();
+    ok(keys %{$result}, 0);
+
     my $fn = "$FindBin::Bin/db.conf";
     $Config{datasetdb} = $fn;
-    my $result;
 
     open TEST, ">$fn";
     print TEST "\n";
@@ -1615,6 +1698,7 @@ sub testreaddatasetdb {
     ok(keys %{$result}, 0);
 
     open TEST, ">$fn";
+    print TEST "#this is a comment\n";
     print TEST "service=PING&db=ping,rta\n";
     print TEST "service=net&db=bytes-received&db=bytes-transmitted\n";
     close TEST;
@@ -1683,11 +1767,15 @@ sub testreadrrdoptsfile {
 }
 
 sub testreadlabelsfile {
+    undef %Labels;
+    my $errstr = readlabelsfile();
+    ok($errstr, "");
+
     my $fn = "$FindBin::Bin/db.conf";
     $Config{labelfile} = $fn;
 
     undef %Labels;
-    my $errstr = readlabelsfile();
+    $errstr = readlabelsfile();
     ok($errstr, "cannot open $fn: No such file or directory");
     ok(Dumper(\%Labels), "\$VAR1 = {};\n");
 
@@ -2019,6 +2107,7 @@ testgraphinfo();
 testprocessdata();
 testinitperiods();
 testparsedb();
+testcleanline();
 testgetcfgfn();
 testreadhostdb();
 testreadservdb();

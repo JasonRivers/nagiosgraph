@@ -20,7 +20,3 @@ Desired features.
 * do pattern matching in the groupdb and hostdb files
 * data labels should be applied to graphs, not just html
 * do test coverage on the cgi scripts, not just ngshared.pm
-* write unit tests to ensure old cgi format of db=db[,ds[,ds[,ds[...]]]]
-   for show.cgi, showservice.cgi, showgraph.cgi
-* write unit tests to ensure old cgi format of db=db[,ds[,ds[,ds[...]]]]
-   for hostdb.conf, groupdb.conf, datasetdb.conf
