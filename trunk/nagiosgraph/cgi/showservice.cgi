@@ -47,12 +47,8 @@ foreach my $period (graphsizes($periods)) {
     foreach my $host (@{$hosts}) {
         $params->{host} = $host;
 
-        # FIXME: this uses the datasets from the first host encountered.
-        # we use the same logic in the javascript, and it is not correct.
-        # it works in most cases, but there may be corner cases where it
-        # is not appropriate.
         if (scalar @{$params->{db}} == 0) {
-            $params->{db} = dbfilelist($params->{host}, $params->{service});
+            $params->{db} = dbfilelist($host, $params->{service});
         }
 
         my $url = $Config{nagiosgraphcgiurl} .
@@ -101,7 +97,7 @@ B<showservice.cgi>?service=service_description
 
 =item service=service_description
 
-=item db=database[,dataset[,dataset[,dataset[...]]]]
+=item db=database[,ds-name[,ds-name[,ds-name[...]]]]
 
 =item period=(day week month quarter year)
 

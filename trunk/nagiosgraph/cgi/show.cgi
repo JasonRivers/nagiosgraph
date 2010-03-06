@@ -87,7 +87,7 @@ B<show.cgi>?host=host_name&service=service_name
 
 =item service=service_description
 
-=item db=database[,dataset[,dataset[,dataset[...]]]]
+=item db=database[,ds-name[,ds-name[,ds-name[...]]]]
 
 =item period=(day week month quarter year)
 

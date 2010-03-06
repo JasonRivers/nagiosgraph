@@ -17,7 +17,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 439; }
+BEGIN { plan tests => 465; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -322,6 +322,14 @@ sub testlisttodict { # Split a string separated by a configured value into hash.
 		ok($testvar->{$ii}, 1);
 	}
 	close $LOG;
+}
+
+sub testarrayorstring {
+    my %opts;
+    $opts{a} = 'aval';
+    $opts{array} = ['a','b','c'];
+    ok(arrayorstring(\%opts, 'a'), '&a=aval');
+    ok(arrayorstring(\%opts, 'array'), '&array=a&array=b&array=c');
 }
 
 sub testcheckdirempty { # Test with an empty directory, then one with a file.
@@ -969,29 +977,46 @@ sub testcheckdatasources {
 }
 
 sub testcreaterrd {
-	$Config{debug} = 0;
-	open $LOG, '+>', \$log;
-	$Config{rrddir} = $FindBin::Bin;
-	# test creation of a separate file for specific data
-	$Config{dbseparator} = '';
-	$testvar = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
-	$Config{hostservvar} = 'testbox,procs,users';
-	$Config{hostservvarsep} = ';';
-	$Config{hostservvar} = listtodict('hostservvar');
-	ok($Config{hostservvar}->{testbox}->{procs}->{users}, 1);
-	@result = createrrd('testbox', 'procs', 1221495632, $testvar);
-	ok($result[0]->[1], 'testbox_procsusers_procs.rrd');
-	ok(-f $FindBin::Bin . '/testbox_procsusers_procs.rrd');
-	ok(-f $FindBin::Bin . '/testbox_procs_procs.rrd');
-	# test creation of a default data file
-	$Config{dbseparator} = 'subdir';
-	$testvar = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-	@result = createrrd('testbox', 'PING', 1221495632, $testvar);
-	ok($result[0]->[0], 'PING___ping.rrd');
-	ok($result[1]->[0]->[0], 0);
-	ok($result[1]->[0]->[1], 1);
-	close $LOG;
-	$Config{debug} = 0;
+    $Config{debug} = 0;
+    open $LOG, '+>', \$log;
+    $Config{rrddir} = $FindBin::Bin;
+    # test creation of a separate file for specific data
+    $Config{dbseparator} = '';
+    $testvar = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    $Config{hostservvar} = 'testbox,procs,users';
+    $Config{hostservvarsep} = ';';
+    $Config{hostservvar} = listtodict('hostservvar');
+    ok($Config{hostservvar}->{testbox}->{procs}->{users}, 1);
+    @result = createrrd('testbox', 'procs', 1221495632, $testvar);
+    ok($result[0]->[1], 'testbox_procsusers_procs.rrd');
+    ok(-f $FindBin::Bin . '/testbox_procsusers_procs.rrd');
+    ok(-f $FindBin::Bin . '/testbox_procs_procs.rrd');
+    # test creation of a default data file
+    $Config{dbseparator} = 'subdir';
+    $testvar = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd('testbox', 'PING', 1221495632, $testvar);
+    ok($result[0]->[0], 'PING___ping.rrd');
+    ok($result[1]->[0]->[0], 0);
+    ok($result[1]->[0]->[1], 1);
+    close $LOG;
+    $Config{debug} = 0;
+}
+
+sub testcheckdsname {
+    ok(checkdsname('ping'), 0);
+    ok(checkdsname('ping0'), 0);
+    ok(checkdsname('0ping'), 0);
+    ok(checkdsname('ping and pong'), 1);
+    ok(checkdsname('abcdefghijklmnopqrstuvwxyz'), 1);
+    ok(checkdsname('0123456789012345678'), 0);
+    ok(checkdsname('012345678901234567890'), 1);
+}
+
+sub testmkvname {
+    ok(mkvname('ping','loss'), 'ping_loss');
+    ok(mkvname('ping','loss%20pct'), 'ping_loss_20pct');
+    ok(mkvname('0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789','abcdefghijklmnopqrstuvwxyz'), '0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789_abcd');
+    ok(mkvname('a-b','r_s,'), 'a-b_r_s,');
 }
 
 sub testrrdupdate { # depends on testcreaterrd making a file
@@ -2255,6 +2280,17 @@ sub testgetrefresh {
     ok(Dumper(\@refresh), "\$VAR1 = [];\n");
 }
 
+sub testgetperiodctrls {
+    my $cgi = new CGI;
+    my $offset = 86_400;
+    my @period = ('day', 118_800, 86_400);
+    my $now = 1267333859; # Sun Feb 28 00:10:59 2010
+    my ($p,$c,$n) = getperiodctrls($cgi, $offset, \@period, $now);
+    ok($p, '<a href="&amp;offset=172800"><</a>');
+    ok($c, '\'15:10 25 Feb\' - \'00:10 27 Feb\'');
+    ok($n, '<a href="&amp;offset=0">></a>');
+}
+
 sub testgetperiodlabel {
     $Config{timeformat_day} = '%H:%M %e %b';
     $Config{timeformat_week} = '%e %b';
@@ -2336,6 +2372,43 @@ sub testcheckrrddir {
     rmtree($a);
 }
 
+sub testgetlabel {
+    ok(getlabel('foo'), 'foo');
+    $Labels{foo} = 'bar';
+    ok(getlabel('foo'), 'bar');
+    undef $Labels{foo};
+}
+
+sub testbuildurl {
+    ok(buildurl('host0', ''), '');
+    ok(buildurl('', 'ping'), '');
+    ok(buildurl('', ''), '');
+
+    my %opts;
+    ok(buildurl('host0', 'ping', \%opts),
+       'host=host0&service=ping');
+
+    $opts{db} = '';
+    ok(buildurl('host0', 'ping', \%opts),
+       'host=host0&service=ping');
+    undef $opts{db};
+
+    $opts{db} = 'loss,losspct';
+    ok(buildurl('host0', 'ping', \%opts),
+       'host=host0&service=ping&db=loss,losspct');
+    undef $opts{db};
+
+    $opts{db} = ['loss,losspct', 'rta,rta'];
+    ok(buildurl('host0', 'ping', \%opts),
+       'host=host0&service=ping&db=loss,losspct&db=rta,rta');
+    undef $opts{db};
+
+    $opts{geom} = '100x100';
+    ok(buildurl('host0', 'ping', \%opts),
+       'host=host0&service=ping&geom=100x100');
+    undef $opts{geom};
+}
+
 
 testdebug();
 testdumper();
@@ -2346,6 +2419,7 @@ testdircreation();
 testmkfilename();
 testhashcolor();
 testlisttodict();
+testarrayorstring();
 testcheckdirempty();
 testreadfile();
 testreadconfig();
@@ -2357,6 +2431,8 @@ testgraphsizes();
 testinputdata();
 testgetrras();
 testcheckdatasources();
+testcheckdsname();
+testmkvname();
 testcreaterrd();
 testrrdupdate(); # must be run after createrrd
 testgetrules();
@@ -2381,6 +2457,9 @@ testi18n();
 testprinti18nscript();
 testgetstyle();
 testgetrefresh();
+testgetperiodctrls();
 testgetperiodlabel();
 testformattime();
 testcheckrrddir();
+testgetlabel();
+testbuildurl();

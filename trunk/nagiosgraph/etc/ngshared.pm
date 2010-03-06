@@ -39,6 +39,7 @@ use constant DBLISTROWS => 3;
 use constant PERIODLISTROWS => 5;
 use constant RRDEXT => '.rrd';
 use constant DEFAULT => 'default';
+use constant DSNAME_MAXLEN => 19;
 
 # default values for configuration options
 use constant GEOMETRIES => '500x80,650x150,1000x200';
@@ -67,7 +68,7 @@ my %PERIOD_DATA = ('day' => ['day', 118_800, 86_400],
                    'week' => ['week', 777_600, 604_800],
                    'month' => ['month', 3_024_000, 2_592_000],
                    'quarter' => ['quarter', 8_467_200, 7_776_000],
-                   'year' => ['year', 34_560_000, 31_536_000],);
+                   'year' => ['year', 34_560_000, 31_536_000]);
 my %PERIOD_LABELS =qw(day Day week Week month Month quarter Quarter year Year);
 
 # keys for string literals in the javascript
@@ -286,7 +287,7 @@ sub getdebug {
 #
 # host=host_name (from nagios configuration)
 # service=service_description (from nagios configuration)
-# db=dataset (may be comma-delimited or specified multiple times)
+# db=db[,ds[,ds[...]]] (may be comma-delimited or specified multiple times)
 # geom=WxH
 # rrdopts=
 # offset=seconds
@@ -443,8 +444,8 @@ sub buildurl {
     debug(DBDEB, "buildurl($host, $service)");
     dumper(DBDEB, 'buildurl opts', $opts);
     my $url = join q(&), 'host=' . $host, 'service=' . $service;
-    $url .= arrayorstring($opts, 'db') .
-            arrayorstring($opts, 'geom');
+    $url .= arrayorstring($opts, 'db');
+    $url .= arrayorstring($opts, 'geom');
     if (exists $opts->{fixedscale} and $opts->{fixedscale}) {
         $url .= '&fixedscale';
     }
@@ -1077,9 +1078,9 @@ sub readgroupdb {
     return \@gnames, \@ginfo;
 }
 
-# Default datasets for services are defined using lines with this format:
+# Default data for services are defined using lines with this format:
 #
-#   service=name&db=database[,dataset][&db=database[,dataset][...]]
+#   service=name&db=database[,ds-name][&db=database[,ds-name][...]]
 #
 # Data sets from the db file are used only if no data sets are specified as
 # an argument to this subroutine.
@@ -1231,10 +1232,10 @@ sub graphinfo {
 }
 
 sub getlineattr {
-    my ($dataset) = @_;
+    my ($ds) = @_;
     my $linestyle = $Config{plotas};
     foreach my $ii (qw(LINE1 LINE2 LINE3 AREA TICK)) {
-        if (defined $Config{'plotas' . $ii}->{$dataset}) {
+        if (defined $Config{'plotas' . $ii}->{$ds}) {
             $linestyle = $ii;
             last;
         }
@@ -1242,7 +1243,7 @@ sub getlineattr {
     my $linecolor = q();
     if (defined $Config{lineformat}) {
         foreach my $tuple (keys %{$Config{lineformat}}) {
-            if ($tuple =~ /^$dataset,/) {
+            if ($tuple =~ /^$ds,/) {
                 my @values = split /,/, $tuple;
                 foreach my $value (@values) {
                     if ($value eq 'LINE1' || $value eq 'LINE2' ||
@@ -1257,29 +1258,40 @@ sub getlineattr {
         }
     }
     if ($linecolor eq q()) {
-        $linecolor = hashcolor($dataset);
+        $linecolor = hashcolor($ds);
     }
     return $linestyle, $linecolor;
 }
 
+# the rrd vname can contain only A-Za-z0-9_,- and must be no more than 255 long
+sub mkvname {
+    my ($dbname, $dsname) = @_;
+    my $vname = $dbname . '_' . $dsname;
+    $vname =~ s/[^A-Za-z0-9_,-]/_/g;
+    if (length $vname > 255) {
+        $vname = substr $vname, 0, 255;
+    }
+    return $vname;
+}
+
 sub setlabels {
-    my ($dataset, $dbname, $file, $serv, $labellength) = @_;
-    debug(DBDEB, "setlabels($dataset, $dbname, $file, $serv, $labellength)");
+    my ($dsname, $dbname, $file, $serv, $labellength) = @_;
+    debug(DBDEB, "setlabels($dsname, $dbname, $file, $serv, $labellength)");
     my @ds;
-    my $id = $dbname . '_' . $dataset;
-    my $label = sprintf "%-${labellength}s", $dataset;
-    my ($linestyle, $linecolor) = getlineattr($dataset);
+    my $id = mkvname($dbname, $dsname);
+    my $label = sprintf "%-${labellength}s", $dsname;
+    my ($linestyle, $linecolor) = getlineattr($dsname);
     if (defined $Config{maximums}->{$serv}) {
-        push @ds, "DEF:$id=$file:$dataset:MAX"
+        push @ds, "DEF:$id=$file:$dsname:MAX"
                 , "CDEF:ceil$id=$id,CEIL"
                 , "$linestyle:${id}#$linecolor:$label";
     } elsif (defined $Config{minimums}->{$serv}) {
-        push @ds, "DEF:$id=$file:$dataset:MIN"
+        push @ds, "DEF:$id=$file:$dsname:MIN"
                 , "CDEF:floor$id=$id,FLOOR"
                 , "$linestyle:${id}#$linecolor:$label";
     } else {
-        push @ds, "DEF:${id}=$file:$dataset:AVERAGE";
-        if (defined $Config{negate}->{$dataset}) {
+        push @ds, "DEF:${id}=$file:$dsname:AVERAGE";
+        if (defined $Config{negate}->{$dsname}) {
             push @ds, "CDEF:${id}_neg=${id},-1,*";
             push @ds, "$linestyle:${id}_neg#$linecolor:$label";
         } else {
@@ -1290,26 +1302,26 @@ sub setlabels {
 }
 
 sub setdata { ## no critic (ProhibitManyArgs)
-    my ($dataset, $dbname, $file, $serv, $fixedscale, $dur) = @_;
-    debug(DBDEB, "setdata($dataset, $dbname, $file, $serv, $fixedscale, $dur)");
+    my ($dsname, $dbname, $file, $serv, $fixedscale, $dur) = @_;
+    debug(DBDEB, "setdata($dsname, $dbname, $file, $serv, $fixedscale, $dur)");
     my @ds;
-    my $id = $dbname . '_' . $dataset;
+    my $id = mkvname($dbname, $dsname);
     my $format = '%6.2lf%s';
     if ($fixedscale) { $format = '%6.2lf'; }
     debug(DBDEB, "setdata: format=$format");
     if ($dur > 120_000) { # long enough to start getting summation
         if (defined $Config{withmaximums}->{$serv}) {
             my $maxcolor = '888888'; #$color;
-            push @ds, "DEF:${id}_max=${file}_max:$dataset:MAX"
+            push @ds, "DEF:${id}_max=${file}_max:$dsname:MAX"
                     , "LINE1:${id}_max#${maxcolor}:maximum";
         }
         if (defined $Config{withminimums}->{$serv}) {
             my $mincolor = 'BBBBBB'; #color;
-            push @ds, "DEF:${id}_min=${file}_min:$dataset:MIN"
+            push @ds, "DEF:${id}_min=${file}_min:$dsname:MIN"
                     , "LINE1:${id}_min#${mincolor}:minimum";
         }
         if (defined $Config{withmaximums}->{$serv}) {
-            push @ds, "CDEF:${id}_maxif=${id}_max,UN",
+            push @ds, "CDEF:${id}_maxif=${id}_max,UN"
                     , "CDEF:${id}_maxi=${id}_maxif,${id},${id}_max,IF"
                     , "GPRINT:${id}_maxi:MAX:Max\\: $format";
         } else {
@@ -1317,7 +1329,7 @@ sub setdata { ## no critic (ProhibitManyArgs)
         }
         push @ds, "GPRINT:$id:AVERAGE:Avg\\: $format";
         if (defined $Config{withminimums}->{$serv}) {
-            push @ds, "CDEF:${id}_minif=${id}_min,UN",
+            push @ds, "CDEF:${id}_minif=${id}_min,UN"
                     , "CDEF:${id}_mini=${id}_minif,${id},${id}_min,IF"
                     , "GPRINT:${id}_mini:MIN:Min\\: $format\\n"
         } else {
@@ -1421,13 +1433,13 @@ sub rrdline {
         $dbname =~ tr|/|_|; # keep rrdgraph happy
         my $fn = "$directory/$file";
         dumper(DBDEB, 'rrdline: this graphinfo entry', $ii);
-        for my $dataset (sortnaturally(keys %{$ii->{line}})) {
-            my ($serv, $pos) = ($service, length($service) - length $dataset);
-            if (substr($service, $pos) eq $dataset) {
+        for my $dsname (sortnaturally(keys %{$ii->{line}})) {
+            my ($serv, $pos) = ($service, length($service) - length $dsname);
+            if (substr($service, $pos) eq $dsname) {
                 $serv = substr $service, 0, $pos;
             }
-            push @ds, setlabels($dataset, $dbname, "$fn", $serv, $longest);
-            push @ds, setdata($dataset, $dbname, "$fn", $serv, $fixedscale, $duration);
+            push @ds, setlabels($dsname, $dbname, "$fn", $serv, $longest);
+            push @ds, setdata($dsname, $dbname, "$fn", $serv, $fixedscale, $duration);
         }
     }
 
@@ -1669,7 +1681,7 @@ sub printmenudatascript {
 #  defaultds[0] = ["net", "bytes-received", "bytes-transmitted" ];
 #  defaultds[1] = ["ping", "rta,rtaloss", "ping,loss"];
 #
-sub printdatasetscript {
+sub printdefaultsscript {
     my ($dsref) = @_;
 
     if ( ! defined $Config{javascript} || $Config{javascript} eq q() ) {
@@ -1922,7 +1934,7 @@ sub printgraphlinks {
 
 sub printperiodlinks {
     my($cgi, $params, $period, $now, $content) = @_;
-    my (@navstr) = getperiodctrls($cgi, $params, $period, $now);
+    my (@navstr) = getperiodctrls($cgi, $params->{offset}, $period, $now);
     my $id = 'period_data_' . $period->[0];
     return $cgi->div({-class => 'period_banner'},
                      $cgi->span({-class => 'period_title'},
@@ -1987,7 +1999,7 @@ sub printheader {
 
     $rval .= printmenudatascript($authhosts{host}, $authhosts{hostserv});
     if ($opts->{defaultdatasets}) {
-        $rval .= printdatasetscript($opts->{defaultdatasets});
+        $rval .= printdefaultsscript($opts->{defaultdatasets});
     }
     $rval .= printincludescript();
 
@@ -2045,20 +2057,18 @@ sub graphsizes {
 # display, and a url for the next period.  do not permit voyages into
 # the future.
 sub getperiodctrls {
-    my ($cgi, $params, $period, $now) = @_;
-    debug(DBDEB, "getperiodctrls(now: $now period: @{$period})");
+    my ($cgi, $offset, $period, $now) = @_;
 
     # strip any offset from the url
     my $url = $ENV{REQUEST_URI} ? $ENV{REQUEST_URI} : q();
     $url =~ s/&*offset=[^&]*//;
 
     # now calculate and inject our own offset
-    my $offset = ($params->{offset} + $period->[2]);
-    my $p = $cgi->a({-href=>"$url&offset=$offset"}, '<');
-    my $c = getperiodlabel($now,$params->{offset},$period->[1],$period->[0]);
-    $offset = ($params->{offset} - $period->[2]);
-    my $n = $cgi->a({-href=>"$url&offset=$offset"}, '>');
-    if ($offset < 0) { $n = q(); }
+    my $x = ($offset + $period->[2]);
+    my $p = $cgi->a({-href=>"$url&offset=$x"}, '<');
+    my $c = getperiodlabel($now,$offset,$period->[1],$period->[0]);
+    $x = ($offset - $period->[2]);
+    my $n = ($x < 0 ? q() : $cgi->a({-href=>"$url&offset=$x"}, '>'));
 
     return ($p, $c, $n);
 }
@@ -2146,6 +2156,16 @@ sub checkdatasources {
     return 1;
 }
 
+# ensure that the name is ok as an rrd ds name.  if not, fail loudly.  we do
+# not try to fix the name - just complain loudly about it and bail out.
+sub checkdsname {
+    my ($dsname) = @_;
+    if (length $dsname > DSNAME_MAXLEN or $dsname =~ /[^a-zA-Z0-9_]/) {
+        return 1;
+    }
+    return 0;
+}
+
 sub createrrd {
     my ($host, $service, $start, $labels) = @_;
     debug(DBDEB, "createrrd($host, $service, $start, $labels->[0])");
@@ -2191,6 +2211,9 @@ sub createrrd {
     for my $ii (0 .. @{$labels} - 1) {
         next if not $labels->[$ii];
         dumper(DBDEB, "labels->[$ii]", $labels->[$ii]);
+        if (checkdsname($labels->[$ii]->[0])) {
+            croak 'ds-name is not valid: ' . $labels->[$ii]->[0];
+        }
         my $ds = join q(:), ('DS',
                              $labels->[$ii]->[0],
                              $labels->[$ii]->[1],
@@ -2277,7 +2300,7 @@ sub runupdate {
 }
 
 sub rrdupdate {
-    my ($file, $time, $values, $host, $dataset) = @_;
+    my ($file, $time, $values, $host, $ds) = @_;
     debug(DBDEB, "rrdupdate($file, $time, $host)");
     my $directory = $Config{rrddir};
 
@@ -2287,7 +2310,7 @@ sub rrdupdate {
     my @dataset;
     push @dataset, "$directory/$file",  $time;
     for my $ii (0 .. @{$values} - 1) {
-        for (@{$dataset}) {
+        for (@{$ds}) {
             if ($ii == $_) {
                 $values->[$ii]->[2] ||= 0;
                 $dataset[1] .= ":$values->[$ii]->[2]";

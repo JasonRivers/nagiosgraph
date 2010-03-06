@@ -25,9 +25,10 @@ $Id$
    map rules unless they depend on the line count.  having the host information
    also makes it easier to diagnose parsing issues when processing data.
 * remove trailing newline from perfdata string.
-* enable display of data sets from multiple rrd files into a single graph.
 * prevent name clashes between data set names by using qualified identifiers
-   rather than just data names in graph definitions.
+   rather than just data names in graph definitions.  this enables graphing
+   of data sources from multiple databases even if the data sources have the
+   same name.
 * optionally report processing time.  processing time does *not* include the
    time required by showgraph.cgi to generate all of the graphs.
 * optionally specify a default width and height.
@@ -52,6 +53,9 @@ $Id$
 * removed fixedscale from GUI.  it remains as a cgi argument for backward
    compatibility, but it is better to define fixed scale using rrdopts.
    the syntax is '-X 0'.
+* check data source name when creating rrd files.  complain loudly and bail
+   out if the name is invalid.
+* be consistent in code and documentation for database and data source.
 
 1.4.1 2010-02-18
 

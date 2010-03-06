@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id$
+# $Id4
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license-2.0.php
 # Author:  (c) 2005 Soren Dossing
@@ -141,7 +141,7 @@ service
 
 =item service=service_name
 
-=item db=database[,dataset[,dataset[,dataset[...]]]]
+=item db=database[,ds-name[,ds-name[,ds-name[...]]]]
 
 =item period=(day | week | month | quarter | year)
 
