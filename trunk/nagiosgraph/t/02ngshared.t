@@ -17,7 +17,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 465; }
+BEGIN { plan tests => 381; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -369,132 +369,11 @@ sub testreadfile {
     unlink $fn;
 }
 
-# Check the default configuration.  this is coded into a test to help ensure
-# backward compatibility and no regressions.  if there is a change, we need
-# to know about it and handle it explicitly.
 sub testreadconfig {
     open $LOG, '+>', \$log;
     readconfig('read');
     ok($Config{logfile}, '/var/log/nagiosgraph.log');
     ok($Config{cgilogfile}, undef);
-    ok($Config{perflog}, '/var/nagios/perfdata.log');
-    ok($Config{rrddir}, '/var/nagiosgraph/rrd');
-    ok($Config{mapfile}, '/etc/nagiosgraph/map');
-    ok($Config{labelfile}, undef);
-    ok($Config{hostdb}, undef);
-    ok($Config{servdb}, undef);
-    ok($Config{groupdb}, '/etc/nagiosgraph/groupdb.conf');
-    ok($Config{datasetdb}, undef);
-    ok($Config{nagiosgraphcgiurl}, '/nagiosgraph/cgi-bin');
-    ok($Config{nagioscgiurl}, undef);
-    ok($Config{javascript}, '/nagiosgraph/nagiosgraph.js');
-    ok($Config{stylesheet}, '/nagiosgraph/nagiosgraph.css');
-    ok($Config{debug}, 3);
-    ok($Config{debug_insert}, undef);
-    ok($Config{debug_insert_host}, undef);
-    ok($Config{debug_insert_service}, undef);
-    ok($Config{debug_show}, undef);
-    ok($Config{debug_show_host}, undef);
-    ok($Config{debug_show_service}, undef);
-    ok($Config{debug_showhost}, undef);
-    ok($Config{debug_showhost_host}, undef);
-    ok($Config{debug_showhost_service}, undef);
-    ok($Config{debug_showservice}, undef);
-    ok($Config{debug_showservice_host}, undef);
-    ok($Config{debug_showservice_service}, undef);
-    ok($Config{debug_showgroup}, undef);
-    ok($Config{debug_showgroup_host}, undef);
-    ok($Config{debug_showgroup_service}, undef);
-    ok($Config{debug_showgraph}, undef);
-    ok($Config{debug_showgraph_host}, undef);
-    ok($Config{debug_showgraph_service}, undef);
-    ok($Config{debug_testcolor}, undef);
-    ok($Config{geometries}, '650x50,800x100,1000x200,2000x100');
-    ok($Config{default_geometry}, undef);
-    ok($Config{colorscheme}, 1);
-    ok(Dumper($Config{colors}), "\$VAR1 = [
-          'D05050',
-          'D08050',
-          'D0D050',
-          '50D050',
-          '50D0D0',
-          '5050D0',
-          'D050D0',
-          '505050'
-        ];\n");
-    ok($Config{plotas}, 'LINE2');
-    ok(Dumper($Config{plotasLINE1}), "\$VAR1 = {
-          'avg15min' => 1,
-          'avg5min' => 1
-        };\n");
-    ok(Dumper($Config{plotasLINE2}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{plotasLINE3}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{plotasAREA}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{plotasTICK}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{lineformat}), "\$VAR1 = {
-          'warn,LINE1,D0D050' => 1,
-          'rtacrit,LINE1,D05050' => 1,
-          'rtawarn,LINE1,D0D050' => 1,
-          'losswarn,LINE1,D0D050' => 1,
-          'crit,LINE1,D05050' => 1,
-          'losscrit,LINE1,D05050' => 1
-        };\n");
-    ok($Config{timeall}, 'day,week,month,year');
-    ok($Config{timehost}, 'day,week,month');
-    ok($Config{timeservice}, 'day,week');
-    ok($Config{timegroup}, 'day,week');
-    ok($Config{expand_timeall}, 'day,week,month,year');
-    ok($Config{expand_timehost}, 'week');
-    ok($Config{expand_timeservice}, 'week');
-    ok($Config{expand_timegroup}, 'day');
-    ok($Config{timeformat_now}, "'%H:%M:%S %d %b %Y %Z'");
-    ok($Config{timeformat_day}, "'%H:%M %e %b'");
-    ok($Config{timeformat_week}, "'%e %b'");
-    ok($Config{timeformat_month}, "'week %U'");
-    ok($Config{timeformat_quarter}, "'week %U'");
-    ok($Config{timeformat_year}, "'%b %Y'");
-    ok($Config{refresh}, undef);
-    ok($Config{hidengtitle}, undef);
-    ok($Config{showprocessingtime}, undef);
-    ok($Config{showtitle}, 'true');
-    ok($Config{showdesc}, undef);
-    ok($Config{showgraphtitle}, undef);
-    ok($Config{hidelegend}, undef);
-    ok($Config{graphonly}, undef);
-    ok(Dumper($Config{maximums}), "\$VAR1 = {
-          'Procs: total' => 1,
-          'PLW' => 1,
-          'Current Load' => 1,
-          'Procs: zombie' => 1,
-          'User Count' => 1
-        };\n");
-    ok(Dumper($Config{minimums}), "\$VAR1 = {
-          'Mem: swap' => 1,
-          'APCUPSD' => 1,
-          'Mem: free' => 1
-        };\n");
-    ok(Dumper($Config{withmaximums}), "\$VAR1 = {
-          'PING' => 1
-        };\n");
-    ok(Dumper($Config{withminimums}), "\$VAR1 = {
-          'PING' => 1
-        };\n");
-    ok(Dumper($Config{negate}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{hostservvar}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{altautoscale}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{altautoscalemin}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{altautoscalemax}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{nogridfit}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{logarithmic}), "\$VAR1 = {};\n");
-    ok($Config{rrdopts}, undef);
-    ok($Config{rrdoptsfile}, undef);
-    ok($Config{perfloop}, undef);
-    ok($Config{heartbeat}, 600);
-    ok($Config{stepsize}, undef);
-    ok($Config{resolution}, '600 700 775 797');
-    ok($Config{dbseparator}, 'subdir');
-    ok($Config{dbfile}, undef);
-    ok($Config{language}, undef);
     close $LOG;
 }
 
@@ -1010,6 +889,12 @@ sub testcheckdsname {
     ok(checkdsname('abcdefghijklmnopqrstuvwxyz'), 1);
     ok(checkdsname('0123456789012345678'), 0);
     ok(checkdsname('012345678901234567890'), 1);
+
+    # according to rrdtool documentation, hyphens should not be allowed in ds
+    # names.  it looks like it *is* possible to create an rrd file with with
+    # hyphenated ds names.  so we permit it as well (fwiw, cacti documentation
+    # indicates that hyphens are ok).
+    ok(checkdsname('a-b'), 0);
 }
 
 sub testmkvname {
@@ -1089,7 +974,7 @@ sub testi18n {
     ok($errstr, 'Cannot determine language');
 
     $errstr = readi18nfile('bogus');
-    ok($errstr, "No translations for bogus in file $cwd/../etc/nagiosgraph_bogus.conf");
+    ok($errstr, "No translations for 'bogus' ($cwd/../etc/nagiosgraph_bogus.conf)");
 
     $errstr = readi18nfile('en');
     ok($errstr, "");

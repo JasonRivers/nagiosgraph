@@ -68,7 +68,7 @@ my %PERIOD_DATA = ('day' => ['day', 118_800, 86_400],
                    'week' => ['week', 777_600, 604_800],
                    'month' => ['month', 3_024_000, 2_592_000],
                    'quarter' => ['quarter', 8_467_200, 7_776_000],
-                   'year' => ['year', 34_560_000, 31_536_000]);
+                   'year' => ['year', 34_560_000, 31_536_000],);
 my %PERIOD_LABELS =qw(day Day week Week month Month quarter Quarter year Year);
 
 # keys for string literals in the javascript
@@ -705,14 +705,23 @@ sub readrrdoptsfile {
     return q();
 }
 
+# read the authn file.
 sub readpermsfile {
-    if ($Config{dbfile}) {
-        my $rval = eval { require $Config{dbfile}; };
-        if (defined $rval && $rval == 1) {
-            $Config{userdb} = $Config{rrddir} . '/users';
-        } else {
-            return "Cannot load permissions file $Config{dbfile}: $OS_ERROR";
+    if ( defined $Config{authfile} and $Config{authfile} ne q() ) {
+        my $fn = getcfgfn($Config{authfile});
+        open my $FH, '<', $fn or ## no critic (RequireBriefOpen)
+            return "cannot open $fn: $OS_ERROR";
+        while (<$FH>) {
+            next if /^\s*#/;        # skip commented lines
+            s/^\s+//;               # removes leading whitespace
+            /^([^=]+)\s*=\s*(.*)$/x and do {
+                my $n = $1;
+                my $v = $2;
+                $n =~ s/\s+$//;
+                $v =~ s/\s+$//;
+            };
         }
+        close $FH or return "close failed for $fn: $OS_ERROR";
     }
     return q();
 }
@@ -755,7 +764,7 @@ sub readi18nfile {
                 return $errstr;
             }
         } elsif ( substr($lang, 0, 2) ne q(en)) {
-            return "No translations for $lang in file $fn";
+            return "No translations for '$lang' ($fn)";
         }
     } else {
         return 'Cannot determine language';
@@ -857,19 +866,26 @@ sub readhostdb {
     if (defined $Config{hostdb} && $Config{hostdb} ne q()) {
         my $fn = getcfgfn($Config{hostdb});
         if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
+            my $lineno = 0;
             while (my $line = <$DB>) {
                 chomp $line;
+                $lineno += 1;
                 next if $line =~ /^\s*#/;        # skip commented lines
                 $line = cleanline($line);
                 my $service = q();
                 my $label = q();
-                if ($line =~ s/^service\s*=\s*([^&]+)//) {
+                if ( $line =~ s/^service\s*=\s*([^&]+)// ) {
                     $service = $1;
                     if ($line =~ s/^&label=([^&]+)//) {
                         $label = $1;
                     }
                 }
-                next if ! $service;
+                if ( ! $service ) {
+                    if ( $line =~ /\S+/ ) {
+                        debug(DBINF, 'readhostdb: skipping line ' . $lineno);
+                    }
+                    next;
+                }
                 $usedefaults = 0;
                 my ($db, $dblabel);
                 if ($line ne q()) {
@@ -948,13 +964,17 @@ sub readservdb {
     if (defined $Config{servdb} && $Config{servdb} ne q()) {
         my $fn = getcfgfn($Config{servdb});
         if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
+            my $lineno = 0;
             while (my $line = <$DB>) {
                 chomp $line;
+                $lineno += 1;
                 next if $line =~ /^\s*#/;        # skip commented lines
                 $line = cleanline($line);
-                if ($line =~ /^host\s*=\s*(.+)/) {
+                if ( $line =~ /^host\s*=\s*(.+)/ ) {
                     $usedefaults = 0;
                     push @allhosts, split /\s*,\s*/, $1;
+                } elsif ( $line =~ /\S+/ ) {
+                    debug(DBINF, 'readservdb: skipping line ' . $lineno);
                 }
             }
             close $DB or debug(DBERR, "readservdb: close failed for $fn: $OS_ERROR");
@@ -1024,15 +1044,17 @@ sub readgroupdb {
     my %gnames;
     my @ginfo;
     if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
+        my $lineno = 0;
         while (my $line = <$DB>) {
             chomp $line;
+            $lineno += 1;
             next if $line =~ /^\s*#/;        # skip commented lines
             $line = cleanline($line);
             my $group = q();
             my $host = q();
             my $service = q();
             my $label = q();
-            if ($line =~ s/^([^=]+)\s*=\s*([^,]+)\s*,\s*([^&]+)//) {
+            if ( $line =~ s/^([^=]+)\s*=\s*([^,]+)\s*,\s*([^&]+)// ) {
                 $group = $1;
                 $host = $2;
                 $service = $3;
@@ -1040,7 +1062,12 @@ sub readgroupdb {
                     $label = $1;
                 }
             }
-            next if ! $group || ! $host || ! $service;
+            if ( ! $group || ! $host || ! $service ) {
+                if ( $line =~ /\S+/ ) {
+                    debug(DBINF, 'readgroupdb: skipping line ' . $lineno);
+                }
+                next;
+            }
             $gnames{$group} = 1;
             next if $group ne $g;
             my ($db, $dblabel);
@@ -1095,16 +1122,20 @@ sub readdatasetdb {
     my %data;
     my $fn = getcfgfn($Config{datasetdb});
     if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
+        my $lineno = 0;
         while (my $line = <$DB>) {
             chomp $line;
+            $lineno += 1;
             next if $line =~ /^\s*#/;        # skip commented lines
             $line = cleanline($line);
-            if ($line =~ /^service\s*=\s*([^&]+)(.+)/) {
+            if ( $line =~ /^service\s*=\s*([^&]+)(.+)/ ) {
                 my $service = $1;
                 my $dbstr = $2;
                 my ($db, $dblabel) = parsedb($dbstr);
                 $data{$service} = $db;
                 debug(DBDEB, 'readdatasetdb: match for ' . $line);
+            } elsif ( $line =~ /\S+/ ) {
+                debug(DBINF, 'readdatasetdb: skipping line ' . $lineno);
             }
         }
         close $DB or debug(DBERR, "readdatasetdb: close failed for $fn: $OS_ERROR");
@@ -1561,26 +1592,21 @@ sub scandirectory {
 
 sub getserverlist {
     my ($userid) = @_;
-    debug(DBDEB, 'getserverlist userid=' . ($userid ? $userid : q()));
-    my (@hosts,               # host list in order
-        %hostserv);           # hash of hosts -> list of services
+    $userid ||= q();
+    debug(DBDEB, 'getserverlist userid=' . $userid);
 
-    # Verify the connected user is allowed to see this host.
-    if ($Config{userdb} and $userid) {
-        my %authz;
-        tie %authz, $Config{dbfile}, $Config{userdb}, O_RDONLY or ## no critic (ProhibitTies)
-            return ( host => [@hosts], hostserv => \%hostserv );
-        foreach my $ii (sortnaturally(keys %hsdata)) {
-            if (checkperms($ii, $userid, \%authz)) { push @hosts, $ii; }
+    my @hosts;
+    foreach my $ii (sortnaturally(keys %hsdata)) {
+        if (havepermission($userid, $ii)) {
+            push @hosts, $ii;
         }
-        untie %authz;
-    } else {
-        @hosts = sortnaturally(keys %hsdata);
     }
 
+    my %hostserv; # hash of hosts, services, and data
     foreach my $ii (@hosts) {
         my @services = sortnaturally(keys %{$hsdata{$ii}});
         foreach my $jj (@services) {
+            next if ! havepermission($userid, $ii, $jj);
             foreach my $kk (@{$hsdata{$ii}{$jj}}) {
                 my @dataitems =
                     getdataitems(join q(/), mkfilename($ii, $jj, $kk));
@@ -1599,22 +1625,10 @@ sub getserverlist {
     return ( host => [@hosts], hostserv => \%hostserv );
 }
 
-# If configured, check to see if this user is allowed to see this host.
-sub checkperms {
-    my ($host, $user, $authz) = @_;
-    if (not $Config{userdb}) { return 1; } # not configured = yes
-    my $untie = 1;
-    if ($authz) {
-        $untie = 0;
-    } else {
-        tie %{$authz}, $Config{dbfile}, $Config{userdb}, O_RDONLY or return; ## no critic (ProhibitTies)
-    }
-    if ($authz->{$host} and $authz->{$host}{$user}) {
-        if ($untie) { untie %{$authz}; }
-        return 1;
-    }
-    if ($untie) { untie %{$authz}; }
-    return 0;
+# FIXME: implement this
+sub havepermission {
+    my ($user, $host, $service) = @_;
+    return 1;
 }
 
 # Create Javascript i18n string constants
@@ -2160,7 +2174,7 @@ sub checkdatasources {
 # not try to fix the name - just complain loudly about it and bail out.
 sub checkdsname {
     my ($dsname) = @_;
-    if (length $dsname > DSNAME_MAXLEN or $dsname =~ /[^a-zA-Z0-9_]/) {
+    if (length $dsname > DSNAME_MAXLEN or $dsname =~ /[^a-zA-Z0-9_-]/) {
         return 1;
     }
     return 0;
@@ -2195,7 +2209,9 @@ sub createrrd {
         mkdir $directory, 0775;
     }
     if (not -w $directory) {
-        croak "cannot write to $directory";
+        my $msg = 'cannot write to directory ' . $directory;
+        debug(DBCRT, $msg);
+        croak $msg;
     }
 
     my @ds = ("$directory/$filenames[0]", '--start', $start);
@@ -2212,7 +2228,9 @@ sub createrrd {
         next if not $labels->[$ii];
         dumper(DBDEB, "labels->[$ii]", $labels->[$ii]);
         if (checkdsname($labels->[$ii]->[0])) {
-            croak 'ds-name is not valid: ' . $labels->[$ii]->[0];
+            my $msg = 'ds-name is not valid: ' . $labels->[$ii]->[0];
+            debug(DBCRT, $msg);
+            croak $msg;
         }
         my $ds = join q(:), ('DS',
                              $labels->[$ii]->[0],

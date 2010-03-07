@@ -79,6 +79,7 @@ cgi/showhost.cgi      - Generates an html page for the host specified, showing
 cgi/showservice.cgi   - Generates an html page for the service specified,
                           showing all hosts with that service.
 cgi/testcolor.cgi     - Preview of colors for keywords in each color scheme
+etc/access.conf       - Access control file
 etc/datasetdb.conf    - Optional configuration for data sets
 etc/nagiosgraph.conf  - Primary configuration file for nagiosgraph
 etc/nagiosgraph_*     - Translations

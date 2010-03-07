@@ -4,13 +4,11 @@
 #          http://www.opensource.org/licenses/artistic-license.php
 # Author:  (c) Soren Dossing, 2005
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
+# Author:  (c) Matthew Wall, 2010
 
 # The configuration file and ngshared.pm must be in this directory.
 # So take note upgraders, there is no $configfile = '....' line anymore.
 use lib '/opt/nagiosgraph/etc';
-
-
-# Main program - change nothing below
 
 use ngshared;
 use RRDs;
@@ -24,6 +22,7 @@ $VERSION = '2.0';
 
 my $errmsg = readconfig('insert');
 if ( $errmsg ne q() ) { croak $errmsg; }
+debug( DBDEB, 'insert.pl processing started' );
 $errmsg = checkrrddir('write');
 if ( $errmsg ne q() ) { croak $errmsg; }
 
@@ -42,7 +41,7 @@ if ( $Config{perfloop} ) {
     if (@perfdata) { processdata(@perfdata); }
 }
 
-debug( DBDEB, 'insert.pl exited' );
+debug( DBDEB, 'insert.pl processing complete' );
 
 __END__
 
@@ -94,8 +93,8 @@ This provides the perl interface to rrdtool.
 
 =head1 INSTALLATION
 
-Copy B<ngshared.pm> and B<nagiosgraph.conf> to a configuration directory
-such as /etc/nagiosgraph.
+Copy B<map>, B<ngshared.pm> and B<nagiosgraph.conf> to a configuration
+directory such as /etc/nagiosgraph.
 
 Copy this file to an executable directory such as /usr/local/nagiosgraph/bin.
 Make sure this file is executable by Nagios.
@@ -145,11 +144,9 @@ Nagios 2.12 on Mac OS 10.5.
 
 =head1 BUGS AND LIMITATIONS
 
-Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this simple and tested.
-
 =head1 SEE ALSO
 
-B<nagiosgraph.conf> B<ngshared.pm>
+B<map> B<nagiosgraph.conf> B<ngshared.pm>
 
 =head1 AUTHOR
 

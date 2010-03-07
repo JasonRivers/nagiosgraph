@@ -241,7 +241,7 @@ and push @s, [ 'charge',
 
 # Service type: apcupsd
 #   output:OK - Time Left: 42.0 Minutes
-#   perfdata:42.0;20;10
+#   perfdata:timeleft=42.0;20;10
 #/output:.*Time.*?([.\d]+)\sMinutes/
 /perfdata:timeleft=([.\d]+);([.\d]+);([.\d]+)/
 and push @s, [ 'time',
@@ -261,7 +261,7 @@ and push @s, [ 'load',
 
 # Service type: apcupsd
 #   output:OK - Internal Temperature: 25.6 C
-#   perfdata:25.6;30;40
+#   perfdata:temperature=25.6;30;40
 #/output:.*Temperature.*?([.\d]+)\sC/
 /perfdata:temperature=([.\d]+);([.\d]+);([.\d]+)/
 and push @s, [ 'temp',
@@ -321,26 +321,26 @@ and push @s, [ 'cpu',
 #   perfdata: total=514560 free=25924 swaptot=1506172 swapfree=1505472
 /perfdata:total=([\d]+) free=([\d]+) swaptot=([\d]+) swapfree=([\d]+)/
 and push @s, [ 'data',
-               [ 'real-total', GAUGE, $1 ],
-               [ 'real-free', GAUGE, $2 ],
-               [ 'swap-total', GAUGE, $3 ],
-               [ 'swap-free', GAUGE, $4 ]];
+               [ 'real_total', GAUGE, $1 ],
+               [ 'real_free', GAUGE, $2 ],
+               [ 'swap_total', GAUGE, $3 ],
+               [ 'swap_free', GAUGE, $4 ]];
 
 # Service type: unix network
 #   output: Received 3956221475, Transmitted = 571374458
 # perfdata: rbyte=3956221475 rpacket=36097353 rerr=0 rdrop=0 rmult=0 tbyte=571374458 tpacket=62062295 terr=6 tdrop=0 tmult=0
 /perfdata:rbyte=([\d]+) rpacket=([\d]+) rerr=([\d]+) rdrop=([\d]+) rmult=([\d]+) tbyte=([\d]+) tpacket=([\d]+) terr=([\d]+) tdrop=([\d]+) tmult=([\d]+)/
 and push @s, [ 'data',
-               [ 'byte-received', COUNTER, $1 ],
-               [ 'byte-transmitted', COUNTER, $6 ],
-               [ 'packet-received', COUNTER, $2 ],
-               [ 'packet-transmitted', COUNTER, $7 ],
-               [ 'error-received', COUNTER, $3 ],
-               [ 'error-transmitted', COUNTER, $8 ],
-               [ 'drop-received', COUNTER, $4 ],
-               [ 'drop-transmitted', COUNTER, $9 ],
-               [ 'multi-received', COUNTER, $5 ],
-               [ 'multi-transmitted', COUNTER, $10 ]];
+               [ 'byte_received', COUNTER, $1 ],
+               [ 'byte_transmitted', COUNTER, $6 ],
+               [ 'packet_received', COUNTER, $2 ],
+               [ 'packet_transmitted', COUNTER, $7 ],
+               [ 'error_received', COUNTER, $3 ],
+               [ 'error_transmitted', COUNTER, $8 ],
+               [ 'drop_received', COUNTER, $4 ],
+               [ 'drop_transmitted', COUNTER, $9 ],
+               [ 'multi_received', COUNTER, $5 ],
+               [ 'multi_transmitted', COUNTER, $10 ]];
 
 # Example for handling variable number of input items in one entry (from a
 # request from Mathias Waack to handle tracking Oracle tablespace usage):

@@ -12,6 +12,7 @@ cgi/showgroup.cgi
 cgi/showhost.cgi
 cgi/showservice.cgi
 cgi/testcolor.cgi
+etc/access.conf
 etc/datasetdb.conf
 etc/groupdb.conf
 etc/hostdb.conf
