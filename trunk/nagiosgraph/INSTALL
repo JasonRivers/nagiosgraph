@@ -377,40 +377,64 @@ Customizing the Graphs
 
 Graphs can be customized individually by specifying CGI arguments, or they
 can be customized overall by specifying values in the configuration files.
-Here are a few examples of what is possible.
 
-  - Use the geom option (e.g. &geom=350x100) for custom sizes of graphs.
+The following CGI arguments are recognized by show.cgi, showhost.cgi,
+showservice.cgi, and showgroup.cgi:
 
-  - Use the rrdopts option (e.g. &rrdopts=%2Dl%200%20%2Du%20100 (meaning:
-    "-l 0 -u 100")) for custom Y axis ranges. Any rrdgraph options can
-    be specified, but has to be url encoded when specified via CGI.
+ - hidengtitle
+   Do not display the nagiosgraph title in the page.
 
-  - Add &fixedscale to set the Y-axis to be in the same scale as the
-    perf data.  This will also set the legends to be in same scale.
+ - geom=WxH
+   Set the dimensions of all graphs to W pixels wide and H pixels tall.
 
-  - Use hidelegend (e.g. &hidelegend) to hide the legend.
+ - showtitle
+   Display a title next to each graph.
 
-  - Use lineformat to control the line thickness and line color for
-    different services.
+ - showdesc
+   Display a description of data sources next to each graph.
 
-  - Create stacked area graphs using alpha channel in colors specified
-    in the lineformat directive for each data set or in rrdopts.conf 
-    for specific services and data sets.
+ - showgraphtitle
+   Display a title in each graph.
 
-  - Use plotasX to control the line thickness for different services.
+ - graphonly
+   Display only graph data, not axes, grid, or legend.
 
-  - Some services emit multiple data sets with big differences in magnitude.
-    Others emit data with different units.  In such cases, split the data
-    into seperate graphs by specifying one or more data sets.  For example,
-    for the NTP service, jitter and offset are typically in the same range,
-    while stratum is orders of magnitude larger.  So we specify two
-    different graphs:
+ - hidelegend
+   Do not display the legend in each graph.
+
+ - fixedscale
+   Set the Y-axis to be in the same scale as the performance data.
+
+The following options are available via configuration files:
+
+ - rrdopts
+   Use the rrdopts option to specify custom RRD graphing options.  These
+   can be specified for all graphs using rrdopts, or per-service using
+   the rrdoptsfile.  When specifying options as CGI arguments, the options
+   must be URL encoded.  For example, &rrdopts=%2Dl%200%20%2Du%20100
+   (meaning: "-l 0 -u 100").
+
+ - Use lineformat to control the line thickness and line color for
+   individual services.
+
+ - Create stacked area graphs using alpha channel in colors specified
+   in the lineformat directive for each data set or in rrdopts.conf 
+   for specific services and data sets.
+
+ - Use plotasX to control the line thickness for individual services.
+
+ - Some services emit multiple data sets with big differences in magnitude.
+   Others emit data with different units.  In such cases, split the data
+   into seperate graphs by specifying one or more data sets.  For example,
+   for the NTP service, jitter and offset are typically in the same range,
+   while stratum is orders of magnitude larger.  So we specify two
+   different graphs:
 
       show.cgi?host=HOST&service=NTP&db=ntp,jitter&db=ntp,offset
       show.cgi?host=HOST&service=NTP&db=ntp,stratum
 
-    This assumes that jitter, offset, and stratum are all stored in a
-    single rrd file using a map entry such as:
+   This assumes that jitter, offset, and stratum are all stored in a
+   single rrd file using a map entry such as:
 
       /output:NTP.*Offset ([-.0-9]+).*jitter ([-.0-9]+).*stratum (\d+)/
       and push @s, [ 'ntp',
@@ -418,19 +442,19 @@ Here are a few examples of what is possible.
                      [ 'jitter',  GAUGE, $2/1000 ],
                      [ 'stratum', GAUGE, $3+1    ] ];
 
-  - Data are identified by host, service, database, and data source.  It is
-    possible to graph all sources from a single database, a single source
-    from a database, selected sources from a single database, or selected
-    sources from multiple databases.  In each case, the host and service
-    must match.  For example:
+ - Data are identified by host, service, database, and data source.  It is
+   possible to graph all sources from a single database, a single source
+   from a database, selected sources from a single database, or selected
+   sources from multiple databases.  In each case, the host and service
+   must match.  For example:
 
       showgraph.cgi?host=HOST&service=SERVICE&db=loss
       showgraph.cgi?hsot=HOST&service=SERVICE&db=loss,losspct
       showgraph.cgi?host=HOST&service=SERVICE&db=ntp,jitter,offset
       showgraph.cgi?host=HOST&service=SERVICE&db=loss,losspct&db=rta,rta
 
-    These options apply to showgraph.cgi, show.cgi, and showservice.cgi and
-    in the configuration files hostdb.conf, groupdb.conf, and datasetdb.conf.
+   These options apply to showgraph.cgi, show.cgi, and showservice.cgi and
+   in the configuration files hostdb.conf, groupdb.conf, and datasetdb.conf.
 
 See the configuration files for more options and examples.
 

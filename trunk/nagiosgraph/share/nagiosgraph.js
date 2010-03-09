@@ -8,6 +8,7 @@
 // Author:  (c) 2010 Matthew Wall
 
 var PNAME = [ 'day', 'week', 'month', 'quarter', 'year' ];
+var VERSION = 1.4;
 
 // dead simple i18n
 // based on http://24ways.org/2007/javascript-internationalisation
@@ -611,6 +612,11 @@ function cfgMenus(host, service, expanded_periods) {
   cfgHostMenu(host);
   cfgServiceMenu(host, service);
   cfgDBMenu(host, service);
+
+  var elem = document.getElementById('secondary_controls_box');
+  if (elem) { elem.style.display = 'inline'; }
+  elem = document.getElementById('js_version_' + VERSION);
+  if (elem) { elem.style.display = 'none'; }
 
   setControlsGUIState();
   setPeriodGUIStates(expanded_periods);
