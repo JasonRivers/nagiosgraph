@@ -12,7 +12,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 use Test;
 
-BEGIN { plan tests => 123; }
+BEGIN { plan tests => 125; }
 my $logfile = 'test.log';
 
 # Check the default configuration.  this is coded into a test to help ensure
@@ -95,12 +95,12 @@ sub testconfig {
     ok($Config{expand_timehost}, 'week');
     ok($Config{expand_timeservice}, 'week');
     ok($Config{expand_timegroup}, 'day');
-    ok($Config{timeformat_now}, "'%H:%M:%S %d %b %Y %Z'");
-    ok($Config{timeformat_day}, "'%H:%M %e %b'");
-    ok($Config{timeformat_week}, "'%e %b'");
-    ok($Config{timeformat_month}, "'week %U'");
-    ok($Config{timeformat_quarter}, "'week %U'");
-    ok($Config{timeformat_year}, "'%b %Y'");
+    ok($Config{timeformat_now}, "%H:%M:%S %d %b %Y %Z");
+    ok($Config{timeformat_day}, "%H:%M %e %b");
+    ok($Config{timeformat_week}, "%e %b");
+    ok($Config{timeformat_month}, "Week %U");
+    ok($Config{timeformat_quarter}, "Week %U");
+    ok($Config{timeformat_year}, "%b %Y");
     ok($Config{refresh}, undef);
     ok($Config{hidengtitle}, undef);
     ok($Config{showprocessingtime}, undef);
@@ -141,7 +141,9 @@ sub testconfig {
     ok($Config{stepsize}, undef);
     ok($Config{resolution}, '600 700 775 797');
     ok($Config{dbseparator}, 'subdir');
-    ok($Config{dbfile}, undef);
+    ok($Config{dbfile}, undef); # backward compatibility
+    ok($Config{authzmethod}, undef);
+    ok($Config{authzfile}, undef);
     ok($Config{language}, undef);
     close $LOG;
     unlink $logfile;

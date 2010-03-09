@@ -27,6 +27,7 @@ This document contains the following sections:
   Customizing the Graphs
   Adding Service Types
   Managing Data and RRD Files
+  Configuring Access Controls
   Appendix: Troubleshooting
   Appendix: Internationalization
   Appendix: Sample Installation Layouts
@@ -111,8 +112,10 @@ Upgrade Notes
    have modifications to the stylesheet (nagiosgraph.css).
 
  - Use diff, or a similar tool, to update your nagiosgraph.conf with any new
-   fields from etc/nagiosgraph.conf and your nagiosgraph.css with changes from
-   share/nagiosgraph.css.
+   fields from etc/nagiosgraph.conf
+
+ - Use diff, or a similar tool, to update your nagiosgraph.css with changes
+   from share/nagiosgraph.css.
 
  - You may want to look at etc/map to see if there are any new examples that
    you may find useful.
@@ -648,6 +651,43 @@ resolution of data:
 These parameters are used only when an rrd file is created.  To modify these
 values for an existing rrd file you must do a dump/edit/restore.  See the
 rrdtool documentation for details.
+
+
+
+Configuring Access Controls
+---------------------------
+
+nagiosgraph does authorization (authz), not authentication (authn).  Access
+is granted or denied to users for specific services and hosts.  There
+are two ways to configure authorization: using nagios contacts or using a
+standalone nagiosgraph configuration file.
+
+To use nagios access controls, define the following in nagiosgraph.conf:
+
+  authzmethod=nagios3
+  authzfile=/etc/nagios/nagios.cfg
+
+To use nagiosgraph access controls, define the following in nagiosgraph.conf:
+
+  authzmethod=nagiosgraph
+  authzfile=/etc/nagiosgraph/access.conf
+
+The nagiosgraph access control file uses the following syntax:
+
+  host,service=user
+
+Wildcards are permitted to match hosts, services, or users.  The exclamation
+character negates permissions for a user.  For example:
+
+  *=                  # deny access to everyone for all hosts and services
+  *=*                 # grant access to everyone for all hosts and services
+  host1=guest         # grant access to guest for all services on host1
+  host1,ping=!guest   # deny access to guest for ping on host1
+  *,ping=guest        # grant access to guest for ping on any host
+  *.foo.com=guest     # grant access to guest for any host in foo.com
+
+Permissions are respected by all nagiosgraph CGI scripts, so you can safely
+distribute URLs for specific graphs or reports.
 
 
 

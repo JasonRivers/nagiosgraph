@@ -7,14 +7,10 @@
 # Author:  (c) 2008 Alan Brenner, Ithaka Harbors
 # Author:  (c) 2010 Matthew Wall
 
-# The configuration file and ngshared.pm must be in this directory.
-# So take note upgraders, there is no $configfile = '....' line anymore.
+# The configuration file and ngshared.pm must be in this directory:
 use lib '/opt/nagiosgraph/etc';
 
-# Main program - change nothing below
-
 use ngshared qw(:SHOW);
-use CGI qw(-nosticky);
 use English qw(-no_match_vars);
 use strict;
 use warnings;
@@ -34,16 +30,19 @@ if (scalar @{$params->{db}} == 0) {
     }
 }
 
-cfgparams($params, $params, $params->{service});
+cfgparams($params, $params);
 
-print printheader($cgi, { title => "$params->{host} - $params->{service}",
-                          call => 'both',
-                          host => $params->{host},
-                          hosturl => $Config{nagiosgraphcgiurl} . '/showhost.cgi?host=' . $cgi->escape($params->{host}),
-                          service => $params->{service},
-                          serviceurl => $Config{nagiosgraphcgiurl} . '/showservice.cgi?service=' . $cgi->escape($params->{service}),
-                          defaultdatasets => $defaultds }) or
-    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+print printheader($cgi,
+    {
+        title           => "$params->{host} - $params->{service}",
+        call            => 'both',
+        host            => $params->{host},
+        hosturl         => $Config{nagiosgraphcgiurl} . '/showhost.cgi?host=' . $cgi->escape($params->{host}),
+        service         => $params->{service},
+        serviceurl      => $Config{nagiosgraphcgiurl} . '/showservice.cgi?service=' . $cgi->escape($params->{service}),
+        defaultdatasets => $defaultds,
+    }
+) or debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $now = time;
 for my $period (graphsizes($periods)) {

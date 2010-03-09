@@ -6,7 +6,6 @@ Bugs
 * layouts should degrade more gracefully when no CSS
 * the subroutine 'debug' should be called 'log'
 * gui controls do not prevent specifying future end date.
-* showgraph.cgi does not respect permissions
 
 Desired features.
 
@@ -16,7 +15,7 @@ Desired features.
     cases that cause problems (e.g. stickiness of next/prev URLs)
 * re-do the default map rules to match the plugins shipped in standard, current
     nagios configurations for mainstream distros
-* do authorization using a single text file instead of perl code
 * do pattern matching in the groupdb and hostdb files
 * data labels should be applied to graphs, not just html
 * do test coverage on the cgi scripts, not just ngshared.pm
+* make authz understand groups, not just users

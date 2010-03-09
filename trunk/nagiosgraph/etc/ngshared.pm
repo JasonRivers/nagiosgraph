@@ -16,7 +16,7 @@
 use strict;
 use warnings;
 use Carp;
-use CGI qw(escape unescape);
+use CGI qw(escape unescape -nosticky);
 use Data::Dumper;
 use English qw(-no_match_vars);
 use Fcntl qw(:DEFAULT :flock);
@@ -25,32 +25,51 @@ use File::Basename;
 use RRDs;
 use POSIX;
 use Time::HiRes qw(gettimeofday);
-
-use constant DBCRT => 1;
-use constant DBERR => 2;
-use constant DBWRN => 3;
-use constant DBINF => 4;
-use constant DBDEB => 5;
+use MIME::Base64;
 
 use constant PROG => basename($PROGRAM_NAME);
-use constant NAGIOSGRAPHURL => 'http://nagiosgraph.wiki.sourceforge.net/';
-use constant ERRSTYLE => '.error { font-family: sans-serif; font-size: 0.8em; padding: 0.5em; background-color: #fff6f3; border: solid 1px #cc3333; }';
-use constant DBLISTROWS => 3;
-use constant PERIODLISTROWS => 5;
-use constant RRDEXT => '.rrd';
-use constant DEFAULT => 'default';
-use constant DSNAME_MAXLEN => 19;
+
+use constant {
+    DBCRT => 1,
+    DBERR => 2,
+    DBWRN => 3,
+    DBINF => 4,
+    DBDEB => 5,
+};
+
+use constant {
+    NAGIOSGRAPHURL => 'http://nagiosgraph.sourceforge.net/',
+    ERRSTYLE => 'font-family: sans-serif; font-size: 0.8em; padding: 0.5em; background-color: #fff6f3; border: solid 1px #cc3333; margin-bottom: 1.5em;',
+    DBLISTROWS => 3,
+    PERIODLISTROWS => 5,
+    RRDEXT => '.rrd',
+    DEFAULT => 'default',
+    DSNAME_MAXLEN => 19,
+};
+
+# the javascript version number here must match the version number in the
+# nagiosgraph.js file.  change this number when the javascript is not
+# backward compatible with previous versions.
+use constant {
+    JSVERSION => 1.4,
+    JSWARNING => 'nagiosgraph.js is not installed or wrong version.',
+};
 
 # default values for configuration options
-use constant GEOMETRIES => '500x80,650x150,1000x200';
-use constant GRAPHWIDTH => 600;
-use constant COLORS => 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0';
-use constant COLORSCHEME => 1;
-use constant HEARTBEAT => 600;
-use constant RESOLUTIONS => '600 700 775 797';
-use constant PERIODS => 'day week month year';
+use constant {
+    GEOMETRIES => '500x80,650x150,1000x200',
+    GRAPHWIDTH => 600,
+    COLORS => 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0',
+    COLORSCHEME => 1,
+    HEARTBEAT => 600,
+    RESOLUTIONS => '600 700 775 797',
+    PERIODS => 'day week month year',
+};
 
-use vars qw(%Config %Labels %i18n %authhosts %hsdata $colorsub $VERSION $LOG); ## no critic (ProhibitPackageVars)
+# 5x5 clear image
+use constant IMG => 'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGljQ29udmVydGVyIChJbnRlbCl3h/oZAAAAGUlEQVR4nGL4//8/AzrGEKCCIAAAAP//AwB4w0q2n+syHQAAAABJRU5ErkJggg==';
+
+use vars qw(%Config %Labels %i18n %authhosts %authz %hsdata $colorsub $VERSION $LOG); ## no critic (ProhibitPackageVars)
 $colorsub = -1;
 $VERSION = '1.4.2';
 
@@ -76,6 +95,9 @@ my @JSLABELS = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
 push @JSLABELS, qw(Mon Tue Wed Thu Fri Sat Sun);
 push @JSLABELS, qw(OK Now Cancel);
 push @JSLABELS, 'now', 'graph data';
+
+# image parameters
+my @IMG_FG_COLOR = (255,20,20);
 
 # Debug/logging support #######################################################
 # Write information to STDERR
@@ -169,8 +191,8 @@ sub init {
         croak($errmsg);
     }
 
-    my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
-    $cgi->autoEscape(0);
+    my ($cgi, $params) = getparams();
+    getdebug($app, $params->{host}, $params->{service});
 
     $errmsg = readi18nfile($cgi->param('language'));
     if ($errmsg ne q()) {
@@ -190,14 +212,11 @@ sub init {
         htmlerror($errmsg);
         croak($errmsg);
     }
-    $errmsg = readpermsfile();
+    $errmsg = loadperms( $cgi->remote_user() );
     if ($errmsg ne q()) {
         htmlerror($errmsg);
         croak($errmsg);
     }
-
-    my $params = getparams($cgi);
-    getdebug($app, $params->{host}, $params->{service});
 
     dumper(DBDEB, 'config', \%Config);
     dumper(DBDEB, 'params', $params);
@@ -206,7 +225,7 @@ sub init {
 
     scanhsdata();
     #dumper(DBDEB, 'all host/service data', \%hsdata);
-    %authhosts = getserverlist($cgi->remote_user());
+    %authhosts = getserverlist( $cgi->remote_user() );
     #dumper(DBDEB, 'data for ' . $cgi->remote_user(), \%authhosts);
 
     return $cgi, $params;
@@ -228,7 +247,7 @@ sub initlog {
     if ($Config{debug} > 0) {
         if (not open $LOG, '>>', $logfn) { ## no critic (RequireBriefOpen)
             open $LOG, '>&=STDERR' or ## no critic (RequireBriefOpen)
-                croak 'Cannot log to file or STDERR';
+                croak('Cannot log to file or STDERR');
             debug(DBCRT, "Cannot write to '$logfn', using STDERR instead");
         }
     }
@@ -302,7 +321,8 @@ sub getdebug {
 # expand_period=(day,week,month,quarter,year)
 #
 sub getparams {
-    my ($cgi) = @_;
+    my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
+    $cgi->autoEscape(0);
     my %rval;
 
     # these flags are either string or array
@@ -340,7 +360,7 @@ sub getparams {
     if ($rval{offset}) { $rval{offset} = int $rval{offset}; }
     if (not $rval{offset} or $rval{offset} <= 0) { $rval{offset} = 0; }
 
-    return \%rval;
+    return $cgi, \%rval;
 }
 
 # return two strings: period and expand_period.  each is a comma-delimited
@@ -392,7 +412,7 @@ sub getrefresh {
 # from the supplied default object.  if there are any gaps, use values from the
 # configuration.
 sub cfgparams {
-    my($p, $dflt, $service) = @_;
+    my($p, $dflt) = @_;
 
     foreach my $ii (qw(expand_controls fixedscale showgraphtitle showtitle showdesc hidelegend graphonly)) {
         if ($dflt->{$ii} ne q()) {
@@ -491,11 +511,50 @@ sub htmlerror {
     print $cgi->header(-type => 'text/html', -expires => 0) .
         $cgi->start_html(-id => 'nagiosgraph',
                          -title => 'NagiosGraph Error',
-                         -head => $cgi->style({-type=>'text/css'}, ERRSTYLE)) .
-        $cgi->div({-class=>'error'}, $msg) . "\n" .
+                         -head => $cgi->style({-type=>'text/css'},
+                                              '.error {' . ERRSTYLE . '}')) .
+        $cgi->div( { -class => 'error' }, $msg ) . "\n" .
         $cgi->end_html() or
         debug(DBCRT, "could not write to STDOUT: $OS_ERROR");
     return;
+}
+
+sub imgerror {
+    my ($cgi, $msg) = @_;
+    $OUTPUT_AUTOFLUSH = 1;
+    print $cgi->header(-type => 'image/png') .
+        ( defined $msg && $msg ne q() ? getimg($msg) : decode_base64(IMG))
+        or debug(DBCRT, "could not write to STDOUT: $OS_ERROR");
+    return;
+}
+
+# emit a png image with the message in it.  only works if GD is available.
+# if no GD, just return a small blank image.
+sub getimg {
+    my ($msg) = @_;
+    my $rval = eval { require GD; };
+    if (defined $rval && $rval == 1) {
+        my @lines = split /\n/, $msg;
+        my $pad = 4;
+        my $maxw = 600;
+        my $maxh = 15;
+        my $width = 2 * $pad + $maxw;
+        my $height = 2 * $pad + $maxh * scalar @lines;
+        my $img = new GD::Image($width,$height);
+        my $wht = $img->colorAllocate(255,255,255);
+        my $fg = $img->colorAllocate($IMG_FG_COLOR[0],
+                                     $IMG_FG_COLOR[1],
+                                     $IMG_FG_COLOR[2]);
+        $img->transparent($wht);
+        $img->rectangle(2,2,$width-3,$height-3,$wht);
+        my $y = $pad;
+        foreach my $line (@lines) {
+            $img->string(GD->gdSmallFont,$pad,$y,"$line",$fg);
+            $y += $maxh;
+        }
+        return $img->png;
+    }
+    return decode_base64(IMG);
 }
 
 # Color subroutines ###########################################################
@@ -705,25 +764,165 @@ sub readrrdoptsfile {
     return q();
 }
 
-# read the authn file.
-sub readpermsfile {
-    if ( defined $Config{authfile} and $Config{authfile} ne q() ) {
-        my $fn = getcfgfn($Config{authfile});
-        open my $FH, '<', $fn or ## no critic (RequireBriefOpen)
-            return "cannot open $fn: $OS_ERROR";
-        while (<$FH>) {
-            next if /^\s*#/;        # skip commented lines
-            s/^\s+//;               # removes leading whitespace
-            /^([^=]+)\s*=\s*(.*)$/x and do {
-                my $n = $1;
-                my $v = $2;
-                $n =~ s/\s+$//;
-                $v =~ s/\s+$//;
-            };
+sub loadperms {
+    my ($user) = @_;
+    if ( defined $Config{authzmethod} ) {
+        if ( $Config{authzmethod} eq 'nagios3' ) {
+            return readnagiosperms( $user );
+        } elsif ( $Config{authzmethod} eq 'nagiosgraph' ) {
+            return readpermsfile( $user );
+        } else {
+            return "unknown authzmethod '$Config{authzmethod}'";
         }
-        close $FH or return "close failed for $fn: $OS_ERROR";
     }
     return q();
+}
+
+# read the nagios permissions configuration.  this would be a lot easier if
+# there were an api.  instead we have to read the config files and basically
+# reverse engineer the nagios behavior.
+sub readnagiosperms {
+    my ($user) = @_;
+    undef %authz;
+    if ( not defined $Config{authzfile} or $Config{authzfile} eq q() ) {
+        return q();
+    }
+
+# FIXME: implement this
+
+    return q();
+}
+
+# read the authz file.  we load permissions only for the indicated user (no
+# need to know permissions for anyone else).  if no authzfile is specified,
+# do not apply access control rules.  if no user is specified, then lockdown.
+sub readpermsfile {
+    my ($user) = @_;
+    undef %authz;
+    if ( not defined $Config{authzfile} or $Config{authzfile} eq q() ) {
+        return 'authzfile is not defined';
+    }
+    # defining authz enables enforcement of access controls.
+    # default to no permission.  should always have a user, but be safe if not.
+    $authz{default_host_access}{default_service_access} = 0;
+    if ( not defined $user or $user eq q() ) {
+        debug(DBWRN, 'no discernable user, defaulting to no permissions');
+        return q();
+    }
+    my $fn = getcfgfn($Config{authzfile});
+    open my $FH, '<', $fn or ## no critic (RequireBriefOpen)
+        return "cannot open $fn: $OS_ERROR";
+    my $lineno = 0;
+    while (<$FH>) {
+        $lineno += 1;
+        next if /^\s*#/;        # skip commented lines
+        s/^\s+//;               # removes leading whitespace
+        if ( /^([^=]+)\s*=\s*(.*)$/x ) {
+            my $n = $1;
+            my $v = $2;
+            $n =~ s/\s+$//;
+            $v = scrubuserlist($v);
+            if (checkuserlist($v)) {
+                debug(DBWRN, "authzfile: bad userlist '$v' (line $lineno)");
+                next;
+            }
+            my ($h,$s) = split /,/, $n;
+            $h =~ s/\s+//g;
+            if (not $h or $h eq q() or $h eq q(*)) {
+                $h = 'default_host_access';
+            }
+            if (not $s or $s eq q() or $s eq q(*)) {
+                $s = 'default_service_access';
+            }
+            my $p = getperms($user, $v);
+            if (defined $p) {
+                $authz{$h}{$s} = $p;
+            }
+        } else {
+            debug(DBWRN, "authzfile: bad format (line $lineno)");
+        }
+    }
+    close $FH or return "close failed for $fn: $OS_ERROR";
+    return q();
+}
+
+sub scrubuserlist {
+    my ($v) = @_;
+    $v =~ s/\s+//g;      # remove all spaces from userlist
+    return $v;
+}
+
+sub checkuserlist {
+    my ($v) = @_;
+    if ( $v =~ /[^!a-zA-Z0-9_\.\*-,]/ ) {
+        return 1;
+    }
+    return 0;
+}
+
+# do glob matching.  wrap it in an eval to ensure no failures.
+# return 1 if user matches positive, 0 if matches negative, undef if no match.
+# consider bad pattern a rejection.
+sub getperms {
+    my ($user, $str) = @_;
+    if ($str eq q()) { return 0; }
+    my $match;
+    foreach my $pattern (split /,/, $str) {
+        $pattern =~ s/\./\\./g;
+        $pattern =~ s/\*/\.\*/g;
+        my $rval = eval {
+            my $m = 1;
+            if (substr($pattern, 0, 1) eq q(!)) {
+                $pattern = substr $pattern, 1;
+                $m = 0;
+            }
+            if ( $user =~ /^${pattern}$/ ) {
+                return $m;
+            }
+            return;
+        };
+        if ($EVAL_ERROR) {
+            debug(DBCRT, "bad regex pattern '$pattern'");
+            return 0;
+        }
+        if (defined $rval) {
+            $match = $rval;
+        }
+    }
+    return $match;
+}
+
+# determine whether the user can view the indicated host and service.
+# the format for the authz structure is:
+#
+# authz = { * => { * => 0, service9 => 1 },
+#           host0 => { * => 1, service1 => 0 },
+#           host1 => { service0 => 0, service3 => 0 },
+#           host2 => { service0 => 1, service1 => 0 },
+#         };
+#
+sub havepermission {
+    my ($host, $service) = @_;
+    if ( not defined %authz ) {
+        return 1;
+    }
+    my $ok = 0;
+    if ( defined $authz{default_host_access}{default_service_access} ) {
+        $ok = $authz{default_host_access}{default_service_access};
+        if ( defined $service
+             and defined $authz{default_host_access}{$service} ) {
+            $ok = $authz{default_host_access}{$service};
+        }
+    }
+    if ( defined $host and defined $authz{$host} ) {
+        if ( defined $authz{$host}{default_service_access} ) {
+            $ok = $authz{$host}{default_service_access};
+        }
+        if ( defined $service and defined $authz{$host}{$service} ) {
+            $ok = $authz{$host}{$service};
+        }
+    }
+    return $ok;
 }
 
 sub readlabelsfile {
@@ -882,7 +1081,7 @@ sub readhostdb {
                 }
                 if ( ! $service ) {
                     if ( $line =~ /\S+/ ) {
-                        debug(DBINF, 'readhostdb: skipping line ' . $lineno);
+                        debug(DBWRN, "hostdb: bad format (line $lineno)");
                     }
                     next;
                 }
@@ -974,7 +1173,7 @@ sub readservdb {
                     $usedefaults = 0;
                     push @allhosts, split /\s*,\s*/, $1;
                 } elsif ( $line =~ /\S+/ ) {
-                    debug(DBINF, 'readservdb: skipping line ' . $lineno);
+                    debug(DBWRN, "servdb: bad format (line $lineno)");
                 }
             }
             close $DB or debug(DBERR, "readservdb: close failed for $fn: $OS_ERROR");
@@ -1064,7 +1263,7 @@ sub readgroupdb {
             }
             if ( ! $group || ! $host || ! $service ) {
                 if ( $line =~ /\S+/ ) {
-                    debug(DBINF, 'readgroupdb: skipping line ' . $lineno);
+                    debug(DBWRN, "groupdb: bad format (line $lineno)");
                 }
                 next;
             }
@@ -1135,7 +1334,7 @@ sub readdatasetdb {
                 $data{$service} = $db;
                 debug(DBDEB, 'readdatasetdb: match for ' . $line);
             } elsif ( $line =~ /\S+/ ) {
-                debug(DBINF, 'readdatasetdb: skipping line ' . $lineno);
+                debug(DBWRN, "datasetdb: bad format (line $lineno)");
             }
         }
         close $DB or debug(DBERR, "readdatasetdb: close failed for $fn: $OS_ERROR");
@@ -1590,15 +1789,19 @@ sub scandirectory {
     return;
 }
 
+# get the list of hosts and services for which the user has permission.  the
+# userid does nothing in this subroutine - it is just used in the messages.
 sub getserverlist {
-    my ($userid) = @_;
+    my($userid) = @_;
     $userid ||= q();
-    debug(DBDEB, 'getserverlist userid=' . $userid);
+    debug(DBDEB, "getserverlist userid=$userid");
 
     my @hosts;
     foreach my $ii (sortnaturally(keys %hsdata)) {
-        if (havepermission($userid, $ii)) {
+        if (havepermission($ii)) {
             push @hosts, $ii;
+        } else {
+            debug(DBINF, "permission denied: user $userid, host $ii");
         }
     }
 
@@ -1606,7 +1809,10 @@ sub getserverlist {
     foreach my $ii (@hosts) {
         my @services = sortnaturally(keys %{$hsdata{$ii}});
         foreach my $jj (@services) {
-            next if ! havepermission($userid, $ii, $jj);
+            if ( ! havepermission($ii, $jj) ) {
+                debug(DBINF, "permission denied: user $userid, host $ii, service $jj");
+                next;
+            }
             foreach my $kk (@{$hsdata{$ii}{$jj}}) {
                 my @dataitems =
                     getdataitems(join q(/), mkfilename($ii, $jj, $kk));
@@ -1623,12 +1829,6 @@ sub getserverlist {
     #dumper(DBDEB, 'hosts', \@hosts);
     #dumper(DBDEB, 'hosts-services', \%hostserv);
     return ( host => [@hosts], hostserv => \%hostserv );
-}
-
-# FIXME: implement this
-sub havepermission {
-    my ($user, $host, $service) = @_;
-    return 1;
 }
 
 # Create Javascript i18n string constants
@@ -1812,6 +2012,8 @@ sub printcontrols {
             $cgi->start_form(-method => 'GET',
                              -action => $action,
                              -name => 'menuform') . "\n",
+            $cgi->div({-id => 'js_version_' . JSVERSION, -style => ERRSTYLE},
+                      _(JSWARNING)) . "\n",
             $cgi->div({-class => 'primary_controls'}, "\n",
                       $menustr . "\n",
                       $cgi->span({-class => 'executor'},
@@ -1824,7 +2026,7 @@ sub printcontrols {
                               $cgi->button(-name => 'showhidecontrols',
                                            -onClick => 'toggleControlsDisplay(this)',
                                            -label => q(-))) . "\n",
-                      $cgi->div({-id => 'secondary_controls_box'}, "\n" .
+                      $cgi->div({-id => 'secondary_controls_box', -style => 'display:none'}, "\n" .
                                 $cgi->table(($context eq 'both' || $context eq 'service')
                                             ? $cgi->Tr({-valign => 'top', -id => 'db_controls' },
                                                        $cgi->td({-class => 'control_label'}, _('Data Sets:')),
@@ -2206,12 +2408,16 @@ sub createrrd {
     debug(DBDEB, "createrrd checking $directory/$filenames[0]");
     if (not -e $directory) { # ensure we can write to data directory
         debug(DBINF, "createrrd: creating directory $directory");
-        mkdir $directory, 0775;
+        if ( ! mkdir $directory, 0775 ) {
+            my $msg = "cannot create directory $directory: $OS_ERROR";
+            debug(DBCRT, $msg);
+            croak($msg);
+        }
     }
     if (not -w $directory) {
         my $msg = 'cannot write to directory ' . $directory;
         debug(DBCRT, $msg);
-        croak $msg;
+        croak($msg);
     }
 
     my @ds = ("$directory/$filenames[0]", '--start', $start);
@@ -2230,7 +2436,7 @@ sub createrrd {
         if (checkdsname($labels->[$ii]->[0])) {
             my $msg = 'ds-name is not valid: ' . $labels->[$ii]->[0];
             debug(DBCRT, $msg);
-            croak $msg;
+            croak($msg);
         }
         my $ds = join q(:), ('DS',
                              $labels->[$ii]->[0],
@@ -2354,14 +2560,19 @@ sub rrdupdate {
 sub getrules {
     my $file = getcfgfn(shift);
     debug(DBDEB, "getrules($file)");
-    my (@rules);
-    open my $FH, '<', $file or die "cannot open $file: $OS_ERROR\n";
-    while (<$FH>) {
-        push @rules, $_;
+    my @rules;
+    if ( open my $FH, '<', $file ) {
+        while (<$FH>) {
+            push @rules, $_;
+        }
+        close $FH or debug(DBERR, "close failed for $file: $OS_ERROR");
+    } else {
+        my $msg = "cannot open $file: $OS_ERROR";
+        debug(DBCRT, $msg);
+        croak($msg);
     }
-    close $FH or debug(DBERR, "close failed for $file: $OS_ERROR");
     ## no critic (ValuesAndExpressions)
-    my $rules = 'sub evalrules { $_ = $_[0];' .
+    my $code = 'sub evalrules { $_ = $_[0];' .
         ' my ($d, @s) = ($_);' .
         ' no strict "subs";' .
         join(q(), @rules) .
@@ -2369,9 +2580,9 @@ sub getrules {
         ' return () if ($#s > -1 && $s[0] eq "ignore");' .
         ' debug(3, "perfdata not recognized:\n" . $d) unless @s;'.
         ' return @s; }';
-    my $rval = eval $rules; ## no critic (ProhibitStringyEval)
+    my $rval = eval $code; ## no critic (ProhibitStringyEval)
     if ($EVAL_ERROR or $rval) {
-        debug(DBCRT, "Map file eval error: $EVAL_ERROR in: $rules");
+        debug(DBCRT, "Map file eval error: $EVAL_ERROR in: $code");
     }
     return $rval;
 }
@@ -2488,8 +2699,6 @@ This provides the perl interface to rrdtool.
 =back
 
 =head1 BUGS AND LIMITATIONS
-
-Undoubtedly there are some in here. I (Alan Brenner) have endevored to keep this simple and tested.
 
 =head1 INCOMPATIBILITIES
 

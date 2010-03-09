@@ -7,19 +7,18 @@
 # Author:  2008 (c) Alan Brenner, Ithaka Harbors
 # Author:  2010 (c) Matthew Wall
 
-# The configuration file and ngshared.pm must be in this directory.
-# So take note upgraders, there is no $configfile = '....' line anymore.
+## no critic (ProhibitConstantPragma)
+
+# The configuration file and ngshared.pm must be in this directory:
 use lib '/opt/nagiosgraph/etc';
-
-
-# Main program - change nothing below
 
 use ngshared;
 use English qw(-no_match_vars);
 use strict;
 use warnings;
 
-use constant COLS => 9; ## no critic (ProhibitConstantPragma)
+use constant COLS => 9;
+use constant WORDS => 'losspct losswarn losscrit rta rtawarn rtacrit';
 
 # Read the configuration to get any custom color scheme
 my $errmsg = readconfig('testcolor', 'cgilogfile');
@@ -36,8 +35,7 @@ if ($errmsg ne q()) {
 }
 
 # Suggest some commonly used keywords
-my $w = $cgi->param('words')
-    ? join q( ), $cgi->param('words') : 'response rta pctfree';
+my $w = $cgi->param('words') ? join q( ), $cgi->param('words') : WORDS;
 
 print $cgi->header,
     $cgi->start_html(-id => 'nagiosgraph',
@@ -82,7 +80,7 @@ __END__
 
 =head1 NAME
 
-testcolor.cgi - generate a table of colors to show what colors will be used for lines in graphs
+testcolor.cgi - generate a table of colors to show which will be used for lines in graphs
 
 =head1 DESCRIPTION
 
@@ -109,7 +107,7 @@ Color palette 9 is defined by a list of RGB colors in B<nagiosgraph.conf>
 
 =head1 CONFIGURATION
 
-Create a custom color palette in the nagiosgraph configuration file by creating
+Create a custom color palette in the nagiosgraph configuration file by defining
 a comma-delimited list of colors.  Here are some sample palettes.
 
 # rainbow: reddish, orange, yellow, green, light blue, dark blue, purple, grey

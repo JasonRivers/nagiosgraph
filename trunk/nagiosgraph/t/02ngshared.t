@@ -17,7 +17,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 381; }
+BEGIN { plan tests => 384; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -250,7 +250,7 @@ sub testhtmlerror {
 <html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en-US\" xml:lang=\"en-US\">
 <head>
 <title>NagiosGraph Error</title>
-<style type=\"text/css\">.error { font-family: sans-serif; font-size: 0.8em; padding: 0.5em; background-color: #fff6f3; border: solid 1px #cc3333; }</style>
+<style type=\"text/css\">.error {font-family: sans-serif; font-size: 0.8em; padding: 0.5em; background-color: #fff6f3; border: solid 1px #cc3333; margin-bottom: 1.5em;}</style>
 <meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\" />
 </head>
 <body id=\"nagiosgraph\">
@@ -2172,7 +2172,7 @@ sub testgetperiodctrls {
     my $now = 1267333859; # Sun Feb 28 00:10:59 2010
     my ($p,$c,$n) = getperiodctrls($cgi, $offset, \@period, $now);
     ok($p, '<a href="&amp;offset=172800"><</a>');
-    ok($c, '\'15:10 25 Feb\' - \'00:10 27 Feb\'');
+    ok($c, '15:10 25 Feb - 00:10 27 Feb');
     ok($n, '<a href="&amp;offset=0">></a>');
 }
 
@@ -2294,6 +2294,83 @@ sub testbuildurl {
     undef $opts{geom};
 }
 
+sub testcfgparams {
+    undef %Config;
+    my %dst;
+    my %src;
+
+    $src{expand_controls} = '';
+    $src{fixedscale} = '';
+    $src{showgraphtitle} = '';
+    $src{showtitle} = '';
+    $src{showdesc} = '';
+    $src{hidelegend} = '';
+    $src{graphonly} = '';
+    $src{period} = '';
+    $src{expand_period} = '';
+    $src{geom} = '';
+    $src{offset} = '';
+    cfgparams(\%dst, \%src);
+    ok(Dumper(\%dst), "\$VAR1 = {
+          'showgraphtitle' => 0,
+          'expand_controls' => 0,
+          'fixedscale' => 0,
+          'graphonly' => 0,
+          'hidelegend' => 0,
+          'showtitle' => 0,
+          'showdesc' => 0,
+          'offset' => 0
+        };\n");
+
+    $Config{expand_controls} = 'true';
+    $Config{fixedscale} = 'true';
+    $Config{showgraphtitle} = 'true';
+    $Config{showtitle} = 'true';
+    $Config{showdesc} = 'true';
+    $Config{hidelegend} = 'true';
+    $Config{graphonly} = 'true';
+    cfgparams(\%dst, \%src);
+    ok(Dumper(\%dst), "\$VAR1 = {
+          'showgraphtitle' => 1,
+          'expand_controls' => 1,
+          'fixedscale' => 1,
+          'graphonly' => 1,
+          'hidelegend' => 1,
+          'showtitle' => 1,
+          'showdesc' => 1,
+          'offset' => 0
+        };\n");
+
+    $src{expand_controls} = 'true';
+    $src{fixedscale} = 'true';
+    $src{showgraphtitle} = 'true';
+    $src{showtitle} = 'true';
+    $src{showdesc} = 'true';
+    $src{hidelegend} = 'true';
+    $src{graphonly} = 'true';
+    $src{period} = 'day';
+    $src{expand_period} = 'day';
+    $src{geom} = '100x100';
+    $src{offset} = '1';
+    cfgparams(\%dst, \%src);
+    ok(Dumper(\%dst), "\$VAR1 = {
+          'expand_controls' => 'true',
+          'geom' => '100x100',
+          'period' => 'day',
+          'graphonly' => 'true',
+          'hidelegend' => 'true',
+          'showtitle' => 'true',
+          'showdesc' => 'true',
+          'showgraphtitle' => 'true',
+          'fixedscale' => 'true',
+          'expand_period' => 'day',
+          'offset' => '1'
+        };\n");
+
+    undef %Config;
+}
+
+
 
 testdebug();
 testdumper();
@@ -2348,3 +2425,4 @@ testformattime();
 testcheckrrddir();
 testgetlabel();
 testbuildurl();
+testcfgparams();

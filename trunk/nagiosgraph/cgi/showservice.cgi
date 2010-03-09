@@ -8,67 +8,66 @@
 # Author:  (c) 2008 Alan Brenner, Ithaka Harbors
 # Author:  (c) 2010 Matthew Wall
 
-# The configuration file and ngshared.pm must be in this directory.
-# So take note upgraders, there is no $configfile = '....' line anymore.
+# The configuration file and ngshared.pm must be in this directory:
 use lib '/opt/nagiosgraph/etc';
 
-# Main program - change nothing below
-
 use ngshared qw(:SHOWSERVICE);
-use CGI qw(-nosticky);
 use English qw(-no_match_vars);
 use strict;
 use warnings;
 
 my $sts = gettimestamp();
-my ($cgi, $params) = init('showservice');
-my ($periods, $expanded_periods) = initperiods('service', $params);
+my ( $cgi, $params ) = init('showservice');
+my ( $periods, $expanded_periods ) = initperiods( 'service', $params );
 
 my $defaultds = readdatasetdb();
 if (scalar @{$params->{db}} == 0
     && $defaultds->{$params->{service}}
-    && scalar @{$defaultds->{$params->{service}}} > 0) {
+    && scalar @{$defaultds->{$params->{service}}} > 0 ) {
     $params->{db} = $defaultds->{$params->{service}};
 }
-my $hosts = readservdb($params->{service}, $params->{db});
+my $hosts = readservdb( $params->{service}, $params->{db} );
 
-cfgparams($params, $params, $params->{service});
+cfgparams( $params, $params );
 
-print printheader($cgi, { title => $params->{service},
-                          call => 'service',
-                          service => $params->{service},
-                          defaultdatasets => $defaultds }) or
-    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+print printheader($cgi,
+    {
+        title           => $params->{service},
+        call            => 'service',
+        service         => $params->{service},
+        defaultdatasets => $defaultds
+    }
+) or debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $now = time;
-foreach my $period (graphsizes($periods)) {
-    dumper(DBDEB, 'period', $period);
+foreach my $period ( graphsizes($periods) ) {
+    dumper( DBDEB, 'period', $period );
     my $str = q();
-    foreach my $host (@{$hosts}) {
+    foreach my $host ( @{$hosts} ) {
         $params->{host} = $host;
 
-        if (scalar @{$params->{db}} == 0) {
-            $params->{db} = dbfilelist($host, $params->{service});
+        if ( scalar @{ $params->{db} } == 0 ) {
+            $params->{db} = dbfilelist( $host, $params->{service} );
         }
 
-        my $url = $Config{nagiosgraphcgiurl} .
-            '/show.cgi?host=' . $cgi->escape($host) .
-            '&service=' . $cgi->escape($params->{service});
-        my $link = $cgi->a({href => $url}, $host);
+        my $url = $Config{nagiosgraphcgiurl} . '/show.cgi?'
+            . 'host=' . $cgi->escape($host)
+            . '&service=' . $cgi->escape( $params->{service} );
+        my $link = $cgi->a( {href => $url}, $host );
 
-        $str .= printgraphlinks($cgi, $params, $period, $link) . "\n";
+        $str .= printgraphlinks( $cgi, $params, $period, $link ) . "\n";
     }
-    print printperiodlinks($cgi, $params, $period, $now, $str) or
-        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+    print printperiodlinks( $cgi, $params, $period, $now, $str )
+        or debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
-print printinitscript(q(), $params->{service}, $expanded_periods) or
-    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+print printinitscript( q(), $params->{service}, $expanded_periods )
+    or debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $ets = gettimestamp();
 
-print printfooter($cgi, $sts, $ets) or
-    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+print printfooter( $cgi, $sts, $ets )
+    or debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 __END__
 

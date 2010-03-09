@@ -8,14 +8,10 @@
 # Author:  (c) 2008 Alan Brenner, Ithaka Harbors
 # Author:  (c) 2010 Matthew Wall
 
-# The configuration file and ngshared.pm must be in this directory.
-# So take note upgraders, there is no $configfile = '....' line anymore.
+# The configuration file and ngshared.pm must be in this directory:
 use lib '/opt/nagiosgraph/etc';
 
-# Main program - change nothing below
-
 use ngshared qw(:SHOWGROUP);
-use CGI qw(-nosticky);
 use English qw(-no_match_vars);
 use strict;
 use warnings;
@@ -41,7 +37,7 @@ foreach my $period ( graphsizes($periods) ) {
     dumper( DBDEB, 'period', $period );
     my $str = q();
     foreach my $info ( @{$ginfos} ) {
-        cfgparams( $info, $params, $info->{service} );
+        cfgparams( $info, $params );
 
         my $sstr = 'service=' . $cgi->escape( $info->{service} );
         if ( $info->{db} ) {

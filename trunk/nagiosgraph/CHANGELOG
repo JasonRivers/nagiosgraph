@@ -7,6 +7,12 @@ $Id$
      showprocessingtime (optional)
      default_geometry (optional)
      cgilogfile (optional)
+     authzmethod (optional)
+     authzfile (optional)
+* added access control.  there are two ways to define access controls.  the
+   default is to use the access control built in to nagios.  this works only
+   for nagios 3.  the other way is to use access control specific to
+   nagiosgraph using a standalone access control file.
 * added i18n.  this is a very basic, no-dependencies implementation.  the
    intent is to be completely self contained, add minimal overhead, and not
    break existing installations.  error messages are not translated.  the
@@ -56,6 +62,7 @@ $Id$
 * check data source name when creating rrd files.  complain loudly and bail
    out if the name is invalid.
 * be consistent in code and documentation for database and data source.
+* added div to warn when nagiosgraph.js is not installed or wrong version.
 
 1.4.1 2010-02-18
 

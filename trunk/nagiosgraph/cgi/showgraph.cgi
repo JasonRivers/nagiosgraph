@@ -7,51 +7,57 @@
 # Author:  (c) 2008 Alan Brenner, Ithaka Harbors
 # Author:  (c) 2010 Matthew Wall
 
-# The configuration file and ngshared.pm must be in this directory.
-# So take note upgraders, there is no $configfile = '....' line anymore.
+# The configuration file and ngshared.pm must be in this directory:
 use lib '/opt/nagiosgraph/etc';
-
-# Main program - change nothing below
 
 use ngshared qw(:SHOWGRAPH);
 use RRDs;
-use CGI;
 use English qw(-no_match_vars);
-use MIME::Base64;
 use strict;
 use warnings;
 
-## no critic (ProhibitMagicNumbers)
-## no critic (ProhibitMagicNumbers)
-## no critic (ProhibitConstantPragma)
-
-# 5x5 clear image
-use constant IMG => 'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGljQ29udmVydGVyIChJbnRlbCl3h/oZAAAAGUlEQVR4nGL4//8/AzrGEKCCIAAAAP//AwB4w0q2n+syHQAAAABJRU5ErkJggg==';
-
+my ($cgi, $params) = getparams();
 my $errmsg = readconfig('showgraph', 'cgilogfile');
 if ($errmsg ne q()) {
-    htmlerror($errmsg);
+    imgerror($cgi, $errmsg);
     croak($errmsg);
 }
-my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)
-$cgi->autoEscape(0);
+getdebug('showgraph', $params->{host}, $params->{service});
 $errmsg = checkrrddir('read');
 if ($errmsg ne q()) {
-    htmlerror($errmsg);
-    croak($errmsg);
+    debug(DBCRT, $errmsg);
+    imgerror($cgi, $errmsg);
+    exit;
 }
 $errmsg = readrrdoptsfile();
 if ($errmsg ne q()) {
-    htmlerror($errmsg);
-    croak($errmsg);
+    debug(DBCRT, $errmsg);
+    imgerror($cgi, $errmsg);
+    exit;
 }
-my $params = getparams($cgi);
-getdebug('showgraph', $params->{host}, $params->{service});
+$errmsg = loadperms( $cgi->remote_user() );
+if ($errmsg ne q()) {
+    debug(DBCRT, $errmsg);
+    imgerror($cgi, $errmsg);
+    exit;
+}
 
-# FIXME: respect permissions
-
-if (($params->{host} ne q() && $params->{host} ne q(-))
-    || ($params->{service} ne q() && $params->{service} ne q(-))) {
+if (! havepermission( $params->{host}, $params->{service} )) {
+    $errmsg = $cgi->remote_user() . ' does not have permission to view data';
+    if ( $params->{host} ) {
+        if ( $params->{service} ) {
+            $errmsg = $cgi->remote_user() . ' does not have permission to view service ' . $params->{service} . ' on host ' . $params->{host};
+        } else {
+            $errmsg = $cgi->remote_user() . ' does not have permission to view host ' . $params->{host};
+        }
+    }
+    debug(DBINF, $errmsg);
+    imgerror($cgi, $errmsg);
+} elsif ($params->{host} eq q() || $params->{host} eq q(-)
+         || $params->{service} eq q() || $params->{service} eq q(-)) {
+    # if host or service is not specified, send an empty image
+    imgerror($cgi, q());
+} else {
     my $defaultds = readdatasetdb();
     if (scalar @{$params->{db}} == 0) {
         if ($defaultds->{$params->{service}}
@@ -64,53 +70,22 @@ if (($params->{host} ne q() && $params->{host} ne q(-))
     }
 
     $OUTPUT_AUTOFLUSH = 1;     # Make sure headers arrive before image data
-    print $cgi->header(-type => 'image/png') or
-        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+    print $cgi->header(-type => 'image/png')
+        or debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
     
     my ($ds, $errmsg) = rrdline($params);
     dumper(DBDEB, 'RRDs::graph', $ds);
-    
+
     if ($errmsg eq q()) {
         RRDs::graph(@{$ds});
         if (RRDs::error) {
-              $errmsg = RRDs::error;
+            print getimg(RRDs::error)
+                or debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
         }
+    } else {
+        print getimg($errmsg)
+            or debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
     }
-    
-    if ($errmsg ne q()) {
-        debug(DBWRN, $errmsg);
-        my $rval = eval { require GD; };
-        if (defined $rval && $rval == 1) {
-            my @lines = split /\n/, $errmsg; ## no critic (RegularExpressions)
-            my $pad = 4;
-            my $maxw = 600;
-            my $maxh = 15;
-            my $width = 2 * $pad + $maxw;
-            my $height = 2 * $pad + $maxh * scalar @lines;
-            my $img = new GD::Image($width,$height);
-            my $wht = $img->colorAllocate(255,255,255);
-            my $red = $img->colorAllocate(255,0,0);
-            $img->transparent($wht);
-            $img->rectangle(2,2,$width-3,$height-3,$wht);
-            my $y = $pad;
-            foreach my $line (@lines) {
-                $img->string(GD->gdSmallFont,$pad,$y,"$line",$red);
-                $y += $maxh;
-            }
-            print $img->png or
-                debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
-        } else {
-            print decode_base64(IMG) or
-                debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
-        }
-    }
-} else {
-    # if host or service is not specified, send an empty image
-    $OUTPUT_AUTOFLUSH = 1;
-    print $cgi->header(-type => 'image/png') or
-        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
-    print decode_base64(IMG) or
-        debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 }
 
 __END__

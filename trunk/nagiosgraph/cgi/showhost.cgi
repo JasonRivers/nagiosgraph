@@ -8,14 +8,10 @@
 # Author:  (c) 2008 Alan Brenner, Ithaka Harbors
 # Author:  (c) 2010 Matthew Wall
 
-# The configuration file and ngshared.pm must be in this directory.
-# So take note upgraders, there is no $configfile = '....' line anymore.
+# The configuration file and ngshared.pm must be in this directory:
 use lib '/opt/nagiosgraph/etc';
 
-# Main program - change nothing below
-
 use ngshared qw(:SHOWHOST);
-use CGI qw(-nosticky);
 use English qw(-no_match_vars);
 use strict;
 use warnings;
@@ -30,11 +26,14 @@ my $ginfos = readhostdb($params->{host});
 my $nagioscgiurl = $Config{nagiosgraphcgiurl};
 if ($Config{nagioscgiurl}) { $nagioscgiurl = $Config{nagioscgiurl}; }
 
-print printheader($cgi, { title => $params->{host},
-                          call => 'host',
-                          host => $params->{host},
-                          hosturl => $nagioscgiurl . '/extinfo.cgi?type=1&host=' . $params->{host} }) or
-    debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
+print printheader($cgi,
+    {
+        title   => $params->{host},
+        call    => 'host',
+        host    => $params->{host},
+        hosturl => $nagioscgiurl . '/extinfo.cgi?type=1&host=' . $params->{host}
+    }
+) or debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
 
 my $now = time;
 foreach my $period (graphsizes($periods)) {
@@ -42,7 +41,7 @@ foreach my $period (graphsizes($periods)) {
     my $str = q();
     foreach my $info (@{$ginfos}) {
         $info->{host} = $params->{host};
-        cfgparams($info, $params, $info->{service});
+        cfgparams($info, $params);
 
         my $url = $Config{nagiosgraphcgiurl} . '/show.cgi?' .
             'host=' . $cgi->escape($info->{host}) .
