@@ -38,3 +38,5 @@ N: Matthew Wall
 E: mwall (at) users (dot) sourceforge (dot) net
 C: mwall
 D: Contributor and data junkie.
+D: Added showgroup.cgi, added authz, refactored INSTALL and README.
+D: Added all of those unit tests that make development so brittle now.

@@ -10,7 +10,7 @@ Version: 1.4.2
 Release: 1
 Group: Applications/System
 Source: %{name}-%{version}.tar.gz
-URL: http://nagiosgraph.wiki.sourceforge.net/
+URL: http://nagiosgraph.sourceforge.net/
 License: Artistic
 BuildRoot: %{_tmppath}/%{name}-root
 

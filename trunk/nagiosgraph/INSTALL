@@ -403,7 +403,9 @@ showservice.cgi, and showgroup.cgi:
    Do not display the legend in each graph.
 
  - fixedscale
-   Set the Y-axis to be in the same scale as the performance data.
+   Set the Y-axis to be in the same scale as the performance data.  This
+   is useful to prevent a variety of vertical scales when autoscaling
+   results in different vertical scaling for each graph.
 
 The following options are available via configuration files:
 

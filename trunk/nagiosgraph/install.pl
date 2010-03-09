@@ -2,9 +2,8 @@
 # $Id$
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
-# Author:  (c) Alan Brenner, Ithaka Harbors, 2008
-
-# Main program - change nothing below
+# Author:  (c) 2008 Alan Brenner, Ithaka Harbors
+# Author:  (c) 2010 Matthew Wall
 
 use lib 'etc';
 use ngshared;
@@ -14,7 +13,7 @@ use File::Path;
 use strict;
 use warnings;
 
-use constant RWPATH => oct 755; ## no critic (ProhibitConstantPragma) -- nevermind that perlcritic says both 'use constant' and don't
+use constant RWPATH => oct 755; ## no critic (ProhibitConstantPragma)
 
 use vars qw($VERSION);
 $VERSION = '0.2';
@@ -101,6 +100,10 @@ sub copyfiles {
                 if (not -d $file) { mkpath $file, 0, RWPATH; }
                 # Stylesheets may be modified by the end user.
                 backup("$destdir$destd/$ii", $PID);
+            } elsif (substr($ii, - length 'js') eq 'js') {
+                $destd = $conf->{share};
+                $file = "$destdir$destd";
+                if (not -d $file) { mkpath $file, 0, RWPATH; }
             }
         } elsif ($source eq 'etc') {
             # Configuration files better be modified by the end user.
@@ -133,17 +136,17 @@ sub getconf {
          base => ['/usr/local/lib64', '/usr/local/lib', '/usr/lib64', '/usr/lib', '/usr/libexec'],
          subd => ['/nagios'],
          def => '/usr/local/lib/nagios',
-         msg => 'Where should the data loading files go'),
+         msg => 'Where should the executable files go'),
         (env => 'NSHARE', conf => 'share',
          base => ['/usr/local/share', '/usr/share', '/opt'],
          subd => ['/nagios'],
          def => '/usr/local/share/nagios',
-         msg => 'Where should the CSS and GIF files go'),
+         msg => 'Where should the CSS, javascript, and image files go'),
         (env => 'NGSHARE', conf => 'ngshare',
          base => ['/usr/local/share', '/usr/share', '/opt'],
          subd => ['/nagiosgraph'],
          def => '/usr/local/share/nagiosgraph',
-         msg => 'Where should the nagiosgraph documentation go'),);
+         msg => 'Where should the documentation go'),);
     foreach my $ii (@conf) {
         if ($ENV{$ii->{env}}) {
             $conf{$ii->{conf}} = $ENV{$ii->{env}};
