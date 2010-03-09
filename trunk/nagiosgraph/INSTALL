@@ -51,9 +51,10 @@ Installation Preliminaries
   There are two installation layouts for nagiosgraph: separate or overlay.
   The separated layout has nagiosgraph and nagios in separate directories.
   The overlay places nagiosgraph components with nagios components.
-  Note also that nagios and nagiosgraph can be installed in just about
-  any location, for example /opt or /usr/local.  So decide upon a layout
-  before you start the installation.
+
+  Nagios and nagiosgraph can be installed in just about any location, for
+  example /opt or /usr/local.  So decide upon a layout before you start the
+  installation.
 
   Examples of these layouts are in the Sample Installation Layouts section.
 
@@ -108,8 +109,8 @@ Upgrade Notes
 
  - Follow the steps above, but keep your customizations.  Your changes should
    be limited to the configuration files (map, nagiosgraph.conf, servdb.conf,
-   hostdb.conf, groupdb.conf, datasetdb.conf, rrdopts.conf).  You may also
-   have modifications to the stylesheet (nagiosgraph.css).
+   hostdb.conf, groupdb.conf, datasetdb.conf, rrdopts.conf) and the
+   stylesheet (nagiosgraph.css).
 
  - Use diff, or a similar tool, to update your nagiosgraph.conf with any new
    fields from etc/nagiosgraph.conf
@@ -209,7 +210,7 @@ example, with Apache do something like this in the Apache configuration:
      Allow from all
   </Directory>
 
-Verify that nagiosgraph is working by running show.cgi or showhost.cgi.
+Verify that nagiosgraph is working by running show.cgi or showgraph.cgi.
 
   http://server/nagiosgraph/cgi-bin/show.cgi
 
@@ -457,6 +458,12 @@ The following options are available via configuration files:
 
    These options apply to showgraph.cgi, show.cgi, and showservice.cgi and
    in the configuration files hostdb.conf, groupdb.conf, and datasetdb.conf.
+
+ - Use URLs as canned queries.  For example, define a 'temperatures'
+   group in the groupdb.conf file that combines temperature data from
+   multiple hosts and service types, then create a link to that group:
+
+      http://server/cgi-bin/showgroup.cgi?group=temperatures
 
 See the configuration files for more options and examples.
 

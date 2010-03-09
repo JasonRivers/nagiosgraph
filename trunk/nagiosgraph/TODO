@@ -19,3 +19,4 @@ Desired features.
 * data labels should be applied to graphs, not just html
 * do test coverage on the cgi scripts, not just ngshared.pm
 * make authz understand groups, not just users
+* make offset accept abbreviations (e.g. 1w, 2d, 3m)
