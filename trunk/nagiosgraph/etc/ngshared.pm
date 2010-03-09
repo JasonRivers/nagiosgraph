@@ -1111,7 +1111,7 @@ sub readhostdb {
             my $msg = "cannot open hostdb $fn: $OS_ERROR";
             debug(DBERR, $msg);
             htmlerror($msg);
-            croak($msg);
+            die $msg; ## no critic (RequireCarping)
         }
     } else {
         debug(DBERR, 'no hostdb file has been specified');
@@ -1181,7 +1181,7 @@ sub readservdb {
             my $msg = "cannot open servdb $fn: $OS_ERROR";
             debug(DBERR, $msg);
             htmlerror($msg);
-            croak($msg);
+            die $msg; ## no critic (RequireCarping)
         }
 
         # check to see if there is a valid database for the host/service
@@ -1236,7 +1236,7 @@ sub readgroupdb {
         my $msg = 'no groupdb file has been specified in the configuration.';
         debug(DBERR, $msg);
         htmlerror($msg);
-        croak($msg);
+        die $msg; ## no critic (RequireCarping)
     }
 
     my $fn = getcfgfn($Config{groupdb});
@@ -1294,7 +1294,7 @@ sub readgroupdb {
         my $msg = "cannot open groupdb $fn: $OS_ERROR";
         debug(DBERR, $msg);
         htmlerror($msg);
-        croak($msg);
+        die $msg; ## no critic (RequireCarping)
     }
 
     my @gnames = sortnaturally(keys %gnames);
@@ -1342,7 +1342,7 @@ sub readdatasetdb {
         my $msg = "cannot open datasetdb $fn: $OS_ERROR";
         debug(DBERR, $msg);
         htmlerror($msg);
-        croak($msg);
+        die $msg; ## no critic (RequireCarping)
     }
 
     dumper(DBDEB, 'readdatasetdb: data sets', \%data);
