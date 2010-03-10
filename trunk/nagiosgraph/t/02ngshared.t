@@ -6,6 +6,11 @@
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 # Author:  (c) Matthew Wall, 2010
 
+# FIXME: these tests are still not self-contained, since many depend on the
+#        state of global variables (%Config, i'm lookin' at you!).  the globals
+#        should be reduced/eliminated and the subroutines refactored so that
+#        have fewer side effects and global dependencies.
+
 use FindBin;
 use strict;
 use CGI qw(:standard escape unescape);
@@ -17,7 +22,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 386; }
+BEGIN { plan tests => 391; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -519,8 +524,33 @@ sub getrrdlineparams {
 }
 
 sub testrrdline {
+    undef %Config;
     setuprrd();
     my $rrddir = gettestrrddir();
+
+    # set up the bare minimum, default configuration options
+    # FIXME: get make listtodict more obvious (no side effects)
+    # FIXME: use 'maximums' and 'maximumshash' rather than replacing 'maximums'
+    #        same for all the other stuff replaced by listtodict.
+    $Config{colorscheme} = 1;
+    $Config{plotas} = 'LINE2';
+    $Config{maximums} = 'Current Load,PLW,Procs: total,Procs: zombie,User Count';
+    $Config{maximums} = listtodict('maximums', q(,));
+    $Config{minimums} = 'APCUPSD,Mem: free,Mem: swap';
+    $Config{minimums} = listtodict('minimums', q(,));
+    $Config{withmaximums} = 'PING';
+    $Config{withmaximums} = listtodict('withmaximums', q(,));
+    $Config{withminimums} = 'PING';
+    $Config{withminimums} = listtodict('withminimums', q(,));
+
+    # these are common to many results
+    my $RRDLINES0 = "'-',
+          '-a',
+          'PNG',
+          '-s',
+          'now-118800',
+          '-e',
+          'now-0',";
 
     # test a minimal invocation with no data for the host
     my %params = qw(host host30 service ping);
@@ -531,25 +561,19 @@ sub testrrdline {
     %params = getrrdlineparams();
     ($ds,$err) = rrdline(\%params);
     ok(Dumper($ds), "\$VAR1 = [
-          '-',
-          '-a',
-          'PNG',
-          '-s',
-          'now-118800',
-          '-e',
-          'now-0',
+          $RRDLINES0
           'DEF:ping_losspct=$rrddir/host0/PING___ping.rrd:losspct:AVERAGE',
           'LINE2:ping_losspct#9900FF:losspct',
           'GPRINT:ping_losspct:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_losspct:AVERAGE:Avg\\\\: %6.2lf%s',
           'GPRINT:ping_losspct:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_losspct:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'GPRINT:ping_losspct:LAST:Cur\\\\: %6.2lf%s',
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
           'LINE2:ping_rta#CC03CC:rta    ',
           'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s',
           '-w',
           600
         ];\n");
@@ -565,19 +589,13 @@ sub testrrdline {
     $params{db} = ['ping,rta'];
     ($ds,$err) = rrdline(\%params);
     ok(Dumper($ds), "\$VAR1 = [
-          '-',
-          '-a',
-          'PNG',
-          '-s',
-          'now-118800',
-          '-e',
-          'now-0',
+          $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
           'LINE2:ping_rta#CC03CC:rta',
           'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s',
           '-w',
           600
         ];\n");
@@ -588,19 +606,13 @@ sub testrrdline {
     $params{geom} = '100x100';
     ($ds,$err) = rrdline(\%params);
     ok(Dumper($ds), "\$VAR1 = [
-          '-',
-          '-a',
-          'PNG',
-          '-s',
-          'now-118800',
-          '-e',
-          'now-0',
+          $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
           'LINE2:ping_rta#CC03CC:rta',
           'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s',
           '-w',
           100,
           '-h',
@@ -633,7 +645,7 @@ sub testrrdline {
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
           'CDEF:ping_rta_minif=ping_rta_min,UN',
           'CDEF:ping_rta_mini=ping_rta_minif,ping_rta,ping_rta_min,IF',
-          'GPRINT:ping_rta_mini:MIN:Min\\\\: %6.2lf%s\\\\n',
+          'GPRINT:ping_rta_mini:MIN:Min\\\\: %6.2lf%s',
           '-w',
           100,
           '-h',
@@ -646,7 +658,21 @@ sub testrrdline {
     $params{fixedscale} = 1;
     ($ds,$err) = rrdline(\%params);
     ok(Dumper($ds), "\$VAR1 = [
-          '-',
+          $RRDLINES0
+          'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
+          'LINE2:ping_rta#CC03CC:rta',
+          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf',
+          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf',
+          '-w',
+          600,
+          '-X',
+          '0'
+        ];\n");
+
+    # these bits are the same for the next few tests
+    my $RRDLINES1 = "'-',
           '-a',
           'PNG',
           '-s',
@@ -655,24 +681,72 @@ sub testrrdline {
           'now-0',
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
           'LINE2:ping_rta#CC03CC:rta',
-          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf',
-          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf',
-          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf\\\\n',
+          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s',
           '-w',
-          600,
-          '-X',
-          '0'
+          600,";
+
+    # test altautoscale
+    %params = getrrdlineparams();
+    $params{db} = ['ping,rta'];
+    $Config{altautoscale}{PING} = 1;
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          $RRDLINES1
+          '-A'
         ];\n");
+    undef $Config{altautoscale};
+
+    # test altautoscalemin
+    %params = getrrdlineparams();
+    $params{db} = ['ping,rta'];
+    $Config{altautoscalemin}{PING} = 1;
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          $RRDLINES1
+          '-J'
+        ];\n");
+    undef $Config{altautoscalemin};
+
+    # test altautoscalemax
+    %params = getrrdlineparams();
+    $params{db} = ['ping,rta'];
+    $Config{altautoscalemax}{PING} = 1;
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          $RRDLINES1
+          '-M'
+        ];\n");
+    undef $Config{altautoscalemax};
+
+    # test nogridfit
+    %params = getrrdlineparams();
+    $params{db} = ['ping,rta'];
+    $Config{nogridfit}{PING} = 1;
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          $RRDLINES1
+          '-N'
+        ];\n");
+    undef $Config{nogridfit};
+
+    # test nogridfit
+    %params = getrrdlineparams();
+    $params{db} = ['ping,rta'];
+    $Config{logarithmic}{PING} = 1;
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          $RRDLINES1
+          '-o'
+        ];\n");
+    undef $Config{logarithmic};
 
 #FIXME: test rrdopts
-#FIXME: test altautoscale
-#FIXME: test altautoscalemin
-#FIXME: test altautoscalemax
-#FIXME: test nogridfit
-#FIXME: test logarithmic
 
     teardownrrd();
+    undef %Config;
 }
 
 sub testgetserverlist {
@@ -919,7 +993,7 @@ sub testmkvname {
     ok(mkvname('ping','loss'), 'ping_loss');
     ok(mkvname('ping','loss%20pct'), 'ping_loss_20pct');
     ok(mkvname('0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789','abcdefghijklmnopqrstuvwxyz'), '0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789_abcd');
-    ok(mkvname('a-b','r_s,'), 'a-b_r_s,');
+    ok(mkvname('a-b','r_s,'), 'a-b_r_s_');
 }
 
 sub testrrdupdate { # depends on testcreaterrd making a file
@@ -2184,6 +2258,8 @@ sub testgetrefresh {
 }
 
 sub testgetperiodctrls {
+    undef %Config;
+    $Config{timeformat_day} = '%H:%M %e %b';
     my $cgi = new CGI;
     my $offset = 86_400;
     my @period = ('day', 118_800, 86_400);
@@ -2195,6 +2271,7 @@ sub testgetperiodctrls {
 }
 
 sub testgetperiodlabel {
+    undef %Config;
     $Config{timeformat_day} = '%H:%M %e %b';
     $Config{timeformat_week} = '%e %b';
     $Config{timeformat_month} = 'week %U';

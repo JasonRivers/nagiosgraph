@@ -1,3 +1,6 @@
+%define name nagiosgraph
+%define version 1.4.2
+%define release 1
 %define ngetc /etc/nagiosgraph
 %define ngshare /usr/share/nagiosgraph
 %define nlib /usr/lib/nagios
@@ -5,9 +8,9 @@
 %define nshare /usr/share/nagios
 
 Summary: A Nagios data archiver and grapher.
-Name: nagiosgraph
-Version: 1.4.2
-Release: 1
+Name: %{name}
+Version: %{version}
+Release: %{release}
 Group: Applications/System
 Source: %{name}-%{version}.tar.gz
 URL: http://nagiosgraph.sourceforge.net/

@@ -12,7 +12,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 use Test;
 
-BEGIN { plan tests => 125; }
+BEGIN { plan tests => 127; }
 my $logfile = 'test.log';
 
 # Check the default configuration.  this is coded into a test to help ensure
@@ -70,6 +70,8 @@ sub testconfig {
           'D050D0',
           '505050'
         ];\n");
+    ok($Config{colormax}, '888888');
+    ok($Config{colormin}, 'BBBBBB');
     ok($Config{plotas}, 'LINE2');
     ok(Dumper($Config{plotasLINE1}), "\$VAR1 = {
           'avg15min' => 1,

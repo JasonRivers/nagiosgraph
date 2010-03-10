@@ -59,6 +59,8 @@ use constant {
 use constant {
     GEOMETRIES => '500x80,650x150,1000x200',
     GRAPHWIDTH => 600,
+    COLORMAX => '888888',
+    COLORMIN => 'BBBBBB',
     COLORS => 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0',
     COLORSCHEME => 1,
     HEARTBEAT => 600,
@@ -743,6 +745,8 @@ sub readconfig {
                     ['geometries', GEOMETRIES],
                     ['colorscheme', COLORSCHEME],
                     ['colors', COLORS],
+                    ['colormax', COLORMAX],
+                    ['colormin', COLORMIN],
                     ['resolution', RESOLUTIONS],
                     ['heartbeat', HEARTBEAT],) {
         if (not $Config{$ii->[0]}) { $Config{$ii->[0]} = $ii->[1]; }
@@ -765,6 +769,7 @@ sub readrrdoptsfile {
 
 sub loadperms {
     my ($user) = @_;
+
     if ( defined $Config{authzmethod} ) {
         if ( $Config{authzmethod} eq 'nagios3' ) {
             return readnagiosperms( $user );
@@ -777,7 +782,9 @@ sub loadperms {
     return q();
 }
 
-# FIXME: implement this
+# FIXME: respect contacts, not just all host/services
+# FIXME: verify intent of nagios 'default_user'.  do we have to match the
+#        user, or if default_user is defined then anything goes?
 # read the nagios permissions configuration.  this would be a lot easier if
 # there were an api.  instead we have to read the config files and basically
 # reverse engineer the nagios behavior.
@@ -1558,11 +1565,11 @@ sub getlineattr {
     return $linestyle, $linecolor;
 }
 
-# the rrd vname can contain only A-Za-z0-9_,- and must be no more than 255 long
+# the rrd vname can contain only A-Za-z0-9_- and must be no more than 255 long
 sub mkvname {
     my ($dbname, $dsname) = @_;
     my $vname = $dbname . '_' . $dsname;
-    $vname =~ s/[^A-Za-z0-9_,-]/_/g;
+    $vname =~ s/[^A-Za-z0-9_-]/_/g;
     if (length $vname > 255) {
         $vname = substr $vname, 0, 255;
     }
@@ -1601,17 +1608,17 @@ sub setdata { ## no critic (ProhibitManyArgs)
     debug(DBDEB, "setdata($dsname, $dbname, $file, $serv, $fixedscale, $dur)");
     my @ds;
     my $id = mkvname($dbname, $dsname);
-    my $format = '%6.2lf%s';
-    if ($fixedscale) { $format = '%6.2lf'; }
-    debug(DBDEB, "setdata: format=$format");
+    my $format = ($fixedscale ? '%6.2lf' : '%6.2lf%s');
     if ($dur > 120_000) { # long enough to start getting summation
         if (defined $Config{withmaximums}->{$serv}) {
-            my $maxcolor = '888888'; #$color;
+            my $maxcolor = (defined $Config{colormax}
+                            ? $Config{colormax} : COLORMAX);
             push @ds, "DEF:${id}_max=${file}_max:$dsname:MAX"
                     , "LINE1:${id}_max#${maxcolor}:maximum";
         }
         if (defined $Config{withminimums}->{$serv}) {
-            my $mincolor = 'BBBBBB'; #color;
+            my $mincolor = (defined $Config{colormin}
+                            ? $Config{colormin} : COLORMIN);
             push @ds, "DEF:${id}_min=${file}_min:$dsname:MIN"
                     , "LINE1:${id}_min#${mincolor}:minimum";
         }
@@ -1626,15 +1633,15 @@ sub setdata { ## no critic (ProhibitManyArgs)
         if (defined $Config{withminimums}->{$serv}) {
             push @ds, "CDEF:${id}_minif=${id}_min,UN"
                     , "CDEF:${id}_mini=${id}_minif,${id},${id}_min,IF"
-                    , "GPRINT:${id}_mini:MIN:Min\\: $format\\n"
+                    , "GPRINT:${id}_mini:MIN:Min\\: $format"
         } else {
-            push @ds, "GPRINT:$id:MIN:Min\\: $format\\n"
+            push @ds, "GPRINT:$id:MIN:Min\\: $format"
         }
     } else {
         push @ds, "GPRINT:$id:MAX:Max\\: $format"
                 , "GPRINT:$id:AVERAGE:Avg\\: $format"
                 , "GPRINT:$id:MIN:Min\\: $format"
-                , "GPRINT:$id:LAST:Cur\\: ${format}\\n";
+                , "GPRINT:$id:LAST:Cur\\: $format";
     }
     return @ds;
 }
@@ -1785,10 +1792,10 @@ sub rrdline {
 sub addopt {
     my ($conf, $service, $rrdopts, $rrdopt) = @_;
     my @ds;
-    if (defined $Config{$conf} and
-        exists $Config{$conf}{$service} and
-        index($rrdopts, $rrdopt) == -1) {
-            push @ds, $rrdopt;
+    if (defined $Config{$conf}
+        and exists $Config{$conf}{$service}
+        and index($rrdopts, $rrdopt) == -1) {
+        push @ds, $rrdopt;
     }
     return @ds;
 }

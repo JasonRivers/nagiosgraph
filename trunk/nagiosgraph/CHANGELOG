@@ -3,16 +3,17 @@ $Id$
 1.4.2 TBD
 
 * new configuration options (see nagiosgraph.conf for details):
+     colormax (optional)
+     colormin (optional)
      language (optional)
      showprocessingtime (optional)
      default_geometry (optional)
      cgilogfile (optional)
      authzmethod (optional)
-     authzfile (optional)
 * added access control.  there are two ways to define access controls.  the
-   default is to use the access control built in to nagios.  this works only
-   for nagios 3.  the other way is to use access control specific to
-   nagiosgraph using a standalone access control file.
+   default is to use the access control built in to nagios.  this works for
+   nagios 3 and perhaps for older nagios releases.  the other way is to use
+   an access control file specific to nagiosgraph.
 * added i18n.  this is a very basic, no-dependencies implementation.  the
    intent is to be completely self contained, add minimal overhead, and not
    break existing installations.  error messages are not translated.  the
@@ -35,6 +36,8 @@ $Id$
    rather than just data names in graph definitions.  this enables graphing
    of data sources from multiple databases even if the data sources have the
    same name.
+* optionally specify max/min colors that will be used for the withmaximums
+   and withminimums services, respectively.
 * optionally report processing time.  processing time does *not* include the
    time required by showgraph.cgi to generate all of the graphs.
 * optionally specify a default width and height.
