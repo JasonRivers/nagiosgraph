@@ -3,9 +3,9 @@ $Id$
 Bugs
 
 * so much for simplicity - javascript is now required
-* layouts should degrade more gracefully when no CSS
 * the subroutine 'debug' should be called 'log'
 * gui controls do not prevent specifying future end date.
+* nagios-based authorization does not yet respect contacts
 
 Desired features.
 

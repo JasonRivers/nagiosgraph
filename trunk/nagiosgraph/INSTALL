@@ -698,7 +698,15 @@ standalone nagiosgraph configuration file.
 To use nagios access controls, define the following in nagiosgraph.conf:
 
   authzmethod=nagios3
-  authzfile=/etc/nagios/nagios.cfg
+  authz_nagios_cfg=/etc/nagios/nagios.cfg
+  authz_cgi_cfg=/etc/nagios/cgi.cfg
+
+nagiosgraph respects the following nagios variables:
+
+  use_authentication
+  default_user_name
+  authorized_for_all_hosts
+  authorized_for_all_services
 
 To use nagiosgraph access controls, define the following in nagiosgraph.conf:
 

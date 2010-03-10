@@ -17,7 +17,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 384; }
+BEGIN { plan tests => 386; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -235,7 +235,7 @@ sub testformatelapsedtime {
 
 sub testhtmlerror {
     open SAVEOUT, ">&STDOUT";
-    my $fn = $FindBin::Bin . q(/) . 'foo.txt';
+    my $fn = $FindBin::Bin . q(/) . 'error.html';
     open STDOUT, '>', $fn;
     htmlerror('test');
     close STDOUT;
@@ -259,6 +259,24 @@ sub testhtmlerror {
 </body>
 </html>");
     unlink $fn;
+}
+
+sub testimgerror {
+    my $cgi = new CGI;
+    open SAVEOUT, ">&STDOUT";
+    my $fn = $FindBin::Bin . q(/) . 'error.png';
+    open STDOUT, '>', $fn;
+    imgerror($cgi, 'test');
+    close STDOUT;
+    open STDOUT, ">&SAVEOUT";
+    close SAVEOUT;
+    $result = readtestfile($fn);
+    ok($result, "Content-Type: image/png\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\2`\0\0\0\27\1\3\0\0\0\x96\35a\xC3\0\0\0\6PLTE\xFF\xFF\xFF\xFF\24\24\xDF.\xE4\xBB\0\0\0\1tRNS\0@\xE6\xD8f\0\0\0>IDAT8\x8Dc`\30\5\xA3\0;`a`\34\xA4\x86\xF1\xCB\24\37\xA0\x9Aa,J\x9DT3\x8B\x81\xC5.\x91\x8A\x86)\bR\xD1\xB0\5\x9D\nT3\x8CY\xA6\xE0\0\xD5\f\e\5\xA3\x80\16\0\0\4Q\5\x8C\xE7\37\xF6\\\0\0\0\0IEND\xAEB`\x82");
+    unlink $fn;
+}
+
+sub testgetimg {
+    ok(getimg('test'), "\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\2`\0\0\0\27\1\3\0\0\0\x96\35a\xC3\0\0\0\6PLTE\xFF\xFF\xFF\xFF\24\24\xDF.\xE4\xBB\0\0\0\1tRNS\0@\xE6\xD8f\0\0\0>IDAT8\x8Dc`\30\5\xA3\0;`a`\34\xA4\x86\xF1\xCB\24\37\xA0\x9Aa,J\x9DT3\x8B\x81\xC5.\x91\x8A\x86)\bR\xD1\xB0\5\x9D\nT3\x8CY\xA6\xE0\0\xD5\f\e\5\xA3\x80\16\0\0\4Q\5\x8C\xE7\37\xF6\\\0\0\0\0IEND\xAEB`\x82");
 }
 
 # ensure that asking about host data does not create host directory
@@ -2372,11 +2390,14 @@ sub testcfgparams {
 
 
 
+
 testdebug();
 testdumper();
 testgetdebug();
 testformatelapsedtime();
 testhtmlerror();
+testimgerror();
+testgetimg();
 testdircreation();
 testmkfilename();
 testhashcolor();

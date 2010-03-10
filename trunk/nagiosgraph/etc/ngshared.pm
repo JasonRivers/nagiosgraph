@@ -314,7 +314,7 @@ sub getdebug {
 # graphonly
 # showgraphtitle
 # hidelegend
-# fixedscale (for backward compatibility)
+# fixedscale
 # showtitle
 # showdesc
 # expand_controls
@@ -440,8 +440,7 @@ sub cfgparams {
 
 sub arrayorstring {
     my ($opts, $param) = @_;
-    debug(DBDEB, "arrayorstring($opts, $param)");
-    dumper(DBDEB, 'arrayorstring opts', $opts);
+    #dumper(DBDEB, "arrayorstring param=$param opts", $opts);
     my $rval = q();
     if (exists $opts->{$param} and $opts->{$param}) {
         if (ref($opts->{$param}) eq 'ARRAY') {
@@ -778,17 +777,82 @@ sub loadperms {
     return q();
 }
 
+# FIXME: implement this
 # read the nagios permissions configuration.  this would be a lot easier if
 # there were an api.  instead we have to read the config files and basically
 # reverse engineer the nagios behavior.
 sub readnagiosperms {
     my ($user) = @_;
+
     undef %authz;
-    if ( not defined $Config{authzfile} or $Config{authzfile} eq q() ) {
+    $authz{default_host_access}{default_service_access} = 0;
+    if ( not defined $user or $user eq q() ) {
+        debug(DBWRN, 'no discernable user, defaulting to no permissions');
+        return q();
+    }
+    if ( not defined $Config{authz_nagios_cfg}
+         or $Config{authz_nagios_cfg} eq q() ) {
+        return 'authz_nagios_cfg is not defined';
+    }
+    my $authenabled = 0;
+    my $fn = $Config{authz_nagios_cfg};
+    open my $FH, '<', $fn or ## no critic (RequireBriefOpen)
+        return "cannot open nagios config $fn: $OS_ERROR";
+    while (<$FH>) {
+        next if /^\s*#/;        # skip commented lines
+        if ( /\s*use_authentication\s*=\s*([\d])/ ) {
+            $authenabled = $1;
+            last;
+        }
+    }
+    close $FH or return "close failed for $fn: $OS_ERROR";
+
+    if ( not $authenabled ) {
+        undef %authz;
+        debug(DBINF, 'nagios authorization is disabled, full access granted');
         return q();
     }
 
-# FIXME: implement this
+    if (not defined $Config{authz_cgi_cfg} or $Config{authz_cgi_cfg} eq q()) {
+        return 'authz_cgi_cfg is not defined';
+    }
+    $fn = $Config{authz_cgi_cfg};
+    my $host_users = q();
+    my $serv_users = q();
+    my $default_user = q();
+    open $FH, '<', $fn or ## no critic (RequireBriefOpen)
+        return "cannot open nagios cgi config $fn: $OS_ERROR";
+    while (<$FH>) {
+        next if /^\s*#/;        # skip commented lines
+        if ( /\s*authorized_for_all_hosts=\s*(.*)/ ) {
+            $host_users = $1;
+            $host_users =~ s/\s//g;
+        } elsif ( /\s*authorized_for_all_services=\s*(.*)/ ) {
+            $serv_users = $1;
+            $serv_users =~ s/\s//g;
+        } elsif ( /\s*default_user_name\s*=\s*(.*)/ ) {
+            $default_user = $1;
+        }
+    }
+    close $FH or return "close failed for $fn: $OS_ERROR";
+
+    # if there is a nagios default user, they can do anything
+    if ( $user eq $default_user ) {
+        $authz{default_host_access}{default_service_access} = 1;
+    } else {
+        foreach my $i (split /,/, $host_users) {
+            if ( $user eq $i ) {
+                $authz{default_host_access}{default_service_access} = 1;
+                last;
+            }
+        }
+        foreach my $i (split /,/, $serv_users) {
+            if ( $user eq $i ) {
+                $authz{default_host_access}{default_service_access} = 1;
+                last;
+            }
+        }
+    }
 
     return q();
 }
@@ -798,20 +862,21 @@ sub readnagiosperms {
 # do not apply access control rules.  if no user is specified, then lockdown.
 sub readpermsfile {
     my ($user) = @_;
-    undef %authz;
-    if ( not defined $Config{authzfile} or $Config{authzfile} eq q() ) {
-        return 'authzfile is not defined';
-    }
+
     # defining authz enables enforcement of access controls.
-    # default to no permission.  should always have a user, but be safe if not.
+    # default to no permissions.
+    undef %authz;
     $authz{default_host_access}{default_service_access} = 0;
     if ( not defined $user or $user eq q() ) {
         debug(DBWRN, 'no discernable user, defaulting to no permissions');
         return q();
     }
+    if ( not defined $Config{authzfile} or $Config{authzfile} eq q() ) {
+        return 'authzfile is not defined';
+    }
     my $fn = getcfgfn($Config{authzfile});
     open my $FH, '<', $fn or ## no critic (RequireBriefOpen)
-        return "cannot open $fn: $OS_ERROR";
+        return "cannot open access control file $fn: $OS_ERROR";
     my $lineno = 0;
     while (<$FH>) {
         $lineno += 1;
