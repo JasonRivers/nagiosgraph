@@ -23,6 +23,7 @@ etc/nagiosgraph_de.conf
 etc/nagiosgraph_es.conf
 etc/nagiosgraph_fr.conf
 etc/ngshared.pm
+etc/rrdopts.conf
 etc/servdb.conf
 lib/insert.pl
 lib/insert.sh

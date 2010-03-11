@@ -567,13 +567,13 @@ sub testrrdline {
           'GPRINT:ping_losspct:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_losspct:AVERAGE:Avg\\\\: %6.2lf%s',
           'GPRINT:ping_losspct:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_losspct:LAST:Cur\\\\: %6.2lf%s',
+          'GPRINT:ping_losspct:LAST:Cur\\\\: %6.2lf%s\\\\n',
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
           'LINE2:ping_rta#CC03CC:rta    ',
           'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
           '-w',
           600
         ];\n");
@@ -595,7 +595,7 @@ sub testrrdline {
           'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
           '-w',
           600
         ];\n");
@@ -612,7 +612,7 @@ sub testrrdline {
           'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
           '-w',
           100,
           '-h',
@@ -645,7 +645,7 @@ sub testrrdline {
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
           'CDEF:ping_rta_minif=ping_rta_min,UN',
           'CDEF:ping_rta_mini=ping_rta_minif,ping_rta,ping_rta_min,IF',
-          'GPRINT:ping_rta_mini:MIN:Min\\\\: %6.2lf%s',
+          'GPRINT:ping_rta_mini:MIN:Min\\\\: %6.2lf%s\\\\n',
           '-w',
           100,
           '-h',
@@ -664,7 +664,7 @@ sub testrrdline {
           'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf',
           'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf\\\\n',
           '-w',
           600,
           '-X',
@@ -684,7 +684,7 @@ sub testrrdline {
           'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
           '-w',
           600,";
 

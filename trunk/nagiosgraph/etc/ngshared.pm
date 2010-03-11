@@ -1633,15 +1633,15 @@ sub setdata { ## no critic (ProhibitManyArgs)
         if (defined $Config{withminimums}->{$serv}) {
             push @ds, "CDEF:${id}_minif=${id}_min,UN"
                     , "CDEF:${id}_mini=${id}_minif,${id},${id}_min,IF"
-                    , "GPRINT:${id}_mini:MIN:Min\\: $format"
+                    , "GPRINT:${id}_mini:MIN:Min\\: $format\\n"
         } else {
-            push @ds, "GPRINT:$id:MIN:Min\\: $format"
+            push @ds, "GPRINT:$id:MIN:Min\\: $format\\n"
         }
     } else {
         push @ds, "GPRINT:$id:MAX:Max\\: $format"
                 , "GPRINT:$id:AVERAGE:Avg\\: $format"
                 , "GPRINT:$id:MIN:Min\\: $format"
-                , "GPRINT:$id:LAST:Cur\\: $format";
+                , "GPRINT:$id:LAST:Cur\\: $format\\n";
     }
     return @ds;
 }
