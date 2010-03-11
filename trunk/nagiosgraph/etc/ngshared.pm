@@ -1608,7 +1608,7 @@ sub setdata { ## no critic (ProhibitManyArgs)
     debug(DBDEB, "setdata($dsname, $dbname, $file, $serv, $fixedscale, $dur)");
     my @ds;
     my $id = mkvname($dbname, $dsname);
-    my $format = ($fixedscale ? '%6.2lf' : '%6.2lf%s');
+    my $format = ($fixedscale ? '%7.2lf' : '%7.2lf%s');
     if ($dur > 120_000) { # long enough to start getting summation
         if (defined $Config{withmaximums}->{$serv}) {
             my $maxcolor = (defined $Config{colormax}
@@ -1625,23 +1625,23 @@ sub setdata { ## no critic (ProhibitManyArgs)
         if (defined $Config{withmaximums}->{$serv}) {
             push @ds, "CDEF:${id}_maxif=${id}_max,UN"
                     , "CDEF:${id}_maxi=${id}_maxif,${id},${id}_max,IF"
-                    , "GPRINT:${id}_maxi:MAX:Max\\: $format";
+                    , "GPRINT:${id}_maxi:MAX:Max\\:$format";
         } else {
-            push @ds, "GPRINT:$id:MAX:Max\\: $format";
+            push @ds, "GPRINT:$id:MAX:Max\\:$format";
         }
-        push @ds, "GPRINT:$id:AVERAGE:Avg\\: $format";
+        push @ds, "GPRINT:$id:AVERAGE:Avg\\:$format";
         if (defined $Config{withminimums}->{$serv}) {
             push @ds, "CDEF:${id}_minif=${id}_min,UN"
                     , "CDEF:${id}_mini=${id}_minif,${id},${id}_min,IF"
-                    , "GPRINT:${id}_mini:MIN:Min\\: $format\\n"
+                    , "GPRINT:${id}_mini:MIN:Min\\:$format\\n"
         } else {
-            push @ds, "GPRINT:$id:MIN:Min\\: $format\\n"
+            push @ds, "GPRINT:$id:MIN:Min\\:$format\\n"
         }
     } else {
-        push @ds, "GPRINT:$id:MAX:Max\\: $format"
-                , "GPRINT:$id:AVERAGE:Avg\\: $format"
-                , "GPRINT:$id:MIN:Min\\: $format"
-                , "GPRINT:$id:LAST:Cur\\: $format\\n";
+        push @ds, "GPRINT:$id:MAX:Max\\:$format"
+                , "GPRINT:$id:AVERAGE:Avg\\:$format"
+                , "GPRINT:$id:MIN:Min\\:$format"
+                , "GPRINT:$id:LAST:Cur\\:$format\\n";
     }
     return @ds;
 }
