@@ -356,9 +356,9 @@ To display graphs as mouseovers for each host and/or service, do the following:
 
 You must restart Nagios for changes to service/host defintions to take effect.
 
-If a service includes multiple data sets, use the datasetdb file (specified
-in nagiosgraph.conf) to indicate which data sets should be displayed by
-default for each service, or specify the data set(s) explicity in each
+If a service includes multiple data sources, use the datasetdb file (specified
+in nagiosgraph.conf) to indicate which data sources should be displayed by
+default for each service, or specify the data source(s) explicity in each
 action_url.
 
 
@@ -433,14 +433,21 @@ The following options are available via configuration files:
    must be URL encoded.  For example, &rrdopts=%2Dl%200%20%2Du%20100
    (meaning: "-l 0 -u 100").
 
- - Use lineformat to control the line thickness and line color for
+ - lineformat
+   Use lineformat to control the line thickness and line color for
    individual services.
+
+ - plotas
+ - plotasLINE1
+ - plotasLINE2
+ - plotasLINE3
+ - plotasAREA
+ - plotasTICK
+   Use plotas to control the line thickness for individual services.
 
  - Create stacked area graphs using alpha channel in colors specified
    in the lineformat directive for each data set or in rrdopts.conf 
-   for specific services and data sets.
-
- - Use plotasX to control the line thickness for individual services.
+   for specific services and data sources.
 
  - Some services emit multiple data sets with big differences in magnitude.
    Others emit data with different units.  In such cases, split the data
