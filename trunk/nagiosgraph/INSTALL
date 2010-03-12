@@ -119,9 +119,8 @@ Upgrade Notes
 -------------
 
  - Follow the steps above, but keep your customizations.  Your changes should
-   be limited to the configuration files (map, nagiosgraph.conf, servdb.conf,
-   hostdb.conf, groupdb.conf, datasetdb.conf, rrdopts.conf) and the
-   stylesheet (nagiosgraph.css).
+   be limited to the map file (map), configuration files (nagiosgraph.conf
+   and other .conf files), and the stylesheet (nagiosgraph.css).
 
  - Use diff, or a similar tool, to update your nagiosgraph.conf with any new
    fields from etc/nagiosgraph.conf
@@ -129,7 +128,9 @@ Upgrade Notes
  - Use diff, or a similar tool, to update your nagiosgraph.css with changes
    from share/nagiosgraph.css.
 
- - You may want to look at etc/map to see if there are any useful new examples.
+ - You may want to look at etc/map or the files in the examples directory
+   to see if there are any map rules or stylesheet configurations useful to
+   your configuration.
 
  - If you change from immediate processing to batch processing, be sure to
    comment out service_perfdata_command in the nagios configuration.
