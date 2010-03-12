@@ -73,26 +73,27 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios
      cd /tmp
      tar xzvf nagiosgraph-x.y.z.tgz
 
- - Copy the contents of etc into your preferred configuration location,
-   e.g. /etc/nagiosgraph
+ - Copy the contents of etc into your preferred configuration location:
+     mkdir /etc/nagiosgraph
+     cp etc/* /etc/nagiosgraph
 
  - Edit the perl scripts in the cgi and lib directories, modifying the
    "use lib" line to point to the directory from the previous step.
+     use lib '/etc/nagiosgraph';
 
- - Copy lib/insert.pl to a location from which it can be executed,
-   e.g. /usr/local/nagios/libexec
+ - Copy lib/insert.pl to a location from which it can be executed:
+     cp lib/insert.pl /usr/local/nagios/libexec
 
- - Copy the contents of cgi into a cgi-bin directory served by the web server,
-   e.g. /usr/local/nagios/sbin
+ - Copy the contents of cgi into a cgi-bin directory served by the web server:
+     cp cgi/* /usr/local/nagios/sbin
 
- - Copy share/nagiosgraph.css into a directory served by the web server,
-   e.g. /usr/local/nagios/share
+ - Copy share/nagiosgraph.css into a directory served by the web server:
+     cp share/nagiosgraph.css /usr/local/nagios/share
 
- - Copy share/nagiosgraph.js into a directory served by the web server,
-   e.g. /usr/local/nagios/share
+ - Copy share/nagiosgraph.js into a directory served by the web server:
+     cp share/nagiosgraph.js /usr/local/nagios/share
 
  - Edit nagiosgraph.conf.  Set at least the following:
-
      logfile           = /var/log/nagiosgraph.log
      perflog           = /var/nagios/perfdata.log
      rrddir            = /var/nagios/rrd
@@ -102,11 +103,15 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios
      stylesheet        = /nagios/nagiosgraph.css
 
  - Set permissions of "rrddir" (as defined in nagiosgraph.conf) so that
-   the *nagios* user can write to it and the *www* user can read it.
+   the *nagios* user can write to it and the *www* user can read it:
+     mkdir /var/nagios/rrd
+     chown nagios.nagcmd /var/nagios/rrd
 
  - Set permissions of "logfile" (as defined in nagiosgraph.conf) so that
-   both the *nagios* and *www* users can write to it.
-
+   both the *nagios* and *www* users can write to it:
+     touch /var/log/nagiosgraph.log
+     chown nagios.nagcmd /var/log/nagiosgraph.log
+     chmod 664 /var/log/nagiosgraph.log
 
 Upgrade Notes
 -------------
