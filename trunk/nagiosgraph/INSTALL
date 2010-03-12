@@ -79,7 +79,7 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios
 
  - Edit the perl scripts in the cgi and lib directories, modifying the
    "use lib" line to point to the directory from the previous step.
-     use lib '/etc/nagiosgraph';
+     vi cgi/*.cgi lib/insert.pl
 
  - Copy lib/insert.pl to a location from which it can be executed:
      cp lib/insert.pl /usr/local/nagios/libexec
