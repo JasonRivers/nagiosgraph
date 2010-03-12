@@ -34,7 +34,8 @@ then configure data processing in nagios.
   Appendix: Sample Installation Layouts
   Appendix: Web Server Configuration
   Appendix: Platform Specific Notes
-    CentOS 5 and Nagiosgraph 0.9:
+    CentOS 5 and Nagiosgraph 0.9
+    MacOSX 10.5 and Nagios 2.12
     Fedora Core 6, Nagios 2.6+, and HTTP output parsing
   Appendix: Notes For Developers
 
@@ -78,7 +79,7 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios
  - Edit the perl scripts in the cgi and lib directories, modifying the
    "use lib" line to point to the directory from the previous step.
 
- - Copy the contents of lib into a location from which they can be executed,
+ - Copy lib/insert.pl to a location from which it can be executed,
    e.g. /usr/local/nagios/libexec
 
  - Copy the contents of cgi into a cgi-bin directory served by the web server,
@@ -939,6 +940,19 @@ CentOS 5 and Nagiosgraph 0.9:
   ln -s /usr/local/nagios/nagiosgraph/nagiosgraph.conf /usr/local/etc/nagiosgraph.conf
 
   cp nagiosgraph.css /usr/local/nagios/share/stylesheets
+
+
+
+MacOSX 10.5 and Nagios 2.12
+---------------------------
+
+Use the lib/insert.sh wrapper to ensure that perl is invoked properly.
+
+  define command {
+      command_name    process-service-perfdata
+      command_line    /usr/local/nagios/libexec/insert.sh "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
+  }
+
 
 
 Fedora Core 6 and HTTP output parsing
