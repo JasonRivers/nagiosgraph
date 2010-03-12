@@ -35,6 +35,12 @@ if ($errmsg ne q()) {
     imgerror($cgi, $errmsg);
     exit;
 }
+$errmsg = readlabelsfile();
+if ($errmsg ne q()) {
+    debug(DBCRT, $errmsg);
+    imgerror($cgi, $errmsg);
+    exit;
+}
 $errmsg = loadperms( $cgi->remote_user() );
 if ($errmsg ne q()) {
     debug(DBCRT, $errmsg);
@@ -58,8 +64,8 @@ if (! havepermission( $params->{host}, $params->{service} )) {
     # if host or service is not specified, send an empty image
     imgerror($cgi, q());
 } else {
-    my $defaultds = readdatasetdb();
     if (scalar @{$params->{db}} == 0) {
+        my $defaultds = readdatasetdb();
         if ($defaultds->{$params->{service}}
             && scalar @{$defaultds->{$params->{service}}} > 0) {
             $params->{db} = $defaultds->{$params->{service}};

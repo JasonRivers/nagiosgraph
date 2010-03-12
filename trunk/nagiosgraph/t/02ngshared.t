@@ -22,7 +22,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 391; }
+BEGIN { plan tests => 427; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -268,8 +268,19 @@ sub testhtmlerror {
 
 sub testimgerror {
     my $cgi = new CGI;
-    open SAVEOUT, ">&STDOUT";
     my $fn = $FindBin::Bin . q(/) . 'error.png';
+
+    open SAVEOUT, ">&STDOUT";
+    open STDOUT, '>', $fn;
+    imgerror($cgi);
+    close STDOUT;
+    open STDOUT, ">&SAVEOUT";
+    close SAVEOUT;
+    $result = readtestfile($fn);
+    ok($result, "Content-Type: image/png\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\0\5\0\0\0\5\b\6\0\0\0\x8Do&\xE5\0\0\0!tEXtSoftware\0GraphicConverter (Intel)w\x87\xFA\31\0\0\0\31IDATx\x9Cb\xF8\xFF\xFF?\3:\xC6\20\xA0\x82 \0\0\0\xFF\xFF\3\0x\xC3J\xB6\x9F\xEB2\35\0\0\0\0IEND\xAEB`\x82");
+    unlink $fn;
+
+    open SAVEOUT, ">&STDOUT";
     open STDOUT, '>', $fn;
     imgerror($cgi, 'test');
     close STDOUT;
@@ -300,6 +311,12 @@ sub testmkfilename { # Test getting the file and directory for a database.
 	# Make rrddir where we run from
 	$Config{rrddir} = $FindBin::Bin;
 	$Config{dbseparator} = '';
+        @result = mkfilename();
+        ok($result[0], 'BOGUSDIR');
+        ok($result[1], 'BOGUSFILE');
+        @result = mkfilename('host');
+        ok($result[0], 'BOGUSDIR');
+        ok($result[1], 'BOGUSFILE');
 	@result = mkfilename('testbox', 'Partition: /');
 	ok($result[0], $FindBin::Bin);
 	ok($result[1], 'testbox_Partition%3A%20%2F_');
@@ -317,23 +334,27 @@ sub testmkfilename { # Test getting the file and directory for a database.
 	rmdir $result[0] if -d $result[0];
 }
 
-sub testhashcolor { # With 16 generated colors, the default rainbow and one custom.
-	@testdata = ('FF0333', '3300CC', '990033', 'FF03CC', '990333', 'CC00CC', '000099', '6603CC');
-	for ($ii = 0; $ii < 8; $ii++) {
-		$result = hashcolor('Current Load', $ii + 1);
-		ok($result, $testdata[$ii - 1]);
-	}
-	@testdata = ('CC0300', 'FF0399', '990000', '330099', '990300', '660399', '990000', 'CC0099');
-	for ($ii = 1; $ii < 9; $ii++) {
-		$result = hashcolor('PLW', $ii);
-		ok($result, $testdata[$ii - 1]);
-	}
-	$Config{colors} = ['123', 'ABC'];
-	@testdata = ('123', 'ABC', '123');
-	for ($ii = 0; $ii < 3; $ii++) {
-		$result = hashcolor('test', 9);
-		ok($result, $testdata[$ii]);
-	}
+# With 16 generated colors, the default rainbow and one custom.
+sub testhashcolor {
+    @testdata = ('FF0333', '3300CC', '990033', 'FF03CC', '990333', 'CC00CC', '000099', '6603CC');
+    for ($ii = 0; $ii < 8; $ii++) {
+        $result = hashcolor('Current Load', $ii + 1);
+        ok($result, $testdata[$ii - 1]);
+    }
+    @testdata = ('CC0300', 'FF0399', '990000', '330099', '990300', '660399', '990000', 'CC0099');
+    for ($ii = 1; $ii < 9; $ii++) {
+        $result = hashcolor('PLW', $ii);
+        ok($result, $testdata[$ii - 1]);
+    }
+    $Config{colors} = ['123', 'ABC'];
+    @testdata = ('123', 'ABC', '123');
+    for ($ii = 0; $ii < 3; $ii++) {
+        $result = hashcolor('test', 9);
+        ok($result, $testdata[$ii]);
+    }
+    undef %Config;
+    $Config{colorscheme} = 2;
+    ok(hashcolor('x'), '009900');
 }
 
 sub testlisttodict { # Split a string separated by a configured value into hash.
@@ -392,12 +413,78 @@ sub testreadfile {
     unlink $fn;
 }
 
+sub testinitlog {
+    my $fn = "$FindBin::Bin/testlog.txt";
+    undef %Config;
+    $Config{debug} = 0;
+
+    $Config{debug} = 5;
+    initlog('test', $fn);
+    debug(DBDEB, 'test message');
+    close $LOG;
+    my $result = readtestfile($fn);
+    ok($result =~ /debug test message/);
+    unlink $fn;
+
+    undef %Config;
+    $Config{debug} = 0;
+    $Config{debug_test} = 5;
+    initlog('test', $fn);
+    debug(DBDEB, 'test message');
+    close $LOG;
+    $result = readtestfile($fn);
+    ok($result =~ /debug test message/);
+    unlink $fn;
+
+    undef %Config;
+    $Config{debug} = 0;
+    $Config{debug_foo} = 5;
+    initlog('test', $fn);
+    debug(DBDEB, 'test message');
+    close $LOG;
+    $result = readtestfile($fn);
+    ok($result, '');
+    unlink $fn;
+
+    undef %Config;
+}
+
 sub testreadconfig {
     open $LOG, '+>', \$log;
     readconfig('read');
     ok($Config{logfile}, '/var/log/nagiosgraph.log');
     ok($Config{cgilogfile}, undef);
     close $LOG;
+}
+
+sub testgetparams {
+    my ($cgi, $params) = getparams();
+    ok(Dumper($cgi), "\$VAR1 = bless( {
+                 '.parameters' => [],
+                 'use_tempfile' => 1,
+                 '.charset' => 'ISO-8859-1',
+                 '.fieldnames' => {},
+                 'escape' => 0
+               }, 'CGI' );\n");
+    ok(Dumper($params), "\$VAR1 = {
+          'geom' => '',
+          'db' => [],
+          'graphonly' => '',
+          'showtitle' => '',
+          'showdesc' => '',
+          'group' => '',
+          'fixedscale' => '',
+          'expand_period' => '',
+          'offset' => 0,
+          'expand_controls' => '',
+          'rrdopts' => '',
+          'period' => '',
+          'hidelegend' => '',
+          'service' => '',
+          'host' => '',
+          'showgraphtitle' => '',
+          'label' => []
+        };\n");
 }
 
 sub testdbfilelist { # Check getting a list of rrd files
@@ -529,19 +616,8 @@ sub testrrdline {
     my $rrddir = gettestrrddir();
 
     # set up the bare minimum, default configuration options
-    # FIXME: get make listtodict more obvious (no side effects)
-    # FIXME: use 'maximums' and 'maximumshash' rather than replacing 'maximums'
-    #        same for all the other stuff replaced by listtodict.
     $Config{colorscheme} = 1;
     $Config{plotas} = 'LINE2';
-    $Config{maximums} = 'Current Load,PLW,Procs: total,Procs: zombie,User Count';
-    $Config{maximums} = listtodict('maximums', q(,));
-    $Config{minimums} = 'APCUPSD,Mem: free,Mem: swap';
-    $Config{minimums} = listtodict('minimums', q(,));
-    $Config{withmaximums} = 'PING';
-    $Config{withmaximums} = listtodict('withmaximums', q(,));
-    $Config{withminimums} = 'PING';
-    $Config{withminimums} = listtodict('withminimums', q(,));
 
     # these are common to many results
     my $RRDLINES0 = "'-',
@@ -563,17 +639,17 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_losspct=$rrddir/host0/PING___ping.rrd:losspct:AVERAGE',
-          'LINE2:ping_losspct#9900FF:losspct',
-          'GPRINT:ping_losspct:MAX:Max\\\\: %6.2lf%s',
-          'GPRINT:ping_losspct:AVERAGE:Avg\\\\: %6.2lf%s',
-          'GPRINT:ping_losspct:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_losspct:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'LINE2:ping_losspct#9900FF:ping,losspct',
+          'GPRINT:ping_losspct:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:ping_losspct:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:ping_losspct:MIN:Min\\\\:%7.2lf%s',
+          'GPRINT:ping_losspct:LAST:Cur\\\\:%7.2lf%s\\\\n',
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:rta    ',
-          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'LINE2:ping_rta#CC03CC:ping,rta    ',
+          'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
           '-w',
           600
         ];\n");
@@ -591,11 +667,11 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:rta',
-          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'LINE2:ping_rta#CC03CC:ping,rta',
+          'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
           '-w',
           600
         ];\n");
@@ -608,11 +684,11 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:rta',
-          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'LINE2:ping_rta#CC03CC:ping,rta',
+          'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
           '-w',
           100,
           '-h',
@@ -634,18 +710,10 @@ sub testrrdline {
           '-e',
           'now-0',
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:rta',
-          'DEF:ping_rta_max=$rrddir/host0/PING___ping.rrd_max:rta:MAX',
-          'LINE1:ping_rta_max#888888:maximum',
-          'DEF:ping_rta_min=$rrddir/host0/PING___ping.rrd_min:rta:MIN',
-          'LINE1:ping_rta_min#BBBBBB:minimum',
-          'CDEF:ping_rta_maxif=ping_rta_max,UN',
-          'CDEF:ping_rta_maxi=ping_rta_maxif,ping_rta,ping_rta_max,IF',
-          'GPRINT:ping_rta_maxi:MAX:Max\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
-          'CDEF:ping_rta_minif=ping_rta_min,UN',
-          'CDEF:ping_rta_mini=ping_rta_minif,ping_rta,ping_rta_min,IF',
-          'GPRINT:ping_rta_mini:MIN:Min\\\\: %6.2lf%s\\\\n',
+          'LINE2:ping_rta#CC03CC:ping,rta',
+          'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s\\\\n',
           '-w',
           100,
           '-h',
@@ -660,11 +728,11 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:rta',
-          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf',
-          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf',
-          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf\\\\n',
+          'LINE2:ping_rta#CC03CC:ping,rta',
+          'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf',
+          'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf',
+          'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf\\\\n',
           '-w',
           600,
           '-X',
@@ -680,11 +748,11 @@ sub testrrdline {
           '-e',
           'now-0',
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:rta',
-          'GPRINT:ping_rta:MAX:Max\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:AVERAGE:Avg\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:MIN:Min\\\\: %6.2lf%s',
-          'GPRINT:ping_rta:LAST:Cur\\\\: %6.2lf%s\\\\n',
+          'LINE2:ping_rta#CC03CC:ping,rta',
+          'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
           '-w',
           600,";
 
@@ -742,6 +810,95 @@ sub testrrdline {
           '-o'
         ];\n");
     undef $Config{logarithmic};
+
+    # test negate
+    %params = getrrdlineparams();
+    $params{db} = ['ping,rta'];
+    $Config{negate}{rta} = 1;
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          $RRDLINES0
+          'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
+          'CDEF:ping_rta_neg=ping_rta,-1,*',
+          'LINE2:ping_rta_neg#CC03CC:ping,rta',
+          'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
+          '-w',
+          600
+        ];\n");
+    undef $Config{negate};
+
+    # test min/max options
+
+    # FIXME: get make listtodict more obvious (no side effects)
+    # FIXME: use 'maximums' and 'maximumshash' rather than replacing 'maximums'
+    #        same for all the other stuff replaced by listtodict.
+    $Config{maximums} = 'Current Load,PLW,Procs: total,Procs: zombie,User Count';
+    $Config{maximums} = listtodict('maximums', q(,));
+    $Config{minimums} = 'APCUPSD,Mem: free,Mem: swap';
+    $Config{minimums} = listtodict('minimums', q(,));
+    $Config{withmaximums} = 'PING';
+    $Config{withmaximums} = listtodict('withmaximums', q(,));
+    $Config{withminimums} = 'PING';
+    $Config{withminimums} = listtodict('withminimums', q(,));
+    %params = getrrdlineparams();
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          $RRDLINES0
+          'DEF:ping_losspct=$rrddir/host0/PING___ping.rrd:losspct:AVERAGE',
+          'LINE2:ping_losspct#9900FF:ping,losspct',
+          'GPRINT:ping_losspct:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:ping_losspct:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:ping_losspct:MIN:Min\\\\:%7.2lf%s',
+          'GPRINT:ping_losspct:LAST:Cur\\\\:%7.2lf%s\\\\n',
+          'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
+          'LINE2:ping_rta#CC03CC:ping,rta    ',
+          'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
+          '-w',
+          600
+        ];\n");
+    undef $Config{minimums};
+    undef $Config{maximums};
+    undef $Config{withminimums};
+    undef $Config{withmaximums};
+
+    # test labels
+    %params = getrrdlineparams();
+    $params{db} = ['ping,rta'];
+    $params{label} = ['ping,rta:labela', 'rta:labelb'];
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          $RRDLINES0
+          'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
+          'LINE2:ping_rta#CC03CC:labela',
+          'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
+          '-w',
+          600
+        ];\n");
+
+    %params = getrrdlineparams();
+    $params{db} = ['ping,rta'];
+    $params{label} = ['ping,rta:this label has : a colon in it'];
+    ($ds,$err) = rrdline(\%params);
+    ok(Dumper($ds), "\$VAR1 = [
+          $RRDLINES0
+          'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
+          'LINE2:ping_rta#CC03CC:this label has \\\\\\\\: a colon in it',
+          'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
+          'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
+          '-w',
+          600
+        ];\n");
 
 #FIXME: test rrdopts
 
@@ -1200,7 +1357,7 @@ sub testinitperiods {
 
     # ensure we get values from opts
     my %opts = ('period', 'day week month', 'expand_period', 'month year');
-    my ($a,$b) = initperiods('all', \%opts);
+    my ($a,$b) = initperiods('both', \%opts);
     ok($a, 'day,week,month');
     ok($b, 'month,year');
     %opts = ('period', 'day week', 'expand_period', 'day month');
@@ -1313,14 +1470,13 @@ sub testreadhostdb {
     setuprrd();
     setupauthhosts();
 
-    # nothing when no file defined
+    # scan when no file defined
     undef $Config{hostdb};
-    my $result = readhostdb();
-    ok(@{$result}, 0);
-
+    my $result = readhostdb('host0');
+    ok(@{$result}, 2);
     $Config{hostdb} = '';
-    $result = readhostdb();
-    ok(@{$result}, 0);
+    $result = readhostdb('host0');
+    ok(@{$result}, 2);
 
     my $fn = "$FindBin::Bin/db.conf";
     my $rrddir = gettestrrddir();
@@ -1367,6 +1523,42 @@ sub testreadhostdb {
           }
         ];\n");
 
+    # bogus lines should be ignored
+    open TEST, ">$fn";
+    print TEST "  service=ping&db=rta\n";
+    print TEST "service=PING&db=ping\n";
+    print TEST " host=host1\n";
+    close TEST;
+    $result = readhostdb('host3');
+    ok(@{$result}, 1);
+    ok(Dumper($result), "\$VAR1 = [
+          {
+            'db' => [
+                      'rta'
+                    ],
+            'db_label' => {},
+            'service' => 'ping',
+            'host' => 'host3'
+          }
+        ];\n");
+
+    # empty db spec should be filled in
+    open TEST, ">$fn";
+    print TEST "service=PING\n";
+    close TEST;
+    $result = readhostdb('host0');
+    ok(@{$result}, 1);
+    ok(Dumper($result), "\$VAR1 = [
+          {
+            'db' => [],
+            'db_label' => [],
+            'service' => 'PING',
+            'host' => 'host0'
+          }
+        ];\n");
+    $result = readhostdb('host3');
+    ok(@{$result}, 0);
+    ok(Dumper($result), "\$VAR1 = [];\n");
 
     # now add more data sets, all for ping service
     open TEST, ">$fn";
@@ -1639,14 +1831,13 @@ sub testreadservdb {
     setuprrd();
     setupauthhosts();
 
-    # nothing when no file defined
+    # scan when no file defined
     undef $Config{servdb};
-    my $result = readservdb();
-    ok(@{$result}, 0);
-
+    my $result = readservdb('HTTP');
+    ok(@{$result}, 2);
     $Config{servdb} = '';
-    $result = readservdb();
-    ok(@{$result}, 0);
+    $result = readservdb('HTTP');
+    ok(@{$result}, 2);
 
     my $fn = "$FindBin::Bin/db.conf";
     $Config{servdb} = $fn;
@@ -1671,6 +1862,19 @@ sub testreadservdb {
         ];\n");
     $result = readservdb('bogus');
     ok(@{$result}, 0);
+
+    # bogus lines should be ignored
+    open TEST, ">$fn";
+    print TEST "  host=host0\n";
+    print TEST "service=service1\n";
+    print TEST " host=  host1\n";
+    close TEST;
+    $result = readservdb('HTTP');
+    ok(@{$result}, 2);
+    ok(Dumper($result), "\$VAR1 = [
+          'host0',
+          'host1'
+        ];\n");
 
     open TEST, ">$fn";
     print TEST "#this is a comment\n";
@@ -1804,6 +2008,42 @@ sub testreadgroupdb {
     close TEST;
     my ($names,$infos) = readgroupdb('PING');
     ok(@{$names}, 0);
+
+    # skip bogus lines
+    open TEST, ">$fn";
+    print TEST "#this is a comment\n";
+    print TEST "backup\n";
+    print TEST "backup=host\n";
+    print TEST "PING=\n";
+    close TEST;
+    ($names,$infos) = readgroupdb('PING');
+    ok(@{$names}, 0);
+
+    # test scan for defaults
+    open TEST, ">$fn";
+    print TEST "#this is a comment\n";
+    print TEST "PING=host0,PING\n";
+    print TEST "PING=host2,PING&db=ping,losspct\n";
+    print TEST "PING=host3,PING\n";
+    close TEST;
+    ($names,$infos) = readgroupdb('PING');
+    ok(@{$names}, 1);
+    ok(Dumper($infos), "\$VAR1 = [
+          {
+            'db' => [],
+            'db_label' => [],
+            'service' => 'PING',
+            'host' => 'host0'
+          },
+          {
+            'db' => [
+                      'ping,losspct'
+                    ],
+            'db_label' => {},
+            'service' => 'PING',
+            'host' => 'host2'
+          }
+        ];\n");
 
     open TEST, ">$fn";
     print TEST "#this is a comment\n";
@@ -1945,13 +2185,21 @@ sub testreaddatasetdb {
     my $fn = "$FindBin::Bin/db.conf";
     $Config{datasetdb} = $fn;
 
+    # nothing when nothing in file
     open TEST, ">$fn";
     print TEST "\n";
     close TEST;
-
-    # nothing when nothing in file
     $result = readdatasetdb();
     ok(keys %{$result}, 0);
+
+    # bogus lines should be ignored
+    open TEST, ">$fn";
+    print TEST "service=\n";
+    print TEST "  service = ping&db=rta\n";
+    print TEST "host\n";
+    close TEST;
+    $result = readdatasetdb();
+    ok(keys %{$result}, 1);
 
     open TEST, ">$fn";
     print TEST "#this is a comment\n";
@@ -2359,6 +2607,31 @@ sub testgetlabel {
     undef $Labels{foo};
 }
 
+# test fallback behavior when getting labels for data
+sub testgetdatalabel {
+    undef %Labels;
+    $Labels{'ping,loss'} = 'PING Loss';
+    ok(getdatalabel('ping'), 'ping');
+    ok(getdatalabel('loss'), 'loss');
+    ok(getdatalabel('ping,loss'), 'PING Loss');
+
+    undef %Labels;
+    $Labels{'loss'} = 'PING Loss';
+    ok(getdatalabel('ping'), 'ping');
+    ok(getdatalabel('loss'), 'PING Loss');
+    ok(getdatalabel('ping,loss'), 'PING Loss');
+
+    undef %Labels;
+    $Labels{'loss'} = 'Loss';
+    $Labels{'ping'} = 'PING';
+    $Labels{'ping,loss'} = 'PING Loss';
+    ok(getdatalabel('ping'), 'PING');
+    ok(getdatalabel('loss'), 'Loss');
+    ok(getdatalabel('ping,loss'), 'PING Loss');
+
+    undef %Labels;
+}
+
 sub testbuildurl {
     ok(buildurl('host0', ''), '');
     ok(buildurl('', 'ping'), '');
@@ -2482,6 +2755,7 @@ testlisttodict();
 testarrayorstring();
 testcheckdirempty();
 testreadfile();
+testinitlog();
 testreadconfig();
 testdbfilelist();
 testgetdataitems();
@@ -2522,5 +2796,7 @@ testgetperiodlabel();
 testformattime();
 testcheckrrddir();
 testgetlabel();
+testgetdatalabel();
 testbuildurl();
 testcfgparams();
+testgetparams();

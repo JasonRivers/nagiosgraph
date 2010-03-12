@@ -6,6 +6,8 @@
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 # Author:  (c) Matthew Wall, 2010
 
+# FIXME: get rid of the global variables
+
 ## no critic (RegularExpressions)
 ## no critic (ProhibitCascadingIfElse)
 ## no critic (ProhibitExcessComplexity)
@@ -278,7 +280,7 @@ sub getdebug {
     if (defined $Config{$base}) {
         debug(DBDEB, "getdebug found $base");
         if (defined $Config{$host}) {
-            debug(DBDEB, "getdebug found $host");
+            debug(DBDEB, "getdebug found host $host");
             if ($Config{$host} eq $server) {
                 if (defined $Config{$serv}) {
                     debug(DBDEB, "getdebug found $serv with $host");
@@ -290,7 +292,7 @@ sub getdebug {
                 }
             }
         } elsif (defined $Config{$serv}) {
-            debug(DBDEB, "getdebug found $serv");
+            debug(DBDEB, "getdebug found service $serv");
             if ($Config{$serv} eq $service) {
                 $Config{debug} = $Config{$base};
             }
@@ -328,12 +330,12 @@ sub getparams {
     my %rval;
 
     # these flags are either string or array
-    for my $ii (qw(host service db group geom rrdopts offset period expand_period)) {
+    for my $ii (qw(host service db label group geom rrdopts offset period expand_period)) {
         if ($cgi->param($ii)) {
             if (ref($cgi->param($ii)) eq 'ARRAY') {
                 my @rval = $cgi->param($ii);
                 $rval{$ii} = \@rval;
-            } elsif ($ii eq 'db') {
+            } elsif ($ii eq 'db' || $ii eq 'label') {
                 $rval{$ii} = [$cgi->param($ii),];
             } else {
                 $rval{$ii} = $cgi->param($ii);
@@ -357,7 +359,8 @@ sub getparams {
     if (not $rval{host}) { $rval{host} = q(); }
     if (not $rval{service}) { $rval{service} = q(); }
     if (not $rval{group}) { $rval{group} = q(); }
-    if (not $rval{db}) { my @db; $rval{db} = \@db; }
+    if (not $rval{db}) { $rval{db} = []; }
+    if (not $rval{label}) { $rval{label} = []; }
 
     if ($rval{offset}) { $rval{offset} = int $rval{offset}; }
     if (not $rval{offset} or $rval{offset} <= 0) { $rval{offset} = 0; }
@@ -999,6 +1002,7 @@ sub havepermission {
 
 sub readlabelsfile {
     if ( defined $Config{labelfile} ) {
+        undef %Labels;
         my $errstr = readfile(getcfgfn($Config{labelfile}), \%Labels);
         if ($errstr ne q()) {
             return $errstr;
@@ -1168,6 +1172,8 @@ sub readhostdb {
                     # do not specify the databases explicitly.
                     my $x = getdbs($host, $service, \%hsdata);
                     next if scalar @{$x} == 0;
+                    $db = [];
+                    $dblabel = [];
                 }
                 my %info;
                 $info{host} = $host;
@@ -1351,6 +1357,8 @@ sub readgroupdb {
                 # do not specify the databases explicitly.
                 my $x = getdbs($host, $service, \%hsdata);
                 next if scalar @{$x} == 0;
+                $db = [];
+                $dblabel = [];
             }
             my %info;
             $info{host} = $host;
@@ -1576,28 +1584,36 @@ sub mkvname {
     return $vname;
 }
 
-sub setlabels {
-    my ($dsname, $dbname, $file, $serv, $labellength) = @_;
-    debug(DBDEB, "setlabels($dsname, $dbname, $file, $serv, $labellength)");
+# prepare a string for the rrd graph legend.  pad with trailing spaces.
+# escape colons so they do not confuse rrdtool
+sub mklegend {
+    my ($s, $maxlen) = @_;
+    $s =~ s/:/\\\\:/g;
+    return sprintf "%-${maxlen}s", $s;
+}
+
+sub setlabels { ## no critic (ProhibitManyArgs)
+    my ($dsname, $dbname, $file, $serv, $label, $maxlen) = @_;
+    debug(DBDEB, "setlabels($dsname, $dbname, $file, $serv, $maxlen)");
     my @ds;
     my $id = mkvname($dbname, $dsname);
-    my $label = sprintf "%-${labellength}s", $dsname;
+    my $legend = mklegend($label, $maxlen);
     my ($linestyle, $linecolor) = getlineattr($dsname);
     if (defined $Config{maximums}->{$serv}) {
         push @ds, "DEF:$id=$file:$dsname:MAX"
                 , "CDEF:ceil$id=$id,CEIL"
-                , "$linestyle:${id}#$linecolor:$label";
+                , "$linestyle:${id}#$linecolor:$legend";
     } elsif (defined $Config{minimums}->{$serv}) {
         push @ds, "DEF:$id=$file:$dsname:MIN"
                 , "CDEF:floor$id=$id,FLOOR"
-                , "$linestyle:${id}#$linecolor:$label";
+                , "$linestyle:${id}#$linecolor:$legend";
     } else {
         push @ds, "DEF:${id}=$file:$dsname:AVERAGE";
         if (defined $Config{negate}->{$dsname}) {
             push @ds, "CDEF:${id}_neg=${id},-1,*";
-            push @ds, "$linestyle:${id}_neg#$linecolor:$label";
+            push @ds, "$linestyle:${id}_neg#$linecolor:$legend";
         } else {
-            push @ds, "$linestyle:${id}#$linecolor:$label";
+            push @ds, "$linestyle:${id}#$linecolor:$legend";
         }
     }
     return @ds;
@@ -1614,13 +1630,13 @@ sub setdata { ## no critic (ProhibitManyArgs)
             my $maxcolor = (defined $Config{colormax}
                             ? $Config{colormax} : COLORMAX);
             push @ds, "DEF:${id}_max=${file}_max:$dsname:MAX"
-                    , "LINE1:${id}_max#${maxcolor}:maximum";
+                    , "LINE1:${id}_max#${maxcolor}:" . _('maximum');
         }
         if (defined $Config{withminimums}->{$serv}) {
             my $mincolor = (defined $Config{colormin}
                             ? $Config{colormin} : COLORMIN);
             push @ds, "DEF:${id}_min=${file}_min:$dsname:MIN"
-                    , "LINE1:${id}_min#${mincolor}:minimum";
+                    , "LINE1:${id}_min#${mincolor}:" . _('minimum');
         }
         if (defined $Config{withmaximums}->{$serv}) {
             push @ds, "CDEF:${id}_maxif=${id}_max,UN"
@@ -1674,6 +1690,15 @@ sub rrdline {
         return \@ds, $errmsg;
     }
 
+    # assimilate any labels that were specified
+    if (defined $params->{label}) {
+        foreach my $k (@{$params->{label}}) {
+            if ( $k =~ /([^:]+):(.+)/ ) {
+                $Labels{$1} = $2;
+            }
+        }
+    }
+
     my $geom = $params->{geom};
     my $fixedscale = 0;
     if (defined $params->{fixedscale}) {
@@ -1722,7 +1747,9 @@ sub rrdline {
     # Compute the longest label length
     my $longest = 0;
     for my $ii (@{$graphinfo}) {
-        foreach my $label (keys %{$ii->{line}}) {
+        my $dbname = $ii->{dbname};
+        foreach my $dsname (keys %{$ii->{line}}) {
+            my $label = getdatalabel("$dbname,$dsname");
             if (length $label > $longest) {
                 $longest = length $label;
             }
@@ -1732,7 +1759,6 @@ sub rrdline {
     for my $ii (@{$graphinfo}) {
         my $file = $ii->{file};
         my $dbname = $ii->{dbname};
-        $dbname =~ tr|/|_|; # keep rrdgraph happy
         my $fn = "$directory/$file";
         dumper(DBDEB, 'rrdline: this graphinfo entry', $ii);
         for my $dsname (sortnaturally(keys %{$ii->{line}})) {
@@ -1740,7 +1766,8 @@ sub rrdline {
             if (substr($service, $pos) eq $dsname) {
                 $serv = substr $service, 0, $pos;
             }
-            push @ds, setlabels($dsname, $dbname, "$fn", $serv, $longest);
+            my $label = getdatalabel("$dbname,$dsname");
+            push @ds, setlabels($dsname, $dbname, "$fn", $serv, $label, $longest);
             push @ds, setdata($dsname, $dbname, "$fn", $serv, $fixedscale, $duration);
         }
     }
@@ -2137,25 +2164,12 @@ sub printgraphlinks {
     my $showdesc = $params->{showdesc};
     my $showgraphtitle = $params->{showgraphtitle};
 
-    # the description contains a list of the data set names.  we first see
-    # if there is a label for the complete name, e.g. 'cpu,idle'.  if
-    # not, then we try for the smaller part, e.g. 'idle'.  if that fails,
-    # just display the full name, e.g. 'cpu,idle'.
+    # the description contains a list of the data set names.
     if ($showdesc) {
         if ($params->{db} && scalar @{$params->{db}} > 0) {
             foreach my $ii (sortnaturally(@{$params->{db}})) {
                 if ($desc ne q()) { $desc .= $cgi->br(); }
-                my $x = getlabel($ii);
-                if ($x eq $ii) {
-                    my ($db,$ds) = split /,/, $ii;
-                    if ($ds) {
-                        my $y = getlabel($ds);
-                        if ($y ne $ds) {
-                            $x = $y;
-                        }
-                    }
-                }
-                $desc .= $x;
+                $desc .= getdatalabel($ii);
             }
         }
     }
@@ -2165,7 +2179,7 @@ sub printgraphlinks {
     # debugging configuration files.
     $gtitle = $params->{service} . q( ) . _('on') . q( ) . $params->{host};
     $alttag = _('Graph of') . q( ) . $gtitle;
-    if ($params->{db}) {
+    if ($params->{db} && scalar @{$params->{db}} > 0) {
         $alttag .= ' (';
         foreach my $ii (sortnaturally(@{$params->{db}})) {
             $alttag .= q( ) . $ii;
@@ -2174,11 +2188,14 @@ sub printgraphlinks {
     }
     debug(DBDEB, 'printgraphlinks alttag = ' . $alttag);
 
-    my $rrdopts = $params->{rrdopts};
-    if ($params->{graphonly}) {
+    my $rrdopts = q();
+    if ($params->{rrdopts}) {
+        $rrdopts .= $params->{rrdopts};
+    }
+    if ($params->{graphonly} && index($rrdopts, '-j') == -1) {
         $rrdopts .= ' -j';
     }
-    if ($params->{hidelegend}) {
+    if ($params->{hidelegend} && index($rrdopts, '-g') == -1) {
         $rrdopts .= ' -g';
     }
     # the '-snow' and '-enow' formats matter - they are detected by rrdline
@@ -2198,12 +2215,13 @@ sub printgraphlinks {
     $rrdopts =~ s/#/%23/g;
     debug(DBDEB, 'printgraphlinks rrdopts = ' . $rrdopts);
 
-    my $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?';
-    $url .= buildurl($params->{host}, $params->{service},
-                     { geom => $params->{geom},
-                       rrdopts => [$rrdopts],
-                       fixedscale => $params->{fixedscale},
-                       db => $params->{db}});
+    my $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?'
+        . buildurl($params->{host}, $params->{service},
+                   { geom => $params->{geom},
+                     rrdopts => [$rrdopts],
+                     fixedscale => $params->{fixedscale},
+                     db => $params->{db},
+                 });
     debug(DBDEB, "printgraphlinks url = $url");
 
     my $titlestr = $showtitle
@@ -2699,6 +2717,28 @@ sub _ {
 sub getlabel {
     my ($key) = @_;
     return $Labels{$key} ? $Labels{$key} : $key;
+}
+
+# get the label associated with the indicated name.  the name could be a
+# database name, a data source name, or a db,ds pair.
+sub getdatalabel {
+    my ($name) = @_;
+    my $x = getlabel($name);
+    if ($x eq $name) {
+        my ($db,$ds) = split /,/, $name;
+        if ($ds) {
+            my $y = getlabel($ds);
+            if ($y ne $ds) {
+                $x = $y;
+            }
+        } elsif ($db) {
+            my $y = getlabel($db);
+            if ($y ne $db) {
+                $x = $y;
+            }
+        }
+    }
+    return $x;
 }
 
 # sort a list naturally using implementation by tye at

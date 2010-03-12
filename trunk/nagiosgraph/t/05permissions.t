@@ -13,7 +13,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 use Test;
 
-BEGIN { plan tests => 141; }
+BEGIN { plan tests => 145; }
 
 sub testcheckuserlist {
     ok(checkuserlist('bill,bob,nancy'), 0);
@@ -151,6 +151,13 @@ sub testloadperms {
     # nagios access control
 
     $Config{authzmethod} = 'nagios3';
+    $errmsg = loadperms('');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
     $errmsg = loadperms('guest');
     ok($errmsg, 'authz_nagios_cfg is not defined');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -218,6 +225,13 @@ sub testloadperms {
     # nagiosgraph access control
 
     $Config{authzmethod} = 'nagiosgraph';
+    $errmsg = loadperms('');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
     $errmsg = loadperms('guest');
     ok($errmsg, 'authzfile is not defined');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -322,7 +336,7 @@ sub testreadnagiosperms {
         };\n");
 
     open TEST, ">$fn2";
-    print TEST "authorized_for_all_hosts=   guest,bill\n";
+    print TEST "authorized_for_all_hosts=  jane, guest,bill\n";
     close TEST;
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
