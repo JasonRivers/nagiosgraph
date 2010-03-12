@@ -6,12 +6,10 @@
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 # Author:  (c) Matthew Wall, 2010
 
-# The configuration file and ngshared.pm must be in this directory.
-# So take note upgraders, there is no $configfile = '....' line anymore.
+# The configuration file and ngshared.pm must be in this directory:
 use lib '/opt/nagiosgraph/etc';
 
 use ngshared;
-use RRDs;
 use strict;
 use warnings;
 

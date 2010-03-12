@@ -2,6 +2,7 @@ AUTHORS
 CHANGELOG
 INSTALL
 MANIFEST
+Makefile.PL
 README
 TODO
 install.pl
@@ -36,9 +37,11 @@ share/nagiosgraph.js
 share/nagiosgraph.ssi
 t/01required_modules.t
 t/02ngshared.t
+t/03defaults.t
+t/04show.t
+t/05permissions.t
 t/97pod.t
 t/98podcoverage.t
 t/99kwalitee.t
-utils/authz.pl
 utils/testentry.pl
 utils/upgrade.pl

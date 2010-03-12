@@ -5,6 +5,7 @@ WriteMakefile(
     'ABSTRACT'      => 'Nagios performance data storage and graphing',
     'AUTHOR'        => 'Alan Brenner <alan.brenner@ithaka.org>',
     'NAME'	    => 'nagiosgraph',
+    'LICENSE'       => 'OSI Artistic License',
     'VERSION_FROM'  => 'etc/ngshared.pm',
     'EXE_FILES'     => [ 'lib/insert.pl',
                          'cgi/show.cgi',
@@ -12,7 +13,17 @@ WriteMakefile(
                          'cgi/showservice.cgi',
                          'cgi/showgroup.cgi',
                          'cgi/testcolor.cgi' ],
-    'PREREQ_PM'     => { 'RRDs' => 0 },
+    'PREREQ_PM'     => { 'RRDs' => 0,
+                         'Carp' => 0,
+                         'CGI' => 0,
+                         'Data::Dumper' => 0,
+                         'English' => 0,
+                         'Fcntl' => 0,
+                         'File::Find' => 0,
+                         'File::Basename' => 0,
+                         'MIME::Base64' => 0,
+                         'POSIX' => 0,
+                         'Time::HiRes' => 0 },
     'dist'          => { 'SUFFIX'       => ".gz",
                          'DIST_DEFAULT' => 'all tardist',
                          'COMPRESS'     => "gzip -9f" },
@@ -26,12 +37,7 @@ sub MY::install {
 
 # check everything with perlcritic.
 sub MY::postamble {
-'
-critic:
-	perlcritic -1 etc/ngshared.pm cgi/show.cgi cgi/showhost.cgi cgi/showservice.cgi cgi/showgroup.cgi cgi/testcolor.cgi lib/insert.pl
+    "critic:\n\tperlcritic -1 etc/ngshared.pm cgi/show.cgi cgi/showhost.cgi cgi/showservice.cgi cgi/showgroup.cgi cgi/testcolor.cgi lib/insert.pl
 
-test-coverage:
-	PERL5OPT=-MDevel::Cover make test
-	cover cover_db
-';
+test-coverage:\n\tPERL5OPT=-MDevel::Cover make test\n\tcover cover_db";
 }
