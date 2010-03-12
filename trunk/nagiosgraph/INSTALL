@@ -138,6 +138,9 @@ Upgrade Notes
  - Be sure to install the nagiosgraph.js and nagiosgraph.css files, especially
    if you are upgrading from nagiosgraph older than 1.2.
 
+ - If you are upgrading from nagiosgraph 1.4.1 or earlier, move your service
+   and database/datasource labels from nagiosgraph.conf to labels.conf.
+
 
 Configuring Data Processing
 ---------------------------
@@ -313,8 +316,8 @@ additions go directly in the host and service definitions.
        use local-service,graphed-service
      }
 
- - Optionally replace nagios/images/action.gif with graph.gif from the
-   nagiosgraph distribution.
+ - To display a graph icon instead of the nagios action icon, replace
+   nagios/images/action.gif with graph.gif from the nagiosgraph distribution.
 
 
 
@@ -349,7 +352,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
      define service {
        name NTP
        use local-service
-       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&rrdopts=-w+450-j
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&rrdopts=-w+450+-j
      }
 
     Similar to previous example, but a week of data rather than a day:
@@ -357,7 +360,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
      define service {
        name NTP
        use local-service
-       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450-j
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450+-j
      }
 
 You must restart Nagios for changes to service/host defintions to take effect.
