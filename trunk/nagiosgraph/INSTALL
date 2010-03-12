@@ -12,7 +12,8 @@ or more round-robin database (RRD) files.  Each database contains one or
 more data sets.  nagiosgraph cgi scripts display data from the RRD files
 as web pages.
 
-This document contains the following sections:
+Installation is a two-step process.  First install the nagiosgraph files,
+then configure data processing in nagios.
 
   Installation Preliminaries
   Installation Instructions
@@ -62,6 +63,8 @@ Installation Preliminaries
 Installation Instructions
 -------------------------
 
+These instructions assume an overlay layout, with nagios at /usr/local/nagios
+
  - Check required packages: nagios, nagios-plugins, rrdtool, perl,
    perl-CGI, and perl-rrdtool
 
@@ -76,26 +79,26 @@ Installation Instructions
    "use lib" line to point to the directory from the previous step.
 
  - Copy the contents of lib into a location from which they can be executed,
-   e.g. /usr/lib/nagios/libexec
+   e.g. /usr/local/nagios/libexec
 
  - Copy the contents of cgi into a cgi-bin directory served by the web server,
-   e.g. /usr/lib/nagios/cgi-bin
+   e.g. /usr/local/nagios/sbin
 
  - Copy share/nagiosgraph.css into a directory served by the web server,
-   e.g. /usr/share/nagios/stylesheets
+   e.g. /usr/local/nagios/share
 
  - Copy share/nagiosgraph.js into a directory served by the web server,
-   e.g. /usr/share/nagios
+   e.g. /usr/local/nagios/share
 
  - Edit nagiosgraph.conf.  Set at least the following:
 
-     logfile
-     perflog
-     rrddir
-     mapfile
-     nagiosgraphcgiurl
-     javascript
-     stylesheet
+     logfile           = /var/log/nagiosgraph.log
+     perflog           = /var/nagios/perfdata.log
+     rrddir            = /var/nagios/rrd
+     mapfile           = /etc/nagiosgraph/map
+     nagiosgraphcgiurl = /nagios/cgi-bin
+     javascript        = /nagios/nagiosgraph.js
+     stylesheet        = /nagios/nagiosgraph.css
 
  - Set permissions of "rrddir" (as defined in nagiosgraph.conf) so that
    the *nagios* user can write to it and the *www* user can read it.
@@ -121,6 +124,9 @@ Upgrade Notes
  - You may want to look at etc/map to see if there are any new examples that
    you may find useful.
 
+ - If you change from immediate processing to batch processing, be sure to
+   comment out service_perfdata_command in the nagios configuration.
+
 
 Configuring Data Processing
 ---------------------------
@@ -142,7 +148,7 @@ Batch Processing
  - In nagios.cfg set:
 
      process_performance_data=1
-     service_perfdata_file=/var/spool/nagios/perfdata.log
+     service_perfdata_file=/var/nagios/perfdata.log
      service_perfdata_file_template=$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$
      service_perfdata_file_mode=a
      service_perfdata_file_processing_interval=30
@@ -159,7 +165,7 @@ Batch Processing
 
      define command {
        command_name  process-service-perfdata
-       command_line  /usr/lib/nagios/libexec/insert.pl
+       command_line  /usr/local/nagios/libexec/insert.pl
      }
 
    Make sure there is only one definition for process-service-perfdata.
@@ -167,7 +173,7 @@ Batch Processing
    Some installations of Nagios (e.g. with embedded perl) require the explicit
    location of perl.  For these installations, use a command_line such as:
 
-     command_line /usr/bin/perl /usr/lib/nagios/libexec/insert.pl
+     command_line /usr/bin/perl /usr/local/nagios/libexec/insert.pl
 
 
 Immediate Processing
@@ -186,13 +192,13 @@ Immediate Processing
 
      define command{
        command_name  process-service-perfdata
-       command_line  /usr/lib/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
+       command_line  /usr/local/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
      }
 
    Some installations of Nagios (e.g. with embedded perl) require the explicit
    location of perl.  For these installations, use a command_line such as:
 
-     command_line /usr/bin/perl /usr/lib/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
+     command_line /usr/bin/perl /usr/local/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
 
 
 
@@ -202,8 +208,8 @@ Configuring Graphing and Display
 First configure the web server to run the nagiosgraph CGI scripts.  For
 example, with Apache do something like this in the Apache configuration:
 
-  ScriptAlias /nagiosgraph/cgi-bin /usr/lib/nagiosgraph/cgi-bin
-  <Directory "/usr/lib/nagiosgraph/cgi-bin">
+  ScriptAlias /nagiosgraph/cgi-bin /usr/local/nagiosgraph/cgi-bin
+  <Directory "/usr/local/nagiosgraph/cgi-bin">
      Options ExecCGI
      AllowOverride None
      Order allow,deny
@@ -247,13 +253,13 @@ additions go directly in the host and service definitions.
 
      Otherwise, define in cgi.cfg the following:
 
-     xedtemplate_config_file=/usr/local/etc/nagios/serviceextinfo.cfg
+     xedtemplate_config_file=/usr/local/nagios/etc/serviceextinfo.cfg
 
    Edit/Create hostextinfo.cfg
 
      define hostextinfo {
        host_name  your-host
-       action_url /nagiosgraph/showhost.cgi?host=$HOSTNAME$
+       action_url /nagiosgraph/cgi-bin/showhost.cgi?host=$HOSTNAME$
      }
 
      This must be the host you will use in serviceextinfo.cfg
@@ -263,7 +269,7 @@ additions go directly in the host and service definitions.
      define serviceextinfo {
        service_description  DNS
        hostgroup       servers
-       notes_url       /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
+       notes_url       /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
        icon_image      graph.gif
        icon_image_alt  View graphs
      }
@@ -274,14 +280,14 @@ additions go directly in the host and service definitions.
      define service {
        name NTP
        use local-service
-       action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
      }
 
    To apply graph links to multiple services, define a template such as this:
 
      define service {
        name graphed-service
-       action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
      }
 
    Then use it in services like this:
@@ -308,7 +314,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
     the nagios ssi directory, and rename it so that Nagios will insert it into
     each page.  For example:
 
-      cp share/nagiosgraph.ssi /usr/share/nagios/ssi/common-header.ssi
+      cp share/nagiosgraph.ssi /usr/local/nagios/share/ssi/common-header.ssi
 
     If you have customized Nagios SSI, add the contents of
     share/nagiosgraph.ssi to your customized SSI header file(s).
@@ -319,7 +325,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
      define service {
        name NTP
        use local-service
-       action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
      }
 
     This example displays only the graph data, in a smaller popup:
@@ -327,7 +333,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
      define service {
        name NTP
        use local-service
-       action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&rrdopts=-w+450-j
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&rrdopts=-w+450-j
      }
 
     Similar to previous example, but a week of data rather than a day:
@@ -335,7 +341,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
      define service {
        name NTP
        use local-service
-       action_url /nagiosgraph/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450-j
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450-j
      }
 
 You must restart Nagios for changes to service/host defintions to take effect.
@@ -352,7 +358,7 @@ Displaying Graphs in Nagios Frames
 
 To embed nagiosgraph graphs directly into nagios, do the following:
 
-  - Modify side.php (e.g. /opt/nagios/share/side.php) by inserting
+  - Modify side.php (e.g. /usr/local/nagios/share/side.php) by inserting
     bullets under the 'Trends' heading:
 
 <li><a href="<?php echo $cfg["cgi_base_url"];?>/trends.cgi" target="<?php echo $link_target;?>">Trends</a>
@@ -839,8 +845,6 @@ Here are samples of nagiosgraph/nagios installation layouts.
 
     /opt/nagiosgraph/bin/insert.pl
     /opt/nagiosgraph/cgi-bin/show.cgi
-    /opt/nagiosgraph/cgi-bin/showhost.cgi
-    /opt/nagiosgraph/cgi-bin/showservice.cgi
     /opt/nagiosgraph/cgi-bin/showgraph.cgi
     /opt/nagiosgraph/etc/ngshared.pm
     /opt/nagiosgraph/etc/nagiosgraph.conf
@@ -850,23 +854,19 @@ Here are samples of nagiosgraph/nagios installation layouts.
   overlay, installed to /:
     /usr/lib/nagios/libexec/insert.pl
     /usr/lib/nagios/cgi-bin/show.cgi
-    /usr/lib/nagios/cgi-bin/showhost.cgi
-    /usr/lib/nagios/cgi-bin/showservice.cgi
     /usr/lib/nagios/cgi-bin/showgraph.cgi
     /etc/nagiosgraph/ngshared.pm
     /etc/nagiosgraph/nagiosgraph.conf
-    /usr/share/nagios/stylesheets/nagiosgraph.css
+    /usr/share/nagios/nagiosgraph.css
     /usr/share/nagios/nagiosgraph.js
 
   overlay, installed to /usr/local:
     /usr/local/nagios/libexec/insert.pl
     /usr/local/nagios/cgi-bin/show.cgi
-    /usr/local/nagios/cgi-bin/showhost.cgi
-    /usr/local/nagios/cgi-bin/showservice.cgi
     /usr/local/nagios/cgi-bin/showgraph.cgi
     /usr/local/nagios/etc/ngshared.pm
     /usr/local/nagios/etc/nagiosgraph.conf
-    /usr/local/nagios/share/stylesheets/nagiosgraph.css
+    /usr/local/nagios/share/nagiosgraph.css
     /usr/local/nagios/share/nagiosgraph.js
 
 
@@ -1013,23 +1013,7 @@ easier.
 
   Be consistent in configuration files and documentation about where the
   nagiosgraph files are installed, regardless of what you use.  Use the
-  non-overlay layout:
-
-  file system:
-
-      /etc/nagiosgraph/nagiosgraph.conf
-      /etc/nagiosgraph/ngshared.pm
-      /usr/lib/nagiosgraph/cgi-bin/show.cgi
-      /usr/lib/nagiosgraph/libexec/insert.pl
-      /usr/share/nagiosgraph/nagiosgraph.css
-      /usr/share/nagiosgraph/nagiosgraph.js
-      /var/nagiosgraph/rrd/
-
-  URLs:
-
-      /nagiosgraph/cgi-bin/show.cgi
-      /nagiosgraph/nagiosgraph.css
-      /nagiosgraph/nagiosgraph.js
+  overlay layout, with nagios installed at /usr/local/nagios
 
 As of 11mar2010, the codebase for nagiosgraph looks like this:
 
