@@ -19,20 +19,21 @@ Desired features.
 * make authz understand groups, not just users
 * make offset accept abbreviations (e.g. 1w, 2d, 3m)
 * do a configuration mode that has no javascript (for really big sites)
+* process host performance data as well as service performance data
+* graph templates in addition to existing service-based patterns
 
 Notes
 
 As of march 2010, I (mwall) have done about as much as I can to clean up
-nagiosgraph without fundamental changes.  It seems to perform adequately
-on small sites (a hundred hosts and a few hundred services) on old hardware
-(circa 2004).
+nagiosgraph without fundamental architectural changes.  It seems to perform
+adequately on small sites (a hundred hosts and a few hundred services) on
+old hardware (circa 2004).
 
 Backward-compatibility has been important - the latest nagiosgraph still
 works with older versions of nagios and older nagiosgraph configurations
 and data.
 
-I can imagine the following next steps, some of which might break old
-installations:
+Here are a few things that will need to be addressed at some point:
 
  - batch daemon for processing on large installations.  as it is, nagios
    stops doing its thing until nagiosgraph has finished processing perfdata.
@@ -41,8 +42,6 @@ installations:
 
  - menudata does not scale.  nagiosgraph javascript must be refactored so
    to work on large installations.
-
- - graph templates in addition to service-oriented patterns.
 
  - generic map rules.  define a fallback map rule that detects standard
    perfdata and injects the contents into rrd files, with one source

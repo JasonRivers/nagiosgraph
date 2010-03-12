@@ -116,6 +116,7 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios.
      chmod 664 /var/log/nagiosgraph.log
    (this assumes the www user is in the nagcmd group)
 
+
 Upgrade Notes
 -------------
 
