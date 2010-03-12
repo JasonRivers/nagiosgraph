@@ -64,7 +64,7 @@ Installation Preliminaries
 Installation Instructions
 -------------------------
 
-These instructions assume an overlay layout, with nagios at /usr/local/nagios
+These instructions assume an overlay layout, with nagios at /usr/local/nagios.
 
  - Check required packages: nagios, nagios-plugins, rrdtool, perl,
    perl-CGI, and perl-rrdtool.  perl-GD is optional, but recommended.
@@ -85,7 +85,7 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios
      cp lib/insert.pl /usr/local/nagios/libexec
 
  - Copy the contents of cgi into a cgi-bin directory served by the web server:
-     cp cgi/* /usr/local/nagios/sbin
+     cp cgi/*.cgi /usr/local/nagios/sbin
 
  - Copy share/nagiosgraph.css into a directory served by the web server:
      cp share/nagiosgraph.css /usr/local/nagios/share
@@ -93,7 +93,7 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios
  - Copy share/nagiosgraph.js into a directory served by the web server:
      cp share/nagiosgraph.js /usr/local/nagios/share
 
- - Edit nagiosgraph.conf.  Set at least the following:
+ - Edit /etc/nagiosgraph/nagiosgraph.conf.  Set at least the following:
      logfile           = /var/log/nagiosgraph.log
      perflog           = /var/nagios/perfdata.log
      rrddir            = /var/nagios/rrd
@@ -106,12 +106,15 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios
    the *nagios* user can write to it and the *www* user can read it:
      mkdir /var/nagios/rrd
      chown nagios.nagcmd /var/nagios/rrd
+     chmod 755 /var/nagios/rrd
+   (this assumes the www user is in the nagcmd group)
 
  - Set permissions of "logfile" (as defined in nagiosgraph.conf) so that
    both the *nagios* and *www* users can write to it:
      touch /var/log/nagiosgraph.log
      chown nagios.nagcmd /var/log/nagiosgraph.log
      chmod 664 /var/log/nagiosgraph.log
+   (this assumes the www user is in the nagcmd group)
 
 Upgrade Notes
 -------------
