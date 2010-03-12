@@ -84,13 +84,13 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios.
  - Copy lib/insert.pl to a location from which it can be executed:
      cp lib/insert.pl /usr/local/nagios/libexec
 
- - Copy the contents of cgi into a cgi-bin directory served by the web server:
+ - Copy the contents of cgi to a cgi-bin directory served by the web server:
      cp cgi/*.cgi /usr/local/nagios/sbin
 
- - Copy share/nagiosgraph.css into a directory served by the web server:
+ - Copy share/nagiosgraph.css to a directory served by the web server:
      cp share/nagiosgraph.css /usr/local/nagios/share
 
- - Copy share/nagiosgraph.js into a directory served by the web server:
+ - Copy share/nagiosgraph.js to a directory served by the web server:
      cp share/nagiosgraph.js /usr/local/nagios/share
 
  - Edit /etc/nagiosgraph/nagiosgraph.conf.  Set at least the following:
@@ -105,16 +105,14 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios.
  - Set permissions of "rrddir" (as defined in nagiosgraph.conf) so that
    the *nagios* user can write to it and the *www* user can read it:
      mkdir /var/nagios/rrd
-     chown nagios.nagcmd /var/nagios/rrd
+     chown nagios /var/nagios/rrd
      chmod 755 /var/nagios/rrd
-   (this assumes the www user is in the nagcmd group)
 
  - Set permissions of "logfile" (as defined in nagiosgraph.conf) so that
    both the *nagios* and *www* users can write to it:
      touch /var/log/nagiosgraph.log
-     chown nagios.nagcmd /var/log/nagiosgraph.log
+     chown nagios.www /var/log/nagiosgraph.log
      chmod 664 /var/log/nagiosgraph.log
-   (this assumes the www user is in the nagcmd group)
 
 
 Upgrade Notes
@@ -131,11 +129,13 @@ Upgrade Notes
  - Use diff, or a similar tool, to update your nagiosgraph.css with changes
    from share/nagiosgraph.css.
 
- - You may want to look at etc/map to see if there are any new examples that
-   you may find useful.
+ - You may want to look at etc/map to see if there are any useful new examples.
 
  - If you change from immediate processing to batch processing, be sure to
    comment out service_perfdata_command in the nagios configuration.
+
+ - Be sure to install the nagiosgraph.js and nagiosgraph.css files, especially
+   if you are upgrading from nagiosgraph older than 1.2.
 
 
 Configuring Data Processing
@@ -233,10 +233,15 @@ Verify that nagiosgraph is working by running show.cgi or showgraph.cgi.
 This should display a web page with a list of your hosts and services.
 Note that it might take a few minutes for data to collect.
 
-After the CGI scripts are running you can configure nagios.  There are
+The look and feel of nagiosgraph is controlled by the cascading style sheets
+defined in nagiosgraph.css.  The examples directory contains a stylesheet file
+with sample style sheets for fixing the controls to the page, floating the
+controls above the graphs, or hiding the controls altogether.
+
+After the CGI scripts are working you can configure nagios.  There are
 a few ways to embed nagiosgraph into nagios.  Nagios will display graph
 icons that, when clicked, will open a new web page displaying nagiosgraph
-graphs.  These icons can be displayed per-host (linked to the showhost.cgi
+graphs.  These icons are typically per-host (linked to the showhost.cgi
 script) or per-host-service (linked to the show.cgi script).  Nagios will
 display graph data when the mouse is moved over host/service action icons.
 And graphs can be displayed directly in the Nagios frames.
@@ -645,9 +650,9 @@ You can modify the XML with any text editor, the convert to rrd format:
   rrdtool restore service_db.xml service___db-new.rrd
 
 Unfortunately the rrd file schema is not dynamic.  If an rrd file is created
-with 2 data sets, more data sets cannot be added automatically.  For example,
-you start recording UPS temperature to an rrd file using the following
-map rule:
+with 2 data sources, more data sources cannot be added automatically.  For
+example, you start recording UPS temperature to an rrd file using the
+following map rule:
 
 /perfdata:temperature=([.\d]+)/
 and push @s, [ 'temp',
@@ -679,7 +684,7 @@ service their rrd files look something like this:
 
   PING___ping.rrd (losspct, losswarn, losscrit, rta, rtawarn, rtacrit)
 
-Others prefer a separate file for each set of data:
+Others prefer a separate file for each data source:
 
   PING___losspct.rrd (losspct)
   PING___losswarn.rrd (losswarn)
@@ -803,6 +808,13 @@ with showgraph.cgi, for example showgraph.cgi?host=HOST&service=SERVICE.  Set
 debug_showgraph=3 in nagiosgraph.conf, then look for output in the nagiosgraph
 log file or the web server error log.
 
+Be aware of what you are asking nagiosgraph to display.  Start with just a
+host and service, then get more specific.  For example, each of these queries
+will result in a different graph:
+  show.cgi?host=HOST&service=PING
+  show.cgi?host=HOST&service=PING&db=ping
+  show.cgi?host=HOST&service=PING&db=ping,losspct,losswarn
+
 To isolate problems in individual CGI scripts, use debug_show (show.cgi), 
 debug_showhost (showhost.cgi), debug_showservice (showservice.cgi), or
 debug_showgroup (showgroup.cgi) as appropriate.
@@ -852,7 +864,6 @@ Here are samples of nagiosgraph/nagios installation layouts.
 
   separate, installed to /opt:
     /opt/nagios/bin/
-    /opt/nagios/cgi-bin/
     /opt/nagios/etc/
     /opt/nagios/include/
     /opt/nagios/libexec/
