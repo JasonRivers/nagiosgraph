@@ -78,14 +78,16 @@ if (! havepermission( $params->{host}, $params->{service} )) {
     $OUTPUT_AUTOFLUSH = 1;     # Make sure headers arrive before image data
     print $cgi->header(-type => 'image/png')
         or debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
-    
-    my ($ds, $errmsg) = rrdline($params);
-    dumper(DBDEB, 'RRDs::graph', $ds);
+
+    my ($ds);
+    ($ds, $errmsg) = rrdline($params);
 
     if ($errmsg eq q()) {
+        dumper(DBDEB, 'RRDs::graph', $ds);
         RRDs::graph(@{$ds});
-        if (RRDs::error) {
-            print getimg(RRDs::error)
+        my $err = RRDs::error;
+        if ($err) {
+            print getimg($err)
                 or debug(DBCRT, "error sending HTML to web server: $OS_ERROR");
         }
     } else {
