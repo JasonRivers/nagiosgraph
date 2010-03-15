@@ -536,6 +536,7 @@ sub imgerror {
 # if no GD, just return a small blank image.
 sub getimg {
     my ($msg) = @_;
+    debug(DBDEB, "getimg($msg)");
     my $rval = eval { require GD; };
     if (defined $rval && $rval == 1) {
         my @lines = split /\n/, $msg;
@@ -544,8 +545,8 @@ sub getimg {
         my $maxh = 15;
         my $width = 2 * $pad + $maxw;
         my $height = 2 * $pad + $maxh * scalar @lines;
-        my $img = new GD::Image($width,$height);
-        my $wht = $img->colorAllocate(255,255,255);
+        my $img = GD::Image->new($width, $height);
+        my $wht = $img->colorAllocate(255, 255, 255);
         my $fg = $img->colorAllocate($IMG_FG_COLOR[0],
                                      $IMG_FG_COLOR[1],
                                      $IMG_FG_COLOR[2]);
@@ -806,7 +807,7 @@ sub readnagiosperms {
     }
     my $authenabled = 0;
     my $fn = $Config{authz_nagios_cfg};
-    open my $FH, '<', $fn or ## no critic (RequireBriefOpen)
+    open my $FH, '<', $fn or
         return "cannot open nagios config $fn: $OS_ERROR";
     while (<$FH>) {
         next if /^\s*#/;        # skip commented lines
@@ -2356,7 +2357,8 @@ sub graphsizes {
             push @unsorted, $PERIOD_DATA{$ii};
         }
     }
-    return sort {$a->[1] <=> $b->[1]} @unsorted;
+    my @rval = sort {$a->[1] <=> $b->[1]} @unsorted;
+    return @rval;
 }
 
 # returns three strings: a url for previous period, a label for current
@@ -2661,7 +2663,7 @@ sub getrules {
         debug(DBCRT, $msg);
         croak($msg);
     }
-    ## no critic (ValuesAndExpressions)
+    ## no critic (RequireInterpolationOfMetachars)
     my $code = 'sub evalrules { $_ = $_[0];' .
         ' my ($d, @s) = ($_);' .
         ' no strict "subs";' .
