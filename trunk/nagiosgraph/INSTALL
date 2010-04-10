@@ -12,8 +12,8 @@ or more round-robin database (RRD) files.  Each database contains one or
 more data sets.  nagiosgraph cgi scripts display data from the RRD files
 as web pages.
 
-Installation is a two-step process.  First install the nagiosgraph files,
-then configure data processing in nagios.
+Installation is a three-step process.  First install the nagiosgraph files,
+next configure data collection, and finally customize the display of graphs.
 
   Installation Preliminaries
   Installation Instructions
@@ -129,8 +129,7 @@ Upgrade Notes
    from share/nagiosgraph.css.
 
  - You may want to look at etc/map or the files in the examples directory
-   to see if there are any map rules or stylesheet configurations useful to
-   your configuration.
+   to see if there are any map rules or CSS useful to your configuration.
 
  - If you change from immediate processing to batch processing, be sure to
    comment out service_perfdata_command in the nagios configuration.
@@ -559,10 +558,11 @@ general format is
     ...
   ]
 
-Where DS-name is the name that will be assigned to a line showing on rrd 
-graphs. TYPE is either GAUGE or DERIVE. the DS value is the data 
-extracted in the regular expression. The DS value can be an expression, 
-for example to normalize to SI units.
+Where DS name is the name that will be assigned to a line showing on rrd 
+graphs. Each DS name must be no longer than 19 characters and must contain
+only the characters A-Z, a-z, 0-9, or underscore.  TYPE is either GAUGE or
+DERIVE. the DS value is the data extracted in the regular expression. The
+DS value can be an expression, for example to normalize to SI units.
 
 Each database definition must be added to the @s array.
 

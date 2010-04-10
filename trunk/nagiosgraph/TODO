@@ -7,6 +7,7 @@ Bugs
 * gui controls do not prevent specifying future end date.
 * nagios-based authorization does not yet respect contacts
 * next/prev links should be javascript so they respect controls state
+* wrong interpretation of nagios default user
 
 Desired features.
 
@@ -21,6 +22,10 @@ Desired features.
 * do a configuration mode that has no javascript (for really big sites)
 * process host performance data as well as service performance data
 * graph templates in addition to existing service-based patterns
+* optionally display host/service perfdata in a table in show.cgi
+* link to nagios availability report for timerange for each graph
+* link to nagios alerts for timerange for each graph
+* do a proper graph zoom.  everyone else is doing it ;) (at least trying to)
 
 Notes
 

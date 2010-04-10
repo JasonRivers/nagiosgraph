@@ -1,6 +1,8 @@
 $Id$
 
-1.4.2 TBD
+1.4.3 TBD
+
+1.4.2 2010-03-16
 
 * new configuration options (see nagiosgraph.conf for details):
      colormax (optional)
