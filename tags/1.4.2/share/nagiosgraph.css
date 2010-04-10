@@ -1,0 +1,130 @@
+/* nagiosgraph stylesheet
+   $Id$
+
+  License: OSI Artistic License
+           http://www.opensource.org/licenses/artistic-license-2.0.php
+  Author:  (c) 2008 Alan Brenner, Ithaka
+  Author:  (c) 2010 Matthew Wall
+*/
+
+body {
+  color: black;
+  background-color: white;
+  font-family: arial, verdana, lucida, helvetica, sans-serif, serif;
+  font-weight: normal;
+  font-size: 9pt;
+}
+.period_banner {
+  clear: both;
+  padding-top: 0.25em;
+  padding-left: 0.5em;
+  padding-bottom: 1.75em;
+  background-color: #efefef;
+  border: 1px solid #dddddd;
+}
+.period_title {
+  float: left;
+  font-weight: bold;
+}
+.period_controls {
+  float: right;
+  font-weight: bold;
+  padding-right: 10px;
+}
+.period_detail {
+  font-size: 0.9em;
+  font-weight: normal;
+}
+.period {
+  clear: both;
+}
+.graph {
+  clear: both;
+}
+.graph_image {
+  float: left;
+  padding: 1px 0 1px 0;
+}
+.graph_details {
+  float: right;
+  text-align: right;
+}
+.graph_title {
+  font-weight: bold;
+  margin-top: 0;
+}
+.graph_description {
+  font-size: 0.9em;
+  margin-top: 0;
+}
+#secondary_controls_box {
+}
+#db_controls {
+}
+.control_label {
+  text-align: right;
+}
+.item_label {
+  font-weight: bold;
+}
+.timestamp {
+  font-weight: bold;
+}
+.footer {
+  clear: both;
+  padding-top: 20px;
+  font-style: italic;
+}
+
+
+table.cal {
+  background-color: #eeeeee;
+}
+.dateWeekday {
+  color: #000000;
+  font-weight: bold;
+}
+.dateWeekend {
+  color: #882222;
+  font-weight: bold;
+}
+.dateNonCurrent {
+  color: #888888;
+  font-weight: bold;
+}
+td.calHdrCell {
+  border-bottom: 1px solid #222222;
+}
+#calSelectedCell {
+  background-color: #aabb88;
+}
+#pickerPopup {
+  position: absolute;
+  border: 1px solid #777777;
+  opacity: 0.9;
+}
+
+
+/* float controls in upper right corner of browser window */
+.controls {
+  background-color: #efefef;
+  border: 1px solid #dddddd;
+  position: fixed;
+  top: 2px;
+  right: 2px;
+}
+.primary_controls {
+  padding: 4px 10px 4px 10px;
+  float: left;
+}
+.secondary_controls {
+  padding: 4px 10px 4px 10px;
+  float: right;
+}
+.executor {
+  padding: 4px 10px 4px 10px;
+}
+.controls_toggle {
+  text-align: right;
+  margin: 0 0 0 0;
+}
