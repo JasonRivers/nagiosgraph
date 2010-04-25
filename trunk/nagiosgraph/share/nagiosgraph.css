@@ -84,10 +84,11 @@ h1 {
 
 
 #ngzZoomInfo {
-  padding: 4px;
-  opacity: 0.4;
+  padding-top: 2px;
+  padding-left: 8px;
+  opacity: 0.3;
   font-weight: bold;
-  font-size: 20pt;
+  font-size: 1.5em;
 }
 #ngzZoomBox {
   background-color: #ffdd00;

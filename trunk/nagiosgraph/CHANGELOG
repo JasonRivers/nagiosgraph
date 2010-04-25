@@ -3,7 +3,7 @@ $Id$
 1.4.3 TBD
 
 * added graph zooming.  zooming happens in-place (no separate window).
-   the javascript is not very tight, but it works.
+   drag to zoom.  right-click to revert the graph.
 * optionally specify heartbeat, step, and resolution per host/service.
 * use exact data sources for each service instead of assuming that all
    services with the same name will have the same data sources.

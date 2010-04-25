@@ -25,7 +25,7 @@ var ngzZoom;
 var ngzZoomBox;
 var ngzZoomInfo;
 var ngzZoomPanel;
-var ngzGraphImg;
+var ngzGraphImg = null;
 var ngzZoomID = 'ngzZoom';
 var ngzZoomInCursor = 'crosshair';
 
@@ -45,6 +45,9 @@ function ngzInit(elem) {
 
 function ngzClear() {
   ngzGraphImg = null;
+  ngzZoomInfo.style.visibility = 'hidden';
+  ngzZoomBox.style.visibility = 'hidden';
+  ngzZoomPanel.style.visibility = 'hidden';  
 }
 
 function getZoomInfo() {
@@ -157,7 +160,7 @@ function ngzZoomBoxDrawBoxFunc(x1, y1, x2, y2) {
     if(x2 < x1) { var tmp = x2; x2 = x1; x1 = tmp; }
     if(y2 < y1) { var tmp = y2; y2 = y1; y1 = tmp; }
     var top = ngzZoom.boxTop;
-    var bw = getStyle(ngzZoomBox,'border-left-width');
+    var bw = ngzGetStyle(ngzZoomBox,'border-left-width');
     bw = bw.replace('px', '');
     bw = parseInt(bw);
     var left = x1;
@@ -174,7 +177,7 @@ function ngzZoomBoxDrawBoxFunc(x1, y1, x2, y2) {
   }
 }
 
-function getStyle(obj, prop) {
+function ngzGetStyle(obj, prop) {
   var val;
   if(obj.currentStyle) {
     val = obj.currentStyle[prop];
@@ -208,6 +211,7 @@ function ngzZoomBoxConfigure() {
   ngzZoomPanel.style.left = this.boxLeft + 'px';
   ngzZoomPanel.style.width = this.boxWidth + 'px';
   ngzZoomPanel.style.height = this.boxHeight + 'px';
+  ngzZoomPanel.style.visibility = 'visible';
   ngzZoomBox.style.visibility = 'hidden';
   ngzZoomInfo.style.top = (this.boxTop+2) + 'px';
   ngzZoomInfo.style.left = (this.boxLeft+2) + 'px';
@@ -296,11 +300,22 @@ function ngzMouseMove(e) {
 }
 
 function ngzMouseOver(e) {
-  ngzMouse.setEvent(e);
-  ngzMouse.mouseGetPos();
-  ngzMouse.drawInfo = 1;
-  ngzZoom.drawInfo(ngzMouse.posXStart, ngzMouse.posYStart,
-                   ngzMouse.posX, ngzMouse.posY);
+  var visible = true;
+  if(ngzGraphImg == null ||
+     ngzGraphImg.offsetParent == null ||
+     ngzGetStyle(ngzGraphImg, 'visibility') == 'hidden' ||
+     ngzGetStyle(ngzGraphImg, 'display') == 'none') {
+    visible = false;
+  }
+  if(visible) {
+    ngzMouse.setEvent(e);
+    ngzMouse.mouseGetPos();
+    ngzMouse.drawInfo = 1;
+    ngzZoom.drawInfo(ngzMouse.posXStart, ngzMouse.posYStart,
+                     ngzMouse.posX, ngzMouse.posY);
+  } else {
+    ngzClear();
+  }
 }
 
 function ngzMouseOut(e) {
