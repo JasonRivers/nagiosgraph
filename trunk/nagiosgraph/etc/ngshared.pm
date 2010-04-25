@@ -53,7 +53,7 @@ use constant {
 # nagiosgraph.js file.  change this number when the javascript is not
 # backward compatible with previous versions.
 use constant {
-    JSVERSION => 1.4,
+    JSVERSION => 1.5,
     JSWARNING => 'nagiosgraph.js is not installed or wrong version.',
 };
 
@@ -2232,7 +2232,9 @@ sub printgraphlinks {
 
     return $cgi->div({-class => 'graph'}, "\n",
                      $cgi->div({-class => 'graph_image'},
-                               $cgi->img({-src=>$url,-alt=>$alttag})) . "\n",
+                               $cgi->img({-src=>$url,
+                                          -alt=>$alttag,
+                                          -onmouseover=>'ngzInit(this)'})) . "\n",
                      $cgi->div({-class => 'graph_details'}, "\n",
                                $titlestr, $titlestr ne q() ? "\n" : q(),
                                $descstr, $descstr ne q() ? "\n" : q(),

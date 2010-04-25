@@ -8,7 +8,7 @@
 // Author:  (c) 2010 Matthew Wall
 
 var PNAME = [ 'day', 'week', 'month', 'quarter', 'year' ];
-var VERSION = 1.4;
+var VERSION = 1.5;
 
 // dead simple i18n
 // based on http://24ways.org/2007/javascript-internationalisation
@@ -17,6 +17,435 @@ function _(s) {
     return i18n[s];
   }
   return s;
+}
+
+// do graph zooming
+var ngzMouse;
+var ngzZoom;
+var ngzZoomBox;
+var ngzZoomInfo;
+var ngzZoomPanel;
+var ngzGraphImg;
+var ngzZoomID = 'ngzZoom';
+var ngzZoomInCursor = 'crosshair';
+
+function ngzInit(elem) {
+  ngzGraphImg = elem;
+  var orig = ngzGraphImg.getAttribute('srcorig');
+  if(orig == null || orig == '') {
+    ngzGraphImg.setAttribute('srcorig', ngzGraphImg.src);
+  }
+  ngzZoomInfo = getZoomInfo();
+  ngzZoomBox = getZoomBox();
+  ngzZoomPanel = getZoomPanel();
+  if(!ngzMouse) ngzMouse = new Mouse();
+  if(!ngzZoom) ngzZoom = new Zoom();
+  ngzZoom.configure();
+}
+
+function ngzClear() {
+  ngzGraphImg = null;
+}
+
+function getZoomInfo() {
+  if(!ngzZoomInfo) {
+    ngzZoomInfo = document.getElementById(ngzZoomID + 'Info');
+  }
+  if(!ngzZoomInfo) {
+    ngzZoomInfo = document.createElement('div');
+    ngzZoomInfo.setAttribute('id', ngzZoomID + 'Info');
+    ngzZoomInfo.style.position = 'absolute';
+    ngzZoomInfo.style.overflow = 'none';
+    document.body.appendChild(ngzZoomInfo);
+  }
+  if(!ngzZoomInfo) {
+    throw "Cannot create Zoom Info";
+  }
+  return ngzZoomInfo;
+}
+
+function getZoomBox() {
+  if(!ngzZoomBox) {
+    ngzZoomBox = document.getElementById(ngzZoomID + 'Box');
+  }
+  if(!ngzZoomBox) {
+    ngzZoomBox = document.createElement('div');
+    ngzZoomBox.setAttribute('id', ngzZoomID + 'Box');
+    ngzZoomBox.style.position = 'absolute';
+    ngzZoomBox.style.overflow = 'none';
+    ngzZoomBox.style.filter = 'alpha(opacity=10)';
+    ngzZoomBox.style.opacity = 0.1;
+    document.body.appendChild(ngzZoomBox);
+  }
+  if(!ngzZoomBox) {
+    throw "Cannot create Zoom Box";
+  }
+  return ngzZoomBox;
+}
+
+function getZoomPanel() {
+  if(!ngzZoomPanel) {
+    ngzZoomPanel = document.getElementById(ngzZoomID + 'Panel');
+  }
+  if(!ngzZoomPanel) {
+    ngzZoomPanel = document.createElement('div');
+    ngzZoomPanel.setAttribute('id', ngzZoomID + 'Panel');
+    ngzZoomPanel.setAttribute('onmousedown', 'if(event.preventDefault) { event.preventDefault(); } ngzMouseDown(event)');
+    ngzZoomPanel.setAttribute('onmouseMove', 'ngzMouseMove(event)');
+    ngzZoomPanel.setAttribute('onmouseup', 'ngzMouseUp(event)');
+    ngzZoomPanel.setAttribute('onmouseover', 'ngzMouseOver(event)');
+    ngzZoomPanel.setAttribute('onmouseout', 'ngzMouseOut(event)');
+    ngzZoomPanel.style.position = 'absolute';
+    ngzZoomPanel.style.overflow = 'none';
+    ngzZoomPanel.style.filter = 'alpha(opacity=0)';
+    ngzZoomPanel.style.opacity = 0;
+    ngzZoomPanel.style.cursor = ngzZoomInCursor;
+    document.body.appendChild(ngzZoomPanel);
+  }
+  if(!ngzZoomPanel) {
+    throw "Cannot create Zoom Panel";
+  }
+  return ngzZoomPanel;
+}
+
+function Mouse() {
+  this.posXStart = 0;
+  this.posYStart = 0;
+  this.posX = 0;
+  this.posY = 0;
+  this.drawInfo = 0;
+  this.drawBox = 0;
+  this.mouseButtonLeft = ngzMouseButtonLeftFunc;
+  this.mouseButtonRight = ngzMouseButtonRightFunc;
+  this.mouseButtonMiddle = ngzMouseButtonMiddleFunc;
+  this.mouseGetPos = ngzMouseGetPosFunc;
+  this.setEvent = ngzMouseSetEvent;
+}
+
+function Zoom() {
+  this.startTime = 0;
+  this.endTime = 0;
+  this.boxTop = 0;
+  this.boxLeft = 0;
+  this.boxWidth = 0;
+  this.boxHeight = 0;
+  this.drawInfo = ngzZoomBoxDrawInfoFunc;
+  this.drawBox = ngzZoomBoxDrawBoxFunc;
+  this.configure = ngzZoomBoxConfigure;
+}
+
+function ngzZoomBoxDrawInfoFunc(x1, y1, x2, y2) {
+  if(ngzMouse.drawInfo) {
+    var sec = ngzPix2Sec(x2);
+    var date = new Date();
+    date.setTime(sec*1000);
+    var txt = dtpFormatDate(date);
+    if(ngzMouse.drawBox) {
+      sec = ngzPix2Sec(x1);
+      date.setTime(sec*1000);
+      txt = dtpFormatDate(date) + '<br>' + txt;
+    }
+    ngzZoomInfo.innerHTML = txt;
+    ngzZoomInfo.style.visibility = 'visible';
+  } else {
+    ngzZoomInfo.style.visibility = 'hidden';
+  }
+}
+
+function ngzZoomBoxDrawBoxFunc(x1, y1, x2, y2) {
+  if(ngzMouse.drawBox) {
+    if(x2 < x1) { var tmp = x2; x2 = x1; x1 = tmp; }
+    if(y2 < y1) { var tmp = y2; y2 = y1; y1 = tmp; }
+    var top = ngzZoom.boxTop;
+    var bw = getStyle(ngzZoomBox,'border-left-width');
+    bw = bw.replace('px', '');
+    bw = parseInt(bw);
+    var left = x1;
+    var width = x2 - x1;
+    if(width >= bw) width -= bw;
+    var height = ngzZoom.boxHeight;
+    ngzZoomBox.style.top = top + 'px';
+    ngzZoomBox.style.left = left + 'px';
+    ngzZoomBox.style.width = width + 'px';
+    ngzZoomBox.style.height = height + 'px';
+    ngzZoomBox.style.visibility = 'visible';
+  } else {
+    ngzZoomBox.style.visibility = 'hidden';
+  }
+}
+
+function getStyle(obj, prop) {
+  var val;
+  if(obj.currentStyle) {
+    val = obj.currentStyle[prop];
+  } else if(window.getComputedStyle) {
+    val = document.defaultView.getComputedStyle(obj,null).getPropertyValue(prop);
+  }
+  return val;
+}
+
+function ngzZoomBoxConfigure() {
+  ngzParseURL(ngzGraphImg.src);
+  var tOffset = 20;
+  var lOffset = 50;
+  var bOffset = 40;
+  var rOffset = 30;
+  var left = lOffset;
+  var top = tOffset;
+  var width = ngzGraphImg.width - lOffset - rOffset;
+  var height = ngzGraphImg.height - tOffset - bOffset;
+  var imgObj = ngzGraphImg;
+  while(imgObj) {
+    top += imgObj.offsetTop;
+    left += imgObj.offsetLeft;
+    imgObj = imgObj.offsetParent;
+  }
+  this.boxTop = top;
+  this.boxLeft = left;
+  this.boxWidth = width;
+  this.boxHeight = height;
+  ngzZoomPanel.style.top = this.boxTop + 'px';
+  ngzZoomPanel.style.left = this.boxLeft + 'px';
+  ngzZoomPanel.style.width = this.boxWidth + 'px';
+  ngzZoomPanel.style.height = this.boxHeight + 'px';
+  ngzZoomBox.style.visibility = 'hidden';
+  ngzZoomInfo.style.top = (this.boxTop+2) + 'px';
+  ngzZoomInfo.style.left = (this.boxLeft+2) + 'px';
+  ngzZoomInfo.style.visibility = 'hidden';
+}
+
+function ngzMouseButtonLeftFunc(e) {
+  var x = false;
+  if(this.e.button) x = (this.e.button == 1); // IE
+  else if(this.e.which) x = (this.e.which == 1);
+  return x;
+}
+
+function ngzMouseButtonRightFunc(e) {
+  var x = false;
+  if(this.e.button) x = (this.e.button == 2); // IE
+  else if(this.e.which) x = (this.e.which == 3);
+  return x;
+}
+
+function ngzMouseButtonMiddleFunc(e) {
+  var x = false;
+  if(this.e.button) x = (this.e.button == 4); // IE
+  else if(this.e.which) x = (this.e.which == 2);
+  return x;
+}
+
+function ngzMouseGetPosFunc() {
+  if(this.e.pageX || this.e.pageY) {
+    this.posX = this.e.pageX;
+    this.posY = this.e.pageY;
+  } else if(this.e.clientX || this.e.clientY) {
+    this.posX = this.e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
+    this.posY = this.e.clientY + document.body.scrollTop + document.documentElement.scrollTop;
+  }
+}
+
+function ngzMouseSetEvent(e) {
+  if(!e) this.e = window.event;
+  else this.e = e;
+}
+
+function ngzMouseDown(e) {
+  ngzMouse.setEvent(e);
+  if(ngzMouse.mouseButtonLeft()) {
+    if(ngzMouse.posX > ngzZoom.boxLeft &&
+       ngzMouse.posX < ngzZoom.boxLeft + ngzZoom.boxWidth &&
+       ngzMouse.posY > ngzZoom.boxTop &&
+       ngzMouse.posY < ngzZoom.boxTop + ngzZoom.boxHeight) {
+      ngzMouse.drawBox = 1;
+      ngzMouse.posXStart = ngzMouse.posX;
+      ngzMouse.posYStart = ngzMouse.posY;
+      ngzZoom.drawBox(ngzMouse.posX, ngzMouse.posY,
+                      ngzMouse.posX, ngzMouse.posY);
+    }
+  }
+}
+
+function ngzMouseUp(e) {
+  ngzMouse.setEvent(e);
+  if(ngzMouse.mouseButtonLeft()) {
+    if(ngzMouse.drawBox) {
+      var s = Math.min(ngzMouse.posXStart, ngzMouse.posX);
+      var e = Math.max(ngzMouse.posXStart, ngzMouse.posX);
+      var w = e - s;
+      ngzMouse.drawBox = 0;
+      ngzZoom.drawBox(0,0,0,0);
+      if(w > 0) {
+        ngzLoadGraph(ngzGraphImg, s, e);
+      }
+    }
+    ngzZoom.drawInfo(ngzMouse.posXStart, ngzMouse.posYStart,
+                     ngzMouse.posX, ngzMouse.posY);
+  } else if(ngzMouse.mouseButtonRight()) {
+    ngzRevertGraph(ngzGraphImg);
+  }
+}
+
+function ngzMouseMove(e) {
+  ngzMouse.setEvent(e);
+  ngzMouse.mouseGetPos();
+  ngzZoom.drawBox(ngzMouse.posXStart, ngzMouse.posYStart,
+                  ngzMouse.posX, ngzMouse.posY);
+  ngzZoom.drawInfo(ngzMouse.posXStart, ngzMouse.posYStart,
+                   ngzMouse.posX, ngzMouse.posY);
+}
+
+function ngzMouseOver(e) {
+  ngzMouse.setEvent(e);
+  ngzMouse.mouseGetPos();
+  ngzMouse.drawInfo = 1;
+  ngzZoom.drawInfo(ngzMouse.posXStart, ngzMouse.posYStart,
+                   ngzMouse.posX, ngzMouse.posY);
+}
+
+function ngzMouseOut(e) {
+  ngzMouse.setEvent(e);
+  ngzMouse.drawBox = 0;
+  ngzZoom.drawBox(0,0,0,0);
+  ngzMouse.drawInfo = 0;
+  ngzZoom.drawInfo(0,0,0,0);
+}
+
+function ngzRevertGraph(graph) {
+  var orig = graph.getAttribute('srcorig');
+  if(orig != 'undefined' && orig != '') {
+    graph.src = orig;
+    ngzParseURL(graph.src);
+  }
+}
+
+function ngzLoadGraph(graph, start, end) {
+  var newst = ngzPix2Sec(start);
+  var newet = ngzPix2Sec(end);
+  var rrdopts = ngzZoom.urlRRDOpts;
+  if(rrdopts != '') { rrdopts += ' '; }
+  rrdopts += '-s ' + newst + ' -e ' + newet;
+  rrdopts = rrdopts.replace(/ /g, '+');
+  var args = ngzZoom.urlArgs;
+  if(args != '') { args += '&'; }
+  args += 'rrdopts=' + rrdopts;
+  graph.src = ngzZoom.urlBase + '?' + args;
+  ngzParseURL(graph.src);
+}
+
+// FIXME: no way to do this exactly unless we know what 'now' is (i.e. when
+// the graphs were first drawn), only in the case where s/e uses 'now'
+// FIXME: there is an undefined state when rrdopts, period, and offset are
+// all specified.  which to use?
+function ngzParseURL(url) {
+  var parts = url.split('?');
+  var base = parts[0];
+  var qs = parts[1];
+  parts = qs.split('&');
+  var args = '';
+  var rrdopts = '';
+  var now = new Date();
+  now.setSeconds(0);
+  var nows = now.getTime() / 1000;
+  nows = parseInt(nows);
+  var oldst = nows;
+  var oldet = nows;
+  for(var i=0; i<parts.length; i++)  {
+    var pos = 0;
+    if((pos=parts[i].indexOf('rrdopts')) >= 0) {
+      var optstr = parts[i].substring(parts[i].indexOf('=')+1);
+      optstr = optstr.replace(/\+/g, ' ');
+      var opts = optstr.split(' ');
+      for(var j=0; j<opts.length; j++) {
+        if(opts[j].indexOf('-s') >= 0) {
+          var str = '';
+          if(opts[j].length == 2) { j++; str = opts[j]; }
+          else { str = opts[j].substring(2); }
+          oldst = ngzStr2Sec(str, nows);
+        } else if(opts[j].indexOf('--start') >= 0) {
+          var str = '';
+          if(opts[j].length == 7) { j++; str = opts[j]; }
+          else { str = opts[j].substring(7); }
+          oldst = ngzStr2Sec(str, nows);
+        } else if(opts[j].indexOf('-e') >= 0) {
+          var str = '';
+          if(opts[j].length == 2) { j++; str = opts[j]; }
+          else { str = opts[j].substring(2); }
+          oldet = ngzStr2Sec(str, nows);
+        } else if(opts[j].indexOf('--end') >= 0) {
+          var str = '';
+          if(opts[j].length == 5) { j++; str = opts[j]; }
+          else { str = opts[j].substring(5); }
+          oldet = ngzStr2Sec(str, nows);
+        } else if(opts[j] != '') {
+          if(rrdopts != '') rrdopts += ' ';
+          rrdopts += opts[j];
+        }
+      }
+    } else if((pos=parts[i].indexOf('period')) >= 0) {
+      var pstr = parts[i].substring(parts[i].indexOf('=')+1);
+      if(pstr == 'day') {
+        oldst -= 118800;
+      } else if(pstr == 'week') {
+        oldst -= 777600;
+      } else if(pstr == 'month') {
+        oldst -= 3024000;
+      } else if(pstr == 'quarter') {
+        oldst -= 8467200;
+      } else if(pstr == 'year') {
+        oldst -= 34560000;
+      } else {
+// FIXME: complain about unknown period
+      }
+    } else if((pos=parts[i].indexOf('offset')) >= 0) {
+      var ostr = parts[i].substring(parts[i].indexOf('=')+1);
+      var offset = parseInt(ostr);
+      oldst -= offset;
+      oldet -= offset;
+    } else {
+      if(args != '') { args += '&'; }
+      args += parts[i];
+    }
+  }
+  ngzZoom.startTime = oldst;
+  ngzZoom.endTime = oldet;
+  ngzZoom.urlBase = base;
+  ngzZoom.urlArgs = args;
+  ngzZoom.urlRRDOpts = rrdopts;
+}
+
+function ngzPix2Sec(p) {
+  var x = p - ngzZoom.boxLeft;
+  x /= ngzZoom.boxWidth;
+  x *= ngzZoom.endTime - ngzZoom.startTime;
+  x += ngzZoom.startTime;
+  x = parseInt(x);
+  return x;
+}
+
+function ngzStr2Sec(str, now) {
+  var x = 0;
+  var pos = 0;
+  if(str == 'now') {
+    x = now;
+  } else if((pos=str.indexOf('now')) >= 0) {
+    str = str.replace('now', '');
+    x = now;
+    x += parseInt(str);
+  } else {
+    x = parseInt(str);
+  }
+  return x;
+}
+
+var ngzStatus;
+function ngzShowStatus(s) {
+  if(!ngzStatus) {
+    ngzStatus = document.createElement('div');
+    ngzStatus.setAttribute('id', 'zoomStatus');
+    document.body.appendChild(ngzStatus);
+  }
+  ngzStatus.innerHTML = s;
 }
 
 // show/hide a graph popup window (for mouseovers)
