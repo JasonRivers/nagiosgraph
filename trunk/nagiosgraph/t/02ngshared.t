@@ -22,7 +22,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 440; }
+BEGIN { plan tests => 442; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -368,12 +368,20 @@ sub testlisttodict { # Split a string separated by a configured value into hash.
 	close $LOG;
 }
 
-sub testlisttohash {
-    my $val = listtohash('H,S,D=10;*,*=50');
+sub teststr2hash {
+    my $val = str2hash('H,S,D=10;*,*=50');
     ok(Dumper($val), "\$VAR1 = {
           'H,S,D' => '10',
           '*,*' => '50'
         };\n");
+}
+
+sub teststr2list {
+    my $val = str2list('H,S,D=10;*,*=50');
+    ok(Dumper($val), "\$VAR1 = [
+          'H,S,D=10',
+          '*,*=50'
+        ];\n");
 }
 
 sub testarrayorstring {
@@ -2741,53 +2749,56 @@ sub testcfgparams {
 }
 
 sub testgethsdmatch {
-    $Config{hsdhash} = listtohash('host0,ping=10;host5,http=30');
+    $Config{hsdlist} = str2list('host0,ping=10;host5,http=30');
     my $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '50');
     $Config{hsd} = 100;
     $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '100');
-    $Config{hsdhash} = listtohash('host1,ping=10;host5,http=30');
+    $Config{hsdlist} = str2list('host1,ping=10;host5,http=30');
     $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '10');
 
-    # test matching precedence
+    # test matching precedence - should be last match
     $Config{hsd} = 100;
-    $Config{hsdhash} = listtohash('*,*=30');
+    $Config{hsdlist} = str2list('.*,.*=30');
     $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '30');
-    $Config{hsdhash} = listtohash('*,ping=30');
+    $Config{hsdlist} = str2list('.*,ping=30');
     $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '30');
-    $Config{hsdhash} = listtohash('*,PING=30');
+    $Config{hsdlist} = str2list('.*,PING=30');
     $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '100');
-    $Config{hsdhash} = listtohash('host1,ping=10;*,*=30');
+    $Config{hsdlist} = str2list('host1,ping=10;.*,.*=30');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '30');
+    $Config{hsdlist} = str2list('.*,.*=30;host1,ping=10');
     $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '10');
-    $Config{hsdhash} = listtohash('*,*=30;host1,ping=10');
+    $Config{hsdlist} = str2list('.*,.*=30;host1,.*=10');
     $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '10');
-    $Config{hsdhash} = listtohash('*,*=30;host1,*=10');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '10');
-    $Config{hsdhash} = listtohash('*,*=30;*,ping=10');
+    $Config{hsdlist} = str2list('.*,.*=30;.*,ping=10');
     $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '10');
 
     # test database
-    $Config{hsdhash} = listtohash('*,*,delay=30;*,ping,loss=10');
+    $Config{hsdlist} = str2list('.*,.*,delay=30;.*,ping,loss=10');
     $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '100');
-    $Config{hsdhash} = listtohash('*,*,rta=30;*,ping,loss=10');
+    $Config{hsdlist} = str2list('.*,.*,rta=30;.*,ping,loss=10');
     $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '30');
-    $Config{hsdhash} = listtohash('*,*,rta=30;*,ping,rta=10');
+    $Config{hsdlist} = str2list('.*,.*,rta=30;.*,ping,rta=10');
     $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
     ok($x, '10');
+    $Config{hsdlist} = str2list('host1,.*,rta=30;.*,ping,RTA=10');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '30');
 
     undef $Config{hsd};
-    undef $Config{hsdhash};
+    undef $Config{hsdlist};
 }
 
 
@@ -2804,7 +2815,8 @@ testdircreation();
 testmkfilename();
 testhashcolor();
 testlisttodict();
-testlisttohash();
+teststr2hash();
+teststr2list();
 testarrayorstring();
 testcheckdirempty();
 testreadfile();

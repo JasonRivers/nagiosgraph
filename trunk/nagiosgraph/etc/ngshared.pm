@@ -490,7 +490,7 @@ sub mkfilename {
     $db ||= q();
     my $directory = $Config{rrddir};
     my $filename = q();
-    if ($Config{dbseparator} eq 'subdir') {
+    if (defined $Config{dbseparator} && $Config{dbseparator} eq 'subdir') {
         $directory .=  q(/) . $host;
         if ($db) {
             $filename = escape("${service}___${db}") . RRDEXT;
@@ -639,7 +639,7 @@ sub listtodict {
     return $Config{$val};
 }
 
-sub listtohash {
+sub str2hash {
     my ($str) = @_;
     my %rval;
     foreach my $i (split /;/, $str) {
@@ -647,6 +647,15 @@ sub listtohash {
         $rval{$n} = $v;
     }
     return \%rval;
+}
+
+sub str2list {
+    my ($str) = @_;
+    my @rval;
+    foreach my $i (split /;/, $str) {
+        push @rval, $i;
+    }
+    return \@rval;
 }
 
 # Subroutine for checking that the directory with RRD file is not empty
@@ -749,7 +758,7 @@ sub readconfig {
     }
     foreach my $ii ('heartbeats', 'stepsizes', 'resolutions') {
         if (defined $Config{$ii}) {
-            $Config{$ii . 'hash'} = listtohash($Config{$ii});
+            $Config{$ii . 'list'} = str2list($Config{$ii});
         }
     }
 
@@ -1503,7 +1512,7 @@ sub graphinfo {
         @rrd,                    # the returned list of hashes
         $ds);
 
-    if ($Config{dbseparator} eq 'subdir') {
+    if (defined $Config{dbseparator} && $Config{dbseparator} eq 'subdir') {
         $hs = $host . q(/) . escape("$service") . q(___);
     } else {
         $hs = escape("${host}_${service}") . q(_);
@@ -2499,19 +2508,15 @@ sub checkdsname {
 sub gethsdmatch {
     my ($key, $val, $host, $service, $db) = @_;
     my $x = $val;
-    if (defined $Config{$key}) {
+    if ( defined $Config{$key} ) {
         $x = $Config{$key};
     }
-    if (defined $Config{$key . 'hash'}) {
-        my $hashref = $Config{$key . 'hash'};
-        foreach my $n (keys %{$hashref}) {
-            my $pat = $n;
-            $pat =~ s/\*/.*/g;
-            $pat =~ s/\s*,\s*/,/g;
-            if ($host && $service && $db && "$host,$service,$db" =~ /$pat/) {
-                $x = $hashref->{$n};
-            } elsif ($host && $service && "$host,$service" =~ /$pat/) {
-                $x = $hashref->{$n};
+    if ( defined $Config{$key . 'list'} ) {
+        foreach my $i (@{$Config{$key . 'list'}}) {
+            my ($n, $v) = split /=/, $i;
+            my $tuple = $host . ',' . $service . ',' . $db;
+            if ($tuple =~ /$n/) {
+                $x = $v;
             }
         }
     }
@@ -2666,7 +2671,9 @@ sub rrdupdate {
     my $directory = $Config{rrddir};
 
     # Select target folder depending on config settings
-    if ($Config{dbseparator} eq 'subdir') { $directory .= "/$host"; }
+    if (defined $Config{dbseparator} && $Config{dbseparator} eq 'subdir') {
+        $directory .= "/$host";
+    }
 
     my @dataset;
     push @dataset, "$directory/$file",  $time;
