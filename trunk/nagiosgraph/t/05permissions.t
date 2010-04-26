@@ -13,7 +13,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 use Test;
 
-BEGIN { plan tests => 145; }
+BEGIN { plan tests => 148; }
 
 sub testcheckuserlist {
     ok(checkuserlist('bill,bob,nancy'), 0);
@@ -130,6 +130,13 @@ sub testhavepermission {
     ok(havepermission('host1', 'ping'), 1);
     ok(havepermission('host1', 'http'), 0);
     ok(havepermission('host1', 'ntp'), 0);
+
+    undef %authz;
+    $authz{default_host_access}{default_service_access} = 0;
+    $authz{host0} = {'default_service_access' => 1, 'ping' => 0};
+    ok(havepermission('host0', 'ping'), 0);
+    ok(havepermission('host0', 'http'), 1);
+    ok(havepermission('host1', 'ping'), 0);
 }
 
 # this does the baseline testing for error messages and resulting permission.

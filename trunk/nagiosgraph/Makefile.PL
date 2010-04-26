@@ -39,5 +39,11 @@ sub MY::install {
 sub MY::postamble {
     "critic:\n\tperlcritic -1 etc/ngshared.pm cgi/show.cgi cgi/showhost.cgi cgi/showservice.cgi cgi/showgroup.cgi cgi/testcolor.cgi lib/insert.pl
 
-test-coverage:\n\tPERL5OPT=-MDevel::Cover make test\n\tcover cover_db";
+test-coverage:\n\tPERL5OPT=-MDevel::Cover make test\n\tcover cover_db
+
+code-summary:
+\twc cgi/*.cgi etc/ngshared.pm lib/insert.pl
+\twc share/nagiosgraph.css share/nagiosgraph.js share/nagiosgraph.ssi
+\twc t/*.t
+\twc etc/*.conf etc/map";
 }

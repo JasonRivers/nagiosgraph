@@ -1073,48 +1073,48 @@ easier.
   nagiosgraph files are installed, regardless of what you use.  Use the
   overlay layout, with nagios installed at /usr/local/nagios
 
-As of 11mar2010, the codebase for nagiosgraph looks like this:
+As of 26apr2010, the codebase for nagiosgraph looks like this:
 
  lines  words  bytes
    197    647   5393 cgi/show.cgi
-   202    649   5246 cgi/showgraph.cgi
+   204    660   5325 cgi/showgraph.cgi
    197    733   5295 cgi/showgroup.cgi
    202    710   5578 cgi/showhost.cgi
-   189    663   5064 cgi/showservice.cgi
+   189    669   5113 cgi/showservice.cgi
    176    734   5487 cgi/testcolor.cgi
-  2841  11734  98124 etc/ngshared.pm
-   170    546   4121 lib/insert.pl
-  4174  16416 134308 total
+  2895  11922  99570 etc/ngshared.pm
+    71    319   2120 lib/insert.pl
+  4131  16394 133881 total
 
-   130    269   2122 share/nagiosgraph.css
-   964   3564  27314 share/nagiosgraph.js
+   153    310   2478 share/nagiosgraph.css
+  1420   5010  40493 share/nagiosgraph.js
      1      3     75 share/nagiosgraph.ssi
-  1095   3836  29511 total
+  1574   5323  43046 total
 
     12     41    251 t/01required_modules.t
-  2802   7179  76633 t/02ngshared.t
-   887   1949  23331 t/03defaults.t
+  2958   7558  80815 t/02ngshared.t
+   887   1949  23329 t/03defaults.t
    125    394   3132 t/04show.t
-   625   1627  19034 t/05permissions.t
+   632   1649  19312 t/05permissions.t
     11     27    346 t/97pod.t
      6     20    178 t/98podcoverage.t
      7     19    162 t/99kwalitee.t
-  4475  11256 123067 total
+  4638  11657 127525 total
 
     32    163    879 etc/access.conf
     20     83    714 etc/datasetdb.conf
     63    249   2251 etc/groupdb.conf
     42    164   1446 etc/hostdb.conf
    144    326   2717 etc/labels.conf
-   274   1527  10026 etc/nagiosgraph.conf
+   294   1674  11166 etc/nagiosgraph.conf
     52     81    793 etc/nagiosgraph_de.conf
     52     92    865 etc/nagiosgraph_es.conf
     52    102    935 etc/nagiosgraph_fr.conf
     20    119    660 etc/rrdopts.conf
     16     78    480 etc/servdb.conf
    355   1651  13312 etc/map
-  1122   4635  35078 total
+   1142  4782  36218 total
 
 Test coverage looks like this:
 File                           stmt   bran   cond    sub    pod   time  total
-etc/ngshared.pm                83.2   76.0   60.6   90.4    n/a  100.0   79.0
+etc/ngshared.pm                83.5   76.4   60.8   90.6    n/a  100.0   79.3

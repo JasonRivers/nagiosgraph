@@ -22,7 +22,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 442; }
+BEGIN { plan tests => 448; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -175,51 +175,57 @@ sub testdumper { # Test the list/hash output debugger.
 }
 
 sub testgetdebug {
-	$Config{debug} = -1;
-	getdebug('test', '', '');
-	ok($Config{debug}, -1);		# not configured, so no change
-
-	# just program tests
-	$Config{debug_test} = 1;
-	getdebug('test', '', '');
-	ok($Config{debug}, 1);		# configured, so change
-	$Config{debug} = -1;
-	getdebug('test', 'testbox', 'ping');
-	ok($Config{debug}, 1);		# _host and _service not set, so change
-	$Config{debug} = -1;
-
-	# just program and hostname tests
-	$Config{debug_test_host} = 'testbox';
-	getdebug('test', 'testbox', 'ping');
-	ok($Config{debug}, 1);		# _host set to same hostname, so change
-	$Config{debug} = -1;
-	getdebug('test', 'testing', 'ping');
-	ok($Config{debug}, -1);		# _host set to different hostname, so no change
-	$Config{debug} = -1;
-
-	# program, hostname and service tests
-	$Config{debug_test_service} = 'ping';
-	getdebug('test', 'testbox', 'ping');
-	ok($Config{debug}, 1);		# _host and _service same, so change
-	$Config{debug} = -1;
-	getdebug('test', 'testbox', 'smtp');
-	ok($Config{debug}, -1);		# _host same, but _service not, so no change
-	$Config{debug} = -1;
-	getdebug('test', 'testing', 'ping');
-	ok($Config{debug}, -1);		# _service same, but _host not, so no change
-	$Config{debug} = -1;
-	getdebug('test', 'testing', 'smtp');
-	ok($Config{debug}, -1);		# neither _host or _service not, so no change
-	$Config{debug} = -1;
-
-	# just program and service tests
-	delete $Config{debug_test_host};
-	getdebug('test', 'testbox', 'ping');
-	ok($Config{debug}, 1);		# _service same, so change
-	$Config{debug} = -1;
-	getdebug('test', 'testbox', 'smtp');
-	ok($Config{debug}, -1);		# _service not, so no change
-	$Config{debug} = 0;
+ 
+    # missing app (programming mistake)
+    $Config{debug} = -1;
+    getdebug();
+    ok($Config{debug}, 5);
+ 
+    $Config{debug} = -1;
+    getdebug('test', '', '');
+    ok($Config{debug}, -1);		# not configured, so no change
+   
+    # just program tests
+    $Config{debug_test} = 1;
+    getdebug('test', '', '');
+    ok($Config{debug}, 1);		# configured, so change
+    $Config{debug} = -1;
+    getdebug('test', 'testbox', 'ping');
+    ok($Config{debug}, 1);		# _host and _service not set, so change
+    $Config{debug} = -1;
+    
+    # just program and hostname tests
+    $Config{debug_test_host} = 'testbox';
+    getdebug('test', 'testbox', 'ping');
+    ok($Config{debug}, 1);		# _host set to same hostname, so change
+    $Config{debug} = -1;
+    getdebug('test', 'testing', 'ping');
+    ok($Config{debug}, -1);		# _host set to different hostname, so no change
+    $Config{debug} = -1;
+    
+    # program, hostname and service tests
+    $Config{debug_test_service} = 'ping';
+    getdebug('test', 'testbox', 'ping');
+    ok($Config{debug}, 1);		# _host and _service same, so change
+    $Config{debug} = -1;
+    getdebug('test', 'testbox', 'smtp');
+    ok($Config{debug}, -1);		# _host same, but _service not, so no change
+    $Config{debug} = -1;
+    getdebug('test', 'testing', 'ping');
+    ok($Config{debug}, -1);		# _service same, but _host not, so no change
+    $Config{debug} = -1;
+    getdebug('test', 'testing', 'smtp');
+    ok($Config{debug}, -1);		# neither _host or _service not, so no change
+    $Config{debug} = -1;
+    
+    # just program and service tests
+    delete $Config{debug_test_host};
+    getdebug('test', 'testbox', 'ping');
+    ok($Config{debug}, 1);		# _service same, so change
+    $Config{debug} = -1;
+    getdebug('test', 'testbox', 'smtp');
+    ok($Config{debug}, -1);		# _service not, so no change
+    $Config{debug} = 0;
 }
 
 sub testformatelapsedtime {
@@ -431,14 +437,29 @@ sub testreadfile {
 
 sub testinitlog {
     my $fn = "$FindBin::Bin/testlog.txt";
-    undef %Config;
-    $Config{debug} = 0;
 
+    undef %Config;
+    $Config{debug} = 5;
+    initlog('test');
+    debug(DBDEB, 'test message');
+    close $LOG;
+
+    undef %Config;
+    $Config{debug} = 5;
+    $Config{logfile} = $fn;
+    initlog('test');
+    debug(DBDEB, 'test message');
+    close $LOG;
+    my $result = readtestfile($fn);
+    ok($result =~ /debug test message/);
+    unlink $fn;
+
+    undef %Config;
     $Config{debug} = 5;
     initlog('test', $fn);
     debug(DBDEB, 'test message');
     close $LOG;
-    my $result = readtestfile($fn);
+    $result = readtestfile($fn);
     ok($result =~ /debug test message/);
     unlink $fn;
 
@@ -923,15 +944,7 @@ sub testrrdline {
 }
 
 sub testgetserverlist {
-    setuprrd();
-    setuphsdata();
-    my $rrddir = gettestrrddir();
-
-    $Config{userdb} = '';
-    my %result = getserverlist('');
-    my $dd = Data::Dumper->new([\%result]);
-    $dd->Indent(1);
-    ok($dd->Dump, "\$VAR1 = {
+    my $allhosts = "\$VAR1 = {
   'hostserv' => {
     'host0' => {
       'HTTP' => [
@@ -988,8 +1001,79 @@ sub testgetserverlist {
     'host2',
     'host3'
   ]
-};\n");
+};\n";
 
+    my $somehosts = "\$VAR1 = {
+  'hostserv' => {
+    'host0' => {
+      'HTTP' => [
+        [
+          'http',
+          'Bps'
+        ]
+      ]
+    },
+    'host3' => {
+      'ping' => [
+        [
+          'loss',
+          'losscrit',
+          'losspct',
+          'losswarn'
+        ],
+        [
+          'rta',
+          'rtacrit',
+          'rta',
+          'rtawarn'
+        ]
+      ]
+    },
+    'host1' => {
+      'HTTP' => [
+        [
+          'http',
+          'Bps'
+        ]
+      ]
+    }
+  },
+  'host' => [
+    'host0',
+    'host1',
+    'host2',
+    'host3'
+  ]
+};\n";
+
+    setuprrd();
+    setuphsdata();
+    my $rrddir = gettestrrddir();
+
+    my %result = getserverlist();
+    my $dd = Data::Dumper->new([\%result]);
+    $dd->Indent(1);
+    ok($dd->Dump, $allhosts);
+
+    %result = getserverlist('');
+    $dd = Data::Dumper->new([\%result]);
+    $dd->Indent(1);
+    ok($dd->Dump, $allhosts);
+
+    $authz{default_host_access}{default_service_access} = 0;
+    %result = getserverlist('joeblow');
+    $dd = Data::Dumper->new([\%result]);
+    $dd->Indent(1);
+    ok($dd->Dump, "\$VAR1 = {\n  'hostserv' => {},\n  'host' => []\n};\n");
+
+    $authz{default_host_access}{default_service_access} = 1;
+    $authz{default_host_access}{PING} = 0;
+    %result = getserverlist('joeblow');
+    $dd = Data::Dumper->new([\%result]);
+    $dd->Indent(1);
+    ok($dd->Dump, $somehosts);
+
+    undef %authz;
     teardownrrd();
     teardownhsdata();
 }
@@ -1495,6 +1579,13 @@ sub testreadhostdb {
     # nothing when nothing in file
     open TEST, ">$fn";
     print TEST "\n";
+    close TEST;
+    $result = readhostdb();
+    ok(@{$result}, 0);
+
+    # nothing when bogus file contents
+    open TEST, ">$fn";
+    print TEST "servicio=7up\n";
     close TEST;
     $result = readhostdb();
     ok(@{$result}, 0);
@@ -2012,7 +2103,6 @@ sub testreadgroupdb {
     $Config{groupdb} = $fn;
 
     # nothing when nothing in file
-
     open TEST, ">$fn";
     print TEST "\n";
     close TEST;
