@@ -2514,7 +2514,7 @@ sub gethsdmatch {
     if ( defined $Config{$key . 'list'} ) {
         foreach my $i (@{$Config{$key . 'list'}}) {
             my ($n, $v) = split /=/, $i;
-            my $tuple = $host . ',' . $service . ',' . $db;
+            my $tuple = $host . q(,) . $service . q(,) . $db;
             if ($tuple =~ /$n/) {
                 $x = $v;
             }
