@@ -34,6 +34,7 @@ next configure data collection, and finally customize the display of graphs.
   Appendix: Sample Installation Layouts
   Appendix: Web Server Configuration
   Appendix: Platform Specific Notes
+    Nagios Embedded PERL (ePN)
     CentOS 5 and Nagiosgraph 0.9
     MacOSX 10.5 and Nagios 2.12
     Fedora Core 6, Nagios 2.6+, and HTTP output parsing
@@ -183,11 +184,6 @@ Batch Processing
 
    Make sure there is only one definition for process-service-perfdata.
 
-   Some installations of Nagios (e.g. with embedded perl) require the explicit
-   location of perl.  For these installations, use a command_line such as:
-
-     command_line /usr/bin/perl /usr/local/nagios/libexec/insert.pl
-
 
 Immediate Processing
 --------------------
@@ -207,11 +203,6 @@ Immediate Processing
        command_name  process-service-perfdata
        command_line  /usr/local/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
      }
-
-   Some installations of Nagios (e.g. with embedded perl) require the explicit
-   location of perl.  For these installations, use a command_line such as:
-
-     command_line /usr/bin/perl /usr/local/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
 
 
 
@@ -944,6 +935,28 @@ Alias /nagios "/opt/nagios/share"
 
 Platform Specific Notes
 -----------------------
+
+Nagios Embedded PERL (ePN)
+--------------------------
+
+The Nagios embedded PERL interpreter (ePN) does not understand every PERL
+idiom.  In particular, it has problems with perldoc.  If you get errors
+such as:
+
+  ePN failed to compile /usr/lib/cgi-bin/nagios3/insert.pl: "Missing right
+  curly or square bracket at (eval 1) line 45, at end of line syntax error
+  at (eval 1) line 52, at EOF" at /usr/lib/nagios3/p1.pl line 250
+
+then you must explicitly invoke PERL for insert.pl.  For example,
+for batch processing use this:
+
+     command_line /usr/bin/perl /usr/local/nagios/libexec/insert.pl
+
+or for immediate processing use this:
+
+     command_line /usr/bin/perl /usr/local/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
+
+
 
 CentOS 5 and Nagiosgraph 0.9:
 -----------------------------

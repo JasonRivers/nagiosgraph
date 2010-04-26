@@ -25,7 +25,6 @@ Desired features.
 * optionally display host/service perfdata in a table in show.cgi
 * link to nagios availability report for timerange for each graph
 * link to nagios alerts for timerange for each graph
-* do a proper graph zoom.  everyone else is doing it ;) (at least trying to)
 
 Notes
 
@@ -36,7 +35,7 @@ old hardware (circa 2004).
 
 Backward-compatibility has been important - the latest nagiosgraph still
 works with older versions of nagios and older nagiosgraph configurations
-and data.
+and data.  Most importantly it still works with existing data files.
 
 Here are a few things that will need to be addressed at some point:
 
@@ -45,13 +44,12 @@ Here are a few things that will need to be addressed at some point:
    doing the processing in the background would let nagios do its thing at
    the expense of near-real-time updating of rrd files.
 
+ - obtain data from arbitrary source (e.g. a sql database), not just directly
+   from nagios or the nagios perflog.
+
  - menudata does not scale.  nagiosgraph javascript must be refactored so
    to work on large installations.
 
  - generic map rules.  define a fallback map rule that detects standard
    perfdata and injects the contents into rrd files, with one source
    per database.
-
- - per-service heartbeat, step, and resolution.  possibly per-host as well.
-
-Perhaps these changes could be in a nagios 2.0 release?

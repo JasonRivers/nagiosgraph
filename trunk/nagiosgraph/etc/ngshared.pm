@@ -65,6 +65,7 @@ use constant {
     COLORMIN => 'BBBBBB',
     COLORS => 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0',
     COLORSCHEME => 1,
+    STEPSIZE => 300,
     HEARTBEAT => 600,
     RESOLUTIONS => '600 700 775 797',
     PERIODS => 'day week month year',
@@ -638,6 +639,16 @@ sub listtodict {
     return $Config{$val};
 }
 
+sub listtohash {
+    my ($str) = @_;
+    my %rval;
+    foreach my $i (split /;/, $str) {
+        my ($n, $v) = split /=/, $i;
+        $rval{$n} = $v;
+    }
+    return \%rval;
+}
+
 # Subroutine for checking that the directory with RRD file is not empty
 sub checkdirempty {
     my $directory = shift;
@@ -736,6 +747,11 @@ sub readconfig {
     foreach my $ii ('altautoscalemax', 'altautoscalemin') {
         listtodict($ii, q(;), 1);
     }
+    foreach my $ii ('heartbeats', 'stepsizes', 'resolutions') {
+        if (defined $Config{$ii}) {
+            $Config{$ii . 'hash'} = listtohash($Config{$ii});
+        }
+    }
 
     # set these only if they have not been specified in the config file
     foreach my $ii (['timeall', 'day week month'],
@@ -752,7 +768,8 @@ sub readconfig {
                     ['colormax', COLORMAX],
                     ['colormin', COLORMIN],
                     ['resolution', RESOLUTIONS],
-                    ['heartbeat', HEARTBEAT],) {
+                    ['heartbeat', HEARTBEAT],
+                    ['stepsize', STEPSIZE],) {
         if (not $Config{$ii->[0]}) { $Config{$ii->[0]} = $ii->[1]; }
     }
     $Config{colors} = [split /\s*,\s*/, $Config{colors}];
@@ -2402,29 +2419,32 @@ sub formattime {
         : scalar localtime $t;
 }
 
-# insert.pl subroutines here for unit testability #############################
-# Check that we have some data to work on
-sub inputdata {
-    my @inputlines;
-    debug(DBDEB, 'inputdata()');
-    if ( $ARGV[0] ) {
-        @inputlines = $ARGV[0];
-    } elsif ( defined $Config{perflog} ) {
-        if (-s $Config{perflog}) {
-            my $worklog = $Config{perflog} . '.nagiosgraph';
-            rename $Config{perflog}, $worklog;
-            open my $PERFLOG, '<', $worklog or return @inputlines;
+# read data from the perflog
+sub readperfdata {
+    my ($fn) = @_;
+    my @lines;
+    debug(DBDEB, 'readperfdata: ' . $fn);
+    if (-s $fn) {
+        my $worklog = $fn . '.nagiosgraph';
+        if (! rename $fn, $worklog) {
+            debug(DBCRT, "cannot process perflog: rename failed for $fn");
+            return @lines;
+        }
+        if (open my $PERFLOG, '<', $worklog) {
             while (<$PERFLOG>) {
-                push @inputlines, $_;
+                push @lines, $_;
             }
             close $PERFLOG or debug(DBERR, "close failed for $worklog: $OS_ERROR");
             unlink $worklog;
-        }
-        if (not @inputlines) {
-            debug(DBDEB, "inputdata empty $Config{perflog}");
+        } else {
+            debug(DBWRN, "cannot read perfdata from $worklog: $OS_ERROR");
+            return @lines;
         }
     }
-    return @inputlines;
+    if (not @lines) {
+        debug(DBINF, 'readperfdata: empty perflog ' . $fn);
+    }
+    return @lines;
 }
 
 # Process received data
@@ -2476,26 +2496,33 @@ sub checkdsname {
     return 0;
 }
 
+sub gethsdmatch {
+    my ($key, $val, $host, $service, $db) = @_;
+    my $x = $val;
+    if (defined $Config{$key}) {
+        $x = $Config{$key};
+    }
+    if (defined $Config{$key . 'hash'}) {
+        my $hashref = $Config{$key . 'hash'};
+        foreach my $n (keys %{$hashref}) {
+            my $pat = $n;
+            $pat =~ s/\*/.*/g;
+            $pat =~ s/\s*,\s*/,/g;
+            if ($host && $service && $db && "$host,$service,$db" =~ /$pat/) {
+                $x = $hashref->{$n};
+            } elsif ($host && $service && "$host,$service" =~ /$pat/) {
+                $x = $hashref->{$n};
+            }
+        }
+    }
+    return $x;
+}
+
 sub createrrd {
     my ($host, $service, $start, $labels) = @_;
     debug(DBDEB, "createrrd($host, $service, $start, $labels->[0])");
     my ($directory,             # modifiable directory name for rrd database
         @filenames);            # rrd file name(s)
-
-    my @rras = split / /, RESOLUTIONS;
-    if (defined $Config{resolution}) {
-        my @r = split / /, $Config{resolution};
-        if (scalar @r == 4) {
-            @rras = @r;
-        }
-    }
-    debug(DBDEB, 'createrrd resolutions: ' . join q( ), @rras);
-
-    my $heartbeat = HEARTBEAT;
-    if (defined $Config{heartbeat}) {
-        $heartbeat = $Config{heartbeat};
-    }
-    debug(DBDEB, 'createrrd heartbeat: ' . $heartbeat);
 
     my $db = shift @{$labels};
     ($directory, $filenames[0]) = mkfilename($host, $service, $db);
@@ -2514,15 +2541,28 @@ sub createrrd {
         croak($msg);
     }
 
-    my @ds = ("$directory/$filenames[0]", '--start', $start);
-    my @dsmin = ("$directory/$filenames[0]_min", '--start', $start);
-    my @dsmax = ("$directory/$filenames[0]_max", '--start', $start);
-    if (defined $Config{stepsize}) {
-        debug(DBDEB, 'createrrd stepsize: ' . $Config{stepsize});
-        push @ds, '--step', $Config{stepsize};
-        push @dsmin, '--step', $Config{stepsize};
-        push @dsmax, '--step', $Config{stepsize};
+    my $res = gethsdmatch('resolution', RESOLUTIONS, $host, $service, $db);
+    my @rras = split / /, $res;
+    debug(DBDEB, 'createrrd resolutions: ' . join q( ), @rras);
+    if (scalar @rras != 4) {
+        my $msg = 'wrong number of values for resolution (expecting 4)';
+        debug(DBCRT, $msg);
+        croak($msg);
     }
+
+    my $heartbeat = gethsdmatch('heartbeat', HEARTBEAT, $host, $service, $db);
+    debug(DBDEB, 'createrrd heartbeat: ' . $heartbeat);
+
+    my $stepsize = gethsdmatch('stepsize', STEPSIZE, $host, $service, $db);
+    debug(DBDEB, 'createrrd step: ' . $stepsize);
+
+    my @ds = ("$directory/$filenames[0]",
+              '--start', $start, '--step', $stepsize,);
+    my @dsmin = ("$directory/$filenames[0]_min",
+                 '--start', $start, '--step', $stepsize,);
+    my @dsmax = ("$directory/$filenames[0]_max",
+                 '--start', $start, '--step', $stepsize,);
+
     my @datasets = [];
     for my $ii (0 .. @{$labels} - 1) {
         next if not $labels->[$ii];
@@ -2541,19 +2581,22 @@ sub createrrd {
         if (defined $Config{hostservvar}->{$host} and
             defined $Config{hostservvar}->{$host}->{$service} and
             defined $Config{hostservvar}->{$host}->{$service}->{$labels->[$ii]->[0]}) {
-            my $filename = (mkfilename($host, $service . $labels->[$ii]->[0], $db))[1];
-            push @filenames, $filename;
+            my $fn = (mkfilename($host, $service . $labels->[$ii]->[0], $db))[1];
+            push @filenames, $fn;
             push @datasets, [$ii];
-            if (not -e "$directory/$filename") {
-                runcreate(["$directory/$filename", '--start', $start,
+            if (not -e "$directory/$fn") {
+                runcreate(["$directory/$fn",
+                           '--start', $start, '--step', $stepsize,
                            $ds, getrras($service, \@rras)]);
             }
-            if (checkminmax('min', $service, $directory, $filename)) {
-                runcreate(["$directory/${filename}_min", '--start', $start,
+            if (checkminmax('min', $service, $directory, $fn)) {
+                runcreate(["$directory/${fn}_min",
+                           '--start', $start, '--step', $stepsize,
                            $ds, getrras($service, \@rras, 'MIN')]);
             }
-            if (checkminmax('max', $service, $directory, $filename)) {
-                runcreate(["$directory/${filename}_max", '--start', $start,
+            if (checkminmax('max', $service, $directory, $fn)) {
+                runcreate(["$directory/${fn}_max",
+                           '--start', $start, '--step', $stepsize,
                            $ds, getrras($service, \@rras, 'MAX')]);
             }
             next;
@@ -2573,12 +2616,12 @@ sub createrrd {
         push @ds, getrras($service, \@rras);
         runcreate(\@ds);
     }
-    dumper(DBDEB, 'createrrd filenames', \@filenames);
-    dumper(DBDEB, 'createrrd datasets', \@datasets);
     createminmax(\@dsmin, \@filenames, \@rras, {conf => 'min',
         service => $service, directory => $directory, labels => $labels});
     createminmax(\@dsmax, \@filenames, \@rras, {conf => 'max',
         service => $service, directory => $directory, labels => $labels});
+    dumper(DBDEB, 'createrrd filenames', \@filenames);
+    dumper(DBDEB, 'createrrd datasets', \@datasets);
     return \@filenames, \@datasets;
 }
 

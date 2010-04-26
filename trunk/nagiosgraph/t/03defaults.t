@@ -140,7 +140,7 @@ sub testconfig {
     ok($Config{rrdoptsfile}, undef);
     ok($Config{perfloop}, undef);
     ok($Config{heartbeat}, 600);
-    ok($Config{stepsize}, undef);
+    ok($Config{stepsize}, 300);
     ok($Config{resolution}, '600 700 775 797');
     ok($Config{dbseparator}, 'subdir');
     ok($Config{dbfile}, undef); # backward compatibility

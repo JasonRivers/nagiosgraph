@@ -19,7 +19,7 @@ function _(s) {
   return s;
 }
 
-// do graph zooming
+// do in-place graph zooming
 var ngzMouse;
 var ngzZoom;
 var ngzZoomBox;
@@ -128,6 +128,10 @@ function Mouse() {
 function Zoom() {
   this.startTime = 0;
   this.endTime = 0;
+  this.imgTop = 0;
+  this.imgLeft = 0;
+  this.imgWidth = 0;
+  this.imgHeight = 0;
   this.boxTop = 0;
   this.boxLeft = 0;
   this.boxWidth = 0;
@@ -189,33 +193,41 @@ function ngzGetStyle(obj, prop) {
 
 function ngzZoomBoxConfigure() {
   ngzParseURL(ngzGraphImg.src);
+  ngzResizeZoomBox(ngzGraphImg);
+  ngzZoomPanel.style.visibility = 'visible';
+  ngzZoomInfo.style.visibility = 'hidden';
+  ngzZoomBox.style.visibility = 'hidden';
+}
+
+function ngzResizeZoomBox(img) {
+  ngzZoom.imgTop = img.offsetTop;
+  ngzZoom.imgLeft = img.offsetLeft;
+  ngzZoom.imgWidth = img.width;
+  ngzZoom.imgHeight = img.height;
   var tOffset = 20;
   var lOffset = 50;
   var bOffset = 40;
   var rOffset = 30;
   var left = lOffset;
   var top = tOffset;
-  var width = ngzGraphImg.width - lOffset - rOffset;
-  var height = ngzGraphImg.height - tOffset - bOffset;
-  var imgObj = ngzGraphImg;
+  var width = img.width - lOffset - rOffset;
+  var height = img.height - tOffset - bOffset;
+  var imgObj = img;
   while(imgObj) {
     top += imgObj.offsetTop;
     left += imgObj.offsetLeft;
     imgObj = imgObj.offsetParent;
   }
-  this.boxTop = top;
-  this.boxLeft = left;
-  this.boxWidth = width;
-  this.boxHeight = height;
-  ngzZoomPanel.style.top = this.boxTop + 'px';
-  ngzZoomPanel.style.left = this.boxLeft + 'px';
-  ngzZoomPanel.style.width = this.boxWidth + 'px';
-  ngzZoomPanel.style.height = this.boxHeight + 'px';
-  ngzZoomPanel.style.visibility = 'visible';
-  ngzZoomBox.style.visibility = 'hidden';
-  ngzZoomInfo.style.top = (this.boxTop+2) + 'px';
-  ngzZoomInfo.style.left = (this.boxLeft+2) + 'px';
-  ngzZoomInfo.style.visibility = 'hidden';
+  ngzZoom.boxTop = top;
+  ngzZoom.boxLeft = left;
+  ngzZoom.boxWidth = width;
+  ngzZoom.boxHeight = height;
+  ngzZoomPanel.style.top = top + 'px';
+  ngzZoomPanel.style.left = left + 'px';
+  ngzZoomPanel.style.width = width + 'px';
+  ngzZoomPanel.style.height = height + 'px';
+  ngzZoomInfo.style.top = (top+2) + 'px';
+  ngzZoomInfo.style.left = (left+2) + 'px';
 }
 
 function ngzMouseButtonLeftFunc(e) {
@@ -300,22 +312,24 @@ function ngzMouseMove(e) {
 }
 
 function ngzMouseOver(e) {
-  var visible = true;
   if(ngzGraphImg == null ||
      ngzGraphImg.offsetParent == null ||
      ngzGetStyle(ngzGraphImg, 'visibility') == 'hidden' ||
      ngzGetStyle(ngzGraphImg, 'display') == 'none') {
-    visible = false;
-  }
-  if(visible) {
-    ngzMouse.setEvent(e);
-    ngzMouse.mouseGetPos();
-    ngzMouse.drawInfo = 1;
-    ngzZoom.drawInfo(ngzMouse.posXStart, ngzMouse.posYStart,
-                     ngzMouse.posX, ngzMouse.posY);
-  } else {
     ngzClear();
+    return;
   }
+  if(ngzGraphImg.offsetTop != ngzZoom.imgTop ||
+     ngzGraphImg.offsetLeft != ngzZoom.imgLeft ||
+     ngzGraphImg.width != ngzZoom.imgWidth ||
+     ngzGraphImg.height != ngzZoom.imgHeight) {
+    ngzResizeZoomBox(ngzGraphImg);
+  }
+  ngzMouse.setEvent(e);
+  ngzMouse.mouseGetPos();
+  ngzMouse.drawInfo = 1;
+  ngzZoom.drawInfo(ngzMouse.posXStart, ngzMouse.posYStart,
+                   ngzMouse.posX, ngzMouse.posY);
 }
 
 function ngzMouseOut(e) {
@@ -1088,7 +1102,6 @@ function cfgHostMenu(host) {
 // If no host is specified, then loop through all of the menudata and create
 // a list of all the services that we encounter.
 // FIXME: this is inefficient and will suck on large number of hosts/services
-// FIXME: consider creating the list of all services in the CGI not here
 function cfgServiceMenu(host, service) {
   var menu = document.menuform.services;
   if (!menu) return;
@@ -1299,8 +1312,7 @@ function getSelectedDBItems() {
 }
 
 // see if there is a cgi argument to expand the controls.  if so, do it.  if
-// not, then collapse them.  make the other gui controls match the state as
-// well.
+// not, then collapse them.  make the other gui controls match the state.
 function setControlsGUIState() {
   setExpansionState(getCGIBoolean('expand_controls'),
                     document.getElementById('secondary_controls_box'),

@@ -22,7 +22,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 427; }
+BEGIN { plan tests => 440; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -366,6 +366,14 @@ sub testlisttodict { # Split a string separated by a configured value into hash.
 		ok($testvar->{$ii}, 1);
 	}
 	close $LOG;
+}
+
+sub testlisttohash {
+    my $val = listtohash('H,S,D=10;*,*=50');
+    ok(Dumper($val), "\$VAR1 = {
+          'H,S,D' => '10',
+          '*,*' => '50'
+        };\n");
 }
 
 sub testarrayorstring {
@@ -1033,34 +1041,28 @@ sub testgraphsizes {
 	$Config{debug} = 0;
 }
 
-sub testinputdata {
-	@testdata = (
-		'1221495633||testbox||HTTP||CRITICAL - Socket timeout after 10 seconds||',
-		'1221495690||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||losspct: 0%, rta: 37.06'
-	);
-	# $ARGV[0] array input test, which will only be one line of data
-	$ARGV[0] = $testdata[1];
-	@result = main::inputdata();
-	ok(Dumper($result[0]), Dumper($testdata[1]));
-	$Config{perflog} = $FindBin::Bin . '/perfdata.log';
-	# a test without data
-	delete $ARGV[0];
-	open $LOG, ">$Config{perflog}";
-	close $LOG;
-	@result = main::inputdata();
-	ok(@result, 0);
-	# $Config{perflog} input test
-	open $LOG, ">$Config{perflog}";
-	foreach $ii (@testdata) {
-		print $LOG "$ii\n";
-	}
-	close $LOG;
-	@result = main::inputdata();
-	chomp $result[0];
-	ok($result[0], $testdata[0]);
-	chomp $result[1];
-	ok($result[1], $testdata[1]);
-	unlink $Config{perflog};
+sub testreadperfdata {
+    @testdata = ('1221495633||testbox||HTTP||CRITICAL - Socket timeout after 10 seconds||',
+                 '1221495690||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||losspct: 0%, rta: 37.06'
+                 );
+    my $fn = $FindBin::Bin . '/perfdata.log';
+    # a test without data
+    open $LOG, ">$fn";
+    close $LOG;
+    @result = readperfdata($fn);
+    ok(@result, 0);
+    # a test with data
+    open $LOG, ">$fn";
+    foreach $ii (@testdata) {
+        print $LOG "$ii\n";
+    }
+    close $LOG;
+    @result = readperfdata($fn);
+    chomp $result[0];
+    ok($result[0], $testdata[0]);
+    chomp $result[1];
+    ok($result[1], $testdata[1]);
+    unlink $fn;
 }
 
 sub testgetrras {
@@ -2738,6 +2740,56 @@ sub testcfgparams {
     undef %Config;
 }
 
+sub testgethsdmatch {
+    $Config{hsdhash} = listtohash('host0,ping=10;host5,http=30');
+    my $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '50');
+    $Config{hsd} = 100;
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '100');
+    $Config{hsdhash} = listtohash('host1,ping=10;host5,http=30');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '10');
+
+    # test matching precedence
+    $Config{hsd} = 100;
+    $Config{hsdhash} = listtohash('*,*=30');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '30');
+    $Config{hsdhash} = listtohash('*,ping=30');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '30');
+    $Config{hsdhash} = listtohash('*,PING=30');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '100');
+    $Config{hsdhash} = listtohash('host1,ping=10;*,*=30');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '10');
+    $Config{hsdhash} = listtohash('*,*=30;host1,ping=10');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '10');
+    $Config{hsdhash} = listtohash('*,*=30;host1,*=10');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '10');
+    $Config{hsdhash} = listtohash('*,*=30;*,ping=10');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '10');
+
+    # test database
+    $Config{hsdhash} = listtohash('*,*,delay=30;*,ping,loss=10');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '100');
+    $Config{hsdhash} = listtohash('*,*,rta=30;*,ping,loss=10');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '30');
+    $Config{hsdhash} = listtohash('*,*,rta=30;*,ping,rta=10');
+    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '10');
+
+    undef $Config{hsd};
+    undef $Config{hsdhash};
+}
+
 
 
 
@@ -2752,6 +2804,7 @@ testdircreation();
 testmkfilename();
 testhashcolor();
 testlisttodict();
+testlisttohash();
 testarrayorstring();
 testcheckdirempty();
 testreadfile();
@@ -2762,7 +2815,7 @@ testgetdataitems();
 testgetserverlist();
 testprintmenudatascript();
 testgraphsizes();
-testinputdata();
+testreadperfdata();
 testgetrras();
 testcheckdatasources();
 testcheckdsname();
@@ -2800,3 +2853,4 @@ testgetdatalabel();
 testbuildurl();
 testcfgparams();
 testgetparams();
+testgethsdmatch();
