@@ -6,8 +6,6 @@ $Id$
    drag to zoom.  right-click to revert the graph.
 * added mouseovers to graph that display time under the cursor.
 * optionally specify heartbeat, step, and resolution per host/service.
-* use exact data sources for each service instead of assuming that all
-   services with the same name will have the same data sources.
 * clean up insert.pl in preparation for additional processing modes and
    performance data sources.
 

@@ -13,10 +13,11 @@ more data sets.  nagiosgraph cgi scripts display data from the RRD files
 as web pages.
 
 Installation is a three-step process.  First install the nagiosgraph files,
-next configure data collection, and finally customize the display of graphs.
+then configure Nagios for data collection, and finally customize the graphs
+and links as needed.
 
   Installation Preliminaries
-  Installation Instructions
+  Installing nagiosgraph Files
   Upgrade Notes
   Configuring Data Processing
     Batch Processing
@@ -62,8 +63,8 @@ Installation Preliminaries
   Examples of these layouts are in the Sample Installation Layouts section.
 
 
-Installation Instructions
--------------------------
+Installing nagiosgraph Files
+----------------------------
 
 These instructions assume an overlay layout, with nagios at /usr/local/nagios.
 
@@ -146,8 +147,9 @@ Configuring Data Processing
 ---------------------------
 
 Before nagiosgraph can graph anything it must first collect data.  There are
-two ways to process data - batch and immediate.  Immedate processing typically
-requires more CPU.
+two ways to process data - batch and immediate.  Batch processing is usually
+appropriate for most Nagios deployments.  Immediate processing typically
+requires more CPU and I/O.
 
 In batch processing, performance data are appended to a file, then nagios
 invokes insert.pl at a regular interval to update the rrd files.
@@ -184,6 +186,11 @@ Batch Processing
 
    Make sure there is only one definition for process-service-perfdata.
 
+ - Restart nagios
+
+     /etc/init.d/nagios restart
+
+
 
 Immediate Processing
 --------------------
@@ -204,6 +211,10 @@ Immediate Processing
        command_line  /usr/local/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
      }
 
+ - Restart nagios
+
+     /etc/init.d/nagios restart
+
 
 
 Configuring Graphing and Display
@@ -212,8 +223,8 @@ Configuring Graphing and Display
 First configure the web server to run the nagiosgraph CGI scripts.  For
 example, with Apache do something like this in the Apache configuration:
 
-  ScriptAlias /nagiosgraph/cgi-bin /usr/local/nagiosgraph/cgi-bin
-  <Directory "/usr/local/nagiosgraph/cgi-bin">
+  ScriptAlias /nagios/cgi-bin /usr/local/nagios/sbin
+  <Directory "/usr/local/nagios/sbin">
      Options ExecCGI
      AllowOverride None
      Order allow,deny
@@ -222,23 +233,20 @@ example, with Apache do something like this in the Apache configuration:
 
 Verify that nagiosgraph is working by running show.cgi or showgraph.cgi.
 
-  http://server/nagiosgraph/cgi-bin/show.cgi
+  http://server/nagios/cgi-bin/show.cgi
 
 This should display a web page with a list of your hosts and services.
-Note that it might take a few minutes for data to collect.
+Note that it might take a few minutes for data to collect, so at first the
+list of hosts and services might be sparse and the graphs might be empty.
 
-The look and feel of nagiosgraph is controlled by the cascading style sheets
-defined in nagiosgraph.css.  The examples directory contains a stylesheet file
-with sample style sheets for fixing the controls to the page, floating the
-controls above the graphs, or hiding the controls altogether.
-
-After the CGI scripts are working you can configure nagios.  There are
-a few ways to embed nagiosgraph into nagios.  Nagios will display graph
-icons that, when clicked, will open a new web page displaying nagiosgraph
-graphs.  These icons are typically per-host (linked to the showhost.cgi
-script) or per-host-service (linked to the show.cgi script).  Nagios will
-display graph data when the mouse is moved over host/service action icons.
-And graphs can be displayed directly in the Nagios frames.
+There are a few ways to embed graphs into nagios.  In the service and
+host listings, Nagios will display graph icons that, when clicked, will
+open a new web page with graphs.  These icons are typically per-host
+(linked to the showhost.cgi script) or per-host-service (linked to the
+show.cgi script).  Nagios will display graph data when the mouse is moved
+over the graph icon for each host/service.  Finally, graphs can be displayed
+directly in the Nagios frames.  The following sections explain how to do each
+of these.
 
 
 
@@ -391,6 +399,11 @@ $cfg['ng_cgi_base_url']='/nagiosgraph/cgi-bin';
 Customizing the Graphs
 ----------------------
 
+The look and feel of nagiosgraph is controlled by the cascading style sheets
+defined in nagiosgraph.css.  The examples directory contains a stylesheet file
+with sample style sheets for fixing the controls to the page, floating the
+controls above the graphs, or hiding the controls altogether.
+
 Graphs can be customized individually by specifying CGI arguments, or they
 can be customized overall by specifying values in the configuration files.
 
@@ -428,9 +441,7 @@ The following options are available via configuration files:
  - rrdopts
    Use the rrdopts option to specify custom RRD graphing options.  These
    can be specified for all graphs using rrdopts, or per-service using
-   the rrdoptsfile.  When specifying options as CGI arguments, the options
-   must be URL encoded.  For example, &rrdopts=%2Dl%200%20%2Du%20100
-   (meaning: "-l 0 -u 100").
+   the rrdoptsfile.
 
  - lineformat
    Use lineformat to control the line thickness and line color for
