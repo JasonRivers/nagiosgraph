@@ -1165,7 +1165,7 @@ sub readhostdb {
 
     my $usedefaults = 1;
     my @ginfo;
-    if (defined $Config{hostdb} && $Config{hostdb} ne q()) {
+    if (defined $Config{hostdb}) {
         my $fn = getcfgfn($Config{hostdb});
         if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
             my $lineno = 0;
@@ -1219,7 +1219,7 @@ sub readhostdb {
             die $msg; ## no critic (RequireCarping)
         }
     } else {
-        debug(DBERR, 'no hostdb file has been specified');
+        debug(DBINF, 'no hostdb file has been specified');
     }
 
     if ($usedefaults) {
@@ -1265,7 +1265,7 @@ sub readservdb {
     my $usedefaults = 1;
     my @allhosts;
     my @validhosts;
-    if (defined $Config{servdb} && $Config{servdb} ne q()) {
+    if (defined $Config{servdb}) {
         my $fn = getcfgfn($Config{servdb});
         if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
             my $lineno = 0;
@@ -1304,7 +1304,7 @@ sub readservdb {
             }
         }
     } else {
-        debug(DBERR, 'no servdb file has been specified');
+        debug(DBINF, 'no servdb file has been specified');
     }
 
     if ($usedefaults) {
@@ -1338,7 +1338,7 @@ sub readgroupdb {
     debug(DBDEB, "readgroupdb($g)");
 
     if (! defined $Config{groupdb} || $Config{groupdb} eq q()) {
-        my $msg = 'no groupdb file has been specified in the configuration.';
+        my $msg = 'no groupdb file has been specified';
         debug(DBERR, $msg);
         htmlerror($msg);
         die $msg; ## no critic (RequireCarping)
