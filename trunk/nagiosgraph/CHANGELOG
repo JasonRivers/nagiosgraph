@@ -8,6 +8,9 @@ $Id$
 * optionally specify heartbeat, step, and resolution per host/service.
 * clean up insert.pl in preparation for additional processing modes and
    performance data sources.
+* fix to javascript to display hosts and services when specified via CGI
+   even if they do not appear in the host and service menus.
+* fixed bug in handling of backslashes in service and database names.
 
 1.4.2 2010-03-16
 

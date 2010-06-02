@@ -914,23 +914,38 @@ function mkCGIArgs() {
 
   var elem = document.menuform.servidors;
   if (elem) {
-    var host = elem.options[elem.selectedIndex].text;
+    var host;
+    if (elem.selectedIndex > 0) {
+      host = elem.options[elem.selectedIndex].text;
+    } else {
+      host = getCGIValue('host');
+    }
     if (host && host != '' && host != '-') {
       args.push('host=' + escape(host));
     }
   }
   elem = document.menuform.services;
   if (elem) {
-    service = elem.options[elem.selectedIndex].text;
+    var service;
+    if (elem.selectedIndex > 0) {
+      service = elem.options[elem.selectedIndex].text;
+    } else {
+      service = getCGIValue('service');
+    }
     if (service && service != '' && service != '-') {
-       args.push('service=' + escape(service));
+      args.push('service=' + escape(service));
     }
   }
   elem = document.menuform.groups;
   if (elem) {
-    group = elem.options[elem.selectedIndex].text;
+    var group;
+    if (elem.selectedIndex > 0) {
+      group = elem.options[elem.selectedIndex].text;
+    } else {
+      group = getCGIValue('group');
+    }
     if (group && group != '' && group != '-') {
-       args.push('group=' + escape(group));
+      args.push('group=' + escape(group));
     }
   }
   elem = document.menuform.db;

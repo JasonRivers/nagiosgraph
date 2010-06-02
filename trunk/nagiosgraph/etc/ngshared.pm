@@ -1615,7 +1615,7 @@ sub mkvname {
 # escape colons so they do not confuse rrdtool
 sub mklegend {
     my ($s, $maxlen) = @_;
-    $s =~ s/:/\\\\:/g;
+    $s =~ s/:/\\:/g;
     return sprintf "%-${maxlen}s", $s;
 }
 
@@ -1984,15 +1984,18 @@ sub printmenudatascript {
         my @services = sortnaturally(keys %{$hsdata{$hosts->[$ii]}});
         #dumper(DBDEB, 'printmenudatascript: keys', \@services);
         foreach my $jj (@services) {
-            $rval .= " ,[\"$jj\",";
-            my $com2 = 0;
+            my $s = $jj;
+            $s =~ s/\\/\\\\/g;
+            $rval .= " ,[\"$s\",";
+            my $c = 0;
             foreach my $kk (@{$lookup->{$hosts->[$ii]}{$jj}}) {
-                if ($com2) {
+                if ($c) {
                     $rval .= q(,);
                 }
                 my $name = q();
                 my @ds;
                 foreach my $x (@{$kk}) {
+                    $x =~ s/\\/\\\\/g;
                     if ($name eq q()) {
                         $name = $x;
                     } else {
@@ -2000,7 +2003,7 @@ sub printmenudatascript {
                     }
                 }
                 $rval .= '["' . $name . '","' . join('","', sortnaturally(@ds)) . '"]';
-                $com2 = 1;
+                $c = 1;
             }
             $rval .= "]\n";
         }
@@ -2738,10 +2741,6 @@ sub processdata {
     for my $line (@lines) {
         chomp $line;
         my @data = split /\|\|/, $line;
-        # Suggested by Andrew McGill for 0.9.0, but I'm (Alan Brenner) not sure
-        # it is still needed due to urlencoding in file names by mkfilename.
-        # replace spaces with - in the description so rrd doesn't choke
-        # $data[2] =~ s/\W+/-/g;
         my $debug = $Config{debug};
         getdebug('insert', $data[1], $data[2]);
         dumper(DBDEB, 'processdata data', \@data);
