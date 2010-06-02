@@ -928,7 +928,7 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:this label has \\\\\\\\: a colon in it',
+          'LINE2:ping_rta#CC03CC:this label has \\\\: a colon in it',
           'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
