@@ -1,0 +1,277 @@
+# File:    $Id: map,v 1.10 2006/07/21 14:18:17 sauber Stab $
+# Author:  (c) Soren Dossing, 2005
+# License: OSI Artistic License
+#          http://www.opensource.org/licenses/artistic-license.php
+
+########################################################################
+#
+# INSTRUCTIONS:
+#
+# This file contains several example of service types. Edit this file to
+# add more service types. The data string from Nagios is in $_ . Use
+# regular expressions to identify and extract data like the examples below
+# below.  Match on either output: or perfdata: . The code is pure perl,
+# that will be run inside an eval{}. Results are expected in @s. The
+# general format is:
+#
+# /output|perfdata:<servicetype> <key>=<value> <key2=value2> .../
+# and push @s, [ <databasename>,
+#                [ <key>,  GAUGE|DERIVE, <value>  ],
+#                [ <key2>, GAUGE|DERIVE, <value2> ],
+#                [ .       .              .        ],
+#                [ .       .              .        ] ];
+#
+# But more advanced code is possible, as long as the resulting
+# data structure is correct.
+#
+########################################################################
+
+# Network-ish stuff ############################################################
+# Service type: ping
+#   output:PING OK - Packet loss = 0%, RTA = 0.00 ms
+/output:PING.* (\d+)%.+([.\d]+)\sms/
+and push @s, [ 'ping',
+               [ 'losspct', GAUGE, $1      ],
+               [ 'rta',     GAUGE, $2/1000 ] ];
+
+# Service type: unix-netstat
+#   output:OK
+#   perfdata:udpInDatagrams=46517147, udpOutDatagrams=46192507, udpInErrors=0,
+#   tcpActiveOpens=1451583, tcpPassiveOpens=1076181, tcpAttemptFails=1909,
+#   tcpEstabResets=5045, tcpCurrEstab=6, tcpOutDataBytes=3162434373,
+#   tcpInDataBytes=1942718261, tcpRetransBytes=215439
+#/perfdata:.*udpInDatagrams=(\d+), udpOutDatagrams=(\d+), udpInErrors=(\d+), tcpActiveOpens=(\d+), tcpPassiveOpens=(\d+), tcpAttemptFails=(\d+), tcpEstabResets=(\d+), tcpCurrEstab=(\d+), tcpOutDataBytes=(\d+), tcpInDataBytes=(\d+), tcpRetransBytes=(\d+)/
+#and push @s, [ udp,
+#               [ InPkts,  DERIVE, int $1/300 ],
+#               [ OutPkts, DERIVE, int $2/300 ],
+#               [ Errors,  DERIVE, int $3/300 ] ],
+#             [ tcp,
+#               [ ActOpens,    DERIVE, int $4/300    ],
+#               [ PsvOpens,    DERIVE, int $5/300    ],
+#               [ AttmptFails, DERIVE, int $6/300    ],
+#               [ OutBytes,    DERIVE, int $9/300*8  ],
+#               [ InBytes,     DERIVE, int $10/300*8 ] ];
+
+# Service type: unix-dns
+#   output:DNS OK - 0.008 seconds response time (test.test.1M IN A192.169.0.47)
+#   perfdata:time=8260us;;;0
+#/output:DNS.*?([.0-9]+) sec/
+#and push @s, [ dns,
+#               [ response,  GAUGE, $1 ] ];
+
+# Service type: unix-ntp
+#   output:NTP OK: Offset 0.001083 secs, jitter 14.84 msec, peer is stratum 1
+#/output:NTP.*Offset ([-.0-9]+).*jitter ([-.0-9]+).*stratum (\d+)/
+#and push @s, [ ntp,
+#               [ offset,  GAUGE, $1      ],
+#               [ jitter,  GAUGE, $2/1000 ],
+#               [ stratum, GAUGE, $3+1    ] ];
+
+# Service type: unix-tcp
+#   output:TCP OK - 0.061 second response time on port 22
+#   perfdata:time=0.060777s;0.000000;0.000000;0.000000;10.000000
+#/output:TCP.*?on port (\d+)\s*perfdata:time=(\d+\.\d+).*(\d+\.\d+)\D*(\d+\.\d+)\D*(\d+\.\d+)\D*(\d+\.\d+)/
+#and push @s, [ "tcp_$1",
+#               [ 'connect_time',   GAUGE, $2 ],
+#               [ 'warning_time',   GAUGE, $3 ],
+#               [ 'critical_time',  GAUGE, $4 ],
+#               [ 'socket_timeout', GAUGE, $6 ],
+#             ];
+
+# Overall load stuff ###########################################################
+# Service type: unix-load
+#   output: OK - load average: 0.66, 0.70, 0.73
+#   perfdata:load1=0;15;30;0 load5=0;10;25;0 load15=0;5;20;0
+/output:.*load average: ([.0-9]+), ([.0-9]+), ([.0-9]+)/
+and push @s, [ 'load',
+               [ 'avg1min',  GAUGE, $1 ],
+               [ 'avg5min',  GAUGE, $2 ],
+               [ 'avg15min', GAUGE, $3 ] ];
+
+# Service type: unix-procs
+#   output:PROCS OK: 43 processes
+/output:PROCS.*: (\d+) process/
+and push @s, [ 'procs',
+               [ 'procs', GAUGE, $1 ] ];
+
+# Service type: unix-zombies
+#   ouput:PROCS OK: 0 processes with STATE = Z
+#/output:PROCS.*: (\d+) process.*Z/
+#and push @s, [ 'zombie',
+#               [ 'zombies', GAUGE, $1 ] ];
+
+# Service type: unix-memory
+#	output:CHECK_MEMORY OK - 3344M free
+#	perfdata:free=3507249152b;1252061184:;313015296:
+/output:CHECK_MEMORY OK - (\d+)M free/
+and push @s, [ 'memory',
+               [ 'memfree', GAUGE, $1 ] ];
+
+# Service type: unix-swap
+#   output:SWAP OK: 96% free (2616 MB out of 2744 MB)
+#   perfdata:swap=2616MB;274;54;0;2744
+/perfdata:swap=(\d+)MB;(\d+);(\d+);\d+;(\d+)/
+and push @s, [ 'memory',
+               [ 'swapfree', GAUGE, $1*1024**2 ],
+               [ 'swapmax',  GAUGE, $4*1024**2 ] ];
+
+# Service type: unix-users
+#   output:USERS OK - 4 users currently logged in
+#   perfdata:users=4;5;10;0
+/perfdata:users=(\d+);(\d+);(\d+)/
+and push @s, [ 'users',
+               [ 'users', GAUGE, $1 ]];
+
+# Service type: OS updates
+#	output:YUM OK
+/output:YUM OK/ and push @s, 'ignore';
+
+# Service type: Dell OpenManage
+#	output:OK
+/servicedescr:OpenManage/ and push @s, 'ignore';
+
+# Disk stuff ###################################################################
+# Service type: single disk
+#  output:DISK OK - free space: /tmp 663 MB (90%):
+/output:DISK.*free space: (\S+) (\d+) MB \((\d+)\%\)/
+and push @s, [ 'diskgd',
+               [ 'bytesfree', GAUGE, $2*1024**2 ],
+               [ 'bytesmax', GAUGE, $3 ? $2*1024**2/$3*100 : 'U' ]] and
+    push @s, [ 'diskpct',
+               [ 'pctfree', GAUGE, $3 ] ];
+
+# Service type: all unix-disk
+# Note: nagiosplugin requires the inode patch
+#   ouput:DISK OK - free space: / 12372 mB (77% inode=96%): /raid 882442 mB (88% inode=91%):
+#   perfdata: /=12372mB;14417;15698;96;16019 /raid=882441mB;999780;999780;91;999780
+/output:DISK.*inode=/ and do {
+  my @_pct = /: (\/.*?) .*?(\d+)% inode=(\d+)%/g;
+  while ( my($_d,$_b,$_i) = splice @_pct,0,3 ) {
+    my @_s;
+    /perfdata:.*$_d=(\d+)\w*?;(\d+);(\d+);(\d+);(\d+)/;
+    push @s, [ 'diskgb',
+               [ 'free',     GAUGE, $1*1024**2  ],
+               [ 'user',     GAUGE, $2*1024**2  ],
+               [ 'root',     GAUGE, $3*1024**2  ],
+               [ 'max',      GAUGE, $5*1024**2  ]];
+    push @s, [ 'diskpct',
+               [ 'blockpct', GAUGE, $_b ],
+               [ 'inodepct', GAUGE, $_i ] ];
+  }
+};
+
+# Service type: SMART status
+#	output:OK: device is functional and stable (temperature: 0)
+/OK: device is functional and stable \(temperature: (\d+)\)/
+and push @s, 'ignore';
+
+# email-ish stuff ##############################################################
+# Service type: SMTP server
+#   output:SMTP OK - 0.187 sec. response time
+/output:SMTP.*?([-.0-9]+) sec/
+and push @s, [ 'smtp',
+               [ 'response', GAUGE, $1 ] ];
+
+# Service type: Secure SMTP server
+#	output:|SSMTP OK - 0.193 second response time on port 465 [220 palace.princeton.edu ESMTP Postfix]
+#	perfdata:time=0.193438s;;;0.000000;10.000000
+/output:SSMTP.*?([-.0-9]+) sec/
+and push @s, [ 'smtp',
+               [ 'response', GAUGE, $1 ] ];
+
+# Service type: unix-mailq
+#   output:WARNING: mailq is 5717 (threshold w = 5000)
+#   perfdata:unsent=5717;5000;10000;0
+/perfdata:unsent=(\d+);(\d+);(\d+);(\d+)/
+and push @s, [ mailq,
+               [ qsize, GAUGE, $1 ],
+               [ qwarn, GAUGE, $2 ],
+               [ qcrit, GAUGE, $3 ] ];
+
+# Service type: IMAP server
+#   output:IMAP OK - 0.009 second response time on port 143
+/output:IMAP.*?([-.0-9]+) sec/
+and push @s, [ 'imap',
+               [ 'response', GAUGE, $1 ] ];
+
+# Service type: POP server
+#   output:POP OK - 0.008 second response time on port 110
+#/output:POP.*?([.0-9]+) second/
+#and push @s, [ pop3,
+#               [ response, GAUGE, $1 ] ];
+
+# Service type: Amavisd spam filter
+#	output:OK - All fine
+/output:OK - All fine/ and push @s, 'ignore';
+
+# Service type: ClamD anti-virus filter
+#	output:CLAMD OK - 0.001 second response time on socket /var/run/clamav/clamd.sock [PONG]
+#	perfdata:time=0.000556s;;;0.000000;10.000000
+/output:CLAMD.*([.0-9]+) second response/
+and push @s, [ 'clamd',
+               [ 'response', GAUGE, $1 ] ];
+
+# Service type: ClamDB anti-virus filter database
+#	output:ClamAV OK: daily.cvd 7620 out of date by 1 revision
+/output:ClamAV.*daily.cvd ([.0-9]+)/
+and push @s, [ 'clamdb',
+               [ 'version', COUNTER, $1 ] ];
+
+# Application server stuff #####################################################
+# Service type: ldap sever
+#   ouput:LDAP OK - 0.004 seconds response time
+#   perfdata:time=3657us;;;0
+#/output:LDAP.*?([.0-9]+) sec/
+#and push @s, [ ldap,
+#               [ response, GAUGE, $1 ] ];
+
+# Service type: web server
+#   output:HTTP OK HTTP/1.1 200 OK - 1456 bytes in 0.003 seconds
+#/output:HTTP.*?(\d+) byte.*?([.0-9]+) sec/
+#	output:HTTP OK HTTP/1.1 200 OK - 0.578 second response time
+#	perfdata:time=0.577628s;;;0.000000 size=18242B;;;0
+/perfdata:time=(\d+\.\d+)s.*size=(\d+)B/
+and push @s, [ 'http',
+               [ 'bps', GAUGE, $2/$1 ] ];
+
+# Service type: secure web server
+#	output: OK - Certificate will expire on 12/14/2008 13:35.
+/output:OK - Certificate will expire/ and push @s, 'ignore';
+
+# Sercurity stuff ##############################################################
+# Service type: CheckRootKit
+#	output:CHKROOTKIT OK
+/output:CHKROOTKIT OK/ and push @s, 'ignore';
+
+# Service type: SSH
+#	output:SSH OK - OpenSSH_4.3 (protocol 2.0)
+/output:SSH OK/ and push @s, 'ignore';
+
+# Service type: plw
+#   output:PLW OK - 0 events found
+#   perfdata: authen_failed=0;5;10 bad_bot=0;5;10 bad_url=0;5;10 http_error=0;5;10 imap_error=0;5;10 smtp_error=0;5;10 ssh_error=0;5;10
+/output:PLW/ and do {
+  my %_s = /(\w+)=(\d+;\d+;\d+)/g;
+  my ($_k, @_r);
+  foreach $_k (sort(keys(%_s))) {
+    my @_s = split(';', $_s{$_k});
+    push @_r, [ $_k, GAUGE, $_s[0] ];
+  }
+  push @s, [ 'plw', @_r ];
+};
+
+# Other stuff ##################################################################
+# Service type: Asterisk hardware interface (Zaptel)
+#	output: ZAPTEL OK: WCFXO/0
+/output:ZAPTEL OK/ and push @s, 'ignore';
+
+/output:APCUPSD/ and do {
+  my %_s = ($_ =~ /(\w+)=(\d+)\S+/g);
+  dumper(5, '_s', \%_s);
+  my ($_k, @_r);
+  foreach $_k (sort(keys(%_s))) {
+    my @_s = split(';', $_s{$_k});
+    push @_r, [ $_k, GAUGE, $_s[0] ];
+  }
+  push @s, [ 'apcupsd', @_r ];
+};

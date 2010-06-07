@@ -1,0 +1,100 @@
+$Id$
+------------------             License: OSI Artistic License
+nagiosgraph README             Author:  (c) 2005 Soren Dossing
+------------------             Author:  (c) 2008 Alan Brenner, Ithaka Harbors
+                               Author:  (c) 2010 Matthew Wall
+
+Nagiosgraph is an add-on of Nagios. It collects service performance data into
+rrd format, and displays the resulting graphs via cgi.  It can be embedded
+directly into Nagios so that graphs show up just like other trend reports.
+
+The INSTALL file contains installation and configuration instructions.
+
+For help, visit the forum at:
+  http://sourceforge.net/projects/nagiosgraph/forums/forum/394748
+
+Note: Nagios is a registered trademark of Ethan Galstad.
+
+
+Principles of Operations
+------------------------
+
+nagiosgraph is a simple interface between Nagios and rrd data files.
+
+nagiosgraph operates in two modes. One is to collect performance data
+from Nagios servicechecks, and the other is to display graphs of
+the performance data collected.
+
+All the data collected are stored in rrd files using rrdtool. A file
+called 'map' defines how to identify the data from nagios and how to
+store them in the rrd files. Nagios passes all the service data to a
+nagiosgraph script called 'insert.pl'. This script uses the file 'map'
+to determine how to name the data and into which rrd files to insert
+the data. The map file also processes the data, for example by changing
+units or applying scaling factors.
+
+The 'map' configuration file is actually perl code, that is eval'ed
+by 'insert.pl'. Several examples of servicechecks are included in
+the distributed 'map' file, but generally it is necessary to make
+modifications or add entries to match the output of the particular
+nagios plugins in use. Knowing perl regular expression is helpful,
+but the examples supplied should cover most types of performance data.
+
+For graphing, nagiosgraph includes cgi scripts. 'show.cgi' looks up
+performance data for a single host and service, and generates line
+charts accordingly.  Other scripts display all hosts for a specific
+service, all services for a specific host, or arbitrary groups of hosts
+and services.  These run out-of-the-box with minimal configuration, or
+they can be customized, using a configuration file or interactively.
+
+Graphs can be integrated into Nagios using Nagios' extended information
+for services and hosts.  By specifying nagiosgraph cgi scripts in the
+Nagios configuration, individual graphs and collections of graphs can be
+linked directly to hosts and services in Nagios web pages.
+
+By default, all available data for a servicecheck will be displayed in
+the same graph. With extra configuration, either embedded in the url, 
+specified in a configuration file, or using controls in a web page, it is
+possible to display less data or to split values into multiple graphs.
+There is also a general method for specifying arbitrary rrd graph
+options such as line style, color, and scaling for individual hosts or
+services.
+
+
+Files
+------
+
+CHANGELOG             - History of changes
+INSTALL               - How to install, configure, and use nagiosgraph
+README                - This file
+TODO                  - A list of potential improvements to nagiosgraph.
+install.pl            - An initial stab at an installer (for the brave only).
+lib/insert.pl         - Reads nagios perfdata log and insert into rrd files.
+lib/insert.sh         - A shell script wrapper around insert.pl.
+cgi/show.cgi          - Generates an html page for the host/service specified.
+cgi/showgraph.cgi     - Generates the actual graph image used by other scripts.
+cgi/showgroup.cgi     - Generates an html page for the group specified.
+cgi/showhost.cgi      - Generates an html page for the host specified, showing
+                          all available services on the host.
+cgi/showservice.cgi   - Generates an html page for the service specified,
+                          showing all hosts with that service.
+cgi/testcolor.cgi     - Preview of colors for keywords in each color scheme
+etc/access.conf       - Access control file
+etc/datasetdb.conf    - Optional configuration for data sets
+etc/nagiosgraph.conf  - Primary configuration file for nagiosgraph
+etc/nagiosgraph_*     - Translations
+etc/groupdb.conf      - Configuration specific to showgroup.cgi
+etc/hostdb.conf       - Configuration specific to showhost.cgi
+etc/servdb.conf       - Configuration specific to showservice.cgi
+etc/rrdopts.conf      - Per-service options to rrdgraph
+etc/map               - Regular expression to identify services and
+                          specification for how to create rrd files.
+etc/ngshared.pm       - Shared library of common perl subroutines
+examples/*            - Configuration examples.
+share/action.gif      - An icon for use in Nagios.
+share/nagiosgraph.css - CSS stylesheet
+share/nagiosgraph.js  - All of the JavaScript used by nagiosgraph.
+share/nagiosgraph.ssi - HTML for Nagios pages to enable graphs on mouseover.
+t/*                   - perl test scripts
+utils/testentry.pl    - A script for testing new map file entries.
+utils/upgrade.pl      - A script for upgrading RRD data from flat to hierarchy.
