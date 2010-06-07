@@ -1,6 +1,6 @@
 $Id$
 
-1.4.3 TBD
+1.4.3 2010-06-07
 
 * new configuration options (see nagiosgraph.conf for details):
      stack
