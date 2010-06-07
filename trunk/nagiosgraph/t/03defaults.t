@@ -12,7 +12,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 use Test;
 
-BEGIN { plan tests => 127; }
+BEGIN { plan tests => 128; }
 my $logfile = 'test.log';
 
 # Check the default configuration.  this is coded into a test to help ensure
@@ -79,8 +79,18 @@ sub testconfig {
         };\n");
     ok(Dumper($Config{plotasLINE2}), "\$VAR1 = {};\n");
     ok(Dumper($Config{plotasLINE3}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{plotasAREA}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{plotasAREA}), "\$VAR1 = {
+          'system' => 1,
+          'user' => 1,
+          'idle' => 1,
+          'nice' => 1
+        };\n");
     ok(Dumper($Config{plotasTICK}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{stack}), "\$VAR1 = {
+          'system' => 1,
+          'user' => 1,
+          'nice' => 1
+        };\n");
     ok(Dumper($Config{lineformat}), "\$VAR1 = {
           'warn,LINE1,D0D050' => 1,
           'rtacrit,LINE1,D05050' => 1,

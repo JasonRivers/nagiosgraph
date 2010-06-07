@@ -2,15 +2,20 @@ $Id$
 
 1.4.3 TBD
 
+* new configuration options (see nagiosgraph.conf for details):
+     stack
 * added graph zooming.  zooming happens in-place (no separate window).
    drag to zoom.  right-click to revert the graph.
-* added mouseovers to graph that display time under the cursor.
+* added mouseovers that display time under the cursor.
 * optionally specify heartbeat, step, and resolution per host/service.
 * clean up insert.pl in preparation for additional processing modes and
    performance data sources.
 * fix to javascript to display hosts and services when specified via CGI
    even if they do not appear in the host and service menus.
 * fixed bug in handling of backslashes in service and database names.
+* added support for rrdtool STACK.  stack can be specified using the 'stack'
+   directive and/or using the 'lineformat' directive.  see nagiosgraph.conf
+   for details and examples.
 
 1.4.2 2010-03-16
 

@@ -22,7 +22,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 448; }
+BEGIN { plan tests => 469; }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -90,13 +90,15 @@ sub teardownauthhosts {
 }
 
 # create rrd files used in the tests
-#   host   service   db     ds1,ds2,...
-#   host0  PING      ping   losspct,rta
-#   host0  HTTP      http   Bps
-#   host1  HTTP      http   Bps
-#   host2  PING      ping   losspct,rta
-#   host3  ping      loss   losspct,losswarn,losscrit
-#   host3  ping      rta    rta,rtawarn,rtacrit
+#   host   service      db           ds1,ds2,...
+#   host0  PING         ping         losspct,rta
+#   host0  HTTP         http         Bps
+#   host1  HTTP         http         Bps
+#   host2  PING         ping         losspct,rta
+#   host3  ping         loss         losspct,losswarn,losscrit
+#   host3  ping         rta          rta,rtawarn,rtacrit
+#   host4  c:\ space    ntdisk       total,used
+#   host5  ntdisk       c:\ space    total,used
 sub setuprrd {
     my ($format) = @_;
     if (! $format) { $format = 'subdir'; }
@@ -133,6 +135,16 @@ sub setuprrd {
                 ['rtawarn', 'GAUGE', 0.1],
                 ['rtacrit', 'GAUGE', 0.5] ];
     @result = createrrd('host3', 'ping', 1221495632, $testvar);
+
+    $testvar = ['ntdisk',
+                ['total', 'GAUGE', 100],
+                ['used', 'GAUGE', 10] ];
+    @result = createrrd('host4', 'c:\\ space', 1221495632, $testvar);
+
+    $testvar = ['c:\\ space',
+                ['total', 'GAUGE', 500],
+                ['used', 'GAUGE', 20] ];
+    @result = createrrd('host5', 'ntdisk', 1221495632, $testvar);
 }
 
 sub teardownrrd {
@@ -600,43 +612,75 @@ sub testgraphinfo {
 }
 
 sub testgetlineattr {
+    # test individual line attribute options
     $Config{plotas} = 'LINE1';
     $Config{plotasLINE1} = {'avg5min' => 1, 'avg15min' => 1};
     $Config{plotasLINE2} = {'a' => 1};
     $Config{plotasLINE3} = {'b' => 1};
     $Config{plotasAREA} = {'ping' => 1};
     $Config{plotasTICK} = {'http' => 1};
+    $Config{stack} = {'s' => 1};
 
-    my ($linestyle, $linecolor) = getlineattr('foo');
+    my ($linestyle, $linecolor, $stack) = getlineattr('foo');
     ok($linestyle, 'LINE1');
     ok($linecolor, '000399');
-    ($linestyle, $linecolor) = getlineattr('ping');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('ping');
     ok($linestyle, 'AREA');
     ok($linecolor, '990333');
-    ($linestyle, $linecolor) = getlineattr('http');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('http');
     ok($linestyle, 'TICK');
     ok($linecolor, '000099');
-    ($linestyle, $linecolor) = getlineattr('avg15min');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('avg15min');
     ok($linestyle, 'LINE1');
     ok($linecolor, '6600FF');
-    ($linestyle, $linecolor) = getlineattr('a');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('a');
     ok($linestyle, 'LINE2');
     ok($linecolor, 'CC00CC');
-    ($linestyle, $linecolor) = getlineattr('b');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('b');
     ok($linestyle, 'LINE3');
     ok($linecolor, 'CC00FF');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('s');
+    ok($linestyle, 'LINE1');
+    ok($linecolor, 'CC03CC');
+    ok($stack, 1);
 
+    # test basic lineformat behavior
     $Config{lineformat} = 'warn,LINE1,D0D050;crit,LINE2,D05050;total,AREA,dddddd88';
     listtodict('lineformat', q(;));
-    ($linestyle, $linecolor) = getlineattr('warn');
+    ($linestyle, $linecolor, $stack) = getlineattr('warn');
     ok($linestyle, 'LINE1');
     ok($linecolor, 'D0D050');
-    ($linestyle, $linecolor) = getlineattr('crit');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('crit');
     ok($linestyle, 'LINE2');
     ok($linecolor, 'D05050');
-    ($linestyle, $linecolor) = getlineattr('total');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('total');
     ok($linestyle, 'AREA');
     ok($linecolor, 'dddddd88');
+    ok($stack, 0);
+
+    # test various combinations and permutations
+    $Config{lineformat} = 'warn,LINE1,D0D050;crit,D05050,LINE2;total,STACK,AREA,dddddd88';
+    listtodict('lineformat', q(;));
+    ($linestyle, $linecolor, $stack) = getlineattr('warn');
+    ok($linestyle, 'LINE1');
+    ok($linecolor, 'D0D050');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('crit');
+    ok($linestyle, 'LINE2');
+    ok($linecolor, 'D05050');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('total');
+    ok($linestyle, 'AREA');
+    ok($linecolor, 'dddddd88');
+    ok($stack, 1);
 
     $Config{plotas} = 'LINE2';
 }
@@ -946,6 +990,24 @@ sub testrrdline {
 sub testgetserverlist {
     my $allhosts = "\$VAR1 = {
   'hostserv' => {
+    'host4' => {
+      'c:\\\\ space' => [
+        [
+          'ntdisk',
+          'total',
+          'used'
+        ]
+      ]
+    },
+    'host5' => {
+      'ntdisk' => [
+        [
+          'c:\\\\ space',
+          'total',
+          'used'
+        ]
+      ]
+    },
     'host0' => {
       'HTTP' => [
         [
@@ -999,12 +1061,32 @@ sub testgetserverlist {
     'host0',
     'host1',
     'host2',
-    'host3'
+    'host3',
+    'host4',
+    'host5'
   ]
 };\n";
 
     my $somehosts = "\$VAR1 = {
   'hostserv' => {
+    'host4' => {
+      'c:\\\\ space' => [
+        [
+          'ntdisk',
+          'total',
+          'used'
+        ]
+      ]
+    },
+    'host5' => {
+      'ntdisk' => [
+        [
+          'c:\\\\ space',
+          'total',
+          'used'
+        ]
+      ]
+    },
     'host0' => {
       'HTTP' => [
         [
@@ -1042,7 +1124,9 @@ sub testgetserverlist {
     'host0',
     'host1',
     'host2',
-    'host3'
+    'host3',
+    'host4',
+    'host5'
   ]
 };\n";
 
@@ -1110,6 +1194,12 @@ menudata[2] = [\"host2\"
 ];
 menudata[3] = [\"host3\"
  ,[\"ping\",[\"loss\",\"losscrit\",\"losspct\",\"losswarn\"],[\"rta\",\"rta\",\"rtacrit\",\"rtawarn\"]]
+];
+menudata[4] = [\"host4\"
+ ,[\"c:\\\\ space\",[\"ntdisk\",\"total\",\"used\"]]
+];
+menudata[5] = [\"host5\"
+ ,[\"ntdisk\",[\"c:\\\\ space\",\"total\",\"used\"]]
 ];
 </script>
 ");
@@ -2512,12 +2602,22 @@ sub testscanhsdata {
     undef %hsdata;
     scanhsdata();
     ok(printdata(\%hsdata), "\$VAR1 = {
+  'host4' => {
+    'c:\\\\ space' => [
+      'ntdisk'
+    ]
+  },
   'host0' => {
     'HTTP' => [
       'http'
     ],
     'PING' => [
       'ping'
+    ]
+  },
+  'host5' => {
+    'ntdisk' => [
+      'c:\\\\ space'
     ]
   },
   'host2' => {
@@ -2545,6 +2645,16 @@ sub testscanhsdata {
     undef %hsdata;
     scanhsdata();
     ok(printdata(\%hsdata), "\$VAR1 = {
+  'host4' => {
+    'c:\\\\ space' => [
+      'ntdisk'
+    ]
+  },
+  'host5' => {
+    'ntdisk' => [
+      'c:\\\\ space'
+    ]
+  },
   'host0' => {
     'HTTP' => [
       'http'

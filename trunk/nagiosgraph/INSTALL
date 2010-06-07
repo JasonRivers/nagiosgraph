@@ -9,7 +9,7 @@ These are the installation and configuration instructions for nagiosgraph.
 Nagios monitors one or more services on each host.  nagiosgraph extracts
 information from the Nagios output, processes it, then inserts it into one
 or more round-robin database (RRD) files.  Each database contains one or
-more data sets.  nagiosgraph cgi scripts display data from the RRD files
+more data sources.  nagiosgraph cgi scripts display data from the RRD files
 as web pages.
 
 Installation is a three-step process.  First install the nagiosgraph files,
@@ -46,30 +46,37 @@ Installation Preliminaries
 --------------------------
 
   Nagiosgraph will not function without a working Nagios installation, so
-  first ensure that Nagios works.  Nagiosgraph depends on perfdata processing
-  in Nagios using the Nagios directive process_performance_data.
+  first ensure that Nagios works.  Nagiosgraph does perfdata processing
+  using the Nagios directive process_performance_data.
 
-  Nagiosgraph uses rrdtool from perl, so both rrdtool and the perl wrapper
-  for rrdtool must be installed.
+  Nagiosgraph requires rrdtool.  Version 1.4 or later is recommended, but older
+  versions will also work.
+
+  Nagiosgraph requires the CGI and RRDs perl modules.  The RRDs perl module is
+  part of rrdtool.  The GD perl module is optional, but recommended.
+
+  Debian:
+    rrdtool, perl, libcgi-pm-perl, librrds-perl, libgd-gd2-perl (optional)
+  Redhat:
+    ?
+  Solaris:
+    ?
 
   There are two installation layouts for nagiosgraph: separate or overlay.
   The separated layout has nagiosgraph and nagios in separate directories.
   The overlay places nagiosgraph components with nagios components.
 
   Nagios and nagiosgraph can be installed in just about any location, for
-  example /opt or /usr/local.  So decide upon a layout before you start the
-  installation.
+  example /opt or /usr/local.
 
-  Examples of these layouts are in the Sample Installation Layouts section.
+  Decide upon a location and layout before you start the installation.
+  Examples are in the Sample Installation Layouts section.
 
 
 Installing nagiosgraph Files
 ----------------------------
 
 These instructions assume an overlay layout, with nagios at /usr/local/nagios.
-
- - Check required packages: nagios, nagios-plugins, rrdtool, perl,
-   perl-CGI, and perl-rrdtool.  perl-GD is optional, but recommended.
 
  - Extract nagiosgraph into a temporary location:
      cd /tmp
@@ -176,8 +183,9 @@ Batch Processing
    Make sure that location of service_perfdata_file matches that of perflog
    defined in nagiosgraph.conf.
 
- - In checkcommands.cfg or misccommands.cfg, depending on which is
-   defined in nagios.cfg:
+ - In commands.cfg (or checkcommands.cfg or misccommands.cfg for older
+   versions of Nagios, depending on which is defined in nagios.cfg) define
+   the process-service-perfdata command:
 
      define command {
        command_name  process-service-perfdata
@@ -456,12 +464,12 @@ The following options are available via configuration files:
    Use plotas to control the line thickness for individual services.
 
  - Create stacked area graphs using alpha channel in colors specified
-   in the lineformat directive for each data set or in rrdopts.conf 
+   in the lineformat directive for each data source or in rrdopts.conf 
    for specific services and data sources.
 
- - Some services emit multiple data sets with big differences in magnitude.
+ - Some services emit multiple data sources with big differences in magnitude.
    Others emit data with different units.  In such cases, split the data
-   into seperate graphs by specifying one or more data sets.  For example,
+   into seperate graphs by specifying one or more data sources.  For example,
    for the NTP service, jitter and offset are typically in the same range,
    while stratum is orders of magnitude larger.  So we specify two
    different graphs:
@@ -647,7 +655,7 @@ Use the 'dump' and 'restore' options to rrdtool if you need to restructure
 rrd files.  You might want to split data from a single rrd file into 
 multiple files, or you might want to combine data from multiple rrd files
 into a single file.  Or you might simply want to change the name of a 
-data set.  The dump option will emit data in XML format:
+data source.  The dump option will emit data in XML format:
 
   rrdtool dump service___db.rrd > service_db.xml
 
@@ -793,7 +801,7 @@ log level to debug_insert=5.
 
 Are the RRD file contents sane?  Use 'rrdtool dump filename.rrd'.  It is
 normal for a new RRD file to be full of NaN.  As the file is updated those
-should be replaced with proper values.  Ensure that the data set names in
+should be replaced with proper values.  Ensure that the data source names in
 the RRD file correspond to the names in the map rule.
 
 Are permissions set correctly?  The nagios user must be able to write to
@@ -805,7 +813,7 @@ to modify the log file, nagiosgraph cgi logging will end up in the web server
 error log.
 
 Are there old or unused rrd files lying about?  Older versions of nagiosgraph
-can be confused by multiple rrd files with the same data set for a single
+can be confused by multiple rrd files with the same data source for a single
 host.  If you change the map rule for a service, you might want to move the
 old rrd files out of the rrd directory.
 
@@ -1083,6 +1091,13 @@ easier.
   Be consistent in configuration files and documentation about where the
   nagiosgraph files are installed, regardless of what you use.  Use the
   overlay layout, with nagios installed at /usr/local/nagios
+
+- perldoc
+
+  You can preview the perldoc by doing the following:
+
+    PERL5LIB=nagiosgraph/cgi perldoc show.cgi
+    PERL5LIB=nagiosgraph/etc perldoc ngshared
 
 As of 26apr2010, the codebase for nagiosgraph looks like this:
 

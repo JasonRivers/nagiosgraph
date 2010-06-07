@@ -76,7 +76,7 @@ use constant IMG => 'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z
 
 use vars qw(%Config %Labels %i18n %authhosts %authz %hsdata $colorsub $VERSION $LOG); ## no critic (ProhibitPackageVars)
 $colorsub = -1;
-$VERSION = '1.4.2';
+$VERSION = '1.4.3';
 
 my $CFGNAME = 'nagiosgraph.conf';
 
@@ -747,7 +747,7 @@ sub readconfig {
     foreach my $ii ('maximums', 'minimums', 'withmaximums', 'withminimums',
                     'altautoscale', 'nogridfit', 'logarithmic', 'negate',
                     'plotasLINE1', 'plotasLINE2', 'plotasLINE3',
-                    'plotasAREA', 'plotasTICK') {
+                    'plotasAREA', 'plotasTICK', 'stack') {
         listtodict($ii, q(,));
     }
     foreach my $ii ('hostservvar', 'lineformat') {
@@ -1570,6 +1570,10 @@ sub graphinfo {
 
 sub getlineattr {
     my ($ds) = @_;
+    my $stack = 0;
+    if (defined $Config{stack}->{$ds}) {
+        $stack = 1;
+    }
     my $linestyle = $Config{plotas};
     foreach my $ii (qw(LINE1 LINE2 LINE3 AREA TICK)) {
         if (defined $Config{'plotas' . $ii}->{$ds}) {
@@ -1589,6 +1593,8 @@ sub getlineattr {
                         $linestyle = $value;
                     } elsif ($value =~ /[0-9a-f][0-9a-f][0-9a-f]+/) {
                         $linecolor = $value;
+                    } elsif ($value eq 'STACK') {
+                        $stack = 1;
                     }
                 }
             }
@@ -1597,7 +1603,7 @@ sub getlineattr {
     if ($linecolor eq q()) {
         $linecolor = hashcolor($ds);
     }
-    return $linestyle, $linecolor;
+    return $linestyle, $linecolor, $stack;
 }
 
 # the rrd vname can contain only A-Za-z0-9_- and must be no more than 255 long
@@ -1625,22 +1631,26 @@ sub setlabels { ## no critic (ProhibitManyArgs)
     my @ds;
     my $id = mkvname($dbname, $dsname);
     my $legend = mklegend($label, $maxlen);
-    my ($linestyle, $linecolor) = getlineattr($dsname);
+    my ($linestyle, $linecolor, $stack) = getlineattr($dsname);
+    my $sdef = q();
+    if ($stack) {
+        $sdef = ':STACK';
+    }
     if (defined $Config{maximums}->{$serv}) {
         push @ds, "DEF:$id=$file:$dsname:MAX"
                 , "CDEF:ceil$id=$id,CEIL"
-                , "$linestyle:${id}#$linecolor:$legend";
+                , "$linestyle:${id}#$linecolor:$legend$sdef";
     } elsif (defined $Config{minimums}->{$serv}) {
         push @ds, "DEF:$id=$file:$dsname:MIN"
                 , "CDEF:floor$id=$id,FLOOR"
-                , "$linestyle:${id}#$linecolor:$legend";
+                , "$linestyle:${id}#$linecolor:$legend$sdef";
     } else {
         push @ds, "DEF:${id}=$file:$dsname:AVERAGE";
         if (defined $Config{negate}->{$dsname}) {
             push @ds, "CDEF:${id}_neg=${id},-1,*";
-            push @ds, "$linestyle:${id}_neg#$linecolor:$legend";
+            push @ds, "$linestyle:${id}_neg#$linecolor:$legend$sdef";
         } else {
-            push @ds, "$linestyle:${id}#$linecolor:$legend";
+            push @ds, "$linestyle:${id}#$linecolor:$legend$sdef";
         }
     }
     return @ds;
