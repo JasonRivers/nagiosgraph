@@ -350,7 +350,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
      define service {
        name NTP
        use local-service
-       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/cgi-bin/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
      }
 
     This example displays only the graph data, in a smaller popup:
@@ -358,7 +358,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
      define service {
        name NTP
        use local-service
-       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&rrdopts=-w+450+-j
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/cgi-bin/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&rrdopts=-w+450+-j
      }
 
     Similar to previous example, but a week of data rather than a day:
@@ -366,7 +366,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
      define service {
        name NTP
        use local-service
-       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450+-j
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/cgi-bin/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450+-j
      }
 
 You must restart Nagios for changes to service/host defintions to take effect.
