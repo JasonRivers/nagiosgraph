@@ -54,7 +54,7 @@ use constant {
 # backward compatible with previous versions.
 use constant {
     JSVERSION => 1.5,
-    JSWARNING => 'nagiosgraph.js is not installed or wrong version.',
+    JSWARNING => 'nagiosgraph.js is not installed or wrong version, or JavaScript is disabled.',
 };
 
 # default values for configuration options
