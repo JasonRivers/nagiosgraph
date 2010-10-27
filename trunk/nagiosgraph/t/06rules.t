@@ -12,7 +12,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 use Test;
 
-BEGIN { plan tests => 35; }
+BEGIN { plan tests => 36; }
 my $logfile = 'test.log';
 
 # test map rules for output from various plugins.
@@ -22,15 +22,15 @@ sub formatdata {
     return "hostname:$data[1]\nservicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";    
 }
 
-sub testmaprules {
+# these map rules were in the 1.3 release.  i have no idea how long they
+# have been around or when they were first introduced.
+sub test13rules {
     open $LOG, '+>', $logfile;
 #    $Config{debug} = 5;
 
+    undef &evalrules;
     my $rval = getrules( 'map' );
     ok($rval, undef);
-
-    # these map rules were in the 1.3 release.  i have no idea how long they
-    # have been around or when they were first introduced.
 
     my @data = ('0', 'host', 'CHECK_NRPE', 'CHECK_NRPE: Socket timeout', '');
     my @s = evalrules( formatdata( @data ) );
@@ -738,7 +738,21 @@ sub testmaprules {
           ]
         ];\n");
 
-    # these are in the map file, but not enabled by default
+    close $LOG;
+    unlink $logfile;
+}
+
+
+# these are in the map file in 1.4, but not enabled by default
+sub test14optrules {
+    open $LOG, '+>', $logfile;
+#    $Config{debug} = 5;
+
+    undef &evalrules;
+    my $rval = getrules( 'map' );
+    ok($rval, undef);
+
+# TODO: do tests for all of the optional rules
 
 #    @data = ('0', 'host', '', '', '');
 #    @s = evalrules( formatdata( @data ) );
@@ -749,4 +763,23 @@ sub testmaprules {
 }
 
 
-testmaprules();
+# 1.5 introduces a new set of rules.  test them here.
+sub test15rules {
+
+# TODO: test 1.5 rules
+
+}
+
+
+# ensure that any standards-compliant plugin perfdata will be handled.
+sub teststandardformat {
+
+# TODO: implement this
+
+}
+
+
+test13rules();
+test14optrules();
+test15rules();
+teststandardformat();

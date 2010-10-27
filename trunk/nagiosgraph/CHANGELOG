@@ -10,6 +10,10 @@ $Id$
 * added a slew of unit tests for map rules.
 * fixed typo for ntp,offset in labels.conf
 * provide more feedback when javascript is disabled
+* better error handling when output and/or perfdata are not available.  this
+    fixes the 'spotty data' behavior that occurred when batch processing 
+    would fail prematurely due to missing perfdata.
+* better reporting of missing host, service, output and/or perfdata
 
 1.4.3 2010-06-07
 

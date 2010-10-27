@@ -2488,7 +2488,7 @@ sub getrras {
 # Create new rrd databases if necessary
 sub runcreate {
     my $ds = shift;
-    dumper(DBDEB, 'runcreate DS', $ds);
+    dumper(DBINF, 'runcreate creating RRD: DS', $ds);
     RRDs::create(@{$ds});
     my $ERR = RRDs::error();
     if ($ERR) {
@@ -2539,12 +2539,12 @@ sub gethsdmatch {
 sub createrrd {
     my ($host, $service, $start, $labels) = @_;
     debug(DBDEB, "createrrd($host, $service, $start, $labels->[0])");
-    my ($directory,             # modifiable directory name for rrd database
+    my ($directory,             # directory in which to put rrd files
         @filenames);            # rrd file name(s)
 
     my $db = shift @{$labels};
     ($directory, $filenames[0]) = mkfilename($host, $service, $db);
-    debug(DBDEB, "createrrd checking $directory/$filenames[0]");
+    debug(DBDEB, "createrrd rrdfile is $directory/$filenames[0]");
     if (not -e $directory) { # ensure we can write to data directory
         debug(DBINF, "createrrd: creating directory $directory");
         if ( ! mkdir $directory, 0775 ) {
@@ -2561,18 +2561,20 @@ sub createrrd {
 
     my $res = gethsdmatch('resolution', RESOLUTIONS, $host, $service, $db);
     my @rras = split / /, $res;
-    debug(DBDEB, 'createrrd resolutions: ' . join q( ), @rras);
     if (scalar @rras != 4) {
-        my $msg = 'wrong number of values for resolution (expecting 4)';
+        my $msg = 'wrong number of values for resolution (expecting 4, got '
+            . scalar @rras . ')';
         debug(DBCRT, $msg);
         croak($msg);
     }
 
     my $heartbeat = gethsdmatch('heartbeat', HEARTBEAT, $host, $service, $db);
-    debug(DBDEB, 'createrrd heartbeat: ' . $heartbeat);
 
     my $stepsize = gethsdmatch('stepsize', STEPSIZE, $host, $service, $db);
-    debug(DBDEB, 'createrrd step: ' . $stepsize);
+
+    debug(DBDEB, 'createrrd step=' . $stepsize
+          . ' heartbeat=' . $heartbeat
+          . ' resolutions=' . join q( ), @rras);
 
     my @ds = ("$directory/$filenames[0]",
               '--start', $start, '--step', $stepsize,);
@@ -2645,7 +2647,7 @@ sub createrrd {
 
 sub checkminmax {
     my ($conf, $service, $directory, $filename) = @_;
-    debug(DBDEB, "checkminmax($conf, $service, $directory, $filename)");
+#    debug(DBDEB, "checkminmax($conf, $service, $directory, $filename)");
     if (defined $Config{'with' . $conf . 'imums'}->{$service} and
         not -e $directory . q(/) . $filename . q(_) . $conf) {
         return 1;
@@ -2655,7 +2657,7 @@ sub checkminmax {
 
 sub createminmax {
     my ($ds, $filenames, $rras, $opts) = @_;
-    dumper(DBDEB, 'createminmax opts', $opts);
+#    dumper(DBDEB, 'createminmax opts', $opts);
     if (checkminmax($opts->{conf}, $opts->{service}, $opts->{directory}, $filenames->[0]) and
         checkdatasources($ds, $opts->{directory}, $filenames, $opts->{labels})) {
         my $conf = $opts->{conf};
@@ -2735,7 +2737,7 @@ sub getrules {
         join(q(), @rules) .
         ' use strict "subs";' .
         ' return () if ($#s > -1 && $s[0] eq "ignore");' .
-        ' debug(3, "perfdata not recognized:\n" . $d) unless @s;'.
+        ' debug(3, "output/perfdata not recognized:\n" . $d) unless @s;'.
         ' return @s; }';
     my $rval = eval $code; ## no critic (ProhibitStringyEval)
     if ($EVAL_ERROR or $rval) {
@@ -2744,13 +2746,30 @@ sub getrules {
     return $rval;
 }
 
-# Process all input performance data
+# process one or more lines that are nagios perfdata format
 sub processdata {
     my (@lines) = @_;
-    debug(DBDEB, 'processdata(' . scalar(@lines) . ')');
+    debug(DBDEB, 'processdata (' . scalar(@lines) . ' lines)');
     for my $line (@lines) {
         chomp $line;
         my @data = split /\|\|/, $line;
+        $data[0] ||= q();
+        $data[1] ||= q();
+        $data[2] ||= q();
+        $data[3] ||= q();
+        $data[4] ||= q();
+        if ( $data[0] eq q() ) {
+            debug(DBWRN, 'processdata: no timestamp found');
+            next;
+        }
+        if ( $data[1] eq q() ) {
+            debug(DBWRN, 'processdata: no host found');
+            next;
+        }
+        if ( $data[2] eq q() ) {
+            debug(DBWRN, 'processdata: no service found');
+            next;
+        }
         my $debug = $Config{debug};
         getdebug('insert', $data[1], $data[2]);
         dumper(DBDEB, 'processdata data', \@data);

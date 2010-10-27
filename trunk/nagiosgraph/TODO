@@ -25,6 +25,7 @@ Desired features.
 * optionally display host/service perfdata in a table in show.cgi
 * link to nagios availability report for timerange for each graph
 * link to nagios alerts for timerange for each graph
+* new set of map rules, with script to convert old rrd files to new names
 
 Notes
 

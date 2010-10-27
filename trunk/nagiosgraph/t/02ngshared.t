@@ -22,7 +22,12 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 469; }
+BEGIN { plan tests => 477; }
+
+# ensure that we have a clean slate from which to work
+sub setup {
+    rmtree($FindBin::Bin . '/testbox');
+}
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
@@ -326,30 +331,34 @@ sub testdircreation {
 }
 
 sub testmkfilename { # Test getting the file and directory for a database.
-	# Make rrddir where we run from
-	$Config{rrddir} = $FindBin::Bin;
-	$Config{dbseparator} = '';
-        @result = mkfilename();
-        ok($result[0], 'BOGUSDIR');
-        ok($result[1], 'BOGUSFILE');
-        @result = mkfilename('host');
-        ok($result[0], 'BOGUSDIR');
-        ok($result[1], 'BOGUSFILE');
-	@result = mkfilename('testbox', 'Partition: /');
-	ok($result[0], $FindBin::Bin);
-	ok($result[1], 'testbox_Partition%3A%20%2F_');
-	@result = mkfilename('testbox', 'Partition: /', 'diskgb');
-	ok($result[0], $FindBin::Bin);
-	ok($result[1], 'testbox_Partition%3A%20%2F_diskgb.rrd');
-	$Config{dbseparator} = 'subdir';
-	@result = mkfilename('testbox', 'Partition: /');
-	ok($result[0], $FindBin::Bin . '/testbox');
-	ok($result[1], 'Partition%3A%20%2F___');
-	@result = mkfilename('testbox', 'Partition: /', 'diskgb');
-	ok($result[0], $FindBin::Bin . '/testbox');
-	ok($result[1], 'Partition%3A%20%2F___diskgb.rrd');
-	ok(! -d $result[0]);
-	rmdir $result[0] if -d $result[0];
+    # Make rrddir where we run from
+    $Config{rrddir} = $FindBin::Bin;
+
+    $Config{dbseparator} = '';
+    @result = mkfilename();
+    ok($result[0], 'BOGUSDIR');
+    ok($result[1], 'BOGUSFILE');
+    @result = mkfilename('host');
+    ok($result[0], 'BOGUSDIR');
+    ok($result[1], 'BOGUSFILE');
+    @result = mkfilename('testbox', 'Partition: /');
+    ok($result[0], $FindBin::Bin);
+    ok($result[1], 'testbox_Partition%3A%20%2F_');
+    @result = mkfilename('testbox', 'Partition: /', 'diskgb');
+    ok($result[0], $FindBin::Bin);
+    ok($result[1], 'testbox_Partition%3A%20%2F_diskgb.rrd');
+
+    $Config{dbseparator} = 'subdir';
+    @result = mkfilename('testbox', 'Partition: /');
+    ok($result[0], $FindBin::Bin . '/testbox');
+    ok($result[1], 'Partition%3A%20%2F___');
+    ok(! -d $result[0]);
+    rmdir $result[0] if -d $result[0];
+    @result = mkfilename('testbox', 'Partition: /', 'diskgb');
+    ok($result[0], $FindBin::Bin . '/testbox');
+    ok($result[1], 'Partition%3A%20%2F___diskgb.rrd');
+    ok(! -d $result[0]);
+    rmdir $result[0] if -d $result[0];
 }
 
 # With 16 generated colors, the default rainbow and one custom.
@@ -513,6 +522,7 @@ sub testgetparams {
                  'use_tempfile' => 1,
                  '.charset' => 'ISO-8859-1',
                  '.fieldnames' => {},
+                 'param' => {},
                  'escape' => 0
                }, 'CGI' );\n");
     ok(Dumper($params), "\$VAR1 = {
@@ -1349,24 +1359,105 @@ sub testrrdupdate { # depends on testcreaterrd making a file
 }
 
 sub testgetrules {
-	$Config{debug} = 0;
-	open $LOG, '+>', \$log;
-	getrules("$FindBin::Bin/../etc/map");
-	ok($log, "");
-	ok(*evalrules);
-	close $LOG;
+    $Config{debug} = 0;
+    undef &evalrules;
+
+    open $LOG, '+>', \$log;
+    getrules("$FindBin::Bin/../etc/map");
+    ok($log, "");
+    ok(*evalrules);
+    close $LOG;
 }
 
 sub testprocessdata { # depends on testcreaterdd and testgetrules
-	$Config{debug} = 0;
-	open $LOG, '+>', \$log;
-	my @perfdata = ('1221495636||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||losspct: 0%, rta: 37.06');
-	processdata(@perfdata);
-	skip(! -f $FindBin::Bin . '/testbox/PING___ping.rrd', $log, "");
-	close $LOG;
-	system 'rm -rf ' . $FindBin::Bin . '/testbox';
-	unlink $FindBin::Bin . '/testbox_procs_procs.rrd';
-    unlink $FindBin::Bin . '/testbox_procsusers_procs.rrd';
+    $Config{debug} = 5;
+    my $rrdfile = $FindBin::Bin . '/testbox/PING___pingloss.rrd';
+    rmtree($FindBin::Bin . '/testbox');
+    
+    my $fn1 = $FindBin::Bin . '/map-ping-output';
+    my $fn2 = $FindBin::Bin . '/map-ping-perfdata';
+
+    # map rule to grab stuff from ping output
+    open FILE, '>', $fn1;
+    print FILE <<"EoB";
+/output:PING.*?(\\d+)%.+?([.\\d]+)\\sms/
+and push \@s, [ 'pingloss',
+               [ 'losspct', GAUGE, \$1 ]]
+and push \@s, [ 'pingrta',
+               [ 'rta', GAUGE, \$2/1000 ]];
+EoB
+
+    # map rule to grab stuff from ping perfdata
+    open FILE, '>', $fn2;
+    print FILE <<"EoB";
+/perfdata:rta=([.\\d]+)ms;([.\\d]+);([.\\d]+);([.\\d]+)\\s+losspct=([.\\d]+)%;([.\\d]+);([.\\d]+);([.\\d]+)/
+and push \@s, [ 'pingloss',
+               [ 'losspct', GAUGE, \$5 ]]
+and push \@s, [ 'pingrta',
+               [ 'rta', GAUGE, \$1/1000 ]];
+EoB
+    close FILE;
+
+    open $LOG, '+>', \$log;
+
+    undef &evalrules;
+    getrules($fn1);
+
+    my @perfline = ('1221495636||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
+    processdata(@perfline);
+    ok(-f $rrdfile);
+    rmtree($FindBin::Bin . '/testbox');
+
+    # missing timestamp
+    @perfline = ('||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
+    processdata(@perfline);
+    ok(! -f $rrdfile);
+    rmtree($FindBin::Bin . '/testbox');
+
+    # missing host
+    @perfline = ('1221495636||||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
+    processdata(@perfline);
+    ok(! -f $rrdfile);
+    rmtree($FindBin::Bin . '/testbox');
+
+    # missing service
+    @perfline = ('1221495636||testbox||||PING OK - Packet loss = 0%, RTA = 37.06 ms ||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
+    processdata(@perfline);
+    ok(! -f $rrdfile);
+    rmtree($FindBin::Bin . '/testbox');
+
+    # missing output, parsing on output
+    @perfline = ('1221495636||testbox||PING||||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
+    processdata(@perfline);
+    ok(! -f $rrdfile);
+    rmtree($FindBin::Bin . '/testbox');
+
+    # missing perfdata, parsing on output
+    @perfline = ('1221495636||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||');
+    processdata(@perfline);
+    ok(-f $rrdfile);
+    rmtree($FindBin::Bin . '/testbox');
+
+    # match perfdata now rather than output
+    undef &evalrules;
+    getrules($fn2);
+
+    # missing output, parsing on perfdata
+    @perfline = ('1221495636||testbox||PING||||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
+    processdata(@perfline);
+    ok(-f $rrdfile);
+    rmtree($FindBin::Bin . '/testbox');
+
+    # missing perfdata, parsing on perfdata
+    @perfline = ('1221495636||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||');
+    processdata(@perfline);
+    ok(! -f $rrdfile);
+    rmtree($FindBin::Bin . '/testbox');
+
+    close $LOG;
+    undef &evalrules;
+    unlink $fn1;
+    unlink $fn2;
 }
 
 # test for the primary string literals.  do not test for error strings.
@@ -3003,7 +3094,7 @@ sub testgethsdmatch {
 
 
 
-
+setup();
 testdebug();
 testdumper();
 testgetdebug();
