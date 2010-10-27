@@ -24,9 +24,9 @@ $VERSION = '2.0';
 
 my @s;
 
-# Insert servicesdesc, output and perfdata here as it appears in perflog file.
+# Insert here the servicesdesc, output, and perfdata from the nagios plugin.
 $_ = <<'DATA';
-servicedescr:ping
+servicedesc:ping
 output:Total RX Bytes: 4058.14 MB, Total TX Bytes: 2697.28 MB<br>Average Traffic: 3.57 kB/s (0.0%) in, 4.92 kB/s (0.0%) out| inUsage=0.0,85,98 outUsage=0.0,85,98
 perfdata:
 DATA
