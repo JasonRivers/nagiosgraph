@@ -1,7 +1,13 @@
 $Id$
 
-1.4.4
+1.4.4 TBD
 
+* overhaul of install.pl.  added option to check for prerequisites (poorly
+   configured rrdtool and gd have been major source of installation woes).
+   added options for different layouts (overlay or separate) and locations.
+* added default rule to the map file that will catch any plugin with
+   standards-compliant perfdata output.
+* added a slew of unit tests for map rules.
 * fixed typo for ntp,offset in labels.conf
 * provide more feedback when javascript is disabled
 
