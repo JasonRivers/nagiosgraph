@@ -2,14 +2,14 @@ $Id$
 
 Bugs
 
-* so much for simplicity - javascript is now required
+* javascript is now required
 * the subroutine 'debug' should be called 'log'
 * gui controls do not prevent specifying future end date.
 * nagios-based authorization does not yet respect contacts
-* next/prev links should be javascript so they respect controls state
+* next/prev links should be javascript and should respect controls state
 * wrong interpretation of nagios default user
 
-Desired features.
+Desired Features
 
 * Installer - that can configure Nagios (must work with Nagios 2.12 and 3.x).
 * Custom unit labels on the graphs.
@@ -19,8 +19,9 @@ Desired features.
 * do test coverage on the cgi scripts, not just ngshared.pm
 * make authz understand groups, not just users
 * make offset accept abbreviations (e.g. 1w, 2d, 3m)
-* do a configuration mode that has no javascript (for really big sites)
-* process host performance data as well as service performance data
+* make everything behave well when javascript is disabled
+* process host performance data
+* process nagios performance data
 * graph templates in addition to existing service-based patterns
 * optionally display host/service perfdata in a table in show.cgi
 * link to nagios availability report for timerange for each graph
@@ -54,3 +55,6 @@ Here are a few things that will need to be addressed at some point:
  - generic map rules.  define a fallback map rule that detects standard
    perfdata and injects the contents into rrd files, with one source
    per database.
+
+ - showgraph is slow.  a page with hundreds of graphs is pretty slow to
+   load, due primarily to all of the embedded showgraph calls.
