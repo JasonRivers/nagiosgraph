@@ -14,6 +14,7 @@ $Id$
     fixes the 'spotty data' behavior that occurred when batch processing 
     would fail prematurely due to missing perfdata.
 * better reporting of missing host, service, output and/or perfdata
+* fixed timestamp bug (thanks to Matthias Motzke)
 
 1.4.3 2010-06-07
 
