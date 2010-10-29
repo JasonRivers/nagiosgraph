@@ -58,7 +58,7 @@ function getZoomInfo() {
     ngzZoomInfo = document.createElement('div');
     ngzZoomInfo.setAttribute('id', ngzZoomID + 'Info');
     ngzZoomInfo.style.position = 'absolute';
-    ngzZoomInfo.style.overflow = 'none';
+    ngzZoomInfo.style.overflow = '';
     document.body.appendChild(ngzZoomInfo);
   }
   if(!ngzZoomInfo) {
@@ -75,7 +75,7 @@ function getZoomBox() {
     ngzZoomBox = document.createElement('div');
     ngzZoomBox.setAttribute('id', ngzZoomID + 'Box');
     ngzZoomBox.style.position = 'absolute';
-    ngzZoomBox.style.overflow = 'none';
+    ngzZoomBox.style.overflow = '';
     ngzZoomBox.style.filter = 'alpha(opacity=10)';
     ngzZoomBox.style.opacity = 0.1;
     document.body.appendChild(ngzZoomBox);
@@ -99,7 +99,7 @@ function getZoomPanel() {
     ngzZoomPanel.setAttribute('onmouseover', 'ngzMouseOver(event)');
     ngzZoomPanel.setAttribute('onmouseout', 'ngzMouseOut(event)');
     ngzZoomPanel.style.position = 'absolute';
-    ngzZoomPanel.style.overflow = 'none';
+    ngzZoomPanel.style.overflow = '';
     ngzZoomPanel.style.filter = 'alpha(opacity=0)';
     ngzZoomPanel.style.opacity = 0;
     ngzZoomPanel.style.cursor = ngzZoomInCursor;
@@ -165,7 +165,6 @@ function ngzZoomBoxDrawBoxFunc(x1, y1, x2, y2) {
     if(y2 < y1) { var tmp = y2; y2 = y1; y1 = tmp; }
     var top = ngzZoom.boxTop;
     var bw = ngzGetStyle(ngzZoomBox,'border-left-width');
-    bw = bw.replace('px', '');
     bw = parseInt(bw);
     var left = x1;
     var width = x2 - x1;
@@ -1088,6 +1087,8 @@ function cfgMenus(host, service, expanded_periods) {
 
   var elem = document.getElementById('secondary_controls_box');
   if (elem) { elem.style.display = 'inline'; }
+  elem = document.getElementById('js_disabled');
+  if (elem) { elem.style.display = 'none'; }
   elem = document.getElementById('js_version_' + VERSION);
   if (elem) { elem.style.display = 'none'; }
 
