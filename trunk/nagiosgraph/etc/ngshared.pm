@@ -711,7 +711,7 @@ sub checkrrddir {
     if ($rrdstate eq 'write') {
         # Make sure rrddir exists and is writable
         if (not -d $Config{rrddir}) {
-            debug(DBINF, "checkrrddir: creating directory $Config{rrddir}");
+            debug(DBINF, "creating directory $Config{rrddir}");
             mkdir $Config{rrddir} or
                 $errmsg = "Cannot create rrd directory: $OS_ERROR";
         } elsif (not -w $Config{rrddir}) {
@@ -1396,7 +1396,7 @@ sub readgroupdb {
             push @ginfo, \%info;
             debug(DBDEB, "readgroupdb: match for $host $service $line");
         }
-        close $DB or debug(DBERR, "readgroupdb: close failed for $fn: $OS_ERROR");
+        close $DB or debug(DBERR, "close failed for $fn: $OS_ERROR");
     } else {
         my $msg = "cannot open groupdb $fn: $OS_ERROR";
         debug(DBERR, $msg);
@@ -1444,7 +1444,7 @@ sub readdatasetdb {
                 debug(DBWRN, "datasetdb: bad format (line $lineno)");
             }
         }
-        close $DB or debug(DBERR, "readdatasetdb: close failed for $fn: $OS_ERROR");
+        close $DB or debug(DBERR, "close failed for $fn: $OS_ERROR");
     } else {
         my $msg = "cannot open datasetdb $fn: $OS_ERROR";
         debug(DBERR, $msg);
@@ -1494,8 +1494,8 @@ sub getdataitems {
     }
     my $ERR = RRDs::error();
     if ($ERR) {
-        debug(DBERR, 'getdataitems: RRDs::info ERR ' . $ERR);
-        dumper(DBERR, 'getdataitems: ds', $ds);
+        debug(DBERR, 'RRDs::info ERR ' . $ERR);
+        dumper(DBERR, 'ds', $ds);
     }
     return grep { ! $dupes{$_}++ }          # filters duplicate data set names
         map { /ds\[(.*)\]/ and $1 }         # returns just the data set names
@@ -2445,7 +2445,7 @@ sub formattime {
 sub readperfdata {
     my ($fn) = @_;
     my @lines;
-    debug(DBDEB, 'readperfdata: ' . $fn);
+    debug(DBDEB, 'readperfdata: perflog is ' . $fn);
     if (-s $fn) {
         my $worklog = $fn . '.nagiosgraph';
         if (! rename $fn, $worklog) {
@@ -2464,7 +2464,9 @@ sub readperfdata {
         }
     }
     if (not @lines) {
-        debug(DBINF, 'readperfdata: empty perflog ' . $fn);
+        debug(DBINF, 'empty perflog ' . $fn);
+    } else {
+        debug(DBINF, 'read ' . scalar @lines . ' lines from perflog');
     }
     return @lines;
 }
@@ -2492,8 +2494,8 @@ sub runcreate {
     RRDs::create(@{$ds});
     my $ERR = RRDs::error();
     if ($ERR) {
-        debug(DBERR, 'runcreate RRDs::create ERR ' . $ERR);
-        if ($Config{debug} < DBDEB) { dumper(DBERR, 'runcreate ds', $ds); }
+        debug(DBERR, 'RRDs::create ERR ' . $ERR);
+        dumper(DBERR, 'ds', $ds);
     }
     return;
 }
@@ -2538,7 +2540,7 @@ sub gethsdmatch {
 
 sub createrrd {
     my ($host, $service, $start, $labels) = @_;
-    debug(DBDEB, "createrrd($host, $service, $start, $labels->[0])");
+    debug(DBDEB, "createrrd($host,$service,$start,$labels->[0])");
     my ($directory,             # directory in which to put rrd files
         @filenames);            # rrd file name(s)
 
@@ -2546,7 +2548,7 @@ sub createrrd {
     ($directory, $filenames[0]) = mkfilename($host, $service, $db);
     debug(DBDEB, "createrrd rrdfile is $directory/$filenames[0]");
     if (not -e $directory) { # ensure we can write to data directory
-        debug(DBINF, "createrrd: creating directory $directory");
+        debug(DBINF, "creating directory $directory");
         if ( ! mkdir $directory, 0775 ) {
             my $msg = "cannot create directory $directory: $OS_ERROR";
             debug(DBCRT, $msg);
@@ -2675,14 +2677,14 @@ sub runupdate {
     RRDs::update(@{$dataset});
     my $ERR = RRDs::error();
     if ($ERR) {
-        debug(DBERR, 'runupdate RRDs::update ERR ' . $ERR);
+        debug(DBERR, 'RRDs::update ERR ' . $ERR);
+        dumper(DBERR, 'ds', $dataset);
     }
     return;
 }
 
 sub rrdupdate {
     my ($file, $time, $values, $host, $ds) = @_;
-    debug(DBDEB, "rrdupdate($file, $time, $host)");
     my $directory = $Config{rrddir};
 
     # Select target folder depending on config settings
@@ -2749,7 +2751,9 @@ sub getrules {
 # process one or more lines that are nagios perfdata format
 sub processdata {
     my (@lines) = @_;
-    debug(DBDEB, 'processdata (' . scalar(@lines) . ' lines)');
+    my $t = $#lines + 1;
+    debug(DBDEB, 'processdata (' . $t . ' lines)');
+    my $n = 0;
     for my $line (@lines) {
         chomp $line;
         my @data = split /\|\|/, $line;
@@ -2774,7 +2778,9 @@ sub processdata {
         getdebug('insert', $data[1], $data[2]);
         dumper(DBDEB, 'processdata data', \@data);
         $_ = "hostname:$data[1]\nservicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";
-        for my $s ( evalrules($_) ) {
+        my @x = evalrules($_);
+        if ( $#x >= 0 ) { $n += 1; }
+        for my $s ( @x ) {
             my ($rrds, $sets) = createrrd($data[1], $data[2], $data[0]-1, $s);
             next if not $rrds;
             for my $ii (0 .. @{$rrds} - 1) {
@@ -2783,6 +2789,7 @@ sub processdata {
         }
         $Config{debug} = $debug;
     }
+    debug(DBINF, 'processed ' . $n . ' of ' . $t . ' lines');
     return;
 }
 

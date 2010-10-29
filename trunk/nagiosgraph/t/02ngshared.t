@@ -22,7 +22,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 477; }
+BEGIN { plan tests => 478; }
 
 # ensure that we have a clean slate from which to work
 sub setup {
@@ -1451,6 +1451,12 @@ EoB
     # missing perfdata, parsing on perfdata
     @perfline = ('1221495636||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||');
     processdata(@perfline);
+    ok(! -f $rrdfile);
+    rmtree($FindBin::Bin . '/testbox');
+
+    # no lines
+    my @nolines;
+    processdata(@nolines);
     ok(! -f $rrdfile);
     rmtree($FindBin::Bin . '/testbox');
 
