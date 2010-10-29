@@ -759,7 +759,9 @@ sub readconfig {
     }
     foreach my $ii ('heartbeats', 'stepsizes', 'resolutions') {
         if (defined $Config{$ii}) {
-            $Config{$ii . 'list'} = str2list($Config{$ii});
+            my $key = $ii;
+            chomp $key;
+            $Config{$key . 'list'} = str2list($Config{$ii});
         }
     }
 

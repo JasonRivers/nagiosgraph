@@ -12,7 +12,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 use Test;
 
-BEGIN { plan tests => 128; }
+BEGIN { plan tests => 134; }
 my $logfile = 'test.log';
 
 # Check the default configuration.  this is coded into a test to help ensure
@@ -150,8 +150,14 @@ sub testconfig {
     ok($Config{rrdoptsfile}, undef);
     ok($Config{perfloop}, undef);
     ok($Config{heartbeat}, 600);
+    ok($Config{heartbeats}, undef);
+    ok($Config{heartbeatlist}, undef);
     ok($Config{stepsize}, 300);
+    ok($Config{stepsizes}, undef);
+    ok($Config{stepsizelist}, undef);
     ok($Config{resolution}, '600 700 775 797');
+    ok($Config{resolutions}, undef);
+    ok($Config{resolutionlist}, undef);
     ok($Config{dbseparator}, 'subdir');
     ok($Config{dbfile}, undef); # backward compatibility
     ok($Config{authzmethod}, undef);

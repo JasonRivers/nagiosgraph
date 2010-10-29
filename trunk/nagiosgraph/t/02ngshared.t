@@ -22,7 +22,7 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 478; }
+BEGIN { plan tests => 482; }
 
 # ensure that we have a clean slate from which to work
 sub setup {
@@ -3096,6 +3096,19 @@ sub testgethsdmatch {
 
     undef $Config{hsd};
     undef $Config{hsdlist};
+
+    # simulate what happens with the 'heartbeat' parameter
+    $Config{heartbeat} = 600;
+    $x = gethsdmatch('heartbeat', 5, 'host1', 'ping', 'loss');
+    ok($x, 600);
+    $x = gethsdmatch('heartbeat', 5, 'host2', 'ping', 'loss');
+    ok($x, 600);
+    $Config{heartbeatlist} = str2list('.*,.*,.*=500;host1,ping,loss=20');
+    $x = gethsdmatch('heartbeat', 5, 'host1', 'ping', 'loss');
+    ok($x, 20);
+    $x = gethsdmatch('heartbeat', 5, 'host2', 'ping', 'loss');
+    ok($x, 500);
+    undef $Config{heartbeatlist};
 }
 
 

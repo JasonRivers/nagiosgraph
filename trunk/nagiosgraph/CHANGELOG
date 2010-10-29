@@ -9,12 +9,13 @@ $Id$
    standards-compliant perfdata output.
 * added a slew of unit tests for map rules.
 * fixed typo for ntp,offset in labels.conf
-* provide more feedback when javascript is disabled
+* provide more feedback when javascript is disabled (Michael Urban)
 * better error handling when output and/or perfdata are not available.  this
     fixes the 'spotty data' behavior that occurred when batch processing 
-    would fail prematurely due to missing perfdata.
+    would fail prematurely due to missing perfdata (hinder90 and ljorg6)
 * better reporting of missing host, service, output and/or perfdata
-* fixed timestamp bug (thanks to Matthias Motzke)
+* fixed timestamp bug (Matthias Motzke)
+* fixed heartbeat/stepsize/resolution bug (obermufti)
 
 1.4.3 2010-06-07
 
