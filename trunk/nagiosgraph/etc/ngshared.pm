@@ -155,7 +155,8 @@ sub dumper {
 }
 
 sub gettimestamp {
-    return (gettimeofday)[1];
+    my @tod = gettimeofday;
+    return $tod[0] * 1_000_000 + $tod[1];
 }
 
 # if a filename is relative, we look for it in the configuration directory.
