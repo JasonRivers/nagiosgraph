@@ -54,7 +54,8 @@ use constant {
 # backward compatible with previous versions.
 use constant {
     JSVERSION => 1.5,
-    JSWARNING => 'nagiosgraph.js is not installed or wrong version, or JavaScript is disabled.',
+    JSMISSING => 'nagiosgraph.js is not installed or wrong version.',
+    JSDISABLED => 'JavaScript is disabled.',
 };
 
 # default values for configuration options
@@ -2154,8 +2155,6 @@ sub printcontrols {
             $cgi->start_form(-method => 'GET',
                              -action => $action,
                              -name => 'menuform') . "\n",
-            $cgi->div({-id => 'js_version_' . JSVERSION, -style => ERRSTYLE},
-                      _(JSWARNING)) . "\n",
             $cgi->div({-class => 'primary_controls'}, "\n",
                       $menustr . "\n",
                       $cgi->span({-class => 'executor'},
@@ -2353,6 +2352,13 @@ sub printheader {
         $rval .= printdefaultsscript($opts->{defaultdatasets});
     }
     $rval .= printincludescript();
+
+    if (! $Config{hidejswarnings}) {
+        $rval .= $cgi->div({-id => 'js_disabled', -style => ERRSTYLE},
+                           _(JSDISABLED)) . "\n";
+        $rval .= $cgi->div({-id => 'js_version_' . JSVERSION, -style => ERRSTYLE},
+                           _(JSMISSING)) . "\n";
+    }
 
     $rval .= printcontrols($cgi, $opts) . "\n";
 
