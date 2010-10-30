@@ -6,8 +6,9 @@
 # Author:  (c) 2010 Matthew Wall
 
 ## no critic (InputOutput::RequireCheckedSyscalls)
-## no critic (Modules::ProhibitExcessMainComplexity)
-## no critic (Subroutines::ProhibitExcessComplexity)
+## no critic (Documentation::RequirePodSections)
+## no critic (RegularExpressions)
+## no critic (ProhibitPackageVars)
 
 # The configuration file and ngshared.pm must be in this directory:
 use lib '/opt/nagiosgraph/etc';
@@ -16,7 +17,24 @@ use English qw(-no_match_vars);
 use strict;
 use warnings;
 
-print <<"EOB";
+emitheader();
+#checkstyles();
+checkmodules();
+checkoptmodules();
+checkng();
+checkenv();
+checkinc();
+checkngconfig();
+checkfiles();
+checkdirs();
+emitfooter();
+
+exit 0;
+
+
+
+sub emitheader {
+    print <<"EOB";
 Content-Type: text/html
 
 
@@ -40,178 +58,234 @@ h2 {
   font-size: 1.2em;
   padding-top: 0;
 }
+td {
+  font-size: 9pt;
+}
 .listing {
   border: 1px solid #777777;
   background-color: #eeeeee;
   padding: 5px;
 }
+.ok {
+  border: 1px solid #777777;
+  background-color: #ffffff;
+  padding: 5px;
+}
+.warning {
+  border: 1px solid #777777;
+  background-color: #ffff00;
+  padding: 5px;
+}
+.critical {
+  border: 1px solid #777777;
+  background-color: #f88888;
+  padding: 5px;
+}
 </style>
 </head>
+<body>
 EOB
+    return;
+}
 
-checkmodules();
-checkoptmodules();
-checkng();
-checkrules();
-checkfiles();
-print '</body></html>';
+sub emitfooter {
+    print '</body></html>' . "\n";
+    return;
+}
 
-exit 0;
+sub checkstyles {
+    print "<p class='listing'>a<br>b<br>c<br></p>\n";
+    print "<p class='ok'>a<br>b<br>c<br></p>\n";
+    print "<p class='warning'>a<br>b<br>c<br></p>\n";
+    print "<p class='critical'>a<br>b<br>c<br></p>\n";
+    return;
+}
 
+sub checkenv {
+    print "<h1>Environment</h1>\n";
+    print "<div>\n";
+    print "<pre class='listing'>\n";
+    foreach my $i (sort keys %ENV) {
+	print "$i=$ENV{$i}\n";
+    }
+    print "</div>\n";
+    return;
+}
+
+sub checkinc {
+    print "<h1>Include Paths</h1>\n";
+    print "<div>\n";
+    print "<pre class='listing'>\n";
+    for my $i (@INC) {
+        print $i . "\n";
+    }
+    print "</pre>\n";
+    print "</div>\n";
+    return;
+}
+
+sub checkmodule {
+    my ($func, $optional) = @_;
+    my $statusstr = 'not installed';
+    my $status = $optional ? 'warning' : 'critical';
+    my $rval = eval "{ require $func; }"; ## no critic (ProhibitStringyEval)
+    if (defined $rval && $rval == 1) {
+        $statusstr = $func->VERSION;
+        $status = 'ok';
+    }
+    print '<tr><td class=' . "'$status'" . '> </td><td>' . $func . ': ' . $statusstr . '</td></tr>';
+    return;
+}
 
 sub checkmodules {
     my $rval;
-    print '<h1>PERL modules - required</h1>';
-    print '<div>';
-    
-    print 'Carp: ';
-    $rval = eval { require Carp; };
-    if (defined $rval && $rval == 1) { print Carp->VERSION; }
-    else { print 'not installed'; }
-    print '<br>';
-
-    print 'CGI: ';
-    $rval = eval { require CGI; };
-    if (defined $rval && $rval == 1) { print CGI->VERSION; }
-    else { print 'not installed'; }
-    print '<br>';
-
-    print 'Data::Dumper: ';
-    $rval = eval { require Data::Dumper; };
-    if (defined $rval && $rval == 1) { print Data::Dumper->VERSION; }
-    else { print 'not installed'; }
-    print '<br>';
-
-    print 'File::Basename: ';
-    $rval = eval { require File::Basename; };
-    if (defined $rval && $rval == 1) { print File::Basename->VERSION; }
-    else { print 'not installed'; }
-    print '<br>';
-
-    print 'File::Find: ';
-    $rval = eval { require File::Find; };
-    if (defined $rval && $rval == 1) { print File::Find->VERSION; }
-    else { print 'not installed'; }
-    print '<br>';
-
-    print 'MIME::Base64: ';
-    $rval = eval { require MIME::Base64; };
-    if (defined $rval && $rval == 1) { print MIME::Base64->VERSION; }
-    else { print 'not installed'; }
-    print '<br>';
-
-    print 'POSIX: ';
-    $rval = eval { require POSIX; };
-    if (defined $rval && $rval == 1) { print POSIX->VERSION; }
-    else { print 'not installed'; }
-    print '<br>';
-
-    print 'RRDs: ';
-    $rval = eval { require RRDs; };
-    if (defined $rval && $rval == 1) { print RRDs->VERSION; }
-    else { print 'not installed'; }
-    print '<br>';
-
-    print 'Time::HiRes: ';
-    $rval = eval { require Time::HiRes; };
-    if (defined $rval && $rval == 1) { print Time::HiRes->VERSION; }
-    else { print 'not installed'; }
-    print '<br>';
-
-    print '</div>';
+    print '<h1>PERL modules - required</h1>' . "\n";
+    print '<div>' . "\n";
+    print '<table>' . "\n";
+    checkmodule('Carp');
+    checkmodule('CGI');
+    checkmodule('Data::Dumper');
+    checkmodule('File::Basename');
+    checkmodule('File::Find');
+    checkmodule('MIME::Base64');
+    checkmodule('POSIX');
+    checkmodule('RRDs');
+    checkmodule('Time::HiRes');
+    print '</table>' . "\n";
+    print '</div>' . "\n";
     return;
 }
 
 sub checkoptmodules {
     my $rval;
-    print '<h1>PERL modules - optional</h1>';
-    print '<div>';
-    
-    print 'GD: ';
-    $rval = eval { require GD; };
-    if (defined $rval && $rval == 1) { print GD->VERSION; }
-    else { print 'not installed'; }
-    print '<br>';
-    
-    print '</div>';
+    print '<h1>PERL modules - optional</h1>' . "\n";
+    print '<div>' . "\n";
+    print '<table>' . "\n";
+    checkmodule('GD', 1);
+    print '</table>' . "\n";
+    print '</div>' . "\n";
     return;
 }
 
+# verifty that we have a functional nagiosgraph installation.
 sub checkng {
     my $rval;
-    print '<h1>nagiosgraph</h1>';
+    my @failures;
+
+    print '<h1>nagiosgraph</h1>' . "\n";
     print '<div>';
+
     print 'ngshared: ';
     $rval = eval { require ngshared; };
-    if (defined $rval && $rval == 1) { print 'ok<br>'; }
-    else {
-        print 'cannot load ngshared.pm<br>';
-        print 'not found in any of these locations:<br>';
+    if (defined $rval && $rval == 1) {
+        print 'ok<br>';
+    } else {
+        print 'failed<br>';
+        my $msg = 'cannot load ngshared.pm<br>' .
+            'not found in any of these locations:<br>' . "\n";
         for my $ii (@INC) {
-            print $ii . '<br>';
+            $msg .= $ii . '<br>' . "\n";
         }
-        print '</div>';
-        print '</body></html>';
-        exit 0;
+        push @failures, $msg;
     }
 
-# i would prefer to do this with require rather than use, but no joy...
-    use ngshared;
-#ngshared->import(qw($VERSION %Config));
-    
-    if (! $VERSION) {
-        print 'cannot initialize ngshared.pm<br>';
-        print '</div>';
-        print '</body></html>';
-        exit 0;
+    print 'version: ';
+    if ($ngshared::VERSION) {
+        print $ngshared::VERSION . '<br>';
+    } else {
+        print 'failed<br>';
+        push @failures, 'cannot initialize ngshared.pm';
     }
-    print 'version: ' . $VERSION . '<br>';
+
+    if (scalar @failures) {
+        for my $msg (@failures) {
+            emitcrit($msg);
+        }
+        emitfooter();
+        exit 1;
+    }
     
     print 'nagiosgraph.conf: ';
-    my $errmsg = readconfig('showconfig', 'cgilogfile');
+    my $errmsg = ngshared::readconfig('showconfig', 'cgilogfile');
     if ($errmsg eq q()) {
         print 'ok<br>';
     } else {
-        print 'cannot read nagiosgraph configuration file:<br>';
-        print $errmsg . '<br>';
-        print '</div>';
-        print '</body></html>';
-        exit 0;
+        print 'failed<br>';
+        my $msg = 'cannot read nagiosgraph configuration file:<br>' .
+            $errmsg . '<br>';
+        push @failures, $msg;
+    }
+
+    print 'rrd dir: ';
+    if ($ngshared::Config{rrddir}) {
+        my $dir = $ngshared::Config{rrddir};
+        if (-d $dir) {
+# FIXME: check for write access by nagios user
+# FIXME: check for read access by web user
+        } else {
+            print 'fail<br>';
+            push @failures, 'rrd directory does not exist';
+        }
+    } else {
+        print 'not defined<br>';
+        push @failures, 'rrd directory is not defined';
+    }
+
+    print 'log file: ';
+    print 'ok<br>';
+
+    print 'cgi log file: ';
+    print 'ok<br>';
+
+    print 'map rules: ';
+    if ($ngshared::Config{mapfile}) {
+        my $errmsg = ngshared::getrules($ngshared::Config{mapfile});
+        if ($errmsg eq q()) {
+            print 'ok<br>';
+        } else {
+            push @failures, $errmsg;
+        }
+    } else {
+        print 'file is not defined';
+        push @failures, 'map file is not defined';
     }
 
     print '</div>';
+
+    if (scalar @failures) {
+        for my $msg (@failures) {
+            emitcrit($msg);
+        }
+        emitfooter();
+        exit 1;
+    }
+
     return;
 }
 
-sub checkrules {
-    print '<div>';
-    print 'map rules: ';
-    if ($Config{mapfile}) {
-        my $errmsg = getrules($Config{mapfile});
-        print $errmsg eq q() ? 'ok' : $errmsg;
-    } else {
-        print 'map rule file is not defined';
-    }
-    print '</div>';
-    
+sub checkngconfig {
+    my $cfgname = $ngshared::CFGNAME;
+    my $blah = $ngshared::CFGNAME; # keep perl from whining at us
+    my %vars = %ngshared::Config;
     print '<h2>base configuration</h2>';
     print '<div>';
+    print '<p>' . $INC[0] . q(/) . $cfgname . '</p>' . "\n";
     print "<pre class='listing'>\n";
-    foreach my $n (sort keys %Config) {
+    foreach my $n (sort keys %vars) {
         print $n . q(=);
-        if (ref($Config{$n}) eq 'ARRAY') {
+        if (ref($vars{$n}) eq 'ARRAY') {
             print "\n";
-            for my $ii (@{$Config{$n}}) {
+            for my $ii (@{$vars{$n}}) {
                 print q(  ) . $ii . "\n";
             }
-        } elsif (ref($Config{$n}) eq 'HASH') {
+        } elsif (ref($vars{$n}) eq 'HASH') {
             print "\n";
-            my %hash = %{$Config{$n}};
+            my %hash = %{$vars{$n}};
             for my $ii (sort keys %hash) {
                 print q(  ) . $ii . q(=) . $hash{$ii} . "\n";
             }
         } else {
-            print $Config{$n} . "\n";
+            print $vars{$n} . "\n";
         }
     }
     print "</pre>\n";
@@ -230,17 +304,26 @@ sub checkfiles {
     return;
 }
 
+sub checkdirs {
+    dumpdir($INC[0],'contents of config dir');
+    dumpdir($ngshared::Config{'rrddir'},'contents of RRD dir');
+    return;
+}
+
 sub dumpfile {
     my ($key, $desc) = @_;
+    my %vars = %ngshared::Config;
     print '<div>';
-    if ($Config{$key}) {
-        my $fn = getcfgfn($Config{$key});
+    if ($vars{$key}) {
+        my $fn = ngshared::getcfgfn($vars{$key});
         print '<h2>' . $desc . '</h2>';
         print '<p>' . $fn . '</p>';
         print '<pre class="listing">';
         if (open my $FH, '<', $fn) {
             while (<$FH>) {
-                print $_;
+                my $line = $_;
+                next if $line =~ /\s*\#/;
+                print $line;
             }
             close $FH or print "close failed for $fn: $OS_ERROR";
         } else {
@@ -254,6 +337,23 @@ sub dumpfile {
     return;
 }
 
+sub dumpdir {
+    my ($dir, $desc) = @_;
+    print '<div>';
+    print '<h2>' . $desc . '</h2>';
+    print '<pre class="listing">' . "\n";
+    print `ls -lRa $dir`;
+    print "\n" . '</pre>' . "\n";
+    print '</div>';
+    return;
+}
+
+sub emitcrit {
+    my ($msg) = @_;
+    print '<p class="critical">' . $msg . '</p>';
+    return;
+}
+
 
 
 __END__
@@ -264,8 +364,8 @@ showconfig.cgi - Show nagiosgraph configuration
 
 =head1 DESCRIPTION
 
-This is a CGI script that is designed to be run on a web server.  It generates
-a page of HTML that displays the nagiosgraph configuration.
+This is a CGI script that is designed to be run on a web server.  It displays
+the nagiosgraph configuration.
 
 =head1 USAGE
 
@@ -285,6 +385,8 @@ The B<nagiosgraph.conf> file controls the behavior of this script.
 
 =head1 DEPENDENCIES
 
+None.
+
 =head1 INSTALLATION
 
 Copy B<ngshared.pm> and B<nagiosgraph.conf> to a
@@ -299,6 +401,11 @@ Edit B<nagiosgraph.conf> as needed.
 =head1 INCOMPATIBILITIES
 
 =head1 BUGS AND LIMITATIONS
+
+We would prefer to have run-time rather than compile-time checking of the
+ngshared module so that this script would have external dependencies.
+
+The exports for ngshared need to be cleaned up so that it is a proper module.
 
 =head1 SEE ALSO
 

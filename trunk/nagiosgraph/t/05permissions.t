@@ -9,9 +9,9 @@
 use strict;
 use FindBin;
 use Data::Dumper;
+use Test;
 use lib "$FindBin::Bin/../etc";
 use ngshared;
-use Test;
 
 BEGIN { plan tests => 148; }
 

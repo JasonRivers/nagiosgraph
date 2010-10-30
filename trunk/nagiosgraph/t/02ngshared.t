@@ -20,6 +20,7 @@ use File::Path qw(rmtree);
 use Test;
 use lib "$FindBin::Bin/../etc";
 use ngshared;
+
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
 BEGIN { plan tests => 482; }

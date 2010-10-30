@@ -15,6 +15,8 @@
 ## no critic (ProhibitMagicNumbers)
 ## no critic (ProhibitConstantPragma)
 
+package ngshared;
+
 use strict;
 use warnings;
 use Carp;
@@ -28,6 +30,20 @@ use RRDs;
 use POSIX;
 use Time::HiRes qw(gettimeofday);
 use MIME::Base64;
+
+use Exporter qw(import);
+
+use vars qw($VERSION %Config %Labels %i18n %authhosts %authz %hsdata $colorsub $LOG $CFGNAME); ## no critic (ProhibitPackageVars)
+
+# FIXME: for now we export pretty much everything.  this should be pruned so
+# that we export only what we must for the cgi and data collection, but still
+# permit tests to have access.
+# FIXME: this should be done as EXPORT_OK or EXPORT_TAGS
+## no critic (Modules::ProhibitAutomaticExportation)
+our @EXPORT = qw($VERSION $CFGNAME %Config DBCRT DBERR DBWRN DBINF DBDEB cfgparams checkrrddir dbfilelist debug dumper getdebug getimg getlabel getparams getperiodctrls getperiodlabel getrules getstyle gettimestamp graphsizes hashcolor havepermission htmlerror imgerror init initperiods loadperms printfooter printgraphlinks printheader printinitscript printperiodlinks processdata readconfig readdatasetdb readgroupdb readhostdb readi18nfile readlabelsfile readperfdata readrrdoptsfile readservdb rrdline $LOG %authz %authhosts %hsdata %Labels %i18n addopt arrayorstring buildurl checkdatasources checkdirempty checkdsname checkminmax checkuserlist cleanline createminmax createrrd filterdb formatelapsedtime formattime getcfgfn getdataitems getdatalabel getdbs gethsdmatch getlineattr getperms getrefresh getrras getserverlist graphinfo initlog listtodict mergeopts mkfilename mki18nfilename mklegend mkvname parsedb printcontrols printdefaultscript printi18nscript printincludescript printmenudatascript printsummary readfile readnagiosperms readpermsfile rrdupdate runcreate runupdate scandirectory scanhierarchy scanhsdata scrubuserlist setdata setlabels sortnaturally stacktrace str2hash str2list evalrules);
+
+$VERSION = '1.4.4';
+$CFGNAME = 'nagiosgraph.conf';
 
 use constant PROG => basename($PROGRAM_NAME);
 
@@ -75,11 +91,7 @@ use constant {
 # 5x5 clear image
 use constant IMG => 'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGljQ29udmVydGVyIChJbnRlbCl3h/oZAAAAGUlEQVR4nGL4//8/AzrGEKCCIAAAAP//AwB4w0q2n+syHQAAAABJRU5ErkJggg==';
 
-use vars qw(%Config %Labels %i18n %authhosts %authz %hsdata $colorsub $VERSION $LOG); ## no critic (ProhibitPackageVars)
 $colorsub = -1;
-$VERSION = '1.4.4';
-
-my $CFGNAME = 'nagiosgraph.conf';
 
 # Pre-defined available graph periods
 #     Daily      =  33h = 118800s

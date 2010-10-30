@@ -11,7 +11,7 @@
 # The configuration file and ngshared.pm must be in this directory:
 use lib '/opt/nagiosgraph/etc';
 
-use ngshared qw(:SHOWGROUP);
+use ngshared;
 use English qw(-no_match_vars);
 use strict;
 use warnings;

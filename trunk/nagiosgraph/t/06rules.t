@@ -8,9 +8,10 @@
 
 use strict;
 use FindBin;
+use Test;
+use Data::Dumper;
 use lib "$FindBin::Bin/../etc";
 use ngshared;
-use Test;
 
 BEGIN { plan tests => 36; }
 my $logfile = 'test.log';

@@ -39,7 +39,7 @@ use warnings;
 use constant MINPOLL => 30;    ## no critic (ProhibitConstantPragma)
 
 use vars qw($VERSION);
-$VERSION = '2.0.1';
+$VERSION = '2.0.2';
 
 my $errmsg = readconfig('insert');
 if ( $errmsg ne q() ) { croak $errmsg; }
