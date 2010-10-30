@@ -31,19 +31,19 @@
 
 # avoid unuseful timeout and errors
 /output:CHECK_NRPE: Socket timeout/
-and return;
+and return ('ignore');
 
 /output:NRPE: Unable to read output/
-and return;
+and return ('ignore');
 
 /output:CRITICAL - Socket timeout after/
-and return;
+and return ('ignore');
 
 /output:Connection refused by host/
-and return;
+and return ('ignore');
 
 /output:CRITICAL - Plugin timed out after/
-and return;
+and return ('ignore');
 
 ########################################################################
 # Service type: ping

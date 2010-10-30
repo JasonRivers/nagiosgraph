@@ -48,7 +48,8 @@ $errmsg = checkrrddir('write');
 if ( $errmsg ne q() ) { croak $errmsg; }
 
 # Read the map file and define a subroutine that parses performance data
-getrules( $Config{mapfile} ) and exit;
+$errmsg = getrules( $Config{mapfile} );
+if ( $errmsg ne q() ) { croak $errmsg; }
 
 if ( $ARGV[0] ) {
     processdata( $ARGV[0] );

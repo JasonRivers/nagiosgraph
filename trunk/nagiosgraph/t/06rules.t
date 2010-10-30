@@ -30,27 +30,27 @@ sub test13rules {
 
     undef &evalrules;
     my $rval = getrules( 'map' );
-    ok($rval, undef);
+    ok($rval, '');
 
     my @data = ('0', 'host', 'CHECK_NRPE', 'CHECK_NRPE: Socket timeout', '');
     my @s = evalrules( formatdata( @data ) );
-    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    ok(Dumper(\@s), "\$VAR1 = [\n          'ignore'\n        ];\n");
 
     @data = ('0', 'host', 'NRPE', 'NRPE: Unable to read output', '');
     @s = evalrules( formatdata( @data ) );
-    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    ok(Dumper(\@s), "\$VAR1 = [\n          'ignore'\n        ];\n");
 
     @data = ('0', 'host', 'service', 'CRITICAL - Socket timeout after', '');
     @s = evalrules( formatdata( @data ) );
-    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    ok(Dumper(\@s), "\$VAR1 = [\n          'ignore'\n        ];\n");
 
     @data = ('0', 'host', 'service', 'Connection refused by host', '');
     @s = evalrules( formatdata( @data ) );
-    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    ok(Dumper(\@s), "\$VAR1 = [\n          'ignore'\n        ];\n");
 
     @data = ('0', 'host', 'service', 'CRITICAL - Plugin timed out after', '');
     @s = evalrules( formatdata( @data ) );
-    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    ok(Dumper(\@s), "\$VAR1 = [\n          'ignore'\n        ];\n");
 
     @data = ('0', 'host', 'PING', 'PING OK - Packet loss = 0%, RTA = 0.00 ms', '');
     @s = evalrules( formatdata( @data ) );
@@ -750,7 +750,7 @@ sub test14optrules {
 
     undef &evalrules;
     my $rval = getrules( 'map' );
-    ok($rval, undef);
+    ok($rval, '');
 
 # TODO: do tests for all of the optional rules
 

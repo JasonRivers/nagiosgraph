@@ -77,7 +77,7 @@ use constant IMG => 'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z
 
 use vars qw(%Config %Labels %i18n %authhosts %authz %hsdata $colorsub $VERSION $LOG); ## no critic (ProhibitPackageVars)
 $colorsub = -1;
-$VERSION = '1.4.3';
+$VERSION = '1.4.4';
 
 my $CFGNAME = 'nagiosgraph.conf';
 
@@ -2739,7 +2739,7 @@ sub getrules {
     } else {
         my $msg = "cannot open $file: $OS_ERROR";
         debug(DBCRT, $msg);
-        croak($msg);
+        return $msg;
     }
     ## no critic (RequireInterpolationOfMetachars)
     my $code = 'sub evalrules { $_ = $_[0];' .
@@ -2748,13 +2748,14 @@ sub getrules {
         join(q(), @rules) .
         ' use strict "subs";' .
         ' return () if ($#s > -1 && $s[0] eq "ignore");' .
-        ' debug(3, "output/perfdata not recognized:\n" . $d) unless @s;'.
         ' return @s; }';
     my $rval = eval $code; ## no critic (ProhibitStringyEval)
     if ($EVAL_ERROR or $rval) {
-        debug(DBCRT, "Map file eval error: $EVAL_ERROR in: $code");
+        my $msg = "Map file eval error: $EVAL_ERROR in: $code";
+        debug(DBCRT, $msg);
+        return $msg;
     }
-    return $rval;
+    return q();
 }
 
 # process one or more lines that are nagios perfdata format
@@ -2772,28 +2773,35 @@ sub processdata {
         $data[3] ||= q();
         $data[4] ||= q();
         if ( $data[0] eq q() ) {
-            debug(DBWRN, 'processdata: no timestamp found');
+            debug(DBWRN, "processdata: no timestamp found:\n" . $line);
             next;
         }
         if ( $data[1] eq q() ) {
-            debug(DBWRN, 'processdata: no host found');
+            debug(DBWRN, "processdata: no host found:\n" . $line);
             next;
         }
         if ( $data[2] eq q() ) {
-            debug(DBWRN, 'processdata: no service found');
+            debug(DBWRN, "processdata: no service found:\n" . $line);
             next;
         }
         my $debug = $Config{debug};
         getdebug('insert', $data[1], $data[2]);
         dumper(DBDEB, 'processdata data', \@data);
-        $_ = "hostname:$data[1]\nservicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";
-        my @x = evalrules($_);
-        if ( $#x >= 0 ) { $n += 1; }
-        for my $s ( @x ) {
-            my ($rrds, $sets) = createrrd($data[1], $data[2], $data[0]-1, $s);
-            next if not $rrds;
-            for my $ii (0 .. @{$rrds} - 1) {
-                rrdupdate($rrds->[$ii], $data[0], $s, $data[1], $sets->[$ii]);
+        my $dstr = "hostname:$data[1]\nservicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";
+        my @x = evalrules($dstr);
+        if ( ! @x || $#x < 0 ) {
+            debug(DBWRN, "output/perfdata not recognized:\n" . $dstr);
+        } elsif ( $x[0] eq 'ignore' ) {
+            debug(DBINF, "output/perfdata ignored:\n" . $dstr);
+        } else {
+            debug(DBINF, "processing output/perfdata:\n" . $dstr);
+            $n += 1;
+            for my $s ( @x ) {
+                my ($rrds, $sets) = createrrd($data[1],$data[2],$data[0]-1,$s);
+                next if not $rrds;
+                for my $ii (0 .. @{$rrds} - 1) {
+                    rrdupdate($rrds->[$ii],$data[0],$s,$data[1],$sets->[$ii]);
+                }
             }
         }
         $Config{debug} = $debug;

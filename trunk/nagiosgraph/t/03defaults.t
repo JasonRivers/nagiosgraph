@@ -177,30 +177,30 @@ sub testmaprules {
 #    $Config{debug} = 5;
 
     my $rval = getrules( 'map' );
-    ok($rval, undef);
+    ok($rval, '');
 
     # these map rules were in the 1.3 release.  i have no idea how long they
     # have been around or when they were first introduced.
 
     my @data = ('0', 'host', 'CHECK_NRPE', 'CHECK_NRPE: Socket timeout', '');
     my @s = evalrules( formatdata( @data ) );
-    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    ok(Dumper(\@s), "\$VAR1 = [\n          'ignore'\n        ];\n");
 
     @data = ('0', 'host', 'NRPE', 'NRPE: Unable to read output', '');
     @s = evalrules( formatdata( @data ) );
-    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    ok(Dumper(\@s), "\$VAR1 = [\n          'ignore'\n        ];\n");
 
     @data = ('0', 'host', 'service', 'CRITICAL - Socket timeout after', '');
     @s = evalrules( formatdata( @data ) );
-    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    ok(Dumper(\@s), "\$VAR1 = [\n          'ignore'\n        ];\n");
 
     @data = ('0', 'host', 'service', 'Connection refused by host', '');
     @s = evalrules( formatdata( @data ) );
-    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    ok(Dumper(\@s), "\$VAR1 = [\n          'ignore'\n        ];\n");
 
     @data = ('0', 'host', 'service', 'CRITICAL - Plugin timed out after', '');
     @s = evalrules( formatdata( @data ) );
-    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    ok(Dumper(\@s), "\$VAR1 = [\n          'ignore'\n        ];\n");
 
     @data = ('0', 'host', 'PING', 'PING OK - Packet loss = 0%, RTA = 0.00 ms', '');
     @s = evalrules( formatdata( @data ) );
