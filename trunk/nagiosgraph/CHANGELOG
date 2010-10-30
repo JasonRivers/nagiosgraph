@@ -16,10 +16,15 @@ $Id$
 * provide better error handling when output and/or perfdata are not available.
     this fixes the 'spotty data' behavior that occurred when batch processing 
     would fail prematurely due to missing perfdata (hinder90 and ljorg6)
+* explicit handling and reporting of ignored output/perfdata.  if your map
+    file contains any 'short-circuit' rules, they should return an array with
+    the string 'ignore' so they are reported as ignored rather than as not
+    recognized.
 * provide better reporting of missing host, service, output and/or perfdata.
 * fixed timestamp bug (Matthias Motzke).
 * fixed heartbeat/stepsize/resolution bug (obermufti).
 * fixed zooming on ie8 (derekdawson)
+* added showconfig.cgi script to facilitate diagnosing of problems.
 
 1.4.3 2010-06-07
 

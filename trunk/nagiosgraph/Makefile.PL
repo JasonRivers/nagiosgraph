@@ -37,7 +37,7 @@ sub MY::install {
 
 # check everything with perlcritic.
 sub MY::postamble {
-    "critic:\n\tperlcritic -1 etc/ngshared.pm cgi/show.cgi cgi/showhost.cgi cgi/showservice.cgi cgi/showgroup.cgi cgi/testcolor.cgi lib/insert.pl
+    "critic:\n\tperlcritic -1 etc/ngshared.pm cgi/show.cgi cgi/showhost.cgi cgi/showservice.cgi cgi/showgroup.cgi cgi/showconfig.cgi cgi/testcolor.cgi lib/insert.pl
 
 test-coverage:\n\tPERL5OPT=-MDevel::Cover make test\n\tcover cover_db
 

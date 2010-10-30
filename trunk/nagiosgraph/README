@@ -72,6 +72,7 @@ install.pl            - An initial stab at an installer (for the brave only).
 lib/insert.pl         - Reads nagios perfdata log and insert into rrd files.
 lib/insert.sh         - A shell script wrapper around insert.pl.
 cgi/show.cgi          - Generates an html page for the host/service specified.
+cgi/showconfig.cgi    - Check the nagiosgraph configuration.
 cgi/showgraph.cgi     - Generates the actual graph image used by other scripts.
 cgi/showgroup.cgi     - Generates an html page for the group specified.
 cgi/showhost.cgi      - Generates an html page for the host specified, showing

@@ -8,6 +8,7 @@ TODO
 install.pl
 nagiosgraph.spec
 cgi/show.cgi
+cgi/showconfig.cgi
 cgi/showgraph.cgi
 cgi/showgroup.cgi
 cgi/showhost.cgi
