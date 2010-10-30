@@ -13,6 +13,7 @@
 # The configuration file and ngshared.pm must be in this directory:
 use lib '/opt/nagiosgraph/etc';
 
+use POSIX;
 use English qw(-no_match_vars);
 use strict;
 use warnings;
@@ -85,6 +86,9 @@ td {
 </head>
 <body>
 EOB
+    print "<h1>nagiosgraph configuration on $ENV{SERVER_NAME}</h1>\n";
+    my $ts = strftime '%d %b %Y %H:%M:%S %Z', localtime time;
+    print "$ts<br>\n";
     return;
 }
 
@@ -167,6 +171,93 @@ sub checkoptmodules {
     return;
 }
 
+sub checkngshared {
+    my ($failures) = @_;
+    my $func = 'ngshared.pm';
+    my $status = 'ok';
+    my $style = 'ok';
+    my $errmsg = q();
+
+    my $rval = eval { require ngshared; };
+    if (! defined $rval || $rval != 1) {
+        $status = 'fail';
+        $style = 'critical';
+        $errmsg = 'cannot load ngshared.pm<br>' .
+            'not found in any of these locations:<br>' . "\n";
+        for my $ii (@INC) {
+            $errmsg .= $ii . '<br>' . "\n";
+        }
+        push @{$failures}, $errmsg;
+    }
+
+    print "<tr valign='top'><td class='$style'> </td><td>$func: $status</td><td class='$style'>$errmsg</td></tr>\n";
+    return;
+}
+
+sub checkngversion {
+    my ($failures) = @_;
+    my $func = 'version';
+    my $status = 'ok';
+    my $style = 'ok';
+    my $errmsg = q();
+
+    if ($ngshared::VERSION) {
+        $status = $ngshared::VERSION;
+    } else {
+        $status = 'fail';
+        $style = 'critical';
+        $errmsg = 'cannot initialize/import ngshared.pm';
+    }
+    if ($status eq 'fail') {
+        push @{$failures}, $errmsg;
+    }
+    print "<tr valign='top'><td class='$style'> </td><td>$func: $status</td><td class='$style'>$errmsg</td></tr>\n";
+    return;
+}
+
+sub checkngconf {
+    my ($failures) = @_;
+    my $func = 'nagiosgraph.conf';
+    my $status = 'ok';
+    my $style = 'ok';
+    my $errmsg = q();
+    
+    $errmsg = ngshared::readconfig('showconfig', 'cgilogfile');
+    if ($errmsg ne q()) {
+        $status = 'fail';
+        $style = 'critical';
+        $errmsg = 'cannot read nagiosgraph configuration file:<br>' . $errmsg;
+    }
+    if ($status eq 'fail') {
+        push @{$failures}, $errmsg;
+    }
+    print "<tr valign='top'><td class='$style'> </td><td>$func: $status</td><td class='$style'>$errmsg</td></tr>\n";
+    return;
+}
+
+sub checkmaprules {
+    my ($failures) = @_;
+    my $func = 'map file';
+    my $status = 'ok';
+    my $errmsg = q();
+
+    if ($ngshared::Config{mapfile}) {
+        $errmsg = ngshared::getrules($ngshared::Config{mapfile});
+        if ($errmsg ne q()) {
+            $status = 'fail';
+        }
+    } else {
+        $status = 'fail';
+        $errmsg = 'map file is not defined';
+    }
+    my $style = $status eq 'ok' ? 'ok' : 'critical';
+    if ($status eq 'fail') {
+        push @{$failures}, $errmsg;
+    }
+    print "<tr valign='top'><td class='$style'> </td><td>$func: $status</td><td class='$style'>$errmsg</td></tr>\n";
+    return;
+}
+
 # verifty that we have a functional nagiosgraph installation.
 sub checkng {
     my $rval;
@@ -174,79 +265,27 @@ sub checkng {
     my @failures;
 
     print '<h1>nagiosgraph</h1>' . "\n";
-    print '<div>';
 
-    print 'ngshared: ';
-    $rval = eval { require ngshared; };
-    if (defined $rval && $rval == 1) {
-        $status = 'ok';
-    } else {
-        $status = 'fail';
-        my $msg = 'cannot load ngshared.pm<br>' .
-            'not found in any of these locations:<br>' . "\n";
-        for my $ii (@INC) {
-            $msg .= $ii . '<br>' . "\n";
-        }
-        push @failures, $msg;
-    }
-    print $status . '<br>' . "\n";
-
-    print 'version: ';
-    if ($ngshared::VERSION) {
-        $status = $ngshared::VERSION;
-    } else {
-        $status = 'fail';
-        push @failures, 'cannot initialize ngshared.pm';
-    }
-    print $status . '<br>' . "\n";
+    print '<table>' . "\n";
+    checkngshared(\@failures);
+    checkngversion(\@failures);
+    print '</table>' . "\n";
 
     if (scalar @failures) {
-        print '</div>';
-        for my $msg (@failures) {
-            emitcrit($msg);
-        }
         emitfooter();
         exit 1;
     }
-    
-    print 'nagiosgraph.conf: ';
-    my $errmsg = ngshared::readconfig('showconfig', 'cgilogfile');
-    if ($errmsg eq q()) {
-        $status = 'ok';
-    } else {
-        $status = 'fail';
-        my $msg = 'cannot read nagiosgraph configuration file:<br>' .
-            $errmsg . '<br>';
-        push @failures, $msg;
-    }
-    print $status . '<br>' . "\n";
 
+    print '<table>' . "\n";
+    checkngconf(\@failures);
     checkdir('rrddir', 'rrd dir', \@failures);
     checkfile('logfile', 'log file', \@failures);
     checkfile('cgilogfile', 'cgi log file', \@failures, 1);
-
 # TODO: check for read/write access by nagios user
-
-    print 'map rules: ';
-    $status = 'ok';
-    if ($ngshared::Config{mapfile}) {
-        my $errmsg = ngshared::getrules($ngshared::Config{mapfile});
-        if ($errmsg ne q()) {
-            $status = 'fail';
-            push @failures, $errmsg;
-        }
-    } else {
-        $status = 'file is not defined';
-        push @failures, 'map file is not defined';
-    }
-    print $status . '<br>' . "\n";
-
-    print '</div>';
+    checkmaprules(\@failures);
+    print '</table>' . "\n";
 
     if (scalar @failures) {
-        for my $msg (@failures) {
-            emitcrit($msg);
-        }
         emitfooter();
         exit 1;
     }
@@ -341,59 +380,58 @@ sub dumpdir {
 
 sub checkdir {
     my ($key, $desc, $failures) = @_;
-    print $desc . ': ';
     my $status = 'ok';
+    my $errmsg = q();
     if ($ngshared::Config{$key}) {
         my $dir = ngshared::getcfgfn($ngshared::Config{$key});
         if (-d $dir) {
             if (! -r $dir) {
                 $status = 'fail';
-                push @{$failures}, 'www user cannot read directory';
+                $errmsg = 'www user cannot read directory';
             }
         } else {
             $status = 'fail';
-            push @{$failures}, 'directory does not exist';
+            $errmsg = 'directory does not exist';
         }
     } else {
-        $status = 'not defined';
-        push @{$failures}, 'directory is not defined';
+        $status = 'fail';
+        $errmsg = 'directory is not defined';
     }
-    print $status . '<br>' . "\n";
+    my $style = $status eq 'ok' ? 'ok' : 'critical';
+    if ($status eq 'fail') {
+        push @{$failures}, $errmsg;
+    }
+    print "<tr valign='top'><td class='$style'> </td><td>$desc: $status</td><td class='$style'>$errmsg</td></tr>\n";
+
     return;
 }
 
 sub checkfile {
     my ($key, $desc, $failures, $optional) = @_;
-    print $desc . ': ';
     my $status = 'ok';
+    my $errmsg = q();
     if ($ngshared::Config{$key}) {
         my $fn = ngshared::getcfgfn($ngshared::Config{$key});
         if (-f $fn) {
             if (! -r $fn) {
                 $status = 'fail';
-                if (! $optional) {
-                    push @{$failures}, 'www user cannot read file';
-                }
+                $errmsg = 'www user cannot read file';
             }
         } else {
             $status = 'fail';
-            if (! $optional) {
-                push @{$failures}, 'file does not exist';
-            }
+            $errmsg = 'file does not exist';
         }
     } else {
-        $status = 'not defined';
-        if (! $optional) {
-            push @{$failures}, 'file is not defined';
-        }
+        $status = 'fail';
+        $errmsg = 'file is not defined';
     }
-    print $status . '<br>' . "\n";
-    return;
-}
+    my $style = $status eq 'ok' ? 'ok' : 'warning';
+    if ($status eq 'fail' && ! $optional) {
+        push @{$failures}, $errmsg;
+        $style = 'critical';
+    }
+    print "<tr valign='top'><td class='$style'> </td><td>$desc: $status</td><td class='$style'>$errmsg</td></tr>\n";
 
-sub emitcrit {
-    my ($msg) = @_;
-    print '<p class="critical">' . $msg . '</p>';
     return;
 }
 
