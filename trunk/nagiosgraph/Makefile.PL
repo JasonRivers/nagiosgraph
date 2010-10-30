@@ -12,6 +12,7 @@ WriteMakefile(
                          'cgi/showhost.cgi',
                          'cgi/showservice.cgi',
                          'cgi/showgroup.cgi',
+                         'cgi/showconfig.cgi',
                          'cgi/testcolor.cgi' ],
     'PREREQ_PM'     => { 'RRDs' => 0,
                          'Carp' => 0,

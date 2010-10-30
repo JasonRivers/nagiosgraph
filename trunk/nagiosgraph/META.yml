@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                nagiosgraph
-version:             1.4.2
+version:             1.4.4
 abstract:            Nagios performance data storage and graphing
 license:             OSI Artistic License
 author:              
