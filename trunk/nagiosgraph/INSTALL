@@ -14,9 +14,13 @@ as web pages.
 
 Installation is a three-step process.  First install the nagiosgraph files,
 then configure Nagios for data collection, and finally customize the graphs
-and links as needed.
+and links as needed.  Installation can be done manually by copying files or
+automatically using the install.pl script.
 
+  Quick Start
   Installation Preliminaries
+    Prerequisites
+    Layout and Location
   Installing nagiosgraph Files
   Upgrade Notes
   Configuring Data Processing
@@ -30,30 +34,45 @@ and links as needed.
   Adding Service Types
   Managing Data and RRD Files
   Configuring Access Controls
-  Appendix: Troubleshooting
-  Appendix: Internationalization
-  Appendix: Sample Installation Layouts
-  Appendix: Web Server Configuration
-  Appendix: Platform Specific Notes
+  Troubleshooting
+  Internationalization
+  Sample Installation Layouts
+  Web Server Configuration
+  Platform Specific Notes
     Nagios Embedded PERL (ePN)
     CentOS 5 and Nagiosgraph 0.9
     MacOSX 10.5 and Nagios 2.12
     Fedora Core 6, Nagios 2.6+, and HTTP output parsing
-  Appendix: Notes For Developers
+  Notes For Developers
+
+
+Quick Start
+-----------
+
+  To install nagiosgraph:
+
+    install.pl
+
+  To see a list of options:
+
+    install.pl --help
 
 
 Installation Preliminaries
 --------------------------
 
+Prerequisites
+-------------
+
   Nagiosgraph will not function without a working Nagios installation, so
-  first ensure that Nagios works.  Nagiosgraph does perfdata processing
-  using the Nagios directive process_performance_data.
+  first ensure that Nagios works.  Version 3.2 or later is recommended, but
+  older versions will also work.
 
-  Nagiosgraph requires rrdtool.  Version 1.4 or later is recommended, but older
-  versions will also work.
+  Nagiosgraph requires rrdtool.  Version 1.4 or later is recommended, but
+  older versions will also work.
 
-  Nagiosgraph requires the CGI and RRDs perl modules.  The RRDs perl module is
-  part of rrdtool.  The GD perl module is optional, but recommended.
+  Nagiosgraph requires the CGI and RRDs perl modules.  The RRDs perl module
+  is part of rrdtool.  The GD perl module is optional, but recommended.
 
   Debian:
     rrdtool, perl, libcgi-pm-perl, librrds-perl, libgd-gd2-perl (optional)
@@ -61,10 +80,15 @@ Installation Preliminaries
     ?
   Solaris:
     ?
+  FreeBSD:
+    rrdtool perl5 gd (optional)
 
-  There are two installation layouts for nagiosgraph: separate or overlay.
-  The separated layout has nagiosgraph and nagios in separate directories.
-  The overlay places nagiosgraph components with nagios components.
+Layout and Location
+-------------------
+
+  There are two standard layouts: separate or overlay.  The separated layout
+  has nagiosgraph and nagios in separate directories.  The overlay places
+  nagiosgraph components with nagios components.
 
   Nagios and nagiosgraph can be installed in just about any location, for
   example /opt or /usr/local.
@@ -90,20 +114,17 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios.
    "use lib" line to point to the directory from the previous step.
      vi cgi/*.cgi lib/insert.pl
 
- - Copy lib/insert.pl to a location from which it can be executed:
+ - Copy insert.pl to a location from which it can be executed:
      cp lib/insert.pl /usr/local/nagios/libexec
 
- - Copy the contents of cgi to a cgi-bin directory served by the web server:
+ - Copy CGI scripts to a script directory served by the web server:
      cp cgi/*.cgi /usr/local/nagios/sbin
 
- - Copy share/nagiosgraph.css to a directory served by the web server:
+ - Copy CSS and JavaScript files to a directory served by the web server:
      cp share/nagiosgraph.css /usr/local/nagios/share
-
- - Copy share/nagiosgraph.js to a directory served by the web server:
      cp share/nagiosgraph.js /usr/local/nagios/share
 
  - Edit /etc/nagiosgraph/nagiosgraph.conf.  Set at least the following:
-     logfile           = /var/log/nagiosgraph.log
      perflog           = /var/nagios/perfdata.log
      rrddir            = /var/nagios/rrd
      mapfile           = /etc/nagiosgraph/map
@@ -117,11 +138,22 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios.
      chown nagios /var/nagios/rrd
      chmod 755 /var/nagios/rrd
 
- - Set permissions of "logfile" (as defined in nagiosgraph.conf) so that
-   both the *nagios* and *www* users can write to it:
+If you want to keep nagiosgraph log output separate from nagios and web server
+output, do the following:
+
+ - Edit nagiosgraph.conf.  Set the following:
+     logfile           = /var/log/nagiosgraph.log
+     cgilogfile        = /var/log/nagiosgraph-cgi.log
+
+ - Set permissions of "logfile" so that the *nagios* user can write to it:
      touch /var/log/nagiosgraph.log
-     chown nagios.www /var/log/nagiosgraph.log
+     chown nagios /var/log/nagiosgraph.log
      chmod 664 /var/log/nagiosgraph.log
+
+ - Set permissions of "cgilogfile" so that the *www* user can write to it:
+     touch /var/log/nagiosgraph-cgi.log
+     chown www /var/log/nagiosgraph-cgi.log
+     chmod 664 /var/log/nagiosgraph-cgi.log
 
 
 Upgrade Notes
@@ -159,10 +191,10 @@ appropriate for most Nagios deployments.  Immediate processing typically
 requires more CPU and I/O.
 
 In batch processing, performance data are appended to a file, then nagios
-invokes insert.pl at a regular interval to update the rrd files.
+invokes insert.pl at a regular interval to update the RRD files.
 
 In immediate processing, nagios invokes insert.pl immediately after each
-service check, thus updating the corresponding rrd files.
+service check, thus updating the corresponding RRD files.
 
 
 Batch Processing
@@ -325,6 +357,10 @@ additions go directly in the host and service definitions.
  - To display a graph icon instead of the nagios action icon, replace
    nagios/images/action.gif with graph.gif from the nagiosgraph distribution.
 
+ - In its default configuration, Nagios will create a new window for each
+   action or notes link.  To display graphs in the Nagios frame instead of
+   a new window, set action_url_target=main in the Nagios cgi.cfg file.
+
 
 
 Displaying Graphs in Nagios Mouseovers
@@ -353,15 +389,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
        action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/cgi-bin/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
      }
 
-    This example displays only the graph data, in a smaller popup:
-
-     define service {
-       name NTP
-       use local-service
-       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/cgi-bin/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&rrdopts=-w+450+-j
-     }
-
-    Similar to previous example, but a week of data rather than a day:
+    This example displays a week of data in a popup with no legend:
 
      define service {
        name NTP
@@ -478,7 +506,7 @@ The following options are available via configuration files:
       show.cgi?host=HOST&service=NTP&db=ntp,stratum
 
    This assumes that jitter, offset, and stratum are all stored in a
-   single rrd file using a map entry such as:
+   single RRD file using a map entry such as:
 
       /output:NTP.*Offset ([-.0-9]+).*jitter ([-.0-9]+).*stratum (\d+)/
       and push @s, [ 'ntp',
@@ -518,14 +546,14 @@ determines how data from Nagios will be stored.  Each rule determines how
 output and performance data should be recorded.
 
 The map file contains regular expressions to identify service types
-and define content in RRD databases. All entries are written in perl, so 
+and define content in RRD files. All entries are written in perl, so 
 editing, adding or deleting entries requires some perl programming 
 knowledge. Knowledge of RRD is also helpful.
 
 There has to be one entry for each type of service. The map file included 
 with nagiosgraph has several examples for cpu, memory, disk, network etc.
 Most examples follow the of identifying data from either Nagios output or
-Nagios perfdata and defining a number of rrd data sources.
+Nagios perfdata and defining a number of RRD data sources.
 
 insert.pl receives data from Nagios.  It formats data into a string consisting
 of four lines of text.  This string might look like this:
@@ -547,7 +575,12 @@ name-value pairs with this format:
 
   name=value[units];[warn];[crit];[min];[max]
 
-where units is one of: nothing, s, %, B, c
+where units is one of:
+                  - unitless
+          s,us,ms - time
+                % - percentage
+ B,KB,MB,GB,TB,PB - bytes
+                c - counter
 
 However, the perfdata is not always set, and the format of perfdata varies
 a great deal from plugin to plugin.  So depending on type of service, the
@@ -568,7 +601,7 @@ general format is
     ...
   ]
 
-Where DS name is the name that will be assigned to a line showing on rrd 
+Where DS name is the name that will be assigned to a line showing on RRD 
 graphs. Each DS name must be no longer than 19 characters and must contain
 only the characters A-Z, a-z, 0-9, or underscore.  TYPE is either GAUGE or
 DERIVE. the DS value is the data extracted in the regular expression. The
@@ -576,7 +609,7 @@ DS value can be an expression, for example to normalize to SI units.
 
 Each database definition must be added to the @s array.
 
-So the complete code to define and insert into and rrd database for the 
+So the complete code to define and insert into an RRD file for the 
 PING example above, becomes:
 
   /output:PING.*?(\d+)%.+?([.\d]+)\sms/
@@ -606,7 +639,7 @@ After editing the map file, the syntax can be checked with
   perl -c map
 
 Again a word of caution. If the map file has syntax errors, nothing will be 
-inserted into rrd files until the file is fixed. So do not edit production 
+inserted into RRD files until the file is fixed. So do not edit production 
 map files. Instead do something like this:
 
   cp map map.edit
@@ -621,7 +654,7 @@ Run testentry.pl to see how the output will be handled.
 
  - Changes to the map file generally do not require a restart of Nagios.
 
- - It may take awhile for data from a map entry to show up in an rrd file.
+ - It may take awhile for data from a map entry to show up in an RRD file.
    This is partly due to the service check scheduling in Nagios, and partly
    due to the perfdata buffering of service_perfdata_file_processing_interval
 
@@ -639,33 +672,33 @@ plugins, then please post it on the forum.
 Managing Data and RRD Files
 ---------------------------
 
-nagiosgraph saves data in rrd files in the rrddir directory (specified in
+nagiosgraph saves data in RRD files in the rrddir directory (specified in
 nagiosgraph.conf).  By default, nagiosgraph uses a directory for each host,
-and the rrd files are named based on the service description (from Nagios)
+and the RRD files are named based on the service description (from Nagios)
 and the data names (from the map file).  For example, the default 
-configuration for the PING service results in rrd files like this:
+configuration for the PING service results in RRD files like this:
 
   /var/nagiosgraph/rrd/host/PING___pingloss.rrd
   /var/nagiosgraph/rrd/host/PING___pingrta.rrd
 
-Older versions of nagiosgraph kept all rrd files in a single directory.
+Older versions of nagiosgraph kept all RRD files in a single directory.
 This is controlled by the dbseparator variable in nagiosgraph.conf.
 
 Use the 'dump' and 'restore' options to rrdtool if you need to restructure
-rrd files.  You might want to split data from a single rrd file into 
-multiple files, or you might want to combine data from multiple rrd files
+RRD files.  You might want to split data from a single RRD file into 
+multiple files, or you might want to combine data from multiple RRD files
 into a single file.  Or you might simply want to change the name of a 
 data source.  The dump option will emit data in XML format:
 
   rrdtool dump service___db.rrd > service_db.xml
 
-You can modify the XML with any text editor, the convert to rrd format:
+You can modify the XML with any text editor, the convert to RRD format:
 
   rrdtool restore service_db.xml service___db-new.rrd
 
-Unfortunately the rrd file schema is not dynamic.  If an rrd file is created
+Unfortunately the RRD file schema is not dynamic.  If an RRD file is created
 with 2 data sources, more data sources cannot be added automatically.  For
-example, you start recording UPS temperature to an rrd file using the
+example, you start recording UPS temperature to an RRD file using the
 following map rule:
 
 /perfdata:temperature=([.\d]+)/
@@ -682,19 +715,19 @@ and push @s, [ 'temp',
                [ 'crit',  GAUGE, $3 ] ];
 
 The new rule will still record temperature, but critical and warning values
-will be discarded, because they are not defined in the rrd file.  You must do
-a dump/edit/restore on the rrd file if you want to add critical/warning while
+will be discarded, because they are not defined in the RRD file.  You must do
+a dump/edit/restore on the RRD file if you want to add critical/warning while
 maintaining existing temperature data.  Alternatively you can simply delete
-the existing rrd data file and let the new map rule create the new rrd file.
+the existing RRD file and let the new map rule create the new RRD file.
 
-What is the 'right' way to configure rrd files?  Should all data from a single
-service go into a single rrd file?  Should each rrd file contain a single set
+What is the 'right' way to configure RRD files?  Should all data from a single
+service go into a single RRD file?  Should each RRD file contain a single set
 of data?  Some best practices have evolved over the past 10 years, but as of
 this writing (febrary 2010) there is no single 'right' way.
 
-Some people prefer to put all data from a single service into a single rrd
+Some people prefer to put all data from a single service into a single RRD
 file, even if the data have different units.  For example, for the PING 
-service their rrd files look something like this:
+service their RRD files look something like this:
 
   PING___ping.rrd (losspct, losswarn, losscrit, rta, rtawarn, rtacrit)
 
@@ -713,18 +746,18 @@ And others prefer something in between:
   PING___rta.rrd (rta, rtawarn, rtacrit)
 
 It is a good idea to plan your configuration before you start recording data.
-Although it is possible to reconfigure data after the rrd files are full,
+Although it is possible to reconfigure data after the RRD files are full,
 doing so is somewhat tedious, especially for large numbers of hosts/services.
 
-There are a few rrdtool parameters that affect size of the rrd files and the
+There are a few rrdtool parameters that affect size of the RRD files and the
 resolution of data:
 
   stepsize
   resolution
   heartbeat
 
-These parameters are used only when an rrd file is created.  To modify these
-values for an existing rrd file you must do a dump/edit/restore.  See the
+These parameters are used only when an RRD file is created.  To modify these
+values for an existing RRD file you must do a dump/edit/restore.  See the
 rrdtool documentation for details.
 
 
@@ -812,10 +845,10 @@ nagiosgraph installations).  If the web server user does not have permission
 to modify the log file, nagiosgraph cgi logging will end up in the web server
 error log.
 
-Are there old or unused rrd files lying about?  Older versions of nagiosgraph
-can be confused by multiple rrd files with the same data source for a single
+Are there old or unused RRD files lying about?  Older versions of nagiosgraph
+can be confused by multiple RRD files with the same data source for a single
 host.  If you change the map rule for a service, you might want to move the
-old rrd files out of the rrd directory.
+old RRD files out of the rrd directory.
 
 If graphs are not being displayed, start by graphing a single host and service
 with showgraph.cgi, for example showgraph.cgi?host=HOST&service=SERVICE.  Set
@@ -1099,48 +1132,50 @@ easier.
     PERL5LIB=nagiosgraph/cgi perldoc show.cgi
     PERL5LIB=nagiosgraph/etc perldoc ngshared
 
-As of 26apr2010, the codebase for nagiosgraph looks like this:
+As of 30oct2010, the codebase for nagiosgraph looks like this:
 
  lines  words  bytes
    197    647   5393 cgi/show.cgi
+   323   1000   7839 cgi/showconfig.cgi
    204    660   5325 cgi/showgraph.cgi
    197    733   5295 cgi/showgroup.cgi
    202    710   5578 cgi/showhost.cgi
    189    669   5113 cgi/showservice.cgi
    176    734   5487 cgi/testcolor.cgi
-  2895  11922  99570 etc/ngshared.pm
-    71    319   2120 lib/insert.pl
-  4131  16394 133881 total
+  2947  12088 100847 etc/ngshared.pm
+    72    329   2162 lib/insert.pl
+  4507  17570 143039 total
 
    153    310   2478 share/nagiosgraph.css
-  1420   5010  40493 share/nagiosgraph.js
+  1436   5057  40859 share/nagiosgraph.js
      1      3     75 share/nagiosgraph.ssi
-  1574   5323  43046 total
+  1590   5370  43412 total
 
     12     41    251 t/01required_modules.t
-  2958   7558  80815 t/02ngshared.t
-   887   1949  23329 t/03defaults.t
+  3178   8170  86884 t/02ngshared.t
+   903   1998  23932 t/03defaults.t
    125    394   3132 t/04show.t
    632   1649  19312 t/05permissions.t
+   785   1688  18807 t/06rules.t
     11     27    346 t/97pod.t
      6     20    178 t/98podcoverage.t
      7     19    162 t/99kwalitee.t
-  4638  11657 127525 total
+  5659  14006 153004 total
 
     32    163    879 etc/access.conf
     20     83    714 etc/datasetdb.conf
     63    249   2251 etc/groupdb.conf
     42    164   1446 etc/hostdb.conf
    144    326   2717 etc/labels.conf
-   294   1674  11166 etc/nagiosgraph.conf
+   309   1805  12006 etc/nagiosgraph.conf
     52     81    793 etc/nagiosgraph_de.conf
     52     92    865 etc/nagiosgraph_es.conf
     52    102    935 etc/nagiosgraph_fr.conf
     20    119    660 etc/rrdopts.conf
     16     78    480 etc/servdb.conf
-   355   1651  13312 etc/map
-   1142  4782  36218 total
+   355   1656  13367 etc/map
+  1157   4918  37113 total
 
 Test coverage looks like this:
-File                           stmt   bran   cond    sub    pod   time  total
-etc/ngshared.pm                83.5   76.4   60.8   90.6    n/a  100.0   79.3
+                               stmt   bran   cond    sub    pod   time  total
+etc/ngshared.pm                83.4   76.7   61.1   90.9    n/a  100.0   79.4

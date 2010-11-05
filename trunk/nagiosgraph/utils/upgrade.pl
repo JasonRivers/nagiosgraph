@@ -1,14 +1,17 @@
 #!/usr/bin/perl
-# File:    $Id$
-# Upgrade script for NagiosGraph, scans a directory to organize the .rrd files into
-# subdirectories named after the hosts they belong to
-# Changes layout from "Config(rrdir)/host_svc_db.rrd" to 
-# "Config(dir)/host/svc___db.rrd" (that's 3 '_' joined)
+# $Id$
+#
+# This script reorganizes the nagiosgraph RRD files from all files in a single
+# directory to a separate directory for each host.  It changes the filenames
+# and directories from:
+#    RRDDIR/hostname_servicedesc_datasource.rrd
+# to:
+#    RRDDIR/hostname/servicedesc___datasource.rrd
 
-use warnings;
-use strict;
 use English qw(-no_match_vars);
 use File::Copy;
+use strict;
+use warnings;
 
 use vars qw($VERSION);
 $VERSION = '2.0';
