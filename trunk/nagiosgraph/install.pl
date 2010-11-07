@@ -9,6 +9,11 @@
 # to do an install.  To do automated or unattended installations, set the
 # environment variables.
 
+## no critic (ProhibitExcessMainComplexity)
+## no critic (ProhibitExcessComplexity)
+## no critic (ProhibitCascadingIfElse)
+## no critic (ProhibitPostfixControls)
+## no critic (RequireBriefOpen)
 ## no critic (RequireCheckedSyscalls)
 ## no critic (RegularExpressions)
 ## no critic (ProhibitConstantPragma)
@@ -19,15 +24,13 @@ use ExtUtils::Command qw(touch);
 use strict;
 use warnings;
 
-use constant DPERMS => oct 755;
-use constant FPERMS => oct 644;
-
 use vars qw($VERSION);
 $VERSION = '1.0';
 
-my $EXIT_FAIL = -1;
-my $EXIT_OK = 0;
-my $verbose = 1;
+use constant EXIT_FAIL => -1;
+use constant EXIT_OK => 0;
+use constant DPERMS => oct 755;
+use constant FPERMS => oct 644;
 my $CACHE_FN = '.install-cache';
 my $NAGIOS_STUB_FN = 'nagiosgraph-nagios.cfg';
 my $APACHE_STUB_FN = 'nagiosgraph-apache.conf';
@@ -71,7 +74,7 @@ my @PRESETS = (
       ng_js_url => 'nagiosgraph.js', },
 
     { ng_layout => 'overlay',
-      ng_dest_dir => '/',
+      ng_dest_dir => q(/),
       ng_var_dir => '/var/nagios',
       ng_url => '/nagios',
       ng_bin_dir => '/usr/libexec/nagios',
@@ -89,7 +92,7 @@ my @PRESETS = (
       ng_js_url => 'nagiosgraph.js', },
 
     { ng_layout => 'standalone',
-      ng_dest_dir => '/',
+      ng_dest_dir => q(/),
       ng_var_dir => '/var/nagiosgraph',
       ng_url => '/nagiosgraph',
       ng_bin_dir => '/usr/libexec/nagiosgraph',
@@ -148,22 +151,139 @@ my @CONF =
         def => 'www-data' },
     );
 
+my $verbose = 1;
+my $layout = 'standalone';
+my $destdir = q();
+my $vardir = q();
+my $etcdir = q();
+my $doit = 1;
+my @actions;
+
+while ($ARGV[0]) {
+    my $arg = shift;
+    if($arg eq '--version') {
+        print 'nagiosgraph installer ' . $VERSION . "\n";
+        exit EXIT_OK;
+    } elsif($arg eq '--install') {
+        @actions = qw(check-prereq install check-config);
+    } elsif ($arg eq '--dry-run') {
+        $doit = 0;
+    } elsif ($arg eq '--check') {
+        @actions = qw(check-prereq check-config);
+    } elsif ($arg eq '--check-config') {
+        @actions = ('check-config');
+    } elsif ($arg eq '--check-prereq') {
+        @actions = ('check-prereq');
+    } elsif ($arg eq '--layout') {
+        $layout = shift;
+    } elsif ($arg eq '--dest-dir' || $arg eq '--prefix') {
+        $destdir = shift;
+        $destdir = trimslashes($destdir);
+    } elsif ($arg eq '--var') {
+        $vardir = shift;
+        $vardir = trimslashes($vardir);
+    } elsif ($arg eq '--etc') {
+        $etcdir = shift;
+        $etcdir = trimslashes($etcdir);
+    } else {
+        my $code = EXIT_OK;
+        if ($arg ne '--help') {
+            $code = EXIT_FAIL;
+            print "unknown option $arg\n";
+            print "\n";
+        }
+        print "options include:\n";
+        print "  --install        do the installation\n";
+        print "  --check          check pre-requisites and configuration\n";
+        print "  --check-prereq   check pre-requisites\n";
+        print "  --check-config   check the configuration\n";
+        print "\n";
+        print "  --dry-run\n";
+        print "  --verbose | --silent\n";
+        print "\n";
+        print "  --layout (overlay | standalone)\n";
+        print "  --dest-dir path\n";
+        print "  --var path\n";
+        print "  --etc path\n";
+        print "  --nagios-cgiurl url\n";
+        print "  --nagios-perfdata path\n";
+        print "  --nagios-user userid\n";
+        print "  --www-user userid\n";
+        print "\n";
+        print "environment variables include:\n";
+        foreach my $v (envvars()) {
+            print "  $v\n";
+        }
+        exit $code;
+    }
+}
+
+if ($destdir eq q() && $ENV{NG_DEST_DIR}) {
+    $destdir = $ENV{NG_DEST_DIR};
+}
+
+my $conf;
+my $fail = 0;
+for my $action (@actions) {
+    if($action eq 'check-prereq') {
+        $fail |= checkprereq();
+    } elsif($action eq 'check-config') {
+        checkdestdir($destdir) && exit EXIT_FAIL;
+        $conf = getconfig($layout,$destdir,$vardir,$etcdir) if not $conf;
+        $fail |= checkconfig($conf, $destdir);
+    } elsif($action eq 'install') {
+        checkdestdir($destdir) && exit EXIT_FAIL;
+        $conf = getconfig($layout,$destdir,$vardir,$etcdir) if not $conf;
+        printconfig($conf);
+        my $confirm = getanswer('is this configuration ok', 'y');
+        if ($confirm !~ /y/) {
+            logmsg('installation aborted');
+            exit EXIT_OK;
+        }
+        $fail |= doinstall($conf, $doit);
+        my $nagios = getanswer('modify the nagios configuration', 'n');
+        my $modnagios = $nagios =~ /[yY]/ ? 1 : 0;
+        my $apache = getanswer('modify the apache configuration', 'n');
+        my $modapache = $apache =~ /[yY]/ ? 1 : 0;
+        printinstructions($conf, !$modnagios, !$modapache);
+# FIXME: prompt for config file locations
+# FIXME: modify nagios
+# FIXME: modify apache
+    }
+}
+
+if ($fail) {
+    logmsg(q());
+    logmsg('*** one or more problems were detected!');
+    logmsg(q());
+    exit EXIT_FAIL;
+}
+
+exit EXIT_OK;
+
+
+
+
+
 sub logmsg {
-    my $msg = $_[0];
-    print $msg . "\n" if $verbose;
+    my ($msg) = @_;
+    if ($verbose) {
+        print $msg . "\n";
+    }
     return;
 }
 
 sub readconfigcache {
     my ($conf) = @_;
     if (! defined $conf->{ng_etc_dir}) {
-        return;
+        return 1;
     }
     my $fn = $conf->{ng_etc_dir} . q(/) . $CACHE_FN;
     if (! -f $fn) {
-        return;
+        return 1;
     }
     my ($key, $val);
+    my $fail = 0;
     if (open my $CONF, '<', $fn) {
         while(<$CONF>) {
             s/\s*#.*//;             # Strip comments
@@ -178,25 +298,26 @@ sub readconfigcache {
         }
         if (! close $CONF) {
             logmsg("cannot close install cache $fn: $!");
-            exit $EXIT_FAIL;
+            $fail = 1;
         }
     } else {
         logmsg("cannot open install cache $fn: $!");
-        exit $EXIT_FAIL;
+        $fail = 1;
     }
-    return;
+    return $fail;
 }
 
 sub writeconfigcache {
     my ($conf) = @_;
-    if (!defined $conf->{ng_etc_dir}) {
-        return;
+    if (! defined $conf->{ng_etc_dir}) {
+        return 1;
     }
     if (! -d $conf->{ng_etc_dir}) {
-        return;
+        return 1;
     }
-    logmsg("saving configuration cache");
+    logmsg('saving configuration cache');
     my $fn = $conf->{ng_etc_dir} . q(/) . $CACHE_FN;
+    my $fail = 0;
     if (open my $FH, '>', $fn) {
         print ${FH} "version = $VERSION\n";
         foreach my $ii (sort keys %{$conf}) {
@@ -204,18 +325,22 @@ sub writeconfigcache {
         }
         if (! close $FH) {
             logmsg("cannot close install cache $fn: $!");
+            $fail = 1;
         }
     } else {
         logmsg("cannot write to install cache $fn: $!");
+        $fail = 1;
     }
-    return;
+    return $fail;
 }
 
 sub getanswer {
     my ($question, $default) = @_;
     $default ||= q();
     print $question . '? ';
-    print '[' . $default . '] ' if $default ne q();
+    if ($default ne q()) {
+        print '[' . $default . '] ';
+    }
     my $answer = readline *STDIN;
     chomp $answer;
     return ($answer =~ /^\s*$/) ? $default : $answer;
@@ -319,7 +444,7 @@ sub envvars {
 
 sub printconfig {
     my ($conf) = @_;
-    logmsg("environment:");
+    logmsg('environment:');
     my $found = 0;
     foreach my $v (envvars()) {
         if (defined $ENV{$v}) {
@@ -328,12 +453,13 @@ sub printconfig {
         }
     }
     if (! $found) {
-        logmsg("  no relevant environment variables are set");
+        logmsg('  no relevant environment variables are set');
     }
-    logmsg("configuration:");
+    logmsg('configuration:');
     foreach my $ii (@CONFKEYS) {
-        logmsg(sprintf("  %-20s %s", $ii, $conf->{$ii}));
+        logmsg(sprintf '  %-20s %s', $ii, $conf->{$ii});
     }
+    return;
 }
 
 sub checkconfig {
@@ -348,7 +474,7 @@ sub checkconfig {
 sub checkprereq {
     my $fail = 0;
 
-    logmsg("checking required PERL modules");
+    logmsg('checking required PERL modules');
     $fail |= checkmodule('Carp');
     $fail |= checkmodule('CGI');
     $fail |= checkmodule('Data::Dumper');
@@ -359,19 +485,30 @@ sub checkprereq {
     $fail |= checkmodule('RRDs');
     $fail |= checkmodule('Time::HiRes');
 
-    logmsg("checking optional PERL modules");
+    logmsg('checking optional PERL modules');
     checkmodule('GD', 1);
 
-    logmsg("checking nagios installation");
-    $fail |= checkexec('bin/nagios',
-                       ('/usr/local/nagios', '/opt/nagios', '/usr'));
+    my $found = 0;
+    my @dirs;
 
-    logmsg("checking web server instalation");
-    $fail |= checkexec('bin/httpd',
-                       ('/usr/local/apache', '/opt/apache',
-                        '/usr/local/apache2', '/opt/apache2',
-                        '/usr/local/httpd', '/opt/httpd',
-                        '/usr'));
+    logmsg('checking nagios installation');
+    @dirs = qw(/usr/local/nagios/bin /opt/nagios/bin /usr/bin /usr/sbin /bin /sbin);
+    $found = checkexec('nagios', @dirs);
+    if (! $found) {
+        logmsg("nagios not found in any of:\n" . join "\n", @dirs);
+        $fail = 1;
+    }
+
+    logmsg('checking web server installation');
+    @dirs = qw(/usr/local/apache/bin /opt/apache/bin /usr/local/apache2/bin /opt/apache2/bin /usr/local/httpd/bin /opt/httpd/bin /usr/bin /usr/sbin /bin /sbin);
+    $found = checkexec('httpd', @dirs);
+    if (! $found) {
+        $found = checkexec('apache2', @dirs);
+    }
+    if (! $found) {
+        logmsg("nagios not found in any of:\n" . join "\n", @dirs);
+        $fail = 1;
+    }
 
     return $fail;
 }
@@ -388,28 +525,25 @@ sub checkmodule {
     return $status eq 'fail' ? 1 : 0;
 }
 
-# return 0 if ok, 1 if missing
+# return 1 if found, 0 otherwise
 sub checkexec {
     my ($app, @dirs) = @_;
     my $found = 0;
-    for (my $ii=0; $ii<$#dirs+1; $ii++) {
+    for (my $ii=0; $ii<$#dirs+1; $ii++) { ## no critic (ProhibitCStyleForLoops)
         my $a = "$dirs[$ii]/$app";
         if (-f $a && -x $a) {
             $found = 1;
         }
         $dirs[$ii] = q(  ) . $dirs[$ii];
     }
-    if (! $found) {
-        logmsg("$app not found in any of:\n" . join "\n", @dirs);
-    }
-    return ! $found;
+    return $found;
 }
 
 # return 0 if ok, 1 if not set
 sub checkdestdir {
     my ($dir) = @_;
     if ($dir eq q()) {
-        logmsg("destination directory has not been specified");
+        logmsg('destination directory has not been specified');
         return 1;
     }
     return 0;
@@ -430,31 +564,42 @@ sub getfiles {
 sub replacetext {
     my ($ifn, $pat) = @_;
     my $ofn = $ifn . 'bak';
-    if (open IFILE, '<', $ifn) {
-        if (open OFILE, '>', $ofn) {
-            while(<IFILE>) {
+    my $fail = 0;
+    if (open my $IFILE, '<', $ifn) {
+        if (open my $OFILE, '>', $ofn) {
+            while(<$IFILE>) {
                 my $line = $_;
                 foreach my $orig (keys %{$pat}) {
                     $line =~ s/$orig/$pat->{$orig}/;
                 }
-                print OFILE $line;
+                print ${OFILE} $line;
             }
-            close OFILE;
-            move $ofn, $ifn;
+            if (close $OFILE) {
+                move $ofn, $ifn;
+            } else {
+                logmsg ("cannot close $ofn: $!");
+                $fail = 1;
+            }
         } else {
-            logmsg("cannot write to $ofn: $!");
+            logmsg ("cannot write to $ofn: $!");
+            $fail = 1;
         }
-        close IFILE;
+        if (! close $IFILE) {
+            logmsg ("cannot close $ifn: $!");
+            $fail = 1;
+        }
     } else {
         logmsg("cannot read from $ifn: $!");
+        $fail = 1;
     }
-    return;
+    return $fail;
 }
 
 sub writeapachestub {
     my ($fn, $conf) = @_;
-    if (open FILE, '>', $fn) {
-        print FILE <<EOB;
+    my $fail = 0;
+    if (open my $FILE, '>', $fn) {
+        print ${FILE} <<'EOB';
 # enable nagiosgraph CGI scripts
   ScriptAlias $conf->{ng_cgi_url} $conf->{ng_cgi_dir}
   <Directory "$conf->{ng_cgi_dir}">
@@ -464,18 +609,22 @@ sub writeapachestub {
      Allow from all
   </Directory>
 EOB
-        close FILE;
+        if (! close $FILE) {
+            logmsg("cannot close $fn: $!");
+            $fail = 1;
+        }
     } else {
         logmsg("cannot write to $fn: $!");
-        return 1;
+        $fail = 1;
     }
-    return 0;
+    return $fail;
 }
 
 sub writenagiosstub {
     my ($fn, $conf) = @_;
-    if (open FILE, '>', $fn) {
-        print FILE <<EOB;
+    my $fail = 0;
+    if (open my $FILE, '>', $fn) {
+        print ${FILE} <<'EOB';
 # process nagios performance data using nagiosgraph
      process_performance_data=1
      service_perfdata_file=$conf->{nagios_perfdata_file}
@@ -484,12 +633,15 @@ sub writenagiosstub {
      service_perfdata_file_processing_interval=30
      service_perfdata_file_processing_command=process-service-perfdata
 EOB
-        close FILE;
+        if (! close $FILE) {
+            logmsg("cannot close $fn: $!");
+            $fail = 1;
+        }
     } else {
         logmsg("cannot write to $fn: $!");
-        return 1;
+        $fail = 1;
     }
-    return 0;
+    return $fail;
 }
 
 sub printinstructions {
@@ -562,7 +714,7 @@ sub doinstall {
         for my $f (@files) {
             copy("cgi/$f", "$dst") if $doit;
             replacetext("$dst/$f",
-                        { "use lib '/opt/nagiosgraph/etc'" =>
+                        { 'use lib \'/opt/nagiosgraph/etc\'' =>
                               "use lib '$conf->{ng_etc_dir}'" } ) if $doit;
         }
     }
@@ -572,7 +724,7 @@ sub doinstall {
         mkdir "$dst" if $doit;
         copy('lib/insert.pl', "$dst") if $doit;
         replacetext("$dst/insert.pl",
-                    { "use lib '/opt/nagiosgraph/etc'" =>
+                    { 'use lib \'/opt/nagiosgraph/etc\'' =>
                           "use lib '$conf->{ng_etc_dir}'" } ) if $doit;
     }
 
@@ -631,116 +783,6 @@ sub trimslashes {
     while(length($path) > 1 && $path =~ /\/$/) { $path =~ s/\/$//; }
     return $path;
 }
-
-
-
-my $layout = 'standalone';
-my $destdir = q();
-my $vardir = q();
-my $etcdir = q();
-my $doit = 1;
-my @actions;
-
-while ($ARGV[0]) {
-    my $arg = shift;
-    if($arg eq '--version') {
-        print 'nagiosgraph installer ' . $VERSION . "\n";
-        exit $EXIT_OK;
-    } elsif($arg eq '--install') {
-        @actions = ('check-prereq', 'install', 'check-config');
-    } elsif ($arg eq '--dry-run') {
-        $doit = 0;
-    } elsif ($arg eq '--check') {
-        @actions = ('check-prereq', 'check-config');
-    } elsif ($arg eq '--check-config') {
-        @actions = ('check-config');
-    } elsif ($arg eq '--check-prereq') {
-        @actions = ('check-prereq');
-    } elsif ($arg eq '--layout') {
-        $layout = shift;
-    } elsif ($arg eq '--dest-dir' || $arg eq '--prefix') {
-        $destdir = shift;
-        $destdir = trimslashes($destdir);
-    } elsif ($arg eq '--var') {
-        $vardir = shift;
-        $vardir = trimslashes($vardir);
-    } elsif ($arg eq '--etc') {
-        $etcdir = shift;
-        $etcdir = trimslashes($etcdir);
-    } else {
-        my $code = $EXIT_OK;
-        if ($arg ne '--help') {
-            $code = $EXIT_FAIL;
-            print "unknown option $arg\n";
-        }
-        print "options include:\n";
-        print "  --install        do the installation\n";
-        print "  --check          check pre-requisites and configuration\n";
-        print "  --check-prereq   check pre-requisites\n";
-        print "  --check-config   check the configuration\n";
-        print "\n";
-        print "  --dry-run\n";
-        print "  --verbose | --silent\n";
-        print "\n";
-        print "  --layout (overlay | standalone)\n";
-        print "  --dest-dir path\n";
-        print "  --var path\n";
-        print "  --etc path\n";
-        print "  --nagios-cgiurl url\n";
-        print "  --nagios-perfdata path\n";
-        print "  --nagios-user userid\n";
-        print "  --www-user userid\n";
-        print "\n";
-        print "environment variables include:\n";
-        foreach my $v (envvars()) {
-            print "  $v\n";
-        }
-        exit $code;
-    }
-}
-
-if ($destdir eq q() && $ENV{NG_DEST_DIR}) {
-    $destdir = $ENV{NG_DEST_DIR};
-}
-
-my $conf;
-my $fail = 0;
-for my $action (@actions) {
-    if($action eq 'check-prereq') {
-        $fail |= checkprereq();
-    } elsif($action eq 'check-config') {
-        checkdestdir($destdir) && exit $EXIT_FAIL;
-        $conf = getconfig($layout,$destdir,$vardir,$etcdir) if not $conf;
-        $fail |= checkconfig($conf, $destdir);
-    } elsif($action eq 'install') {
-        checkdestdir($destdir) && exit $EXIT_FAIL;
-        $conf = getconfig($layout,$destdir,$vardir,$etcdir) if not $conf;
-        printconfig($conf);
-        my $confirm = getanswer('is this configuration ok', 'y');
-        if ($confirm !~ /y/) {
-            logmsg('installation aborted');
-            exit $EXIT_OK;
-        }
-        $fail |= doinstall($conf, $doit);
-        my $nagios = getanswer('modify the nagios configuration', 'n');
-        my $modnagios = $nagios =~ /[yY]/ ? 1 : 0;
-        my $apache = getanswer('modify the apache configuration', 'n');
-        my $modapache = $apache =~ /[yY]/ ? 1 : 0;
-        printinstructions($conf, !$modnagios, !$modapache);
-# FIXME: prompt for config file locations
-# FIXME: modify nagios
-# FIXME: modify apache
-    }
-}
-
-if ($fail) {
-    logmsg('');
-    logmsg('*** one or more problems were detected!');
-    logmsg('');
-    exit $EXIT_FAIL;
-}
-
-exit $EXIT_OK;
 
 
 __END__
