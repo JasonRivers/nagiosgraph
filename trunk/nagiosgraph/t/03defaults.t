@@ -23,8 +23,8 @@ my $logfile = 'test.log';
 sub testconfig {
     open $LOG, '+>', $logfile;
     readconfig('read');
-    ok($Config{logfile}, '/var/log/nagiosgraph.log');
-    ok($Config{cgilogfile}, undef);
+    ok($Config{logfile}, '/var/nagiosgraph/nagiosgraph.log');
+    ok($Config{cgilogfile}, '/var/nagiosgraph/nagiosgraph-cgi.log');
     ok($Config{perflog}, '/var/nagios/perfdata.log');
     ok($Config{rrddir}, '/var/nagiosgraph/rrd');
     ok($Config{mapfile}, '/etc/nagiosgraph/map');

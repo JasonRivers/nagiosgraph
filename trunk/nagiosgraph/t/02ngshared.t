@@ -23,7 +23,7 @@ use ngshared;
 
 my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
 
-BEGIN { plan tests => 482; }
+BEGIN { plan tests => 481; }
 
 # ensure that we have a clean slate from which to work
 sub setup {
@@ -510,9 +510,8 @@ sub testinitlog {
 
 sub testreadconfig {
     open $LOG, '+>', \$log;
-    readconfig('read');
-    ok($Config{logfile}, '/var/log/nagiosgraph.log');
-    ok($Config{cgilogfile}, undef);
+    my $msg = readconfig('read');
+    ok($msg, q());
     close $LOG;
 }
 
