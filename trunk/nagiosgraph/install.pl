@@ -27,28 +27,31 @@ use warnings;
 use vars qw($VERSION);
 $VERSION = '1.0';
 
-use constant EXIT_FAIL => -1;
+use constant EXIT_FAIL => 1;
 use constant EXIT_OK => 0;
 use constant DPERMS => oct 755;
 use constant FPERMS => oct 644;
-my $CACHE_FN = '.install-cache';
-my $NAGIOS_STUB_FN = 'nagiosgraph-nagios.cfg';
-my $APACHE_STUB_FN = 'nagiosgraph-apache.conf';
+use constant CACHE_FN => '.install-cache';
+use constant NAGIOS_STUB_FN => 'nagiosgraph-nagios.cfg';
+use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
 
 # put the keys in a specific order to make it easier to see where things go
-my @CONFKEYS = qw(ng_layout ng_dest_dir ng_bin_dir ng_etc_dir ng_cgi_dir ng_doc_dir ng_css_dir ng_js_dir ng_util_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user);
+my @CONFKEYS = qw(ng_layout ng_dest_dir ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_css_dir ng_js_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user);
+
+# these keys can be specified via command line
+my @CMDKEYS = qw(ng_layout ng_dest_dir ng_var_dir ng_etc_dir nagios_cgi_url nagios_perfdata_file nagios_user www_user);
 
 my @PRESETS = (
     { ng_layout => 'standalone',
-      ng_var_dir => '/var/nagiosgraph',
       ng_url => '/nagiosgraph',
-      ng_bin_dir => 'bin',
       ng_etc_dir => 'etc',
+      ng_bin_dir => 'bin',
       ng_cgi_dir => 'cgi',
       ng_doc_dir => 'doc',
       ng_css_dir => 'share',
       ng_js_dir => 'share',
       ng_util_dir => 'util',
+      ng_var_dir => 'var',
       ng_rrd_dir => 'rrd',
       ng_log_file => 'nagiosgraph.log',
       ng_cgilog_file => 'nagiosgraph-cgi.log',
@@ -57,15 +60,15 @@ my @PRESETS = (
       ng_js_url => 'nagiosgraph.js', },
 
     { ng_layout => 'overlay',
-      ng_var_dir => '/var/nagios',
       ng_url => '/nagios',
-      ng_bin_dir => 'libexec',
       ng_etc_dir => 'etc/nagiosgraph',
+      ng_bin_dir => 'libexec',
       ng_cgi_dir => 'sbin',
       ng_doc_dir => 'docs/nagiosgraph',
       ng_css_dir => 'share',
       ng_js_dir => 'share',
       ng_util_dir => 'docs/nagiosgraph/util',
+      ng_var_dir => '/var/nagios',
       ng_rrd_dir => 'rrd',
       ng_log_file => 'nagiosgraph.log',
       ng_cgilog_file => 'nagiosgraph-cgi.log',
@@ -75,15 +78,15 @@ my @PRESETS = (
 
     { ng_layout => 'overlay',
       ng_dest_dir => q(/),
-      ng_var_dir => '/var/nagios',
       ng_url => '/nagios',
-      ng_bin_dir => '/usr/libexec/nagios',
       ng_etc_dir => '/etc/nagios/nagiosgraph',
+      ng_bin_dir => '/usr/libexec/nagios',
       ng_cgi_dir => '/usr/nagios/sbin',    # FIXME: not sure about this one
       ng_doc_dir => '/usr/share/nagios/docs/nagiosgraph',
       ng_css_dir => '/usr/share/nagios',
       ng_js_dir => '/usr/share/nagios',
       ng_util_dir => '/usr/share/nagios/docs/nagiosgraph/util',
+      ng_var_dir => '/var/nagios',
       ng_rrd_dir => 'rrd',
       ng_log_file => 'nagiosgraph.log',
       ng_cgilog_file => 'nagiosgraph-cgi.log',
@@ -93,15 +96,15 @@ my @PRESETS = (
 
     { ng_layout => 'standalone',
       ng_dest_dir => q(/),
-      ng_var_dir => '/var/nagiosgraph',
       ng_url => '/nagiosgraph',
-      ng_bin_dir => '/usr/libexec/nagiosgraph',
       ng_etc_dir => '/etc/nagiosgraph',
+      ng_bin_dir => '/usr/libexec/nagiosgraph',
       ng_cgi_dir => '/usr/nagiosgraph/cgi',
       ng_doc_dir => '/usr/share/nagiosgraph/doc',
       ng_css_dir => '/usr/share/nagiosgraph',
       ng_js_dir => '/usr/share/nagiosgraph',
       ng_util_dir => '/usr/share/nagiosgraph/util',
+      ng_var_dir => '/var/nagiosgraph',
       ng_rrd_dir => 'rrd',
       ng_log_file => 'nagiosgraph.log',
       ng_cgilog_file => 'nagiosgraph-cgi.log',
@@ -111,10 +114,16 @@ my @PRESETS = (
     );
 
 my @CONF =
-    ( { conf => 'ng_bin_dir',
-        msg => 'Location of executables' },
+    ( { conf => 'ng_layout',
+        msg => 'Type of layout (standalone, overlay, or custom)',
+        def => 'standalone' },
+      { conf => 'ng_dest_dir',
+        msg => 'Destination directory',
+        def => '/usr/local/nagiosgraph' },
       { conf => 'ng_etc_dir',
         msg => 'Location of configuration files' },
+      { conf => 'ng_bin_dir',
+        msg => 'Location of executables' },
       { conf => 'ng_cgi_dir',
         msg => 'Location of CGI scripts' },
       { conf => 'ng_doc_dir',
@@ -125,6 +134,8 @@ my @CONF =
         msg => 'Location of JavaScript files' },
       { conf => 'ng_util_dir',
         msg => 'Location of utilities' },
+      { conf => 'ng_var_dir',
+        msg => 'Location of RRD and log files' },
       { conf => 'ng_rrd_dir',
         msg => 'Location of RRD files' },
       { conf => 'ng_log_file',
@@ -151,13 +162,16 @@ my @CONF =
         def => 'www-data' },
     );
 
+my %DIRDEPS =
+    ( ng_dest_dir => [qw(ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_css_dir ng_js_dir ng_util_dir ng_var_dir)],
+      ng_url => [qw(ng_cgi_url ng_css_url ng_js_url)],
+      ng_var_dir => [qw(ng_rrd_dir ng_log_file ng_cgilog_file)],
+      );
+
 my $verbose = 1;
-my $layout = 'standalone';
-my $destdir = q();
-my $vardir = q();
-my $etcdir = q();
 my $doit = 1;
-my @actions;
+my $action = q();
+my %conf;
 
 while ($ARGV[0]) {
     my $arg = shift;
@@ -165,26 +179,29 @@ while ($ARGV[0]) {
         print 'nagiosgraph installer ' . $VERSION . "\n";
         exit EXIT_OK;
     } elsif($arg eq '--install') {
-        @actions = qw(check-prereq install check-config);
+        $action = 'install';
     } elsif ($arg eq '--dry-run') {
         $doit = 0;
-    } elsif ($arg eq '--check') {
-        @actions = qw(check-prereq check-config);
     } elsif ($arg eq '--check-config') {
-        @actions = ('check-config');
+        $action = 'check-config';
     } elsif ($arg eq '--check-prereq') {
-        @actions = ('check-prereq');
+        $action = 'check-prereq';
     } elsif ($arg eq '--layout') {
-        $layout = shift;
+        $conf{ng_layout} = shift;
     } elsif ($arg eq '--dest-dir' || $arg eq '--prefix') {
-        $destdir = shift;
-        $destdir = trimslashes($destdir);
-    } elsif ($arg eq '--var') {
-        $vardir = shift;
-        $vardir = trimslashes($vardir);
-    } elsif ($arg eq '--etc') {
-        $etcdir = shift;
-        $etcdir = trimslashes($etcdir);
+        $conf{ng_dest_dir} = trimslashes(shift);
+    } elsif ($arg eq '--var-dir') {
+        $conf{ng_var_dir} = trimslashes(shift);
+    } elsif ($arg eq '--etc-dir') {
+        $conf{ng_etc_dir} = trimslashes(shift);
+    } elsif ($arg eq '--nagios-cgi-url') {
+        $conf{nagios_cgi_url} = shift;
+    } elsif ($arg eq '--nagios-perfdata-file') {
+        $conf{nagios_perfdata_file} = shift;
+    } elsif ($arg eq '--nagios-user') {
+        $conf{nagios_user} = shift;
+    } elsif ($arg eq '--www-user') {
+        $conf{www_user} = shift;
     } else {
         my $code = EXIT_OK;
         if ($arg ne '--help') {
@@ -203,10 +220,10 @@ while ($ARGV[0]) {
         print "\n";
         print "  --layout (overlay | standalone)\n";
         print "  --dest-dir path\n";
-        print "  --var path\n";
-        print "  --etc path\n";
-        print "  --nagios-cgiurl url\n";
-        print "  --nagios-perfdata path\n";
+        print "  --var-dir path\n";
+        print "  --etc-dir path\n";
+        print "  --nagios-cgi-url url\n";
+        print "  --nagios-perfdata-file path\n";
         print "  --nagios-user userid\n";
         print "  --www-user userid\n";
         print "\n";
@@ -218,38 +235,31 @@ while ($ARGV[0]) {
     }
 }
 
-if ($destdir eq q() && $ENV{NG_DEST_DIR}) {
-    $destdir = $ENV{NG_DEST_DIR};
-}
-
-my $conf;
 my $fail = 0;
-for my $action (@actions) {
-    if($action eq 'check-prereq') {
-        $fail |= checkprereq();
-    } elsif($action eq 'check-config') {
-        checkdestdir($destdir) && exit EXIT_FAIL;
-        $conf = getconfig($layout,$destdir,$vardir,$etcdir) if not $conf;
-        $fail |= checkconfig($conf, $destdir);
-    } elsif($action eq 'install') {
-        checkdestdir($destdir) && exit EXIT_FAIL;
-        $conf = getconfig($layout,$destdir,$vardir,$etcdir) if not $conf;
-        printconfig($conf);
-        my $confirm = getanswer('is this configuration ok', 'y');
-        if ($confirm !~ /y/) {
-            logmsg('installation aborted');
-            exit EXIT_OK;
-        }
-        $fail |= doinstall($conf, $doit);
-        my $nagios = getanswer('modify the nagios configuration', 'n');
-        my $modnagios = $nagios =~ /[yY]/ ? 1 : 0;
-        my $apache = getanswer('modify the apache configuration', 'n');
-        my $modapache = $apache =~ /[yY]/ ? 1 : 0;
-        printinstructions($conf, !$modnagios, !$modapache);
+if($action eq 'check-prereq') {
+    $fail |= checkprereq();
+} elsif($action eq 'check-config') {
+    $fail |= getconfig(\%conf);
+    $fail |= checkconfig(\%conf);
+} elsif($action eq 'install') {
+    $fail |= checkprereq();
+    $fail |= getconfig(\%conf);
+    printconfig(\%conf);
+    my $confirm = getanswer('is this configuration ok', 'y');
+    if ($confirm !~ /y/) {
+        logmsg('installation aborted');
+        exit EXIT_OK;
+    }
+    $fail |= writeconfigcache(\%conf);
+    $fail |= doinstall(\%conf, $doit);
+    my $nagios = getanswer('modify the nagios configuration', 'n');
+    my $modnagios = $nagios =~ /[yY]/ ? 1 : 0;
+    my $apache = getanswer('modify the apache configuration', 'n');
+    my $modapache = $apache =~ /[yY]/ ? 1 : 0;
+    printinstructions(\%conf, !$modnagios, !$modapache);
 # FIXME: prompt for config file locations
 # FIXME: modify nagios
 # FIXME: modify apache
-    }
 }
 
 if ($fail) {
@@ -275,10 +285,7 @@ sub logmsg {
 
 sub readconfigcache {
     my ($conf) = @_;
-    if (! defined $conf->{ng_etc_dir}) {
-        return 1;
-    }
-    my $fn = $conf->{ng_etc_dir} . q(/) . $CACHE_FN;
+    my $fn = CACHE_FN;
     if (! -f $fn) {
         return 1;
     }
@@ -309,14 +316,8 @@ sub readconfigcache {
 
 sub writeconfigcache {
     my ($conf) = @_;
-    if (! defined $conf->{ng_etc_dir}) {
-        return 1;
-    }
-    if (! -d $conf->{ng_etc_dir}) {
-        return 1;
-    }
     logmsg('saving configuration cache');
-    my $fn = $conf->{ng_etc_dir} . q(/) . $CACHE_FN;
+    my $fn = CACHE_FN;
     my $fail = 0;
     if (open my $FH, '>', $fn) {
         print ${FH} "version = $VERSION\n";
@@ -353,69 +354,107 @@ sub prependpath {
         : $pfx . ($pfx !~ /\/$/ ? q(/) : q()) . $path;
 }
 
-# get a configuration.  we need the following as a minimum:
-#
-#   layout
-#   destdir
-#
-# get what we can from the environment.  prompt for anything that is not
-# defined or specified.
-sub getconfig {
-    my ($layout, $destdir, $vardir, $etcdir, $promptall) = @_;
-    my %conf;
-
-    # guess whatever we can.  do overrides for var and etc.  if we get a layout
-    # for which we have something pre-defined, then use the pre-defined layout.
-    foreach my $ii (@PRESETS) {
-        if ($ii->{ng_layout} ne $layout) {
-            next;
+# look for a value in the environment, fallback to a default.
+sub getdefault {
+    my ($conf, $key) = @_;
+    if (! defined $conf->{$key}) {
+        my $envname = mkenvname($key);
+        if ($ENV{$envname}) {
+            $conf->{$key} = $ENV{$envname};
         }
-        if (defined $ii->{ng_dest_dir} && $ii->{ng_dest_dir} ne $destdir) {
-            next;
-        }
-        $conf{ng_layout} = $layout;
-        $conf{ng_dest_dir} = $destdir;
-        foreach my $jj (@CONF) {
-            my $pfx = $conf{ng_dest_dir};
-            my $var = $vardir ne q() ? $vardir : $ii->{ng_var_dir};
-            my $url = $ii->{ng_url};
-            if ($jj->{conf} eq 'ng_etc_dir' && $etcdir ne q()) {
-                $conf{$jj->{conf}} = $etcdir;
-            } elsif ($jj->{conf} eq 'ng_bin_dir' ||
-                $jj->{conf} eq 'ng_etc_dir' ||
-                $jj->{conf} eq 'ng_cgi_dir' ||
-                $jj->{conf} eq 'ng_doc_dir' ||
-                $jj->{conf} eq 'ng_css_dir' ||
-                $jj->{conf} eq 'ng_js_dir' ||
-                $jj->{conf} eq 'ng_util_dir') {
-                $conf{$jj->{conf}} = prependpath($pfx, $ii->{$jj->{conf}});
-            } elsif ($jj->{conf} eq 'ng_cgi_url' ||
-                     $jj->{conf} eq 'ng_css_url' ||
-                     $jj->{conf} eq 'ng_js_url') {
-                $conf{$jj->{conf}} = prependpath($url, $ii->{$jj->{conf}});
-            } elsif ($jj->{conf} eq 'ng_rrd_dir' ||
-                     $jj->{conf} eq 'ng_log_file' ||
-                     $jj->{conf} eq 'ng_cgilog_file') {
-                $conf{$jj->{conf}} = prependpath($var, $ii->{$jj->{conf}});
-            } else {
-                $conf{$jj->{conf}} = $ii->{$jj->{conf}};
+    }
+    if (! defined $conf->{$key}){
+        foreach my $ii (@CONF) {
+            if ($ii->{conf} eq $key && defined $ii->{def}) {
+                $conf->{$key} = $ii->{def};
             }
         }
     }
+    return;
+}
 
-    # get the hard-coded defaults
-    foreach my $ii (@CONF) {
-        if (! defined $conf{$ii->{conf}} && defined $ii->{def}) {
-            $conf{$ii->{conf}} = $ii->{def};
+sub getdefaults {
+    my ($conf, @keys) = @_;
+    foreach my $key (@keys) {
+        getdefault($conf, $key);
+    }
+    return;
+}
+
+# get a configuration.  this is the order in which variables are used:
+#
+#   mechanism          which variables are possible
+#
+#   command line       layout, destdir, vardir, etcdir
+#   install-cache      anything
+#   environment        anything
+#   preset             everything
+#
+# if none of those give us something useful, then we prompt.
+# some of the variables can be dependent on others.  for example, stuff that
+# goes in the var directory depends on the var directory, but it can also be
+# specified independently of any var directory.
+sub getconfig {
+    my ($conf, $promptall) = @_;
+
+    getdefaults($conf, @CMDKEYS);
+
+    # if we have a pre-defined configuration, use it.
+    foreach my $ii (@PRESETS) {
+        if ($ii->{ng_layout} ne $conf->{ng_layout}) {
+            next;
+        }
+        if (defined $ii->{ng_dest_dir} &&
+            $ii->{ng_dest_dir} ne $conf->{ng_dest_dir}) {
+            next;
+        }
+        if (! defined $conf->{ng_var_dir}) {
+            $conf->{ng_var_dir} = prependpath($conf->{ng_dest_dir},
+                                              $ii->{ng_var_dir});
+        }
+        $conf->{ng_url} = $ii->{ng_url};
+        foreach my $jj (@CONF) {
+            if ($jj->{conf} eq 'ng_etc_dir' &&
+                ! defined $conf->{$jj->{conf}}) {
+                $conf->{$jj->{conf}} = prependpath($conf->{ng_dest_dir},
+                                                   $ii->{$jj->{conf}});
+                next;
+            }
+            foreach my $supdir (keys %DIRDEPS) {
+                foreach my $dir (@{$DIRDEPS{$supdir}}) {
+                    if ($jj->{conf} eq $dir) {
+                        $conf->{$jj->{conf}} = prependpath($conf->{$supdir},
+                                                           $ii->{$jj->{conf}});
+                        next;
+                    }
+                }
+            }
+            if (! defined $conf->{$jj->{conf}}) {
+                $conf->{$jj->{conf}} = $ii->{$jj->{conf}};
+            }
         }
     }
 
     # get anything else we can from the environment variables
     foreach my $ii (@CONF) {
-        my $vname = $ii->{conf};
-        $vname =~ tr/a-z/A-Z/;
-        if ($ENV{$vname}) {
-            $conf{$ii->{conf}} = $ENV{$vname};
+        my $iscmd = 0;
+        foreach my $jj (@CMDKEYS) {
+            if ($ii->{conf} eq $jj) {
+                $iscmd = 1;
+            }
+        }
+        if (! $iscmd) {
+            my $vname = mkenvname($ii->{conf});
+            if ($ENV{$vname}) {
+                $conf->{$ii->{conf}} = $ENV{$vname};
+            }
+        }
+    }
+
+    # get the hard-coded defaults, only if not set already
+    foreach my $ii (@CONF) {
+        if (! defined $conf->{$ii->{conf}} && defined $ii->{def}) {
+            $conf->{$ii->{conf}} = $ii->{def};
         }
     }
 
@@ -424,22 +463,29 @@ sub getconfig {
 
     # prompt for anything we do not yet know
     foreach my $ii (@CONF) {
-        if ($promptall || ! defined $conf{$ii->{conf}}) {
-            $conf{$ii->{conf}} = getanswer($ii->{msg}, $conf{$ii->{conf}});
+        if ($promptall || ! defined $conf->{$ii->{conf}}) {
+            $conf->{$ii->{conf}} = getanswer($ii->{msg}, $conf->{$ii->{conf}});
         }
     }
 
-    return \%conf;
+    return $fail;
 }
 
 sub envvars {
-    my @vars = qw(NG_DEST_DIR);
+    my @vars;
     foreach my $ii (@CONF) {
-        my $vname = $ii->{conf};
-        $vname =~ tr/a-z/A-Z/;
-        push @vars, $vname;
+        push @vars, mkenvname($ii->{conf});
     }
     return @vars;
+}
+
+sub mkenvname {
+    my ($name) = @_;
+    $name =~ tr/a-z/A-Z/;
+    if ($name !~ /^NG_/) {
+        $name = 'NG_' . $name;
+    }
+    return $name;
 }
 
 sub printconfig {
@@ -457,13 +503,13 @@ sub printconfig {
     }
     logmsg('configuration:');
     foreach my $ii (@CONFKEYS) {
-        logmsg(sprintf '  %-20s %s', $ii, $conf->{$ii});
+        logmsg(sprintf '  %-20s %s', $ii, defined $conf->{$ii} ? $conf->{$ii} : q());
     }
     return;
 }
 
 sub checkconfig {
-    my ($conf, $destdir) = @_;
+    my ($conf) = @_;
 
 # FIXME: check the configuration
 
@@ -537,16 +583,6 @@ sub checkexec {
         $dirs[$ii] = q(  ) . $dirs[$ii];
     }
     return $found;
-}
-
-# return 0 if ok, 1 if not set
-sub checkdestdir {
-    my ($dir) = @_;
-    if ($dir eq q()) {
-        logmsg('destination directory has not been specified');
-        return 1;
-    }
-    return 0;
 }
 
 sub getfiles {
@@ -658,14 +694,14 @@ sub printinstructions {
         print "       * In the nagios configuration file (e.g. nagios.cfg),\n";
         print "         add this line:\n";
         print "\n";
-        print "         include $conf->{ng_etc_dir}/$NAGIOS_STUB_FN\n";
+        print "         include $conf->{ng_etc_dir}/" . NAGIOS_STUB_FN . "\n";
     }
     if ($apache) {
         print "\n";
         print "       * In the apache configuration file (e.g. httpd.conf),\n";
         print "         add this line:\n";
         print "\n";
-        print "         include $conf->{ng_etc_dir}/$APACHE_STUB_FN\n";
+        print "         include $conf->{ng_etc_dir}/" . APACHE_STUB_FN . "\n";
     }
     print "\n";
 
@@ -703,8 +739,8 @@ sub doinstall {
   '^logfile\\s*=.*', 'logfile = ' . $conf->{ng_log_file},
   '^cgilogfile\\s*=.*', 'cgilogfile = ' . $conf->{ng_cgilog_file},
                     } ) if $doit;
-        writenagiosstub($conf->{ng_etc_dir} . q(/) . $NAGIOS_STUB_FN, $conf);
-        writeapachestub($conf->{ng_etc_dir} . q(/) . $APACHE_STUB_FN, $conf);
+        writenagiosstub($conf->{ng_etc_dir} . q(/) . NAGIOS_STUB_FN, $conf);
+        writeapachestub($conf->{ng_etc_dir} . q(/) . APACHE_STUB_FN, $conf);
     }
 
     if (defined $conf->{ng_cgi_dir}) {
@@ -773,8 +809,6 @@ sub doinstall {
         chown $conf->{www_user}, $conf->{ng_cgilog_file};
     }
 
-    writeconfigcache($conf) if $doit;
-
     return $fail;
 }
 
@@ -808,16 +842,16 @@ script will run with no intervention required.
 B<install.pl> [--version]
    (--check-prereq |
     --check-config |
-    --install --dest-dir path
-             [--dry-run]
-             [--verbose | --silent]
-             [--layout (overlay | standalone)]
-             [--nagios-cgiurl url]
-             [--nagios-perfdata path]
-             [--nagios-user userid]
-             [--www-user userid]
-             [--etc path]
-             [--var path] )
+    --install [--dry-run]
+              [--verbose | --silent]
+              [--layout (overlay | standalone | custom)]
+              [--dest-dir path]
+              [--etc-dir path]
+              [--var-dir path]
+              [--nagios-cgi-url url]
+              [--nagios-perfdata-file path]
+              [--nagios-user userid]
+              [--www-user userid] )
 
 =head1 OPTIONS
 
@@ -839,17 +873,17 @@ B<--layout> layout  Which layout to use.  Can be I<standalone> or I<overlay>.
 
 B<--destdir> path   Directory in which files should be installed.
 
-B<--etc> path       Directory for configuration files.  The default value
+B<--etc-dir> path   Directory for configuration files.  The default value
                  depends upon the layout and the destination directory.
 
-B<--var> path       Directory for log and RRD files.  The default value
+B<--var-dir> path   Directory for log and RRD files.  The default value
                  depends upon the layout.  For standalone layout, the
                  default is /var/nagiosgraph.  For overlay layout, the
                  default is /var/nagios.
 
-B<--nagios-cgiurl> url     URL to Nagios CGI scripts.
+B<--nagios-cgi-url> url    URL to Nagios CGI scripts.
 
-B<--nagios-perfdata> path  Path to Nagios perfdata file.
+B<--nagios-perfdata-file> path  Path to Nagios perfdata file.
 
 B<--nagios-user> userid    Name or uid of Nagios user.
 
@@ -868,16 +902,16 @@ these environment variables:
 Use one or more of these environment variables to specialize an automated
 install:
 
-  NG_VAR_DIR     - the directory for log files and RRD files
-  NG_BIN_DIR     - the directory for nagiosgraph executables
-  NG_ETC_DIR     - the directory for nagiosgraph configuration files
-  NG_CGI_DIR     - the directory for nagiosgraph CGI scripts
-  NG_DOC_DIR     - the directory for nagiosgraph documentation and examples
-  NG_CSS_DIR     - the directory for nagiosgraph CSS
-  NG_JS_DIR      - the directory for nagiosgraph Javascript
-  NG_LOG_FILe    - the nagiosgraph log file
-  NG_CGILOG_FILE - the nagiosgraph CGI log file
-  NG_RRD_DIR     - the directory for nagiosgraph RRD files
+  NG_VAR_DIR     - directory for log files and RRD files
+  NG_ETC_DIR     - directory for nagiosgraph configuration files
+  NG_BIN_DIR     - directory for nagiosgraph executables
+  NG_CGI_DIR     - directory for nagiosgraph CGI scripts
+  NG_DOC_DIR     - directory for nagiosgraph documentation and examples
+  NG_CSS_DIR     - directory for nagiosgraph CSS
+  NG_JS_DIR      - directory for nagiosgraph Javascript
+  NG_LOG_FILe    - nagiosgraph log file
+  NG_CGILOG_FILE - nagiosgraph CGI log file
+  NG_RRD_DIR     - directory for nagiosgraph RRD files
   NG_CGI_URL     - URL to nagiosgraph CGI scripts
   NG_CSS_URL     - URL to nagiosgraph CSS
   NG_JS_URL      - URL to nagiosgraph Javascript
@@ -899,13 +933,13 @@ Nagiosgraph requires the following pre-requisites:
   rrdtool
   CGI perl module
   RRAs perl module
-  perl module (optional)
+  GD perl module (optional)
 
 Nagiosgraph requires the following information for installation:
 
   ng_dest_dir          - directory for nagiosgraph files
-  ng_bin_dir           - directory for executables
   ng_etc_dir           - directory for configuration files
+  ng_bin_dir           - directory for executables
   ng_cgi_dir           - directory for CGI scripts
   ng_doc_dir           - directory for documentation and examples
   ng_css_dir           - directory for CSS
@@ -937,21 +971,21 @@ nagiosgraph files into a Nagios installation.  The standalone puts nagiosgraph
 files into a separate directory tree.  Use the names of nagiosgraph components
 to create custom layouts.
 
-Default overlay with destination /opt/nagios
+The default values for an overlay installation to /opt/nagios are:
 
   ng_dest_dir /opt/nagios
-  ng_bin_dir /opt/nagios/libexec
   ng_etc_dir /opt/nagios/etc/nagiosgraph
+  ng_bin_dir /opt/nagios/libexec
   ng_cgi_dir /opt/nagios/sbin
   ng_doc_dir /opt/nagios/share/docs
   ng_css_dir /opt/nagios/share
   ng_js_dir /opt/nagios/share
 
-Default standalone with destination /opt/nagiosgraph
+The default values for a standalone installation to /opt/nagiosgraph are:
 
   ng_dest_dir /opt/nagiosgraph
-  ng_bin_dir /opt/nagiosgraph/bin
   ng_etc_dir /opt/nagiosgraph/etc
+  ng_bin_dir /opt/nagiosgraph/bin
   ng_cgi_dir /opt/nagiosgraph/cgi
   ng_doc_dir /opt/nagiosgraph/doc
   ng_css_dir /opt/nagiosgraph/share
@@ -971,54 +1005,57 @@ the default values:
   nagios_user nagios
   www_user www-data
 
-These values install nagiosgraph onto an existing Nagios installation
+=head1 EXAMPLES
+
+Install a standalone configuration in /usr/local:
+
+  install.pl --dest-dir /usr/local/nagiosgraph
+
+Install to /usr/local but keep var and etc files separate:
+
+  install.pl --var-dir /var/nagiosgraph --etc-dir /etc/nagiosgraph
+
+Install overlay configuration to /opt/nagios
+
+  install.pl --layout overlay --dest-dir /opt/nagios
+
+Install standalone configuration to /opt/nagiosgraph
+
+  install.pl --layout standalone --dest-dir /opt/nagiosgraph
+
+Install nagiosgraph without prompting onto an existing Nagios installation
 at /usr/local/nagios:
 
-  NG_LAYOUT overlay
-  NG_DEST_DIR /usr/local/nagios
-  NG_NAGIOS_CGI_URL /nagios/cgi-bin
-  NG_NAGIOS_PERFDATA_FILE /var/nagios/perfdata.log
-  NG_NAGIOS_USER nagios
-  NG_WWW_USER www-data
+  export NG_LAYOUT=overlay
+  export NG_DEST_DIR=/usr/local/nagios
+  export NG_VAR_DIR=/var/nagios
+  export NG_URL=/nagios
+  install.pl
 
-  NG_ETC_DIR /usr/local/nagios/etc/nagiosgraph
-  NG_BIN_DIR /usr/local/nagios/libexec
-  NG_CGI_DIR /usr/local/nagios/sbin
-  NG_DOC_DIR /usr/local/nagios/share/docs
-  NG_CSS_DIR /usr/local/nagios/share
-  NG_JS_DIR /usr/local/nagios/share
-  NG_LOG_FILE /var/nagios/nagiosgraph.log
-  NG_CGILOG_FILE /var/nagios/nagiosgraph-cgi.log
-  NG_RRD_DIR /var/nagios/rrd
-  NG_CGI_URL /nagios/cgi-bin
-  NG_CSS_URL /nagios/nagiosgraph.css
-  NG_JS_URL /nagios/nagiosgraph.js
+Install nagiosgraph without prompting to its own directory tree
+at /opt/nagiosgraph with nagios user 'naguser' and web user 'apache':
 
-These values install nagiosgraph to its own directory tree in /opt/nagiosgraph:
-
-  NG_LAYOUT standalone
-  NG_DEST_DIR /opt/nagiosgraph
-  NG_NAGIOS_CGI_URL /nagios/cgi-bin
-  NG_NAGIOS_PERFDATA_FILE /var/nagios/perfdata.log
-  NG_NAGIOS_USER nagios
-  NG_WWW_USER www-data
+  export NG_LAYOUT=standalone
+  export NG_DEST_DIR=/opt/nagiosgraph
+  export NG_NAGIOS_USER=naguser
+  export NG_WWW_USER=apache
+  install.pl
 
 This set is similar to the previous configuration, but this keeps the RRD
 and log files in the system /var directory tree and configuration files in
 the system /etc directory.
 
-  NG_LAYOUT standalone
-  NG_DEST_DIR /opt/nagiosgraph
-  NG_ETC_DIR /etc/nagiosgraph
-  NG_VAR_DIR /var/nagiosgraph
-  NG_NAGIOS_CGI_URL /nagios/cgi-bin
-  NG_NAGIOS_PERFDATA_FILE /var/nagios/perfdata.log
-  NG_NAGIOS_USER nagios
-  NG_WWW_USER www-data
+  export NG_LAYOUT=standalone
+  export NG_DEST_DIR=/opt/nagiosgraph
+  export NG_ETC_DIR=/etc/nagiosgraph
+  export NG_VAR_DIR=/var/nagiosgraph
+  export NG_NAGIOS_USER=naguser
+  export NG_WWW_USER=apache
+  install.pl
 
 =head1 EXIT STATUS
 
-Returns 0 if the installation was successful, -1 otherwise.
+Returns 0 if the installation was successful, 1 otherwise.
 
 =head1 DIAGNOSTICS
 
