@@ -105,10 +105,11 @@ example /opt or /usr/local.
 Decide upon a location and layout before you start the installation.
 Examples are in the Sample Installation Layouts section.
 
-The install.pl script includes for specifying the layout and location:
+The install.pl script includes options for specifying the layout and location:
 
     install.pl --layout overlay --dest-dir /usr/local/nagios
     install.pl --layout standalone --dest-dir /opt/nagiosgraph
+    install.pl --layout custom --dest-dir /usr/local/nagiosgraph
 
 
 Installing nagiosgraph Files

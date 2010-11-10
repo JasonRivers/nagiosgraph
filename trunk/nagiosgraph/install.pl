@@ -21,7 +21,6 @@
 use English qw(-no_match_vars);
 use File::Copy qw(copy move);
 use File::Path qw(make_path);
-use ExtUtils::Command qw(touch);
 use POSIX qw(strftime);
 use strict;
 use warnings;
@@ -38,7 +37,7 @@ use constant NAGIOS_STUB_FN => 'nagiosgraph-nagios.cfg';
 use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
 
 # put the keys in a specific order to make it easier to see where things go
-my @CONFKEYS = qw(ng_layout ng_dest_dir ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_css_dir ng_js_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file modify_apache_config apache_config_file);
+my @CONFKEYS = qw(ng_layout ng_dest_dir ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file modify_apache_config apache_config_file);
 
 # these keys can be specified via command line
 my @CMDKEYS = qw(ng_layout ng_dest_dir ng_var_dir ng_etc_dir nagios_cgi_url nagios_perfdata_file nagios_user www_user);
@@ -50,8 +49,7 @@ my @PRESETS = (
       ng_bin_dir => 'bin',
       ng_cgi_dir => 'cgi',
       ng_doc_dir => 'doc',
-      ng_css_dir => 'share',
-      ng_js_dir => 'share',
+      ng_www_dir => 'share',
       ng_util_dir => 'util',
       ng_var_dir => 'var',
       ng_rrd_dir => 'rrd',
@@ -67,8 +65,7 @@ my @PRESETS = (
       ng_bin_dir => 'libexec',
       ng_cgi_dir => 'sbin',
       ng_doc_dir => 'docs/nagiosgraph',
-      ng_css_dir => 'share',
-      ng_js_dir => 'share',
+      ng_www_dir => 'share',
       ng_util_dir => 'docs/nagiosgraph/util',
       ng_var_dir => '/var/nagios',
       ng_rrd_dir => 'rrd',
@@ -85,8 +82,7 @@ my @PRESETS = (
       ng_bin_dir => '/usr/libexec/nagios',
       ng_cgi_dir => '/usr/nagios/sbin',    # FIXME: not sure about this one
       ng_doc_dir => '/usr/share/nagios/docs/nagiosgraph',
-      ng_css_dir => '/usr/share/nagios',
-      ng_js_dir => '/usr/share/nagios',
+      ng_www_dir => '/usr/share/nagios',
       ng_util_dir => '/usr/share/nagios/docs/nagiosgraph/util',
       ng_var_dir => '/var/nagios',
       ng_rrd_dir => 'rrd',
@@ -103,8 +99,7 @@ my @PRESETS = (
       ng_bin_dir => '/usr/libexec/nagiosgraph',
       ng_cgi_dir => '/usr/nagiosgraph/cgi',
       ng_doc_dir => '/usr/share/nagiosgraph/doc',
-      ng_css_dir => '/usr/share/nagiosgraph',
-      ng_js_dir => '/usr/share/nagiosgraph',
+      ng_www_dir => '/usr/share/nagiosgraph',
       ng_util_dir => '/usr/share/nagiosgraph/util',
       ng_var_dir => '/var/nagiosgraph',
       ng_rrd_dir => 'rrd',
@@ -130,10 +125,8 @@ my @CONF =
         msg => 'Location of CGI scripts' },
       { conf => 'ng_doc_dir',
         msg => 'Location of documentation and examples' },
-      { conf => 'ng_css_dir',
-        msg => 'Location of CSS files' },
-      { conf => 'ng_js_dir',
-        msg => 'Location of JavaScript files' },
+      { conf => 'ng_www_dir',
+        msg => 'Location of CSS and JavaScript files' },
       { conf => 'ng_util_dir',
         msg => 'Location of utilities' },
       { conf => 'ng_var_dir',
@@ -165,7 +158,7 @@ my @CONF =
     );
 
 my %DIRDEPS =
-    ( ng_dest_dir => [qw(ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_css_dir ng_js_dir ng_util_dir ng_var_dir)],
+    ( ng_dest_dir => [qw(ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_www_dir ng_util_dir ng_var_dir)],
       ng_url => [qw(ng_cgi_url ng_css_url ng_js_url)],
       ng_var_dir => [qw(ng_rrd_dir ng_log_file ng_cgilog_file)],
       );
@@ -313,7 +306,10 @@ sub writeconfigcache {
     logmsg('saving configuration cache');
     my $fn = CACHE_FN;
     my $fail = 0;
+    my $ts = strftime '%Y.%m.%d', localtime time;
     if (open my $FH, '>', $fn) {
+        print ${FH} "# nagiosgraph installation configuration\n";
+        print ${FH} "# $ts\n";
         print ${FH} "version = $VERSION\n";
         foreach my $ii (sort keys %{$conf}) {
             print ${FH} "$ii = $conf->{$ii}\n";
@@ -593,9 +589,9 @@ sub checkprereq {
     } else {
         my $dlist;
         foreach my $d (@dirs) {
-            $dlist .= "    $d\n";
+            $dlist .= "\n    $d";
         }
-        logmsg("  nagios not found in any of:\n$dlist");
+        logmsg("  nagios not found in any of:$dlist");
         $fail = 1;
     }
 
@@ -683,7 +679,7 @@ sub replacetext {
     my ($ifn, $pat, $doit) = @_;
     logmsg("replace text in $ifn");
     return 0 if !$doit;
-    my $ofn = $ifn . '-ngbak';
+    my $ofn = $ifn . '-bak';
     my $fail = 0;
     if (open my $IFILE, '<', $ifn) {
         if (open my $OFILE, '>', $ofn) {
@@ -723,16 +719,22 @@ sub writeapachestub {
     return 0 if !$doit;
     my $fail = 0;
     if (open my $FILE, '>', $fn) {
-        print ${FILE} <<'EOB';
-# enable nagiosgraph CGI scripts
-  ScriptAlias $conf->{ng_cgi_url} $conf->{ng_cgi_dir}
-  <Directory "$conf->{ng_cgi_dir}">
-     Options ExecCGI
-     AllowOverride None
-     Order allow,deny
-     Allow from all
-  </Directory>
-EOB
+        print ${FILE} "# enable nagiosgraph CGI scripts\n";
+        print ${FILE} "ScriptAlias $conf->{ng_cgi_url} \"$conf->{ng_cgi_dir}\"\n";
+        print ${FILE} "<Directory \"$conf->{ng_cgi_dir}\">\n";
+        print ${FILE} "   Options ExecCGI\n";
+        print ${FILE} "   AllowOverride None\n";
+        print ${FILE} "   Order allow,deny\n";
+        print ${FILE} "   Allow from all\n";
+        print ${FILE} "</Directory>\n";
+        print ${FILE} "# enable nagiosgraph CSS and JavaScript\n";
+        print ${FILE} "Alias $conf->{ng_url} \"$conf->{ng_www_dir}\"\n";
+        print ${FILE} "<Directory \"$conf->{ng_www_dir}\">\n";
+        print ${FILE} "   Options None\n";
+        print ${FILE} "   AllowOverride None\n";
+        print ${FILE} "   Order allow,deny\n";
+        print ${FILE} "   Allow from all\n";
+        print ${FILE} "</Directory>\n";
         if (! close $FILE) {
             logmsg("cannot close $fn: $!");
             $fail = 1;
@@ -750,15 +752,13 @@ sub writenagiosstub {
     return 0 if !$doit;
     my $fail = 0;
     if (open my $FILE, '>', $fn) {
-        print ${FILE} <<'EOB';
-# process nagios performance data using nagiosgraph
-     process_performance_data=1
-     service_perfdata_file=$conf->{nagios_perfdata_file}
-     service_perfdata_file_template=\$LASTSERVICECHECK\$\|\|\$HOSTNAME\$\|\|\$SERVICEDESC\$\|\|\$SERVICEOUTPUT\$\|\|\$SERVICEPERFDATA\$
-     service_perfdata_file_mode=a
-     service_perfdata_file_processing_interval=30
-     service_perfdata_file_processing_command=process-service-perfdata
-EOB
+        print ${FILE} "# process nagios performance data using nagiosgraph\n";
+        print ${FILE} "     process_performance_data=1\n";
+        print ${FILE} "     service_perfdata_file=$conf->{nagios_perfdata_file}\n";
+        print ${FILE} "     service_perfdata_file_template=\$LASTSERVICECHECK\$\|\|\$HOSTNAME\$\|\|\$SERVICEDESC\$\|\|\$SERVICEOUTPUT\$\|\|\$SERVICEPERFDATA\$\n";
+        print ${FILE} "     service_perfdata_file_mode=a\n";
+        print ${FILE} "     service_perfdata_file_processing_interval=30\n";
+        print ${FILE} "     service_perfdata_file_processing_command=process-service-perfdata\n";
         if (! close $FILE) {
             logmsg("cannot close $fn: $!");
             $fail = 1;
@@ -771,12 +771,13 @@ EOB
 }
 
 sub printinstructions {
-    my ($conf, $nagios, $apache) = @_;
-    if ($nagios || $apache) {
+    my ($conf) = @_;
+    if (!isyes($conf->{modify_nagios_config}) ||
+        !isyes($conf->{modify_apache_config})) {
         print "\n";
         print "     To complete the installation, do the following:\n";
     }
-    if ($nagios) {
+    if (!isyes($conf->{modify_nagios_config})) {
         print "\n";
         print "       * Ensure that 'service_perfdata_command' is commented\n";
         print "         or not defined in any nagios configuration file(s).\n";
@@ -786,7 +787,7 @@ sub printinstructions {
         print "\n";
         print "         include $conf->{ng_etc_dir}/" . NAGIOS_STUB_FN . "\n";
     }
-    if ($apache) {
+    if (!isyes($conf->{modify_apache_config})) {
         print "\n";
         print "       * In the apache configuration file (e.g. httpd.conf),\n";
         print "         add this line:\n";
@@ -856,15 +857,10 @@ sub doinstall {
                              $doit);
     }
 
-    if (defined $conf->{ng_css_dir}) {
-        $dst = $conf->{ng_css_dir};
+    if (defined $conf->{ng_www_dir}) {
+        $dst = $conf->{ng_www_dir};
         $fail |= ng_mkdir($dst, $doit);
         $fail |= ng_copy('share/nagiosgraph.css', "$dst", $doit);
-    }
-
-    if (defined $conf->{ng_js_dir}) {
-        $dst = $conf->{ng_js_dir};
-        $fail |= ng_mkdir($dst, $doit);
         $fail |= ng_copy('share/nagiosgraph.js', "$dst", $doit);
     }
 
@@ -988,10 +984,10 @@ sub ng_chown {
     logmsg("chown $uname,$gname on $a");
     if (! defined $uid || ! defined $gid) {
         if (! defined $uid) {
-            logmsg("no such user $uname");
+            logmsg("user '$uname' does not exist");
         }
         if (! defined $gid) {
-            logmsg("no such group $gname");
+            logmsg("group '$gname' does not exist");
         }
         return 1;
     }
@@ -1109,9 +1105,8 @@ install:
   NG_BIN_DIR     - directory for nagiosgraph executables
   NG_CGI_DIR     - directory for nagiosgraph CGI scripts
   NG_DOC_DIR     - directory for nagiosgraph documentation and examples
-  NG_CSS_DIR     - directory for nagiosgraph CSS
-  NG_JS_DIR      - directory for nagiosgraph Javascript
-  NG_LOG_FILe    - nagiosgraph log file
+  NG_WWW_DIR     - directory for nagiosgraph CSS and JavaScript
+  NG_LOG_FILE    - nagiosgraph log file
   NG_CGILOG_FILE - nagiosgraph CGI log file
   NG_RRD_DIR     - directory for nagiosgraph RRD files
   NG_CGI_URL     - URL to nagiosgraph CGI scripts
@@ -1144,8 +1139,7 @@ Nagiosgraph requires the following information for installation:
   ng_bin_dir           - directory for executables
   ng_cgi_dir           - directory for CGI scripts
   ng_doc_dir           - directory for documentation and examples
-  ng_css_dir           - directory for CSS
-  ng_js_dir            - directory for Javascript
+  ng_www_dir           - directory for CSS and JavaScript
   ng_log_file          - path to nagiosgraph log file
   ng_cgilog_file       - path to nagiosgraph cgi log file
   ng_rrd_dir           - directory for nagiosgraph RRD files
@@ -1180,8 +1174,7 @@ The default values for an overlay installation to /opt/nagios are:
   ng_bin_dir /opt/nagios/libexec
   ng_cgi_dir /opt/nagios/sbin
   ng_doc_dir /opt/nagios/share/docs
-  ng_css_dir /opt/nagios/share
-  ng_js_dir /opt/nagios/share
+  ng_www_dir /opt/nagios/share
 
 The default values for a standalone installation to /opt/nagiosgraph are:
 
@@ -1190,8 +1183,7 @@ The default values for a standalone installation to /opt/nagiosgraph are:
   ng_bin_dir /opt/nagiosgraph/bin
   ng_cgi_dir /opt/nagiosgraph/cgi
   ng_doc_dir /opt/nagiosgraph/doc
-  ng_css_dir /opt/nagiosgraph/share
-  ng_js_dir /opt/nagiosgraph/share
+  ng_www_dir /opt/nagiosgraph/share
 
 Log files, userids, and URLs must also be specified.  These depend on system
 configuration, nagios configuration, and web server configuration.  Here are
