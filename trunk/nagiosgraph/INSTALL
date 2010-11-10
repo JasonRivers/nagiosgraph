@@ -49,11 +49,11 @@ automatically using the install.pl script.
 Quick Start
 -----------
 
-  To install nagiosgraph:
+To install nagiosgraph:
 
     install.pl
 
-  To see a list of options:
+To see a list of options:
 
     install.pl --help
 
@@ -61,18 +61,22 @@ Quick Start
 Installation Preliminaries
 --------------------------
 
+Before installing, ensure that the prerequisite software has been installed
+and decide upon a layout and location.
+
+
 Prerequisites
 -------------
 
-  Nagiosgraph will not function without a working Nagios installation, so
-  first ensure that Nagios works.  Version 3.2 or later is recommended, but
-  older versions will also work.
+Nagiosgraph will not function without a working Nagios installation, so
+first ensure that Nagios works.  Version 3.2 or later is recommended, but
+older versions will also work.
 
-  Nagiosgraph requires rrdtool.  Version 1.4 or later is recommended, but
-  older versions will also work.
+Nagiosgraph requires rrdtool.  Version 1.4 or later is recommended, but
+older versions will also work.
 
-  Nagiosgraph requires the CGI and RRDs perl modules.  The RRDs perl module
-  is part of rrdtool.  The GD perl module is optional, but recommended.
+Nagiosgraph requires the CGI and RRDs perl modules.  The RRDs perl module
+is part of rrdtool.  The GD perl module is optional, but recommended.
 
   Debian:
     rrdtool, perl, libcgi-pm-perl, librrds-perl, libgd-gd2-perl (optional)
@@ -83,18 +87,28 @@ Prerequisites
   FreeBSD:
     rrdtool perl5 gd (optional)
 
+The install.pl script includes an option to check for pre-requisites:
+
+    install.pl --check-prereq  
+
+
 Layout and Location
 -------------------
 
-  There are two standard layouts: separate or overlay.  The separated layout
-  has nagiosgraph and nagios in separate directories.  The overlay places
-  nagiosgraph components with nagios components.
+There are two standard layouts: separate or overlay.  The separated layout
+has nagiosgraph and nagios in separate directories.  The overlay places
+nagiosgraph components with nagios components.
 
-  Nagios and nagiosgraph can be installed in just about any location, for
-  example /opt or /usr/local.
+Nagios and nagiosgraph can be installed in just about any location, for
+example /opt or /usr/local.
 
-  Decide upon a location and layout before you start the installation.
-  Examples are in the Sample Installation Layouts section.
+Decide upon a location and layout before you start the installation.
+Examples are in the Sample Installation Layouts section.
+
+The install.pl script includes for specifying the layout and location:
+
+    install.pl --layout overlay --dest-dir /usr/local/nagios
+    install.pl --layout standalone --dest-dir /opt/nagiosgraph
 
 
 Installing nagiosgraph Files
@@ -229,7 +243,6 @@ Batch Processing
  - Restart nagios
 
      /etc/init.d/nagios restart
-
 
 
 Immediate Processing

@@ -20,7 +20,9 @@
 
 use English qw(-no_match_vars);
 use File::Copy qw(copy move);
+use File::Path qw(make_path);
 use ExtUtils::Command qw(touch);
+use POSIX qw(strftime);
 use strict;
 use warnings;
 
@@ -29,14 +31,14 @@ $VERSION = '1.0';
 
 use constant EXIT_FAIL => 1;
 use constant EXIT_OK => 0;
-use constant DPERMS => oct 755;
-use constant FPERMS => oct 644;
+use constant DPERMS => 0755;
+use constant FPERMS => 0644;
 use constant CACHE_FN => '.install-cache';
 use constant NAGIOS_STUB_FN => 'nagiosgraph-nagios.cfg';
 use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
 
 # put the keys in a specific order to make it easier to see where things go
-my @CONFKEYS = qw(ng_layout ng_dest_dir ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_css_dir ng_js_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user);
+my @CONFKEYS = qw(ng_layout ng_dest_dir ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_css_dir ng_js_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file modify_apache_config apache_config_file);
 
 # these keys can be specified via command line
 my @CMDKEYS = qw(ng_layout ng_dest_dir ng_var_dir ng_etc_dir nagios_cgi_url nagios_perfdata_file nagios_user www_user);
@@ -170,7 +172,7 @@ my %DIRDEPS =
 
 my $verbose = 1;
 my $doit = 1;
-my $action = q();
+my $action = 'install';
 my %conf;
 
 while ($ARGV[0]) {
@@ -182,8 +184,8 @@ while ($ARGV[0]) {
         $action = 'install';
     } elsif ($arg eq '--dry-run') {
         $doit = 0;
-    } elsif ($arg eq '--check-config') {
-        $action = 'check-config';
+    } elsif ($arg eq '--check-installation') {
+        $action = 'check-installation';
     } elsif ($arg eq '--check-prereq') {
         $action = 'check-prereq';
     } elsif ($arg eq '--layout') {
@@ -210,10 +212,9 @@ while ($ARGV[0]) {
             print "\n";
         }
         print "options include:\n";
-        print "  --install        do the installation\n";
-        print "  --check          check pre-requisites and configuration\n";
-        print "  --check-prereq   check pre-requisites\n";
-        print "  --check-config   check the configuration\n";
+        print "  --install              do the installation\n";
+        print "  --check-prereq         check pre-requisites\n";
+        print "  --check-installation   check the installation\n";
         print "\n";
         print "  --dry-run\n";
         print "  --verbose | --silent\n";
@@ -238,28 +239,21 @@ while ($ARGV[0]) {
 my $fail = 0;
 if($action eq 'check-prereq') {
     $fail |= checkprereq();
-} elsif($action eq 'check-config') {
+} elsif($action eq 'check-installation') {
     $fail |= getconfig(\%conf);
-    $fail |= checkconfig(\%conf);
+    $fail |= checkinstallation(\%conf);
 } elsif($action eq 'install') {
     $fail |= checkprereq();
     $fail |= getconfig(\%conf);
     printconfig(\%conf);
-    my $confirm = getanswer('is this configuration ok', 'y');
+    my $confirm = getanswer('Continue with this configuration', 'y');
     if ($confirm !~ /y/) {
         logmsg('installation aborted');
         exit EXIT_OK;
     }
     $fail |= writeconfigcache(\%conf);
     $fail |= doinstall(\%conf, $doit);
-    my $nagios = getanswer('modify the nagios configuration', 'n');
-    my $modnagios = $nagios =~ /[yY]/ ? 1 : 0;
-    my $apache = getanswer('modify the apache configuration', 'n');
-    my $modapache = $apache =~ /[yY]/ ? 1 : 0;
-    printinstructions(\%conf, !$modnagios, !$modapache);
-# FIXME: prompt for config file locations
-# FIXME: modify nagios
-# FIXME: modify apache
+    printinstructions(\%conf);
 }
 
 if ($fail) {
@@ -347,6 +341,37 @@ sub getanswer {
     return ($answer =~ /^\s*$/) ? $default : $answer;
 }
 
+# append to the specified file.  do the append to a copy of the file, then
+# move the original file to a time-stamped copy, then move the appended file
+# to the original name.
+sub appendtofile {
+    my ($ifn, $txt, $doit) = @_;
+    logmsg("append to $ifn");
+    return 0 if !$doit;
+    my $ofn = $ifn . '.tmp';
+    if (ng_copy($ifn, $ofn)) {
+        return 1;
+    }
+    my $ts = strftime '%Y.%m.%d', localtime time;
+    my $fail = 0;
+    if (open my $FILE, '>>', $ofn) {
+        print ${FILE} "\n$txt\n";
+        if (close $FILE) {
+            my $bak = $ifn . '-' . $ts;
+            if (ng_move($ifn, $bak) || ng_move($ofn, $ifn)) {
+                $fail = 1;
+            }
+        } else {
+            logmsg("cannot close $ofn: $!");
+            $fail = 1;
+        }
+    } else {
+        logmsg("cannot append to $ofn: $!");
+        $fail = 1;
+    }
+    return $fail;
+}
+
 sub prependpath {
     my ($pfx, $path) = @_;
     return $path =~ /^\//
@@ -395,7 +420,7 @@ sub getdefaults {
 # goes in the var directory depends on the var directory, but it can also be
 # specified independently of any var directory.
 sub getconfig {
-    my ($conf, $promptall) = @_;
+    my ($conf) = @_;
 
     getdefaults($conf, @CMDKEYS);
 
@@ -463,9 +488,32 @@ sub getconfig {
 
     # prompt for anything we do not yet know
     foreach my $ii (@CONF) {
-        if ($promptall || ! defined $conf->{$ii->{conf}}) {
+        if (! defined $conf->{$ii->{conf}}) {
             $conf->{$ii->{conf}} = getanswer($ii->{msg}, $conf->{$ii->{conf}});
         }
+    }
+
+    # find out if we should modify the nagios configuration
+    my $dfltfile = defined $conf->{nagios_config_file} ?
+        $conf->{nagios_config_file} :
+        findfile('nagios.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc));
+    $conf->{modify_nagios_config} = 
+        getanswer('Modify the Nagios configuration file', 'n');
+    if (isyes($conf->{modify_nagios_config})) {
+        $conf->{nagios_config_file} =
+            getanswer('Nagios configuration file', $dfltfile);
+
+    }
+
+    # find out if we should modify the apache configuration
+    $dfltfile = defined $conf->{apache_config_file} ?
+        $conf->{apache_config_file} :
+        findfile('httpd.conf', qw(/etc/apache2/conf /usr/local/apache2/conf /opt/apache2/conf /usr/local/httpd/conf /opt/httpd/conf));
+    $conf->{modify_apache_config} =
+        getanswer('Modify the Apache configuration file', 'n');
+    if (isyes($conf->{modify_apache_config})) {
+        $conf->{apache_config_file} = 
+            getanswer('Apache configuration file', $dfltfile);
     }
 
     return $fail;
@@ -534,25 +582,40 @@ sub checkprereq {
     logmsg('checking optional PERL modules');
     checkmodule('GD', 1);
 
-    my $found = 0;
+    my $found;
     my @dirs;
 
     logmsg('checking nagios installation');
     @dirs = qw(/usr/local/nagios/bin /opt/nagios/bin /usr/bin /usr/sbin /bin /sbin);
     $found = checkexec('nagios', @dirs);
-    if (! $found) {
-        logmsg("nagios not found in any of:\n" . join "\n", @dirs);
+    if ($found ne q()) {
+        logmsg("  found nagios at $found");
+    } else {
+        my $dlist;
+        foreach my $d (@dirs) {
+            $dlist .= "    $d\n";
+        }
+        logmsg("  nagios not found in any of:\n$dlist");
         $fail = 1;
     }
 
     logmsg('checking web server installation');
     @dirs = qw(/usr/local/apache/bin /opt/apache/bin /usr/local/apache2/bin /opt/apache2/bin /usr/local/httpd/bin /opt/httpd/bin /usr/bin /usr/sbin /bin /sbin);
     $found = checkexec('httpd', @dirs);
-    if (! $found) {
-        $found = checkexec('apache2', @dirs);
+    if ($found eq q()) {
+        $found = checkexec('apache', @dirs);
+        if ($found eq q()) {
+            $found = checkexec('apache2', @dirs);
+        }
     }
-    if (! $found) {
-        logmsg("nagios not found in any of:\n" . join "\n", @dirs);
+    if ($found ne q()) {
+        logmsg("  found apache at $found");
+    } else {
+        my $dlist;
+        foreach my $d (@dirs) {
+            $dlist .= "    $d\n";
+        }
+        logmsg("  apache not found in any of:\n$dlist");
         $fail = 1;
     }
 
@@ -567,22 +630,40 @@ sub checkmodule {
     if (defined $rval && $rval == 1) {
         $status = $func->VERSION;
     }
-    logmsg("  $func...$status");
+    logmsg("  $func..." . ($status eq 'fail' ? ' ***FAIL***' : $status));
     return $status eq 'fail' ? 1 : 0;
 }
 
-# return 1 if found, 0 otherwise
+# return the dir/app, empty string if not found
 sub checkexec {
     my ($app, @dirs) = @_;
-    my $found = 0;
+    my $found = q();
     for (my $ii=0; $ii<$#dirs+1; $ii++) { ## no critic (ProhibitCStyleForLoops)
         my $a = "$dirs[$ii]/$app";
         if (-f $a && -x $a) {
-            $found = 1;
+            $found = $a;
         }
-        $dirs[$ii] = q(  ) . $dirs[$ii];
     }
     return $found;
+}
+
+sub checkinstallation {
+    my ($conf) = @_;
+
+# TODO: check installation
+
+    return;
+}
+
+sub findfile {
+    my ($fn, @dirs) = @_;
+    my $path;
+    foreach my $dir (@dirs) {
+        if (-f "$dir/$fn") {
+            $path = "$dir/$fn";
+        }
+    }
+    return $path;
 }
 
 sub getfiles {
@@ -592,14 +673,17 @@ sub getfiles {
         @files = grep { /$pattern/ } readdir DH;
         closedir DH;
     } else {
-        logmsg ("cannot read directory $dir: $!");
+        logmsg("cannot read directory $dir: $!");
     }
     return @files;
 }
 
+# return 0 if successful, 1 if failure
 sub replacetext {
-    my ($ifn, $pat) = @_;
-    my $ofn = $ifn . 'bak';
+    my ($ifn, $pat, $doit) = @_;
+    logmsg("replace text in $ifn");
+    return 0 if !$doit;
+    my $ofn = $ifn . '-ngbak';
     my $fail = 0;
     if (open my $IFILE, '<', $ifn) {
         if (open my $OFILE, '>', $ofn) {
@@ -611,17 +695,19 @@ sub replacetext {
                 print ${OFILE} $line;
             }
             if (close $OFILE) {
-                move $ofn, $ifn;
+                if (ng_move($ofn, $ifn)) {
+                    $fail = 1;
+                }
             } else {
-                logmsg ("cannot close $ofn: $!");
+                logmsg("cannot close $ofn: $!");
                 $fail = 1;
             }
         } else {
-            logmsg ("cannot write to $ofn: $!");
+            logmsg("cannot write to $ofn: $!");
             $fail = 1;
         }
         if (! close $IFILE) {
-            logmsg ("cannot close $ifn: $!");
+            logmsg("cannot close $ifn: $!");
             $fail = 1;
         }
     } else {
@@ -632,7 +718,9 @@ sub replacetext {
 }
 
 sub writeapachestub {
-    my ($fn, $conf) = @_;
+    my ($fn, $conf, $doit) = @_;
+    logmsg("write apache stub to $fn");
+    return 0 if !$doit;
     my $fail = 0;
     if (open my $FILE, '>', $fn) {
         print ${FILE} <<'EOB';
@@ -658,6 +746,8 @@ EOB
 
 sub writenagiosstub {
     my ($fn, $conf) = @_;
+    logmsg("write nagios stub to $fn");
+    return 0 if !$doit;
     my $fail = 0;
     if (open my $FILE, '>', $fn) {
         print ${FILE} <<'EOB';
@@ -708,8 +798,6 @@ sub printinstructions {
     return;
 }
 
-# FIXME: check mkdir return codes
-# FIXME: check copy return codes
 sub doinstall {
     my ($conf, $doit) = @_;
     my $dst;
@@ -717,19 +805,19 @@ sub doinstall {
 
     if (defined $conf->{ng_dest_dir}) {
         $dst = $conf->{ng_dest_dir};
-        mkdir "$dst" if $doit;
+        $fail |= ng_mkdir($dst, $doit);
     }
 
     if (defined $conf->{ng_etc_dir}) {
         $dst = $conf->{ng_etc_dir};
-        mkdir "$dst" if $doit;
+        $fail |= ng_mkdir($dst, $doit);
         my @files = getfiles('etc', '.*.conf');
         for my $f (@files) {
-            copy("etc/$f", "$dst") if $doit;
+            $fail |= ng_copy("etc/$f", "$dst", $doit);
         }
-        copy('etc/map', "$dst") if $doit;
-        copy('etc/ngshared.pm', "$dst") if $doit;
-        replacetext("$dst/nagiosgraph.conf", {
+        $fail |= ng_copy('etc/map', "$dst", $doit);
+        $fail |= ng_copy('etc/ngshared.pm', "$dst", $doit);
+        $fail |= replacetext("$dst/nagiosgraph.conf", {
   '^perflog\\s*=.*', 'perflog = ' . $conf->{nagios_perfdata_file},
   '^rrddir\\s*=.*', 'rrddir = ' . $conf->{ng_rrd_dir},
   '^mapfile\\s*=.*', 'mapfile = ' . $conf->{ng_etc_dir} . '/map',
@@ -738,84 +826,198 @@ sub doinstall {
   '^stylesheet\\s*=.*', 'stylesheet = ' . $conf->{ng_css_url},
   '^logfile\\s*=.*', 'logfile = ' . $conf->{ng_log_file},
   '^cgilogfile\\s*=.*', 'cgilogfile = ' . $conf->{ng_cgilog_file},
-                    } ) if $doit;
-        writenagiosstub($conf->{ng_etc_dir} . q(/) . NAGIOS_STUB_FN, $conf);
-        writeapachestub($conf->{ng_etc_dir} . q(/) . APACHE_STUB_FN, $conf);
+                    }, $doit);
+        $fail |= writenagiosstub($conf->{ng_etc_dir} . q(/) . NAGIOS_STUB_FN,
+                                 $conf, $doit);
+        $fail |= writeapachestub($conf->{ng_etc_dir} . q(/) . APACHE_STUB_FN,
+                                 $conf, $doit);
     }
 
     if (defined $conf->{ng_cgi_dir}) {
         $dst = $conf->{ng_cgi_dir};
-        mkdir "$dst" if $doit;
+        $fail |= ng_mkdir($dst, $doit);
         my @files = getfiles('cgi', '.*.cgi');
         for my $f (@files) {
-            copy("cgi/$f", "$dst") if $doit;
-            replacetext("$dst/$f",
-                        { 'use lib \'/opt/nagiosgraph/etc\'' =>
-                              "use lib '$conf->{ng_etc_dir}'" } ) if $doit;
+            $fail |= ng_copy("cgi/$f", "$dst", $doit);
+            $fail |= replacetext("$dst/$f",
+                                 { 'use lib \'/opt/nagiosgraph/etc\'' =>
+                                       "use lib '$conf->{ng_etc_dir}'" },
+                                 $doit );
         }
     }
 
     if (defined $conf->{ng_bin_dir}) {
         $dst = $conf->{ng_bin_dir};
-        mkdir "$dst" if $doit;
-        copy('lib/insert.pl', "$dst") if $doit;
-        replacetext("$dst/insert.pl",
-                    { 'use lib \'/opt/nagiosgraph/etc\'' =>
-                          "use lib '$conf->{ng_etc_dir}'" } ) if $doit;
+        $fail |= ng_mkdir($dst, $doit);
+        $fail |= ng_copy('lib/insert.pl', "$dst", $doit);
+        $fail |= replacetext("$dst/insert.pl",
+                             { 'use lib \'/opt/nagiosgraph/etc\'' =>
+                                   "use lib '$conf->{ng_etc_dir}'" },
+                             $doit);
     }
 
     if (defined $conf->{ng_css_dir}) {
         $dst = $conf->{ng_css_dir};
-        mkdir "$dst" if $doit;
-        copy('share/nagiosgraph.css', "$dst") if $doit;
+        $fail |= ng_mkdir($dst, $doit);
+        $fail |= ng_copy('share/nagiosgraph.css', "$dst", $doit);
     }
 
     if (defined $conf->{ng_js_dir}) {
         $dst = $conf->{ng_js_dir};
-        mkdir "$dst" if $doit;
-        copy('share/nagiosgraph.js', "$dst") if $doit;
+        $fail |= ng_mkdir($dst, $doit);
+        $fail |= ng_copy('share/nagiosgraph.js', "$dst", $doit);
     }
 
     if (defined $conf->{ng_doc_dir}) {
         $dst = $conf->{ng_doc_dir};
-        mkdir "$dst" if $doit;
+        $fail |= ng_mkdir($dst, $doit);
         my @files = getfiles('examples', '^[^\.]');
         for my $f (@files) {
-            copy("examples/$f", "$dst") if $doit;
+            $fail |= ng_copy("examples/$f", "$dst", $doit);
         }
-        copy('share/action.gif', "$dst") if $doit;
-        copy('share/nagiosgraph.ssi', "$dst") if $doit;
-        copy('README', "$dst") if $doit;
-        copy('INSTALL', "$dst") if $doit;
-        copy('CHANGELOG', "$dst") if $doit;
-        copy('AUTHORS', "$dst") if $doit;
+        $fail |= ng_copy('share/action.gif', "$dst", $doit);
+        $fail |= ng_copy('share/nagiosgraph.ssi', "$dst", $doit);
+        $fail |= ng_copy('README', "$dst", $doit);
+        $fail |= ng_copy('INSTALL', "$dst", $doit);
+        $fail |= ng_copy('CHANGELOG', "$dst", $doit);
+        $fail |= ng_copy('AUTHORS', "$dst", $doit);
     }
 
     if (defined $conf->{ng_rrd_dir}) {
-        mkdir $conf->{ng_rrd_dir};
-        chmod DPERMS, $conf->{ng_rrd_dir};
-        chown $conf->{nagios_user}, $conf->{ng_rrd_dir};
+        $fail |= ng_mkdir($conf->{ng_rrd_dir}, $doit);
+        $fail |= ng_chmod(DPERMS, $conf->{ng_rrd_dir}, $doit);
+        $fail |= ng_chown($conf->{nagios_user}, '-', $conf->{ng_rrd_dir}, $doit);
     }
 
     if (defined $conf->{ng_log_file}) {
-        touch $conf->{ng_log_file};
-        chmod FPERMS, $conf->{ng_log_file};
-        chown $conf->{nagios_user}, $conf->{ng_log_file};
+        $fail |= ng_touch($conf->{ng_log_file}, $doit);
+        $fail |= ng_chmod(FPERMS, $conf->{ng_log_file}, $doit);
+        $fail |= ng_chown($conf->{nagios_user}, '-', $conf->{ng_log_file}, $doit);
     }
 
     if (defined $conf->{ng_cgilog_file}) {
-        touch $conf->{ng_cgilog_file};
-        chmod FPERMS, $conf->{ng_cgilog_file};
-        chown $conf->{www_user}, $conf->{ng_cgilog_file};
+        $fail |= ng_touch($conf->{ng_cgilog_file}, $doit);
+        $fail |= ng_chmod(FPERMS, $conf->{ng_cgilog_file}, $doit);
+        $fail |= ng_chown($conf->{www_user}, '-', $conf->{ng_cgilog_file}, $doit);
+    }
+
+    if (defined $conf->{modify_nagios_config} &&
+        isyes($conf->{modify_nagios_config})) {
+        $fail |= appendtofile($conf->{nagios_config_file}, "# nagiosgraph configuration\ninclude $conf->{ng_etc_dir}/" . NAGIOS_STUB_FN . "\n", $doit);
+    }
+
+    if (defined $conf->{modify_apache_config} &&
+        isyes($conf->{modify_apache_config})) {
+        $fail |= appendtofile($conf->{apache_config_file}, "# nagiosgraph configuration\ninclude $conf->{ng_etc_dir}/" . APACHE_STUB_FN . "\n", $doit);
     }
 
     return $fail;
+}
+
+sub isyes {
+    my ($s) = @_;
+    return $s =~ /^[Yy]$/ ? 1 : 0;
 }
 
 sub trimslashes {
     my ($path) = @_;
     while(length($path) > 1 && $path =~ /\/$/) { $path =~ s/\/$//; }
     return $path;
+}
+
+sub ng_mkdir {
+    my ($a, $doit) = @_;
+    $doit = 1 if !defined $doit;
+    my $rc = 0;
+    logmsg("mkdir $a");
+    if ($doit) {
+        make_path($a, {error => \my $err});
+        if (@$err) {
+            logmsg("cannot create directory $a: $!");
+            $rc = 1;
+        }
+    }
+    return $rc;
+}
+
+# return 0 on success, 1 on failure.  this is the opposite of what copy does.
+sub ng_copy {
+    my ($a, $b, $doit) = @_;
+    $doit = 1 if !defined $doit;
+    my $rc = 1;
+    logmsg("copy $a\n  to $b");
+    $rc = copy($a, $b) if $doit;
+    if ($rc == 0) {
+        logmsg("cannot copy $a to $b: $!");
+    }
+    return ! $rc;
+}
+
+# return 0 on success, 1 on failure.  this is the opposite of what move does.
+sub ng_move {
+    my ($a, $b, $doit) = @_;
+    $doit = 1 if !defined $doit;
+    my $rc = 1;
+    logmsg("move $a\n  to $b");
+    $rc = move($a, $b) if $doit;
+    if ($rc == 0) {
+        logmsg("cannot rename $a to $b: $!");
+    }
+    return ! $rc;
+}
+
+# return 0 on success, 1 on failure.
+sub ng_chmod {
+    my ($perms, $a, $doit) = @_;
+    $doit = 1 if !defined $doit;
+    my $rc = 1;
+    logmsg(sprintf "chmod %o on %s", $perms, $a);
+    $rc = chmod $perms, $a if $doit;
+    if ($rc == 0) {
+        logmsg("cannot chmod on $a: $!");
+    }
+    return $rc == 0 ? 1 : 0;
+}
+
+sub ng_chown {
+    my ($uname, $gname, $a, $doit) = @_;
+    $doit = 1 if !defined $doit;
+    my $rc = 1;
+    my $uid = $uname eq '-' ? -1 : getpwnam $uname;
+    my $gid = $gname eq '-' ? -1 : getgrnam $gname;
+    logmsg("chown $uname,$gname on $a");
+    if (! defined $uid || ! defined $gid) {
+        if (! defined $uid) {
+            logmsg("no such user $uname");
+        }
+        if (! defined $gid) {
+            logmsg("no such group $gname");
+        }
+        return 1;
+    }
+    $rc = chown $uid, $gid, $a if $doit;
+    if ($rc == 0) {
+        logmsg("cannot chown on $a: $!");
+    }
+    return $rc == 0 ? 1 : 0;
+}
+
+sub ng_touch {
+    my ($fn, $doit) = @_;
+    $doit = 1 if !defined $doit;
+    logmsg("touching $fn");
+    return 0 if !$doit;
+
+    if (open my $FILE, '>>', $fn) {
+        if (! close $FILE) {
+            logmsg("cannot close $fn: $!");
+            $fail = 1;
+        }
+    } else {
+        logmsg("cannot create $fn: $!");
+        $fail = 1;
+    }
+    return $fail;
 }
 
 
@@ -841,7 +1043,7 @@ script will run with no intervention required.
 
 B<install.pl> [--version]
    (--check-prereq |
-    --check-config |
+    --check-installation |
     --install [--dry-run]
               [--verbose | --silent]
               [--layout (overlay | standalone | custom)]
@@ -863,7 +1065,7 @@ B<--dry-run>        Report what would happen, but do not do it.
 
 B<--check-prereq>   Report which prerequisites are missing.
 
-B<--check-config>   Check the configuration.
+B<--check-installation>   Check the installation.
 
 B<--verbose>        Emit messages about what is happening.
 
