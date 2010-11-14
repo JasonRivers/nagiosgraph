@@ -278,9 +278,9 @@ sub checkng {
 
     print '<table>' . "\n";
     checkngconf(\@failures);
-    checkdir('rrddir', 'rrd dir', \@failures);
+    checkdir('rrddir', 'RRD directory', \@failures);
     checkfile('logfile', 'log file', \@failures);
-    checkfile('cgilogfile', 'cgi log file', \@failures, 1);
+    checkfile('cgilogfile', 'CGI log file', \@failures, 1);
 # TODO: check for read/write access by nagios user
     checkmaprules(\@failures);
     print '</table>' . "\n";
@@ -335,8 +335,8 @@ sub dumpfiles {
 }
 
 sub dumpdirs {
-    dumpdir($INC[0],'contents of config dir');
-    dumpdir($ngshared::Config{'rrddir'},'contents of RRD dir');
+    dumpdir($INC[0],'contents of config directory');
+    dumpdir($ngshared::Config{'rrddir'},'contents of RRD directory');
     return;
 }
 
@@ -367,6 +367,7 @@ sub dumpfile {
     return;
 }
 
+# FIXME: do the recursive listing in pure perl
 sub dumpdir {
     my ($dir, $desc) = @_;
     print '<div>';
@@ -454,7 +455,11 @@ B<showconfig.cgi>
 
 =head1 REQUIRED ARGUMENTS
 
+None.
+
 =head1 OPTIONS
+
+None.
 
 =head1 EXIT STATUS
 
@@ -462,7 +467,8 @@ B<showconfig.cgi>
 
 =head1 CONFIGURATION
 
-The B<nagiosgraph.conf> file controls the behavior of this script.
+This script refers to the nagiosgraph library B<ngshared.pm> and the
+nagiosgraph configuration file B<nagiosgraph.conf>.
 
 =head1 DEPENDENCIES
 
@@ -481,10 +487,9 @@ Edit B<nagiosgraph.conf> as needed.
 
 =head1 INCOMPATIBILITIES
 
-=head1 BUGS AND LIMITATIONS
+None.
 
-We would prefer to have run-time rather than compile-time checking of the
-ngshared module so that this script would have external dependencies.
+=head1 BUGS AND LIMITATIONS
 
 The exports for ngshared need to be cleaned up so that it is a proper module.
 

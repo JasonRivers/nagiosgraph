@@ -9,7 +9,6 @@
 # will prompt for all the information needed to do an install.  Specify one
 # or more environment variables to do automated or unattended installations.
 
-## no critic (ProhibitExcessMainComplexity)
 ## no critic (ProhibitCascadingIfElse)
 ## no critic (ProhibitPostfixControls)
 ## no critic (RequireBriefOpen)
@@ -235,7 +234,10 @@ while ($ARGV[0]) {
     }
 }
 
+my $LOG;
+open $LOG, '>', LOG_FN || print 'cannot write to log file ' . LOG_FN . "\n";
 my $fail = 0;
+
 if($action eq 'check-prereq') {
     $fail |= checkprereq();
 } elsif($action eq 'check-installation') {
@@ -250,14 +252,18 @@ if($action eq 'check-prereq') {
         exit EXIT_FAIL;
     }
     printconfig(\%conf);
-    my $confirm = getanswer('Continue with this configuration', 'y');
-    if ($confirm !~ /y/) {
-        logmsg('installation aborted');
-        exit EXIT_OK;
+    if (! isyes($conf{automated})) {
+        my $confirm = getanswer('Continue with this configuration', 'y');
+        if ($confirm !~ /y/) {
+            logmsg('installation aborted');
+            exit EXIT_OK;
+        }
     }
     $fail |= writeconfigcache(\%conf);
     $fail |= doinstall(\%conf, $doit);
-    printinstructions(\%conf);
+    if (! isyes($conf{automated})) {
+        printinstructions(\%conf);
+    }
 }
 
 if ($fail) {
@@ -266,6 +272,8 @@ if ($fail) {
     logmsg(q());
     exit EXIT_FAIL;
 }
+
+close $LOG;
 
 exit EXIT_OK;
 
@@ -277,6 +285,10 @@ sub logmsg {
     my ($msg) = @_;
     if ($verbose) {
         print $msg . "\n";
+    }
+    if (${LOG}) {
+        my $ts = strftime '%H:%M %d.%m.%Y', localtime time;
+        print ${LOG} "[$ts] $msg\n";
     }
     return;
 }
@@ -359,7 +371,7 @@ sub appendtofile {
     if (ng_copy($ifn, $ofn)) {
         return 1;
     }
-    my $ts = strftime '%Y.%m.%d', localtime time;
+    my $ts = strftime '%Y.%m.%d.%H.%M', localtime time;
     my $fail = 0;
     if (open my $FILE, '>>', $ofn) {
         print ${FILE} "\n$txt\n";
@@ -409,7 +421,8 @@ sub getconfig {
     my ($conf) = @_;
     my $fail = 0;
 
-    if (readconfigenv($conf) > 0) {
+    if (readconfigenv($conf) > 0) { 
+        $conf->{automated} = 'y';
         return 0;
     }
 
@@ -486,6 +499,7 @@ sub readconfigpresets {
                     $conf->{$ii} = $p->{$ii};
                 }
             }
+            last;
         }
     }
     return 0;
@@ -494,6 +508,10 @@ sub readconfigpresets {
 sub readconfigenv {
     my ($conf) = @_;
     my $cnt = 0;
+    if ($ENV{NG_LAYOUT}) {
+        $conf->{ng_layout} = $ENV{NG_LAYOUT};
+        $cnt += 1;
+    }
     foreach my $ii (@CONF) {
         my $name = mkenvname($ii->{conf});
         if ($ENV{$name}) {
@@ -501,6 +519,22 @@ sub readconfigenv {
             $cnt += 1;
         }
     }
+    return 0 if $cnt == 0;
+    $conf->{modify_nagios_config} = 'n';
+    $conf->{modify_apache_config} = 'n';
+    readconfigpresets($conf);
+    foreach my $ii (@CONF) {
+        my $def = defined $conf->{$ii->{conf}} ?
+            $conf->{$ii->{conf}} :
+            defined $ii->{def} ? $ii->{def} : q();
+        if ($def ne q() &&
+            defined $ii->{parent} &&
+            defined $conf->{$ii->{parent}}) {
+            $def = prependpath($conf->{$ii->{parent}}, $def);
+        }
+        $conf->{$ii->{conf}} = $def;
+    }
+
     return $cnt;
 }
 
@@ -523,10 +557,9 @@ sub mkenvname {
 
 sub printconfig {
     my ($conf) = @_;
-    print 'configuration:' . "\n";
+    logmsg('configuration:');
     foreach my $ii (@CONFKEYS) {
-        print sprintf '  %-20s %s', $ii, defined $conf->{$ii} ? $conf->{$ii} : q();
-        print "\n";
+        logmsg(sprintf '  %-20s %s', $ii, defined $conf->{$ii} ? $conf->{$ii} : q());
     }
     return;
 }
@@ -897,7 +930,7 @@ sub doinstall {
 
 sub isyes {
     my ($s) = @_;
-    return $s =~ /^[Yy]$/ ? 1 : 0;
+    return defined $s && $s =~ /^[Yy]$/ ? 1 : 0;
 }
 
 sub trimslashes {
@@ -926,7 +959,7 @@ sub ng_copy {
     my ($a, $b, $doit) = @_;
     $doit = 1 if !defined $doit;
     my $rc = 1;
-    logmsg("copy $a\n  to $b");
+    logmsg("copy $a to $b");
     $rc = copy($a, $b) if $doit;
     if ($rc == 0) {
         logmsg("cannot copy $a to $b: $!");
@@ -939,7 +972,7 @@ sub ng_move {
     my ($a, $b, $doit) = @_;
     $doit = 1 if !defined $doit;
     my $rc = 1;
-    logmsg("move $a\n  to $b");
+    logmsg("move $a to $b");
     $rc = move($a, $b) if $doit;
     if ($rc == 0) {
         logmsg("cannot rename $a to $b: $!");
@@ -1019,6 +1052,10 @@ When run interactively, this script will prompt for the information it needs.
 When environment variables are configured with installation information, this
 script will run with no intervention required.
 
+The configuration is saved to a file called install-cache.
+
+A log of the installation process is saved to a file called install-log.
+
 =head1 USAGE
 
 B<install.pl> [--version]
@@ -1076,7 +1113,7 @@ these environment variables:
 
   NG_LAYOUT               - standalone or overlay
   NG_DEST_DIR             - the root directory for the installation
-  NG_NAGIOS_CGIURL        - URL to Nagios CGI scripts
+  NG_NAGIOS_CGI_URL       - URL to Nagios CGI scripts
   NG_NAGIOS_PERFDATA_FILE - path to Nagios perfdata file
   NG_NAGIOS_USER          - Nagios user
   NG_WWW_USER             - web server user
@@ -1103,8 +1140,6 @@ The following options must be specified:
 
   dest_dir
 
-All other options have default values.
-
 =head1 CONFIGURATION
 
 Nagiosgraph requires the following pre-requisites:
@@ -1116,8 +1151,13 @@ Nagiosgraph requires the following pre-requisites:
   RRAs perl module
   GD perl module (optional)
 
-Nagiosgraph requires the following information for installation:
+There are two standard layouts: overlay and standalone.  The overlay puts
+nagiosgraph files into a Nagios installation.  The standalone puts nagiosgraph
+files into a separate directory tree.
 
+Nagiosgraph uses the following information for installation:
+
+  ng_layout            - standalone, overlay, or custom
   ng_dest_dir          - directory for nagiosgraph files
   ng_etc_dir           - directory for configuration files
   ng_bin_dir           - directory for executables
@@ -1136,52 +1176,49 @@ Nagiosgraph requires the following information for installation:
   www_user             - Apache user
 
   configure nagios?    - whether to configure Nagios
-  processing_mode      - batch or immediate
-  n_cfg_file           - path to nagios config file
-  n_commands_cfg_file  - path to nagios commands file
+  nagios_config_file   - path to nagios config file
 
   configure apache?    - whether to configure Apache
-  apache_cfg           - path to apache config file
+  apache_config_file   - path to apache config file
 
 In some cases these can be inferred from the configuration.  In other cases
 they must be specified explicitly.
 
-There are two standard layouts: overlay and standalone.  The overlay puts
-nagiosgraph files into a Nagios installation.  The standalone puts nagiosgraph
-files into a separate directory tree.  Use the names of nagiosgraph components
-to create custom layouts.
+The minimal set of parameters which must be specified are:
+
+  ng_layout
+  ng_dest_dir
+  nagios_cgi_url
+  nagios_perfdata_file
+  nagios_user
+  www_user
+
+The default values are:
+
+  ng_layout              standalone
+  ng_dest_dir            /usr/local/nagiosgraph
+  nagios_cgi_url         /nagios/cgi-bin
+  nagios_perfdata_file   /var/nagios/perfdata.log
+  nagios_user            nagios
+  www_user               www-data
 
 The default values for an overlay installation to /opt/nagios are:
 
   ng_dest_dir /opt/nagios
-  ng_etc_dir /opt/nagios/etc/nagiosgraph
-  ng_bin_dir /opt/nagios/libexec
-  ng_cgi_dir /opt/nagios/sbin
-  ng_doc_dir /opt/nagios/share/docs
-  ng_www_dir /opt/nagios/share
+  ng_etc_dir  /opt/nagios/etc/nagiosgraph
+  ng_bin_dir  /opt/nagios/libexec
+  ng_cgi_dir  /opt/nagios/sbin
+  ng_doc_dir  /opt/nagios/share/docs
+  ng_www_dir  /opt/nagios/share
 
 The default values for a standalone installation to /opt/nagiosgraph are:
 
   ng_dest_dir /opt/nagiosgraph
-  ng_etc_dir /opt/nagiosgraph/etc
-  ng_bin_dir /opt/nagiosgraph/bin
-  ng_cgi_dir /opt/nagiosgraph/cgi
-  ng_doc_dir /opt/nagiosgraph/doc
-  ng_www_dir /opt/nagiosgraph/share
-
-Log files, userids, and URLs must also be specified.  These depend on system
-configuration, nagios configuration, and web server configuration.  Here are
-the default values:
-
-  ng_log_file /var/nagiosgraph/nagiosgraph.log
-  ng_cgilog_file /var/nagiosgraph/nagiosgraph-cgi.log
-  ng_rrd_dir /var/nagiosgraph/rrd
-  ng_css_url /nagiosgraph/nagiosgraph.css
-  ng_js_url /nagiosgraph/nagiosgraph.js
-  nagios_cgi_url /nagios/cgi-bin
-  nagios_perfdata_file /var/nagios/perfdata.log
-  nagios_user nagios
-  www_user www-data
+  ng_etc_dir  /opt/nagiosgraph/etc
+  ng_bin_dir  /opt/nagiosgraph/bin
+  ng_cgi_dir  /opt/nagiosgraph/cgi
+  ng_doc_dir  /opt/nagiosgraph/doc
+  ng_www_dir  /opt/nagiosgraph/share
 
 =head1 EXAMPLES
 

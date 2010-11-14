@@ -1143,8 +1143,9 @@ easier.
 
   You can preview the perldoc by doing the following:
 
-    PERL5LIB=nagiosgraph/cgi perldoc show.cgi
-    PERL5LIB=nagiosgraph/etc perldoc ngshared
+    perldoc install.pl
+    perldoc cgi/show.cgi
+    perldoc etc/ngshared.pm
 
 As of 30oct2010, the codebase for nagiosgraph looks like this:
 

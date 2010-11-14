@@ -1,3 +1,4 @@
 [-Modules::RequireVersionVar]
 [-Documentation::PodSpelling]
 [-CodeLayout::RequireTidyCode]
+[-Modules::ProhibitExcessMainComplexity]
