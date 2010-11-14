@@ -5,22 +5,22 @@
 # Author:  (c) 2008 Alan Brenner, Ithaka Harbors
 # Author:  (c) 2010 Matthew Wall
 
-# If you run this script manually it will prompt for all the information needed
-# to do an install.  To do automated or unattended installations, set the
-# environment variables.
+# Installation script for nagiosgraph.  If you run this script manually it
+# will prompt for all the information needed to do an install.  Specify one
+# or more environment variables to do automated or unattended installations.
 
 ## no critic (ProhibitExcessMainComplexity)
-## no critic (ProhibitExcessComplexity)
 ## no critic (ProhibitCascadingIfElse)
 ## no critic (ProhibitPostfixControls)
 ## no critic (RequireBriefOpen)
 ## no critic (RequireCheckedSyscalls)
 ## no critic (RegularExpressions)
 ## no critic (ProhibitConstantPragma)
+## no critic (ProhibitMagicNumbers)
 
 use English qw(-no_match_vars);
 use File::Copy qw(copy move);
-use File::Path qw(make_path);
+use File::Path qw(mkpath);
 use POSIX qw(strftime);
 use strict;
 use warnings;
@@ -30,17 +30,15 @@ $VERSION = '1.0';
 
 use constant EXIT_FAIL => 1;
 use constant EXIT_OK => 0;
-use constant DPERMS => 0755;
-use constant FPERMS => 0644;
-use constant CACHE_FN => '.install-cache';
+use constant DPERMS => oct 755;
+use constant FPERMS => oct 644;
+use constant CACHE_FN => 'install-cache';
+use constant LOG_FN => 'install-log';
 use constant NAGIOS_STUB_FN => 'nagiosgraph-nagios.cfg';
 use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
 
 # put the keys in a specific order to make it easier to see where things go
 my @CONFKEYS = qw(ng_layout ng_dest_dir ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file modify_apache_config apache_config_file);
-
-# these keys can be specified via command line
-my @CMDKEYS = qw(ng_layout ng_dest_dir ng_var_dir ng_etc_dir nagios_cgi_url nagios_perfdata_file nagios_user www_user);
 
 my @PRESETS = (
     { ng_layout => 'standalone',
@@ -111,38 +109,48 @@ my @PRESETS = (
     );
 
 my @CONF =
-    ( { conf => 'ng_layout',
-        msg => 'Type of layout (standalone, overlay, or custom)',
-        def => 'standalone' },
-      { conf => 'ng_dest_dir',
+    ( { conf => 'ng_dest_dir',
         msg => 'Destination directory',
         def => '/usr/local/nagiosgraph' },
       { conf => 'ng_etc_dir',
-        msg => 'Location of configuration files' },
+        msg => 'Location of configuration files',
+        parent => 'ng_dest_dir' },
       { conf => 'ng_bin_dir',
-        msg => 'Location of executables' },
+        msg => 'Location of executables',
+        parent => 'ng_dest_dir' },
       { conf => 'ng_cgi_dir',
-        msg => 'Location of CGI scripts' },
+        msg => 'Location of CGI scripts',
+        parent => 'ng_dest_dir' },
       { conf => 'ng_doc_dir',
-        msg => 'Location of documentation and examples' },
+        msg => 'Location of documentation and examples',
+        parent => 'ng_dest_dir' },
       { conf => 'ng_www_dir',
-        msg => 'Location of CSS and JavaScript files' },
+        msg => 'Location of CSS and JavaScript files',
+        parent => 'ng_dest_dir' },
       { conf => 'ng_util_dir',
-        msg => 'Location of utilities' },
+        msg => 'Location of utilities',
+        parent => 'ng_dest_dir' },
       { conf => 'ng_var_dir',
-        msg => 'Location of RRD and log files' },
+        msg => 'Location of RRD and log files',
+        parent => 'ng_dest_dir' },
       { conf => 'ng_rrd_dir',
-        msg => 'Location of RRD files' },
+        msg => 'Location of RRD files',
+        parent => 'ng_var_dir' },
       { conf => 'ng_log_file',
-        msg => 'Path of log file' },
+        msg => 'Path of log file',
+        parent => 'ng_var_dir' },
       { conf => 'ng_cgilog_file',
-        msg => 'Path of CGI log file' },
+        msg => 'Path of CGI log file',
+        parent => 'ng_var_dir' },
       { conf => 'ng_cgi_url',
-        msg => 'URL of CGI scripts' },
+        msg => 'URL of CGI scripts',
+        parent => 'ng_url' },
       { conf => 'ng_css_url',
-        msg => 'URL of CSS file' },
+        msg => 'URL of CSS file',
+        parent => 'ng_url' },
       { conf => 'ng_js_url',
-        msg => 'URL of JavaScript file' },
+        msg => 'URL of JavaScript file',
+        parent => 'ng_url' },
       { conf => 'nagios_perfdata_file',
         msg => 'Nagios performance data file',
         def => '/var/nagios/perfdata.log' },
@@ -157,16 +165,10 @@ my @CONF =
         def => 'www-data' },
     );
 
-my %DIRDEPS =
-    ( ng_dest_dir => [qw(ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_www_dir ng_util_dir ng_var_dir)],
-      ng_url => [qw(ng_cgi_url ng_css_url ng_js_url)],
-      ng_var_dir => [qw(ng_rrd_dir ng_log_file ng_cgilog_file)],
-      );
-
 my $verbose = 1;
 my $doit = 1;
 my $action = 'install';
-my %conf;
+my %conf = qw(ng_layout standalone ng_dest_dir /usr/local/nagiosgraph);
 
 while ($ARGV[0]) {
     my $arg = shift;
@@ -177,6 +179,10 @@ while ($ARGV[0]) {
         $action = 'install';
     } elsif ($arg eq '--dry-run') {
         $doit = 0;
+    } elsif ($arg eq '--silent') {
+        $verbose = 0;
+    } elsif ($arg eq '--verbose') {
+        $verbose = 1;
     } elsif ($arg eq '--check-installation') {
         $action = 'check-installation';
     } elsif ($arg eq '--check-prereq') {
@@ -234,10 +240,15 @@ if($action eq 'check-prereq') {
     $fail |= checkprereq();
 } elsif($action eq 'check-installation') {
     $fail |= getconfig(\%conf);
+    $fail |= checkconfig(\%conf);
     $fail |= checkinstallation(\%conf);
 } elsif($action eq 'install') {
     $fail |= checkprereq();
     $fail |= getconfig(\%conf);
+    if (checkconfig(\%conf)) {
+        logmsg('*** one or more missing configuration parameters!');
+        exit EXIT_FAIL;
+    }
     printconfig(\%conf);
     my $confirm = getanswer('Continue with this configuration', 'y');
     if ($confirm !~ /y/) {
@@ -306,7 +317,7 @@ sub writeconfigcache {
     logmsg('saving configuration cache');
     my $fn = CACHE_FN;
     my $fail = 0;
-    my $ts = strftime '%Y.%m.%d', localtime time;
+    my $ts = strftime '%H:%M %d.%m.%Y', localtime time;
     if (open my $FH, '>', $fn) {
         print ${FH} "# nagiosgraph installation configuration\n";
         print ${FH} "# $ts\n";
@@ -353,7 +364,7 @@ sub appendtofile {
     if (open my $FILE, '>>', $ofn) {
         print ${FILE} "\n$txt\n";
         if (close $FILE) {
-            my $bak = $ifn . '-' . $ts;
+            my $bak = $ifn . q(-) . $ts;
             if (ng_move($ifn, $bak) || ng_move($ofn, $ifn)) {
                 $fail = 1;
             }
@@ -375,144 +386,122 @@ sub prependpath {
         : $pfx . ($pfx !~ /\/$/ ? q(/) : q()) . $path;
 }
 
-# look for a value in the environment, fallback to a default.
-sub getdefault {
-    my ($conf, $key) = @_;
-    if (! defined $conf->{$key}) {
-        my $envname = mkenvname($key);
-        if ($ENV{$envname}) {
-            $conf->{$key} = $ENV{$envname};
-        }
-    }
-    if (! defined $conf->{$key}){
-        foreach my $ii (@CONF) {
-            if ($ii->{conf} eq $key && defined $ii->{def}) {
-                $conf->{$key} = $ii->{def};
+sub checkconfig {
+    my ($conf) = @_;
+    my $missing = 0;
+    foreach my $ii (@CONFKEYS) {
+        if (! defined $conf->{$ii}) {
+            if (($ii eq 'nagios_config_file' &&
+                 ! isyes($conf->{modify_nagios_config})) ||
+                ($ii eq 'apache_config_file' &&
+                 ! isyes($conf->{modify_apache_config}))) {
+                next;
+            } else {
+                logmsg('parameter ' . $ii . ' is not defined');
+                $missing = 1;
             }
         }
     }
-    return;
+    return $missing;
 }
 
-sub getdefaults {
-    my ($conf, @keys) = @_;
-    foreach my $key (@keys) {
-        getdefault($conf, $key);
-    }
-    return;
-}
-
-# get a configuration.  this is the order in which variables are used:
-#
-#   mechanism          which variables are possible
-#
-#   command line       layout, destdir, vardir, etcdir
-#   install-cache      anything
-#   environment        anything
-#   preset             everything
-#
-# if none of those give us something useful, then we prompt.
-# some of the variables can be dependent on others.  for example, stuff that
-# goes in the var directory depends on the var directory, but it can also be
-# specified independently of any var directory.
 sub getconfig {
     my ($conf) = @_;
+    my $fail = 0;
 
-    getdefaults($conf, @CMDKEYS);
-
-    # if we have a pre-defined configuration, use it.
-    foreach my $ii (@PRESETS) {
-        if ($ii->{ng_layout} ne $conf->{ng_layout}) {
-            next;
-        }
-        if (defined $ii->{ng_dest_dir} &&
-            $ii->{ng_dest_dir} ne $conf->{ng_dest_dir}) {
-            next;
-        }
-        if (! defined $conf->{ng_var_dir}) {
-            $conf->{ng_var_dir} = prependpath($conf->{ng_dest_dir},
-                                              $ii->{ng_var_dir});
-        }
-        $conf->{ng_url} = $ii->{ng_url};
-        foreach my $jj (@CONF) {
-            if ($jj->{conf} eq 'ng_etc_dir' &&
-                ! defined $conf->{$jj->{conf}}) {
-                $conf->{$jj->{conf}} = prependpath($conf->{ng_dest_dir},
-                                                   $ii->{$jj->{conf}});
-                next;
-            }
-            foreach my $supdir (keys %DIRDEPS) {
-                foreach my $dir (@{$DIRDEPS{$supdir}}) {
-                    if ($jj->{conf} eq $dir) {
-                        $conf->{$jj->{conf}} = prependpath($conf->{$supdir},
-                                                           $ii->{$jj->{conf}});
-                        next;
-                    }
-                }
-            }
-            if (! defined $conf->{$jj->{conf}}) {
-                $conf->{$jj->{conf}} = $ii->{$jj->{conf}};
-            }
-        }
+    if (readconfigenv($conf) > 0) {
+        return 0;
     }
 
-    # get anything else we can from the environment variables
-    foreach my $ii (@CONF) {
-        my $iscmd = 0;
-        foreach my $jj (@CMDKEYS) {
-            if ($ii->{conf} eq $jj) {
-                $iscmd = 1;
-            }
-        }
-        if (! $iscmd) {
-            my $vname = mkenvname($ii->{conf});
-            if ($ENV{$vname}) {
-                $conf->{$ii->{conf}} = $ENV{$vname};
-            }
-        }
+    if (readconfigcache($conf) != 0) {
+        readconfigpresets($conf);
     }
 
-    # get the hard-coded defaults, only if not set already
-    foreach my $ii (@CONF) {
-        if (! defined $conf->{$ii->{conf}} && defined $ii->{def}) {
-            $conf->{$ii->{conf}} = $ii->{def};
-        }
+    if (! defined $conf->{nagios_perfdata_file}) {
+        $conf->{nagios_perfdata_file} = findfile('perfdata.log', qw(/var/nagios /var/spool/nagios));
+    }
+    
+    if (! defined $conf->{nagios_user}) {
+        $conf->{nagios_user} = finduser(qw(nagios));
+    }
+    
+    if (! defined $conf->{www_user}) {
+        $conf->{www_user} = finduser(qw(www-data www apache));
     }
 
-    # if there is a cache from a previous installation, try to use it
-    readconfigcache(\%conf);
-
-    # prompt for anything we do not yet know
+    # prompt for each item in the configuration
     foreach my $ii (@CONF) {
-        if (! defined $conf->{$ii->{conf}}) {
-            $conf->{$ii->{conf}} = getanswer($ii->{msg}, $conf->{$ii->{conf}});
+        my $def = defined $conf->{$ii->{conf}} ?
+            $conf->{$ii->{conf}} :
+            defined $ii->{def} ? $ii->{def} : q();
+        if ($def ne q() &&
+            defined $ii->{parent} &&
+            defined $conf->{$ii->{parent}}) {
+            $def = prependpath($conf->{$ii->{parent}}, $def);
         }
+        $conf->{$ii->{conf}} = getanswer($ii->{msg}, $def);
     }
 
     # find out if we should modify the nagios configuration
-    my $dfltfile = defined $conf->{nagios_config_file} ?
-        $conf->{nagios_config_file} :
-        findfile('nagios.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc));
-    $conf->{modify_nagios_config} = 
+    $conf->{modify_nagios_config} =
         getanswer('Modify the Nagios configuration file', 'n');
     if (isyes($conf->{modify_nagios_config})) {
+        my $dfltfile = defined $conf->{nagios_config_file} ?
+            $conf->{nagios_config_file} : q();
+        if ($dfltfile eq q()) {
+            $dfltfile = findfile('nagios.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc));
+        }
         $conf->{nagios_config_file} =
-            getanswer('Nagios configuration file', $dfltfile);
-
+            getanswer('Path of Nagios configuration file', $dfltfile);
     }
 
     # find out if we should modify the apache configuration
-    $dfltfile = defined $conf->{apache_config_file} ?
-        $conf->{apache_config_file} :
-        findfile('httpd.conf', qw(/etc/apache2/conf /usr/local/apache2/conf /opt/apache2/conf /usr/local/httpd/conf /opt/httpd/conf));
     $conf->{modify_apache_config} =
         getanswer('Modify the Apache configuration file', 'n');
     if (isyes($conf->{modify_apache_config})) {
-        $conf->{apache_config_file} = 
-            getanswer('Apache configuration file', $dfltfile);
+        my $dfltfile = defined $conf->{apache_config_file} ?
+            $conf->{apache_config_file} : q();
+        if ($dfltfile eq q()) {
+            $dfltfile = findfile('apache2.conf', qw(/etc/apache2 /usr/local/apache2 /opt/apache2 /usr/local/httpd /opt/httpd));
+        }
+        if ($dfltfile eq q()) {
+            $dfltfile = findfile('httpd.conf', qw(/etc/apache2/conf /usr/local/apache2/conf /opt/apache2/conf /usr/local/httpd/conf /opt/httpd/conf));
+        }
+        $conf->{apache_config_file} =
+            getanswer('Path of Apache configuration file', $dfltfile);
     }
 
     return $fail;
+}
+
+sub readconfigpresets {
+    my ($conf) = @_;
+    foreach my $p (@PRESETS) {
+        if (defined $conf->{ng_layout} &&
+            $conf->{ng_layout} eq $p->{ng_layout} &&
+            (! defined $p->{ng_dest_dir} ||
+             $p->{ng_dest_dir} eq $conf->{ng_dest_dir})) {
+            foreach my $ii (keys %{$p}) {
+                if (! defined $conf->{$ii}) {
+                    $conf->{$ii} = $p->{$ii};
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+sub readconfigenv {
+    my ($conf) = @_;
+    my $cnt = 0;
+    foreach my $ii (@CONF) {
+        my $name = mkenvname($ii->{conf});
+        if ($ENV{$name}) {
+            $conf->{$ii->{conf}} = $ENV{$name};
+            $cnt += 1;
+        }
+    }
+    return $cnt;
 }
 
 sub envvars {
@@ -534,30 +523,12 @@ sub mkenvname {
 
 sub printconfig {
     my ($conf) = @_;
-    logmsg('environment:');
-    my $found = 0;
-    foreach my $v (envvars()) {
-        if (defined $ENV{$v}) {
-            $found = 1;
-            logmsg("  $v=" . $ENV{$v});
-        }
-    }
-    if (! $found) {
-        logmsg('  no relevant environment variables are set');
-    }
-    logmsg('configuration:');
+    print 'configuration:' . "\n";
     foreach my $ii (@CONFKEYS) {
-        logmsg(sprintf '  %-20s %s', $ii, defined $conf->{$ii} ? $conf->{$ii} : q());
+        print sprintf '  %-20s %s', $ii, defined $conf->{$ii} ? $conf->{$ii} : q();
+        print "\n";
     }
     return;
-}
-
-sub checkconfig {
-    my ($conf) = @_;
-
-# FIXME: check the configuration
-
-    return 0;
 }
 
 # check pre-requisites.  return 0 if everything is ok, 1 otherwise.
@@ -643,17 +614,31 @@ sub checkexec {
     return $found;
 }
 
+# FIXME: ensure that rrdtool works
+# FIXME: check nagios perfdata configuration
+# FIXME: check permissions on log files
+# FIXME: check permissions on rrd directory
+# FIXME: check map file syntax
 sub checkinstallation {
     my ($conf) = @_;
 
-# TODO: check installation
+    return 0;
+}
 
-    return;
+sub finduser {
+    my @users = @_;
+    foreach my $u (@users) {
+        my $uid = getpwnam $u;
+        if (defined $uid) {
+            return $u;
+        }
+    }
+    return $users[0];
 }
 
 sub findfile {
     my ($fn, @dirs) = @_;
-    my $path;
+    my $path = q();
     foreach my $dir (@dirs) {
         if (-f "$dir/$fn") {
             $path = "$dir/$fn";
@@ -882,19 +867,19 @@ sub doinstall {
     if (defined $conf->{ng_rrd_dir}) {
         $fail |= ng_mkdir($conf->{ng_rrd_dir}, $doit);
         $fail |= ng_chmod(DPERMS, $conf->{ng_rrd_dir}, $doit);
-        $fail |= ng_chown($conf->{nagios_user}, '-', $conf->{ng_rrd_dir}, $doit);
+        $fail |= ng_chown($conf->{nagios_user}, q(-), $conf->{ng_rrd_dir}, $doit);
     }
 
     if (defined $conf->{ng_log_file}) {
         $fail |= ng_touch($conf->{ng_log_file}, $doit);
         $fail |= ng_chmod(FPERMS, $conf->{ng_log_file}, $doit);
-        $fail |= ng_chown($conf->{nagios_user}, '-', $conf->{ng_log_file}, $doit);
+        $fail |= ng_chown($conf->{nagios_user}, q(-), $conf->{ng_log_file}, $doit);
     }
 
     if (defined $conf->{ng_cgilog_file}) {
         $fail |= ng_touch($conf->{ng_cgilog_file}, $doit);
         $fail |= ng_chmod(FPERMS, $conf->{ng_cgilog_file}, $doit);
-        $fail |= ng_chown($conf->{www_user}, '-', $conf->{ng_cgilog_file}, $doit);
+        $fail |= ng_chown($conf->{www_user}, q(-), $conf->{ng_cgilog_file}, $doit);
     }
 
     if (defined $conf->{modify_nagios_config} &&
@@ -927,8 +912,8 @@ sub ng_mkdir {
     my $rc = 0;
     logmsg("mkdir $a");
     if ($doit) {
-        make_path($a, {error => \my $err});
-        if (@$err) {
+        mkpath($a, {error => \my $err});
+        if (@{$err}) {
             logmsg("cannot create directory $a: $!");
             $rc = 1;
         }
@@ -967,7 +952,7 @@ sub ng_chmod {
     my ($perms, $a, $doit) = @_;
     $doit = 1 if !defined $doit;
     my $rc = 1;
-    logmsg(sprintf "chmod %o on %s", $perms, $a);
+    logmsg(sprintf 'chmod %o on %s', $perms, $a);
     $rc = chmod $perms, $a if $doit;
     if ($rc == 0) {
         logmsg("cannot chmod on $a: $!");
@@ -979,8 +964,8 @@ sub ng_chown {
     my ($uname, $gname, $a, $doit) = @_;
     $doit = 1 if !defined $doit;
     my $rc = 1;
-    my $uid = $uname eq '-' ? -1 : getpwnam $uname;
-    my $gid = $gname eq '-' ? -1 : getgrnam $gname;
+    my $uid = $uname eq q(-) ? -1 : getpwnam $uname;
+    my $gid = $gname eq q(-) ? -1 : getgrnam $gname;
     logmsg("chown $uname,$gname on $a");
     if (! defined $uid || ! defined $gid) {
         if (! defined $uid) {
@@ -1017,6 +1002,7 @@ sub ng_touch {
 }
 
 
+
 __END__
 
 =head1 NAME
@@ -1026,9 +1012,7 @@ install.pl - install nagiosgraph
 =head1 DESCRIPTION
 
 This will copy nagiosgraph files to the appropriate directories and create a
-default configuration.  It will not modify apache or nagios, but it will
-indicate what changes must be made to those components to complete the
-installation.
+default configuration.  It will optionally modify apache or nagios.
 
 When run interactively, this script will prompt for the information it needs.
 
