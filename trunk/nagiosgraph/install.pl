@@ -235,7 +235,7 @@ while ($ARGV[0]) {
 }
 
 my $LOG;
-open $LOG, '>', LOG_FN || print 'cannot write to log file ' . LOG_FN . "\n";
+open $LOG, '>', LOG_FN || print 'cannot write to log file ' .LOG_FN. ": $!\n";
 my $fail = 0;
 
 if($action eq 'check-prereq') {
@@ -273,7 +273,7 @@ if ($fail) {
     exit EXIT_FAIL;
 }
 
-close $LOG;
+close $LOG || print "cannot close log file: $!\n";
 
 exit EXIT_OK;
 
@@ -421,7 +421,7 @@ sub getconfig {
     my ($conf) = @_;
     my $fail = 0;
 
-    if (readconfigenv($conf) > 0) { 
+    if (readconfigenv($conf) > 0) {
         $conf->{automated} = 'y';
         return 0;
     }

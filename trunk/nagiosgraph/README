@@ -5,7 +5,7 @@ nagiosgraph README             Author:  (c) 2005 Soren Dossing
                                Author:  (c) 2010 Matthew Wall
 
 Nagiosgraph is an add-on of Nagios. It collects service performance data into
-rrd format, and displays the resulting graphs via cgi.  It can be embedded
+RRD format, and displays the resulting graphs via cgi.  It can be embedded
 directly into Nagios so that graphs show up just like other trend reports.
 
 The INSTALL file contains installation and configuration instructions.
@@ -19,17 +19,17 @@ Note: Nagios is a registered trademark of Ethan Galstad.
 Principles of Operations
 ------------------------
 
-nagiosgraph is a simple interface between Nagios and rrd data files.
+nagiosgraph is a simple interface between Nagios and RRD files.
 
 nagiosgraph operates in two modes. One is to collect performance data
 from Nagios servicechecks, and the other is to display graphs of
 the performance data collected.
 
-All the data collected are stored in rrd files using rrdtool. A file
+All the data collected are stored in RRD files using rrdtool. A file
 called 'map' defines how to identify the data from nagios and how to
-store them in the rrd files. Nagios passes all the service data to a
+store them in the RRD files. Nagios passes all the service data to a
 nagiosgraph script called 'insert.pl'. This script uses the file 'map'
-to determine how to name the data and into which rrd files to insert
+to determine how to name the data and into which RRD files to insert
 the data. The map file also processes the data, for example by changing
 units or applying scaling factors.
 
@@ -56,7 +56,7 @@ By default, all available data for a servicecheck will be displayed in
 the same graph. With extra configuration, either embedded in the url, 
 specified in a configuration file, or using controls in a web page, it is
 possible to display less data or to split values into multiple graphs.
-There is also a general method for specifying arbitrary rrd graph
+There is also a general method for specifying arbitrary RRD graph
 options such as line style, color, and scaling for individual hosts or
 services.
 
@@ -68,8 +68,8 @@ CHANGELOG             - History of changes
 INSTALL               - How to install, configure, and use nagiosgraph
 README                - This file
 TODO                  - A list of potential improvements to nagiosgraph.
-install.pl            - An initial stab at an installer (for the brave only).
-lib/insert.pl         - Reads nagios perfdata log and insert into rrd files.
+install.pl            - Installation script
+lib/insert.pl         - Reads nagios perfdata log and insert into RRD files.
 lib/insert.sh         - A shell script wrapper around insert.pl.
 cgi/show.cgi          - Generates an html page for the host/service specified.
 cgi/showconfig.cgi    - Check the nagiosgraph configuration.
@@ -89,7 +89,7 @@ etc/hostdb.conf       - Configuration specific to showhost.cgi
 etc/servdb.conf       - Configuration specific to showservice.cgi
 etc/rrdopts.conf      - Per-service options to rrdgraph
 etc/map               - Regular expression to identify services and
-                          specification for how to create rrd files.
+                          specification for how to create RRD files.
 etc/ngshared.pm       - Shared library of common perl subroutines
 examples/*            - Configuration examples.
 share/action.gif      - An icon for use in Nagios.
