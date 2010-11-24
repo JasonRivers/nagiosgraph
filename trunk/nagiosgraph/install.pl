@@ -151,7 +151,7 @@ my @CONF =
         msg => 'URL of JavaScript file',
         parent => 'ng_url' },
       { conf => 'nagios_perfdata_file',
-        msg => 'Nagios performance data file',
+        msg => 'Path of Nagios performance data file',
         def => '/var/nagios/perfdata.log' },
       { conf => 'nagios_cgi_url',
         msg => 'URL of Nagios CGI scripts',
@@ -314,11 +314,11 @@ sub readconfigcache {
             };
         }
         if (! close $CONF) {
-            logmsg("cannot close install cache $fn: $!");
+            logmsg("*** cannot close install cache $fn: $!");
             $fail = 1;
         }
     } else {
-        logmsg("cannot open install cache $fn: $!");
+        logmsg("*** cannot open install cache $fn: $!");
         $fail = 1;
     }
     return $fail;
@@ -338,11 +338,11 @@ sub writeconfigcache {
             print ${FH} "$ii = $conf->{$ii}\n";
         }
         if (! close $FH) {
-            logmsg("cannot close install cache $fn: $!");
+            logmsg("*** cannot close install cache $fn: $!");
             $fail = 1;
         }
     } else {
-        logmsg("cannot write to install cache $fn: $!");
+        logmsg("*** cannot write to install cache $fn: $!");
         $fail = 1;
     }
     return $fail;
@@ -381,11 +381,11 @@ sub appendtofile {
                 $fail = 1;
             }
         } else {
-            logmsg("cannot close $ofn: $!");
+            logmsg("*** cannot close $ofn: $!");
             $fail = 1;
         }
     } else {
-        logmsg("cannot append to $ofn: $!");
+        logmsg("*** cannot append to $ofn: $!");
         $fail = 1;
     }
     return $fail;
@@ -687,7 +687,7 @@ sub getfiles {
         @files = grep { /$pattern/ } readdir DH;
         closedir DH;
     } else {
-        logmsg("cannot read directory $dir: $!");
+        logmsg("*** cannot read directory $dir: $!");
     }
     return @files;
 }
@@ -713,19 +713,19 @@ sub replacetext {
                     $fail = 1;
                 }
             } else {
-                logmsg("cannot close $ofn: $!");
+                logmsg("*** cannot close $ofn: $!");
                 $fail = 1;
             }
         } else {
-            logmsg("cannot write to $ofn: $!");
+            logmsg("*** cannot write to $ofn: $!");
             $fail = 1;
         }
         if (! close $IFILE) {
-            logmsg("cannot close $ifn: $!");
+            logmsg("*** cannot close $ifn: $!");
             $fail = 1;
         }
     } else {
-        logmsg("cannot read from $ifn: $!");
+        logmsg("*** cannot read from $ifn: $!");
         $fail = 1;
     }
     return $fail;
@@ -754,11 +754,11 @@ sub writeapachestub {
         print ${FILE} "   Allow from all\n";
         print ${FILE} "</Directory>\n";
         if (! close $FILE) {
-            logmsg("cannot close $fn: $!");
+            logmsg("*** cannot close $fn: $!");
             $fail = 1;
         }
     } else {
-        logmsg("cannot write to $fn: $!");
+        logmsg("*** cannot write to $fn: $!");
         $fail = 1;
     }
     return $fail;
@@ -778,11 +778,11 @@ sub writenagiosstub {
         print ${FILE} "     service_perfdata_file_processing_interval=30\n";
         print ${FILE} "     service_perfdata_file_processing_command=process-service-perfdata\n";
         if (! close $FILE) {
-            logmsg("cannot close $fn: $!");
+            logmsg("*** cannot close $fn: $!");
             $fail = 1;
         }
     } else {
-        logmsg("cannot write to $fn: $!");
+        logmsg("*** cannot write to $fn: $!");
         $fail = 1;
     }
     return $fail;
@@ -793,25 +793,27 @@ sub printinstructions {
     if (!isyes($conf->{modify_nagios_config}) ||
         !isyes($conf->{modify_apache_config})) {
         print "\n";
-        print "     To complete the installation, do the following:\n";
+        print "    To complete the installation, do the following:\n";
     }
     if (!isyes($conf->{modify_nagios_config})) {
         print "\n";
-        print "       * Ensure that 'service_perfdata_command' is commented\n";
-        print "         or not defined in any nagios configuration file(s).\n";
+        print "      * Ensure that 'service_perfdata_command' is commented\n";
+        print "        or not defined in any nagios configuration file(s).\n";
         print "\n";
-        print "       * In the nagios configuration file (e.g. nagios.cfg),\n";
-        print "         add this line:\n";
+        print "      * In the nagios configuration file (e.g. nagios.cfg),\n";
+        print "        add this line:\n";
         print "\n";
-        print "         include $conf->{ng_etc_dir}/" . NAGIOS_STUB_FN . "\n";
+        print "        include $conf->{ng_etc_dir}/" . NAGIOS_STUB_FN . "\n";
     }
     if (!isyes($conf->{modify_apache_config})) {
         print "\n";
-        print "       * In the apache configuration file (e.g. httpd.conf),\n";
-        print "         add this line:\n";
+        print "      * In the apache configuration file (e.g. httpd.conf),\n";
+        print "        add this line:\n";
         print "\n";
-        print "         include $conf->{ng_etc_dir}/" . APACHE_STUB_FN . "\n";
+        print "        include $conf->{ng_etc_dir}/" . APACHE_STUB_FN . "\n";
     }
+    print "\n";
+    print "    You must restart nagios before data collection will occur.\n";
     print "\n";
 
     return;
@@ -947,7 +949,7 @@ sub ng_mkdir {
     if ($doit) {
         mkpath($a, {error => \my $err});
         if (@{$err}) {
-            logmsg("cannot create directory $a: $!");
+            logmsg("*** cannot create directory $a: $!");
             $rc = 1;
         }
     }
@@ -962,7 +964,7 @@ sub ng_copy {
     logmsg("copy $a to $b");
     $rc = copy($a, $b) if $doit;
     if ($rc == 0) {
-        logmsg("cannot copy $a to $b: $!");
+        logmsg("*** cannot copy $a to $b: $!");
     }
     return ! $rc;
 }
@@ -975,7 +977,7 @@ sub ng_move {
     logmsg("move $a to $b");
     $rc = move($a, $b) if $doit;
     if ($rc == 0) {
-        logmsg("cannot rename $a to $b: $!");
+        logmsg("*** cannot rename $a to $b: $!");
     }
     return ! $rc;
 }
@@ -988,7 +990,7 @@ sub ng_chmod {
     logmsg(sprintf 'chmod %o on %s', $perms, $a);
     $rc = chmod $perms, $a if $doit;
     if ($rc == 0) {
-        logmsg("cannot chmod on $a: $!");
+        logmsg("*** cannot chmod on $a: $!");
     }
     return $rc == 0 ? 1 : 0;
 }
@@ -1002,16 +1004,16 @@ sub ng_chown {
     logmsg("chown $uname,$gname on $a");
     if (! defined $uid || ! defined $gid) {
         if (! defined $uid) {
-            logmsg("user '$uname' does not exist");
+            logmsg("*** user '$uname' does not exist");
         }
         if (! defined $gid) {
-            logmsg("group '$gname' does not exist");
+            logmsg("*** group '$gname' does not exist");
         }
         return 1;
     }
     $rc = chown $uid, $gid, $a if $doit;
     if ($rc == 0) {
-        logmsg("cannot chown on $a: $!");
+        logmsg("*** cannot chown on $a: $!");
     }
     return $rc == 0 ? 1 : 0;
 }
@@ -1024,11 +1026,11 @@ sub ng_touch {
 
     if (open my $FILE, '>>', $fn) {
         if (! close $FILE) {
-            logmsg("cannot close $fn: $!");
+            logmsg("*** cannot close $fn: $!");
             $fail = 1;
         }
     } else {
-        logmsg("cannot create $fn: $!");
+        logmsg("*** cannot create $fn: $!");
         $fail = 1;
     }
     return $fail;
