@@ -2763,7 +2763,7 @@ sub getrules {
         ' return @s; }';
     my $rval = eval $code; ## no critic (ProhibitStringyEval)
     if ($EVAL_ERROR or $rval) {
-        my $msg = "Map file eval error: $EVAL_ERROR in: $code";
+        my $msg = 'Map file eval error: ' . $EVAL_ERROR;
         debug(DBCRT, $msg);
         return $msg;
     }
