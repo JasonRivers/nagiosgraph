@@ -1,8 +1,12 @@
 #!/usr/bin/perl
-# $Id: 03defaults.t 361 2010-06-07 16:22:36Z mwall $
+# $Id$
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license-2.0.php
 # Author:  (c) Matthew Wall, 2010
+
+# test output from all of the standard nagios plugins.
+#   nagios-plugins-1.4.15
+#   nrpe-2.12
 
 use strict;
 use FindBin;
