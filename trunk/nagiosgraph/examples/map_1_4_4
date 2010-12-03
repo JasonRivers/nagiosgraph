@@ -1,4 +1,4 @@
-# File:    $Id$
+# File:    $Id: map 381 2010-10-30 05:39:22Z mwall $
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 # Author:  (c) Soren Dossing, 2005
@@ -255,21 +255,6 @@ or (/output:.*uptime is.*?([.\d]+)\sMinutes/
     and push @s, [ 'data',
                [ 'days', GAUGE, $1/1440 ] ]);
 
-# Service type: macosx-ntp
-#   output:NTP OK: Offset 0.001083 secs
-/output:NTP.*Offset ([-.0-9]+)/
-and push @s, [ 'ntp',
-               [ 'offset',  GAUGE, $1 ] ];
-
-# Service type: unix-ntp-client
-#   output:NTP OK: Offset 0.001083 secs
-# perfdata:offset=1032.98;60.00000; 120.00000;
-/perfdata: offset=([-.0-9]+)s;(.\d+);(.\d+);/
-and push @s, [ 'data',
-               [ 'offset',  GAUGE, $1 ],
-               [ 'warn',  GAUGE, $2 ],
-               [ 'crit', GAUGE, $3 ] ];
-
 # Service type: unix total processes
 #   output:OK: Total: 90, Zombie: 0, RSDT: 23
 # perfdata:total=90 zombie=0 rsdt=23
@@ -314,107 +299,3 @@ and push @s, [ 'data',
                [ 'drop_transmitted', COUNTER, $9 ],
                [ 'multi_received', COUNTER, $5 ],
                [ 'multi_transmitted', COUNTER, $10 ]];
-
-# default rule.  if none of the other rules did anything, then check for
-# perfdata that meets the standard format.
-#
-#   label=value[UOM];[warn];[crit];[min];[max]
-#
-# if units are KB, MB, TB, PB then convert to B
-# if units are ms or us then convert to s
-# if units is counter, then use counter instead of gauge
-#
-# warn and crit have range format:
-#
-# 10         < 0 or > 10
-# 10:        < 10
-# ~:10       > 10
-# 10:20      < 10 or > 20
-# @10:20     >= 10 and <= 20
-# 
-(! @s || $#s < 0) and /perfdata:(.+)/ and do {
-    my $pd = $1;
-    while ( $pd =~ s/([^=]+)=(\S+)// ) {
-        my ($n,$y) = ($1,$2);
-        next if (!defined $n || $n eq q());
-        my ($v,$u,$x) = $y =~ /([-0-9.]+)([^;]*)(.*)/;
-        next if (!defined $v || $v eq q());
-        my ($w,$c,$min,$max);
-        if (defined $x && $x ne q()) {
-            $x =~ s/^;//;
-            ($w,$c,$min,$max) = split /;/, $x;
-        }
-        $n =~ s/^\s+//g;
-        $n =~ s/\s+$//g;
-        $n =~ s/^\'//g;
-        $n =~ s/\'$//g;
-        $n =~ s/\'\'/\'/g;
-        my ($wlo, $whi);
-        if (defined $w && $w ne q()) {
-            if ($w =~ /([-0-9.]+):([-0-9.]+)/) {
-                $wlo = $1; $whi = $2; $w = q();
-            } elsif ($w =~ /([-0-9.]+):/) {
-                $whi = $1; $w = q();
-            } elsif ($w =~ /:([-0-9.]+)/) {
-                $wlo = $1; $w = q();
-            }
-        }
-        my ($clo, $chi);
-        if (defined $c && $c ne q()) {
-            if ($c =~ /([-0-9.]+):([-0-9.]+)/) {
-                $clo = $1; $chi = $2; $c = q();
-            } elsif ($c =~ /([-0-9.]+):/) {
-                $chi = $1; $c = q();
-            } elsif ($c =~ /:([-0-9.]+)/) {
-                $clo = $1; $c = q();
-            }
-        }
-        my $t = 'GAUGE';
-        if (defined $u) {
-            my $mult = 1;
-            if ($u eq 'c') {
-                $t = 'COUNTER';
-            } elsif ($u eq 's') {
-                $mult = 1;
-            } elsif ($u eq 'ms') {
-                $mult = 1 / 1_000;
-            } elsif ($u eq 'us') {
-                $mult = 1 / 1_000_000;
-            } elsif ($u eq 'B') {
-                $mult = 1;
-            } elsif ($u eq 'KB' || $u eq 'K') {
-                $mult = 1024;
-            } elsif ($u eq 'MB' || $u eq 'M') {
-                $mult = 1024 * 1024;
-            } elsif ($u eq 'GB' || $u eq 'G') {
-                $mult = 1024 * 1024 * 1024;
-            } elsif ($u eq 'TB' || $u eq 'T') {
-                $mult = 1024 * 1024 * 1024 * 1024;
-            } elsif ($u eq 'PB' || $u eq 'P') {
-                $mult = 1024 * 1024 * 1024 * 1024 * 1024;
-            }
-            if ($mult != 1) {
-                $v *= $mult;
-                if ( defined $w && $w ne q()) { $w *= $mult; }
-                if ( defined $c && $c ne q()) { $c *= $mult; }
-                if ( defined $min && $min ne q()) { $min *= $mult; }
-                if ( defined $max && $max ne q()) { $max *= $mult; }
-                if ( defined $wlo && $wlo ne q()) { $wlo *= $mult; }
-                if ( defined $whi && $whi ne q()) { $whi *= $mult; }
-                if ( defined $clo && $clo ne q()) { $clo *= $mult; }
-                if ( defined $chi && $chi ne q()) { $chi *= $mult; }
-            }
-        }
-        my @x;
-        push @x, [ 'data', $t, $v ];
-        push @x, [ 'warn', $t, $w ] if defined $w && $w ne q();
-        push @x, [ 'crit', $t, $c ] if defined $c && $c ne q();
-        push @x, [ 'min', $t, $min ] if defined $min && $min ne q();
-        push @x, [ 'max', $t, $max ] if defined $max && $max ne q();
-        push @x, [ 'warn_lo', $t, $wlo ] if defined $wlo && $wlo ne q();
-        push @x, [ 'warn_hi', $t, $whi ] if defined $whi && $whi ne q();
-        push @x, [ 'crit_lo', $t, $clo ] if defined $clo && $clo ne q();
-        push @x, [ 'crit_hi', $t, $chi ] if defined $chi && $chi ne q();
-        push @s, [ $n, @x ];
-    }
-};
