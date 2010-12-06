@@ -25,6 +25,7 @@ $Id$
 * fixed heartbeat/stepsize/resolution bug (obermufti).
 * fixed zooming on ie8 (derekdawson)
 * added showconfig.cgi script to facilitate diagnosing of problems.
+* better handling of errors when creating rrddir
 
 1.4.3 2010-06-07
 

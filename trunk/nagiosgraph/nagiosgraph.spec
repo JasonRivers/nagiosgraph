@@ -29,6 +29,7 @@ Nagiosgraph is an add-on to Nagios. It collects service performance data into
 RRD format and displays the resulting graphs via cgi.
 
 %prep
+
 %setup
 
 %build
@@ -37,7 +38,7 @@ make test
 %install
 rm -rf ${RPM_BUILD_ROOT}
 NG_DEST_DIR=/
-NG_LAYOUT=rpm
+NG_LAYOUT=overlay
 NG_BIN_DIR=%{ng_bin_dir}
 NG_ETC_DIR=%{ng_etc_dir}
 NG_CGI_DIR=%{ng_cgi_dir}
@@ -51,8 +52,8 @@ NG_CGILOG_FILE=%{ng_cgilog_file}
 NG_CGI_URL=/nagios/cgi-bin
 NG_CSS_URL=/nagios/nagiosgraph.css
 NG_JS_URL=/nagios/nagiosgraph.js
-export NG_DEST_DIR NG_BIN_DIR NG_ETC_DIR NG_CGI_DIR NG_DOC_DIR NG_CSS_DIR NG_JS_DIR NG_UTIL_DIR NG_RRD_DIR NG_LOG_FILE NG_CGILOG_FILE NG_CGI_URl NG_CSS_URL NG_JS_URL
-%makeinstall
+export NG_DEST_DIR NG_BIN_DIR NG_ETC_DIR NG_CGI_DIR NG_DOC_DIR NG_CSS_DIR NG_JS_DIR NG_UTIL_DIR NG_RRD_DIR NG_LOG_FILE NG_CGILOG_FILE NG_CGI_URL NG_CSS_URL NG_JS_URL
+install.pl
 
 %clean
 rm -rf ${RPM_BUILD_ROOT}

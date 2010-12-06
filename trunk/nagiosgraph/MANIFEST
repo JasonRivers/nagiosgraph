@@ -3,6 +3,7 @@ CHANGELOG
 INSTALL
 MANIFEST
 Makefile.PL
+META.yml
 README
 TODO
 install.pl
@@ -14,6 +15,11 @@ cgi/showgroup.cgi
 cgi/showhost.cgi
 cgi/showservice.cgi
 cgi/testcolor.cgi
+debian/compat
+debian/control
+debian/copyright
+debian/docs
+debian/rules
 etc/access.conf
 etc/datasetdb.conf
 etc/groupdb.conf
@@ -29,7 +35,11 @@ etc/rrdopts.conf
 etc/servdb.conf
 lib/insert.pl
 lib/insert.sh
-examples/map.1
+examples/map_1_3
+examples/map_1_4_3
+examples/map_1_4_4
+examples/map_examples
+examples/map_minimal
 examples/nagiosgraph.1.css
 examples/nagiosgraph.2.css
 share/action.gif
@@ -41,8 +51,12 @@ t/02ngshared.t
 t/03defaults.t
 t/04show.t
 t/05permissions.t
+t/06rules.t
+t/07perfdata.t
+t/09plugins.t
 t/97pod.t
 t/98podcoverage.t
 t/99kwalitee.t
 utils/testentry.pl
 utils/upgrade.pl
+.perlcriticrc

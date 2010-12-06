@@ -26,6 +26,7 @@ use English qw(-no_match_vars);
 use Fcntl qw(:DEFAULT :flock);
 use File::Find;
 use File::Basename;
+use File::Path qw(mkpath);
 use RRDs;
 use POSIX;
 use Time::HiRes qw(gettimeofday);
@@ -726,8 +727,10 @@ sub checkrrddir {
         # Make sure rrddir exists and is writable
         if (not -d $Config{rrddir}) {
             debug(DBINF, "creating directory $Config{rrddir}");
-            mkdir $Config{rrddir} or
-                $errmsg = "Cannot create rrd directory: $OS_ERROR";
+            mkpath($Config{rrddir}, {error => \my $err});
+            if (@{$err}) {
+                $errmsg = "Cannot create rrd directory $Config{rrddir}: $!";
+            }
         } elsif (not -w $Config{rrddir}) {
             $errmsg = "Cannot write to rrd directory $Config{rrddir}";
         }

@@ -11,10 +11,7 @@ Bugs
 
 Desired Features
 
-* Installer - that can configure Nagios (must work with Nagios 2.12 and 3.x).
 * Custom unit labels on the graphs.
-* re-do the default map rules to match the plugins shipped in standard, current
-    nagios configurations for mainstream distros
 * do pattern matching in the groupdb and hostdb files
 * do test coverage on the cgi scripts, not just ngshared.pm
 * make authz understand groups, not just users
@@ -26,7 +23,6 @@ Desired Features
 * optionally display host/service perfdata in a table in show.cgi
 * link to nagios availability report for timerange for each graph
 * link to nagios alerts for timerange for each graph
-* new set of map rules, with script to convert old rrd files to new names
 
 Notes
 
@@ -49,12 +45,8 @@ Here are a few things that will need to be addressed at some point:
  - obtain data from arbitrary source (e.g. a sql database), not just directly
    from nagios or the nagios perflog.
 
- - menudata does not scale.  nagiosgraph javascript must be refactored so
-   to work on large installations.
-
- - generic map rules.  define a fallback map rule that detects standard
-   perfdata and injects the contents into rrd files, with one source
-   per database.
+ - menudata does not scale.  nagiosgraph javascript should be refactored so
+   to work better on large installations.
 
  - showgraph is slow.  a page with hundreds of graphs is pretty slow to
    load, due primarily to all of the embedded showgraph calls.
