@@ -6,7 +6,6 @@
 # Author:  (c) 2010 Matthew Wall
 
 ## no critic (InputOutput::RequireCheckedSyscalls)
-## no critic (Documentation::RequirePodSections)
 ## no critic (RegularExpressions)
 ## no critic (ProhibitPackageVars)
 
@@ -221,7 +220,7 @@ sub checkngconf {
     my $status = 'ok';
     my $style = 'ok';
     my $errmsg = q();
-    
+
     $errmsg = ngshared::readconfig('showconfig', 'cgilogfile');
     if ($errmsg ne q()) {
         $status = 'fail';

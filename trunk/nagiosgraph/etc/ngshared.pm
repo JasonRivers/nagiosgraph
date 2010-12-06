@@ -15,7 +15,7 @@
 ## no critic (ProhibitMagicNumbers)
 ## no critic (ProhibitConstantPragma)
 
-package ngshared;
+package ngshared; ## no critic (Capitalization)
 
 use strict;
 use warnings;
@@ -729,7 +729,8 @@ sub checkrrddir {
             debug(DBINF, "creating directory $Config{rrddir}");
             mkpath($Config{rrddir}, {error => \my $err});
             if (@{$err}) {
-                $errmsg = "Cannot create rrd directory $Config{rrddir}: $!";
+                $errmsg =
+                    "Cannot create rrd directory $Config{rrddir}: $OS_ERROR";
             }
         } elsif (not -w $Config{rrddir}) {
             $errmsg = "Cannot write to rrd directory $Config{rrddir}";

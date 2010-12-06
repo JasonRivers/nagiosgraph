@@ -165,7 +165,7 @@ my @CONF =
     );
 
 my $verbose = 1;
-my $doit = 1;
+my $dryrun = 0;
 my $action = 'install';
 my %conf = qw(ng_layout standalone ng_dest_dir /usr/local/nagiosgraph);
 
@@ -177,7 +177,7 @@ while ($ARGV[0]) {
     } elsif($arg eq '--install') {
         $action = 'install';
     } elsif ($arg eq '--dry-run') {
-        $doit = 0;
+        $dryrun = 1;
     } elsif ($arg eq '--silent') {
         $verbose = 0;
     } elsif ($arg eq '--verbose') {
@@ -235,18 +235,18 @@ while ($ARGV[0]) {
 }
 
 my $LOG;
-open $LOG, '>', LOG_FN || print 'cannot write to log file ' .LOG_FN. ": $!\n";
-my $fail = 0;
+open $LOG, '>', LOG_FN || print 'cannot write to log file ' .LOG_FN. ": $OS_ERROR\n";
+my $failure = 0;
 
 if($action eq 'check-prereq') {
-    $fail |= checkprereq();
+    $failure |= checkprereq();
 } elsif($action eq 'check-installation') {
-    $fail |= getconfig(\%conf);
-    $fail |= checkconfig(\%conf);
-    $fail |= checkinstallation(\%conf);
+    $failure |= getconfig(\%conf);
+    $failure |= checkconfig(\%conf);
+    $failure |= checkinstallation(\%conf);
 } elsif($action eq 'install') {
-    $fail |= checkprereq();
-    $fail |= getconfig(\%conf);
+    $failure |= checkprereq();
+    $failure |= getconfig(\%conf);
     if (checkconfig(\%conf)) {
         logmsg('*** one or more missing configuration parameters!');
         exit EXIT_FAIL;
@@ -259,21 +259,21 @@ if($action eq 'check-prereq') {
             exit EXIT_OK;
         }
     }
-    $fail |= writeconfigcache(\%conf);
-    $fail |= doinstall(\%conf, $doit);
+    $failure |= writeconfigcache(\%conf);
+    $failure |= doinstall(\%conf, $dryrun ? 0 : 1);
     if (! isyes($conf{automated})) {
         printinstructions(\%conf);
     }
 }
 
-if ($fail) {
+if ($failure) {
     logmsg(q());
     logmsg('*** one or more problems were detected!');
     logmsg(q());
     exit EXIT_FAIL;
 }
 
-close $LOG || print "cannot close log file: $!\n";
+close $LOG || print "cannot close log file: $OS_ERROR\n";
 
 exit EXIT_OK;
 
@@ -314,11 +314,11 @@ sub readconfigcache {
             };
         }
         if (! close $CONF) {
-            logmsg("*** cannot close install cache $fn: $!");
+            logmsg("*** cannot close install cache $fn: $OS_ERROR");
             $fail = 1;
         }
     } else {
-        logmsg("*** cannot open install cache $fn: $!");
+        logmsg("*** cannot open install cache $fn: $OS_ERROR");
         $fail = 1;
     }
     return $fail;
@@ -338,11 +338,11 @@ sub writeconfigcache {
             print ${FH} "$ii = $conf->{$ii}\n";
         }
         if (! close $FH) {
-            logmsg("*** cannot close install cache $fn: $!");
+            logmsg("*** cannot close install cache $fn: $OS_ERROR");
             $fail = 1;
         }
     } else {
-        logmsg("*** cannot write to install cache $fn: $!");
+        logmsg("*** cannot write to install cache $fn: $OS_ERROR");
         $fail = 1;
     }
     return $fail;
@@ -381,11 +381,11 @@ sub appendtofile {
                 $fail = 1;
             }
         } else {
-            logmsg("*** cannot close $ofn: $!");
+            logmsg("*** cannot close $ofn: $OS_ERROR");
             $fail = 1;
         }
     } else {
-        logmsg("*** cannot append to $ofn: $!");
+        logmsg("*** cannot append to $ofn: $OS_ERROR");
         $fail = 1;
     }
     return $fail;
@@ -433,11 +433,11 @@ sub getconfig {
     if (! defined $conf->{nagios_perfdata_file}) {
         $conf->{nagios_perfdata_file} = findfile('perfdata.log', qw(/var/nagios /var/spool/nagios));
     }
-    
+
     if (! defined $conf->{nagios_user}) {
         $conf->{nagios_user} = finduser(qw(nagios));
     }
-    
+
     if (! defined $conf->{www_user}) {
         $conf->{www_user} = finduser(qw(www-data www apache));
     }
@@ -687,7 +687,7 @@ sub getfiles {
         @files = grep { /$pattern/ } readdir DH;
         closedir DH;
     } else {
-        logmsg("*** cannot read directory $dir: $!");
+        logmsg("*** cannot read directory $dir: $OS_ERROR");
     }
     return @files;
 }
@@ -713,19 +713,19 @@ sub replacetext {
                     $fail = 1;
                 }
             } else {
-                logmsg("*** cannot close $ofn: $!");
+                logmsg("*** cannot close $ofn: $OS_ERROR");
                 $fail = 1;
             }
         } else {
-            logmsg("*** cannot write to $ofn: $!");
+            logmsg("*** cannot write to $ofn: $OS_ERROR");
             $fail = 1;
         }
         if (! close $IFILE) {
-            logmsg("*** cannot close $ifn: $!");
+            logmsg("*** cannot close $ifn: $OS_ERROR");
             $fail = 1;
         }
     } else {
-        logmsg("*** cannot read from $ifn: $!");
+        logmsg("*** cannot read from $ifn: $OS_ERROR");
         $fail = 1;
     }
     return $fail;
@@ -754,11 +754,11 @@ sub writeapachestub {
         print ${FILE} "   Allow from all\n";
         print ${FILE} "</Directory>\n";
         if (! close $FILE) {
-            logmsg("*** cannot close $fn: $!");
+            logmsg("*** cannot close $fn: $OS_ERROR");
             $fail = 1;
         }
     } else {
-        logmsg("*** cannot write to $fn: $!");
+        logmsg("*** cannot write to $fn: $OS_ERROR");
         $fail = 1;
     }
     return $fail;
@@ -778,11 +778,11 @@ sub writenagiosstub {
         print ${FILE} "     service_perfdata_file_processing_interval=30\n";
         print ${FILE} "     service_perfdata_file_processing_command=process-service-perfdata\n";
         if (! close $FILE) {
-            logmsg("*** cannot close $fn: $!");
+            logmsg("*** cannot close $fn: $OS_ERROR");
             $fail = 1;
         }
     } else {
-        logmsg("*** cannot write to $fn: $!");
+        logmsg("*** cannot write to $fn: $OS_ERROR");
         $fail = 1;
     }
     return $fail;
@@ -949,7 +949,7 @@ sub ng_mkdir {
     if ($doit) {
         mkpath($a, {error => \my $err});
         if (@{$err}) {
-            logmsg("*** cannot create directory $a: $!");
+            logmsg("*** cannot create directory $a: $OS_ERROR");
             $rc = 1;
         }
     }
@@ -964,7 +964,7 @@ sub ng_copy {
     logmsg("copy $a to $b");
     $rc = copy($a, $b) if $doit;
     if ($rc == 0) {
-        logmsg("*** cannot copy $a to $b: $!");
+        logmsg("*** cannot copy $a to $b: $OS_ERROR");
     }
     return ! $rc;
 }
@@ -977,7 +977,7 @@ sub ng_move {
     logmsg("move $a to $b");
     $rc = move($a, $b) if $doit;
     if ($rc == 0) {
-        logmsg("*** cannot rename $a to $b: $!");
+        logmsg("*** cannot rename $a to $b: $OS_ERROR");
     }
     return ! $rc;
 }
@@ -990,7 +990,7 @@ sub ng_chmod {
     logmsg(sprintf 'chmod %o on %s', $perms, $a);
     $rc = chmod $perms, $a if $doit;
     if ($rc == 0) {
-        logmsg("*** cannot chmod on $a: $!");
+        logmsg("*** cannot chmod on $a: $OS_ERROR");
     }
     return $rc == 0 ? 1 : 0;
 }
@@ -1013,7 +1013,7 @@ sub ng_chown {
     }
     $rc = chown $uid, $gid, $a if $doit;
     if ($rc == 0) {
-        logmsg("*** cannot chown on $a: $!");
+        logmsg("*** cannot chown on $a: $OS_ERROR");
     }
     return $rc == 0 ? 1 : 0;
 }
@@ -1026,11 +1026,11 @@ sub ng_touch {
 
     if (open my $FILE, '>>', $fn) {
         if (! close $FILE) {
-            logmsg("*** cannot close $fn: $!");
+            logmsg("*** cannot close $fn: $OS_ERROR");
             $fail = 1;
         }
     } else {
-        logmsg("*** cannot create $fn: $!");
+        logmsg("*** cannot create $fn: $OS_ERROR");
         $fail = 1;
     }
     return $fail;
