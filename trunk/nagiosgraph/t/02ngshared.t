@@ -46,6 +46,7 @@ sub printdata {
     my ($data) = @_;
     my $dd = Data::Dumper->new([$data]);
     $dd->Indent(1);
+    $dd->Sortkeys(1);
     return $dd->Dump;
 }
 
@@ -531,10 +532,14 @@ sub testinitlog {
 }
 
 sub testreadconfig {
+    my $fn = "$FindBin::Bin/testlog.txt";
+
     open $LOG, '+>', \$log;
-    my $msg = readconfig('read');
+    $Config{junklog} = $fn;;
+    my $msg = readconfig('read', 'junklog');
     ok($msg, q());
     close $LOG;
+    unlink $fn;
 }
 
 sub testgetparams {
@@ -1021,25 +1026,15 @@ sub testrrdline {
 
 sub testgetserverlist {
     my $allhosts = "\$VAR1 = {
+  'host' => [
+    'host0',
+    'host1',
+    'host2',
+    'host3',
+    'host4',
+    'host5'
+  ],
   'hostserv' => {
-    'host4' => {
-      'c:\\\\ space' => [
-        [
-          'ntdisk',
-          'total',
-          'used'
-        ]
-      ]
-    },
-    'host5' => {
-      'ntdisk' => [
-        [
-          'c:\\\\ space',
-          'total',
-          'used'
-        ]
-      ]
-    },
     'host0' => {
       'HTTP' => [
         [
@@ -1055,19 +1050,11 @@ sub testgetserverlist {
         ]
       ]
     },
-    'host3' => {
-      'ping' => [
+    'host1' => {
+      'HTTP' => [
         [
-          'loss',
-          'losscrit',
-          'losspct',
-          'losswarn'
-        ],
-        [
-          'rta',
-          'rtacrit',
-          'rta',
-          'rtawarn'
+          'http',
+          'Bps'
         ]
       ]
     },
@@ -1080,33 +1067,28 @@ sub testgetserverlist {
         ]
       ]
     },
-    'host1' => {
-      'HTTP' => [
+    'host3' => {
+      'ping' => [
         [
-          'http',
-          'Bps'
+          'rta',
+          'rtacrit',
+          'rta',
+          'rtawarn'
+        ],
+        [
+          'loss',
+          'losscrit',
+          'losswarn',
+          'losspct'
         ]
       ]
-    }
-  },
-  'host' => [
-    'host0',
-    'host1',
-    'host2',
-    'host3',
-    'host4',
-    'host5'
-  ]
-};\n";
-
-    my $somehosts = "\$VAR1 = {
-  'hostserv' => {
+    },
     'host4' => {
       'c:\\\\ space' => [
         [
           'ntdisk',
-          'total',
-          'used'
+          'used',
+          'total'
         ]
       ]
     },
@@ -1114,12 +1096,33 @@ sub testgetserverlist {
       'ntdisk' => [
         [
           'c:\\\\ space',
-          'total',
-          'used'
+          'used',
+          'total'
+        ]
+      ]
+    }
+  }
+};\n";
+
+    my $somehosts = "\$VAR1 = {
+  'host' => [
+    'host0',
+    'host1',
+    'host2',
+    'host3',
+    'host4',
+    'host5'
+  ],
+  'hostserv' => {
+    'host0' => {
+      'HTTP' => [
+        [
+          'http',
+          'Bps'
         ]
       ]
     },
-    'host0' => {
+    'host1' => {
       'HTTP' => [
         [
           'http',
@@ -1130,36 +1133,38 @@ sub testgetserverlist {
     'host3' => {
       'ping' => [
         [
-          'loss',
-          'losscrit',
-          'losspct',
-          'losswarn'
-        ],
-        [
           'rta',
           'rtacrit',
           'rta',
           'rtawarn'
+        ],
+        [
+          'loss',
+          'losscrit',
+          'losswarn',
+          'losspct'
         ]
       ]
     },
-    'host1' => {
-      'HTTP' => [
+    'host4' => {
+      'c:\\\\ space' => [
         [
-          'http',
-          'Bps'
+          'ntdisk',
+          'used',
+          'total'
+        ]
+      ]
+    },
+    'host5' => {
+      'ntdisk' => [
+        [
+          'c:\\\\ space',
+          'used',
+          'total'
         ]
       ]
     }
-  },
-  'host' => [
-    'host0',
-    'host1',
-    'host2',
-    'host3',
-    'host4',
-    'host5'
-  ]
+  }
 };\n";
 
     setuprrd();
@@ -1169,11 +1174,13 @@ sub testgetserverlist {
     my %result = getserverlist();
     my $dd = Data::Dumper->new([\%result]);
     $dd->Indent(1);
+    $dd->Sortkeys(1);
     ok($dd->Dump, $allhosts);
 
     %result = getserverlist('');
     $dd = Data::Dumper->new([\%result]);
     $dd->Indent(1);
+    $dd->Sortkeys(1);
     ok($dd->Dump, $allhosts);
 
     $authz{default_host_access}{default_service_access} = 0;
@@ -1187,6 +1194,7 @@ sub testgetserverlist {
     %result = getserverlist('joeblow');
     $dd = Data::Dumper->new([\%result]);
     $dd->Indent(1);
+    $dd->Sortkeys(1);
     ok($dd->Dump, $somehosts);
 
     undef %authz;
@@ -1225,7 +1233,7 @@ menudata[2] = [\"host2\"
  ,[\"PING\",[\"ping\",\"losspct\",\"rta\"]]
 ];
 menudata[3] = [\"host3\"
- ,[\"ping\",[\"loss\",\"losscrit\",\"losspct\",\"losswarn\"],[\"rta\",\"rta\",\"rtacrit\",\"rtawarn\"]]
+ ,[\"ping\",[\"rta\",\"rta\",\"rtacrit\",\"rtawarn\"],[\"loss\",\"losscrit\",\"losspct\",\"losswarn\"]]
 ];
 menudata[4] = [\"host4\"
  ,[\"c:\\\\ space\",[\"ntdisk\",\"total\",\"used\"]]
@@ -2721,65 +2729,17 @@ sub testscanhsdata {
     undef %hsdata;
     scanhsdata();
     ok(printdata(\%hsdata), "\$VAR1 = {
-  'host4' => {
-    'c:\\\\ space' => [
-      'ntdisk'
-    ]
-  },
   'host0' => {
     'HTTP' => [
       'http'
     ],
     'PING' => [
       'ping'
-    ]
-  },
-  'host5' => {
-    'ntdisk' => [
-      'c:\\\\ space'
-    ]
-  },
-  'host2' => {
-    'PING' => [
-      'ping'
-    ]
-  },
-  'host3' => {
-    'ping' => [
-      'loss',
-      'rta'
     ]
   },
   'host1' => {
     'HTTP' => [
       'http'
-    ]
-  }
-};
-");
-    undef %hsdata;
-    teardownrrd();
-
-    setuprrd('_');
-    undef %hsdata;
-    scanhsdata();
-    ok(printdata(\%hsdata), "\$VAR1 = {
-  'host4' => {
-    'c:\\\\ space' => [
-      'ntdisk'
-    ]
-  },
-  'host5' => {
-    'ntdisk' => [
-      'c:\\\\ space'
-    ]
-  },
-  'host0' => {
-    'HTTP' => [
-      'http'
-    ],
-    'PING' => [
-      'ping'
     ]
   },
   'host2' => {
@@ -2793,9 +2753,57 @@ sub testscanhsdata {
       'loss'
     ]
   },
+  'host4' => {
+    'c:\\\\ space' => [
+      'ntdisk'
+    ]
+  },
+  'host5' => {
+    'ntdisk' => [
+      'c:\\\\ space'
+    ]
+  }
+};
+");
+    undef %hsdata;
+    teardownrrd();
+
+    setuprrd('_');
+    undef %hsdata;
+    scanhsdata();
+    ok(printdata(\%hsdata), "\$VAR1 = {
+  'host0' => {
+    'HTTP' => [
+      'http'
+    ],
+    'PING' => [
+      'ping'
+    ]
+  },
   'host1' => {
     'HTTP' => [
       'http'
+    ]
+  },
+  'host2' => {
+    'PING' => [
+      'ping'
+    ]
+  },
+  'host3' => {
+    'ping' => [
+      'rta',
+      'loss'
+    ]
+  },
+  'host4' => {
+    'c:\\\\ space' => [
+      'ntdisk'
+    ]
+  },
+  'host5' => {
+    'ntdisk' => [
+      'c:\\\\ space'
     ]
   }
 };

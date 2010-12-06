@@ -32,7 +32,7 @@ WriteMakefile(
                          'DIST_DEFAULT' => 'all tardist',
                          'COMPRESS'     => "gzip -9f" },
     'realclean'     => { 'FILES' => 'cover_db Makefile.old' },
-    'clean'         => { 'FILES' => 'perltidy.ERR test.*' },
+    'clean'         => { 'FILES' => 'perltidy.ERR test.* Debian_CPANTS.txt' },
 );
 
 sub MY::install { "

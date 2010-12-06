@@ -21,8 +21,11 @@ my $logfile = 'test.log';
 # to know about it and handle it explicitly.
 
 sub testconfig {
+    my $fn = "$FindBin::Bin/testlog.txt";
+    $Config{junklog} = $fn;;
+
     open $LOG, '+>', $logfile;
-    readconfig('read');
+    readconfig('read', 'junklog');
     ok($Config{logfile}, '/var/nagiosgraph/nagiosgraph.log');
     ok($Config{cgilogfile}, '/var/nagiosgraph/nagiosgraph-cgi.log');
     ok($Config{perflog}, '/var/nagios/perfdata.log');
@@ -166,6 +169,7 @@ sub testconfig {
     ok($Config{language}, undef);
     close $LOG;
     unlink $logfile;
+    unlink $fn;
 }
 
 sub formatdata {
