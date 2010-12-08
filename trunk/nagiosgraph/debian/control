@@ -1,11 +1,11 @@
 Package: nagiosgraph
 Source: nagiosgraph
+Version: VERSION
 Homepage: http://nagiosgraph.sourceforge.net/
 Section: Application/System
 Priority: extra
 Maintainer: Alan Brenner
 Architecture: all
-Build-Depends: debhelper (>= 7)
 Depends: rrdtool, libcgi-pm-perl, librrds-perl
 Recommends: libgd-gd2-perl
 Pre-Depends: perl

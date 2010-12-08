@@ -14,8 +14,8 @@ as web pages.
 
 Installation is a three-step process.  First install the nagiosgraph files,
 then configure Nagios for data collection, and finally customize the graphs
-and links as needed.  Installation can be done manually by copying files or
-automatically using the install.pl script.
+and links as needed.  Installation can be done manually by copying files and
+modifying configuration files, or automatically using the install.pl script.
 
   Quick Start
   Installation Preliminaries

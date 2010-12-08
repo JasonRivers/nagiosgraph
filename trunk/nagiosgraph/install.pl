@@ -105,6 +105,26 @@ my @PRESETS = (
       ng_cgi_url => 'cgi-bin',
       ng_css_url => 'nagiosgraph.css',
       ng_js_url => 'nagiosgraph.js', },
+
+    { ng_layout => 'ubuntu',
+      ng_dest_dir => q(/),
+      ng_url => '/nagios',
+      ng_etc_dir => '/etc/nagiosgraph',
+      ng_bin_dir => '/usr/lib/nagiosgraph',
+      ng_cgi_dir => '/usr/lib/cgi-bin/nagiosgraph',
+      ng_doc_dir => '/usr/share/nagiosgraph/doc',
+      ng_www_dir => '/usr/share/nagiosgraph/htdocs',
+      ng_util_dir => '/usr/share/nagiosgraph/util',
+      ng_var_dir => '/var/nagiosgraph',
+      ng_rrd_dir => 'rrd',
+      ng_log_file => 'nagiosgraph.log',
+      ng_cgilog_file => 'nagiosgraph-cgi.log',
+      ng_cgi_url => 'cgi-bin/nagiosgraph',
+      ng_css_url => 'nagiosgraph.css',
+      ng_js_url => 'nagiosgraph.js',
+      nagios_perfdata_file => '/var/nagios/perfdata.log',
+      nagios_user => 'nagios',
+      www_user => 'www-data', },
     );
 
 my @CONF =
@@ -167,7 +187,7 @@ my @CONF =
 my $verbose = 1;
 my $dryrun = 0;
 my $action = 'install';
-my %conf = qw(ng_layout standalone ng_dest_dir /usr/local/nagiosgraph);
+my %conf = qw(ng_layout standalone);
 
 while ($ARGV[0]) {
     my $arg = shift;
@@ -217,7 +237,7 @@ while ($ARGV[0]) {
         print "  --dry-run\n";
         print "  --verbose | --silent\n";
         print "\n";
-        print "  --layout (overlay | standalone)\n";
+        print "  --layout (overlay | standalone | ubuntu)\n";
         print "  --dest-dir path\n";
         print "  --var-dir path\n";
         print "  --etc-dir path\n";
@@ -431,7 +451,8 @@ sub getconfig {
     }
 
     if (! defined $conf->{nagios_perfdata_file}) {
-        $conf->{nagios_perfdata_file} = findfile('perfdata.log', qw(/var/nagios /var/spool/nagios));
+        $conf->{nagios_perfdata_file} =
+            findfile('perfdata.log', qw(/var/nagios /var/spool/nagios));
     }
 
     if (! defined $conf->{nagios_user}) {
@@ -493,6 +514,7 @@ sub readconfigpresets {
         if (defined $conf->{ng_layout} &&
             $conf->{ng_layout} eq $p->{ng_layout} &&
             (! defined $p->{ng_dest_dir} ||
+             ! defined $conf->{ng_dest_dir} ||
              $p->{ng_dest_dir} eq $conf->{ng_dest_dir})) {
             foreach my $ii (keys %{$p}) {
                 if (! defined $conf->{$ii}) {
@@ -765,7 +787,7 @@ sub writeapachestub {
 }
 
 sub writenagiosstub {
-    my ($fn, $conf) = @_;
+    my ($fn, $conf, $doit) = @_;
     logmsg("write nagios stub to $fn");
     return 0 if !$doit;
     my $fail = 0;
@@ -1024,6 +1046,7 @@ sub ng_touch {
     logmsg("touching $fn");
     return 0 if !$doit;
 
+    my $fail = 0;
     if (open my $FILE, '>>', $fn) {
         if (! close $FILE) {
             logmsg("*** cannot close $fn: $OS_ERROR");
