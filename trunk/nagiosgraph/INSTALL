@@ -1095,6 +1095,10 @@ There are rules to build a source distribution, debian, and redhat packages.
   make build-deb
   make build-rpm
 
+These rules are useful for maintaining the perl module:
+
+  make MANIFEST
+
 If you would like to contribute to nagiosgraph, there are a few things you
 should do to make your life and the lives of the other nagiosgraph developers
 easier.
