@@ -266,7 +266,8 @@ while ($ARGV[0]) {
         print "  --nagios-user userid\n";
         print "  --www-user userid\n";
         print "\n";
-        print "environment variables include:\n";
+        print "specify one or more environment variables to run without\n";
+        print "prompts.  environment variables include:\n";
         foreach my $v (envvars()) {
             print "  $v\n";
         }
@@ -583,6 +584,7 @@ sub readconfigenv {
 
 sub envvars {
     my @vars;
+    push @vars, 'NG_LAYOUT';
     foreach my $ii (@CONF) {
         push @vars, mkenvname($ii->{conf});
     }
