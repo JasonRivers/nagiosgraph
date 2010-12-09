@@ -31,13 +31,14 @@ use constant EXIT_FAIL => 1;
 use constant EXIT_OK => 0;
 use constant DPERMS => oct 755;
 use constant FPERMS => oct 644;
+use constant XPERMS => oct 755;
 use constant CACHE_FN => 'install-cache';
 use constant LOG_FN => 'install-log';
 use constant NAGIOS_STUB_FN => 'nagiosgraph-nagios.cfg';
 use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
 
 # put the keys in a specific order to make it easier to see where things go
-my @CONFKEYS = qw(ng_layout ng_dest_dir ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file modify_apache_config apache_config_file apache_config_dir);
+my @CONFKEYS = qw(ng_layout ng_dest_dir ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_examples_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file modify_apache_config apache_config_file apache_config_dir);
 
 my @PRESETS = (
     { ng_layout => 'standalone',
@@ -46,6 +47,7 @@ my @PRESETS = (
       ng_bin_dir => 'bin',
       ng_cgi_dir => 'cgi',
       ng_doc_dir => 'doc',
+      ng_examples_dir => 'examples',
       ng_www_dir => 'share',
       ng_util_dir => 'util',
       ng_var_dir => 'var',
@@ -62,6 +64,7 @@ my @PRESETS = (
       ng_bin_dir => 'libexec',
       ng_cgi_dir => 'sbin',
       ng_doc_dir => 'docs/nagiosgraph',
+      ng_examples_dir => 'docs/nagiosgraph/examples',
       ng_www_dir => 'share',
       ng_util_dir => 'docs/nagiosgraph/util',
       ng_var_dir => '/var/nagios',
@@ -79,6 +82,7 @@ my @PRESETS = (
       ng_bin_dir => '/usr/libexec/nagios',
       ng_cgi_dir => '/usr/nagios/sbin',    # FIXME: not sure about this one
       ng_doc_dir => '/usr/share/nagios/docs/nagiosgraph',
+      ng_examples_dir => '/usr/share/nagios/docs/nagiosgraph/examples',
       ng_www_dir => '/usr/share/nagios',
       ng_util_dir => '/usr/share/nagios/docs/nagiosgraph/util',
       ng_var_dir => '/var/nagios',
@@ -96,6 +100,7 @@ my @PRESETS = (
       ng_bin_dir => '/usr/libexec/nagiosgraph',
       ng_cgi_dir => '/usr/nagiosgraph/cgi',
       ng_doc_dir => '/usr/share/nagiosgraph/doc',
+      ng_examples_dir => '/usr/share/nagiosgraph/examples',
       ng_www_dir => '/usr/share/nagiosgraph',
       ng_util_dir => '/usr/share/nagiosgraph/util',
       ng_var_dir => '/var/nagiosgraph',
@@ -113,6 +118,7 @@ my @PRESETS = (
       ng_bin_dir => '/usr/lib/nagiosgraph',
       ng_cgi_dir => '/usr/lib/cgi-bin/nagiosgraph',
       ng_doc_dir => '/usr/share/nagiosgraph/doc',
+      ng_examples_dir => '/usr/share/nagiosgraph/examples',
       ng_www_dir => '/usr/share/nagiosgraph/htdocs',
       ng_util_dir => '/usr/share/nagiosgraph/util',
       ng_var_dir => '/var/nagiosgraph',
@@ -135,6 +141,7 @@ my @PRESETS = (
       ng_bin_dir => '/usr/libexec/nagiosgraph',
       ng_cgi_dir => '/usr/lib/nagiosgraph/cgi-bin',
       ng_doc_dir => '/usr/share/nagiosgraph/doc',
+      ng_examples_dir => '/usr/share/nagiosgraph/examples',
       ng_www_dir => '/usr/share/nagiosgraph/htdocs',
       ng_util_dir => '/usr/share/nagiosgraph/util',
       ng_var_dir => '/var/spool/nagiosgraph',
@@ -165,7 +172,10 @@ my @CONF =
         msg => 'Location of CGI scripts',
         parent => 'ng_dest_dir' },
       { conf => 'ng_doc_dir',
-        msg => 'Location of documentation and examples',
+        msg => 'Location of documentation',
+        parent => 'ng_dest_dir' },
+      { conf => 'ng_examples_dir',
+        msg => 'Location of examples',
         parent => 'ng_dest_dir' },
       { conf => 'ng_www_dir',
         msg => 'Location of CSS and JavaScript files',
@@ -559,17 +569,18 @@ sub getconfig {
     $conf->{modify_apache_config} =
         getanswer('Modify the Apache configuration', 'n');
     if (isyes($conf->{modify_apache_config})) {
+        my @dirs = qw(/etc/apache2 /usr/local/apache2 /opt/apache2 /etc/httpd /usr/local/httpd /opt/httpd);
         my $x = defined $conf->{apache_config_dir} ?
             $conf->{apache_config_dir} : q();
         if ($x eq q()) {
-            $x = finddir('conf.d', qw(/etc/apache2 /usr/local/apache2 /opt/apache2 /etc/httpd /usr/local/httpd /opt/httpd));
+            $x = finddir('conf.d', @dirs);
             $conf->{apache_config_dir} = $x if $x ne q();
         }
-        if ($x eq q()) {
+        if (! defined $conf->{apache_config_dir}) {
             $x = defined $conf->{apache_config_file} ?
                 $conf->{apache_config_file} : q();
             if ($x eq q()) {
-                $x = findfile('apache2.conf', qw(/etc/apache2 /usr/local/apache2 /opt/apache2 /etc/httpd /usr/local/httpd /opt/httpd));
+                $x = findfile('apache2.conf', @dirs);
             }
             if ($x eq q()) {
                 $x = findfile('httpd.conf', qw(/etc/apache2/conf /usr/local/apache2/conf /opt/apache2/conf /etc/httpd /usr/local/httpd/conf /opt/httpd/conf));
@@ -683,7 +694,7 @@ sub checkprereq {
     my @dirs;
 
     logmsg('checking nagios installation');
-    @dirs = qw(/usr/local/nagios/bin /opt/nagios/bin /usr/bin /usr/sbin /bin /sbin);
+    @dirs = qw(/usr/local/nagios/bin /usr/local/nagios3/bin /opt/nagios/bin /opt/nagios3/bin /usr/bin /usr/sbin /bin /sbin);
     $found = checkexec('nagios', @dirs);
     if ($found eq q()) {
         $found = checkexec('nagios3', @dirs);
@@ -798,7 +809,7 @@ sub getfiles {
     my ($dir, $pattern) = @_;
     my @files;
     if (opendir DH, $dir) {
-        @files = grep { /$pattern/ } readdir DH;
+        @files = grep { /^[^\.]/ && /$pattern/ } readdir DH;
         closedir DH;
     } else {
         logmsg("*** cannot read directory $dir: $OS_ERROR");
@@ -947,7 +958,7 @@ sub doinstall {
     if (defined $conf->{ng_etc_dir}) {
         $dst = $conf->{ng_etc_dir};
         $fail |= ng_mkdir($dst, $doit);
-        my @files = getfiles('etc', '.*.conf');
+        my @files = getfiles('etc', '.*.conf$');
         for my $f (@files) {
             $fail |= ng_copy("etc/$f", "$dst", $doit);
         }
@@ -972,13 +983,14 @@ sub doinstall {
     if (defined $conf->{ng_cgi_dir}) {
         $dst = $conf->{ng_cgi_dir};
         $fail |= ng_mkdir($dst, $doit);
-        my @files = getfiles('cgi', '.*.cgi');
+        my @files = getfiles('cgi', '.*.cgi$');
         for my $f (@files) {
             $fail |= ng_copy("cgi/$f", "$dst", $doit);
             $fail |= replacetext("$dst/$f",
                                  { 'use lib \'/opt/nagiosgraph/etc\'' =>
                                        "use lib '$conf->{ng_etc_dir}'" },
                                  $doit );
+            $fail |= ng_chmod(XPERMS, "$dst/$f", $doit);
         }
     }
 
@@ -990,6 +1002,7 @@ sub doinstall {
                              { 'use lib \'/opt/nagiosgraph/etc\'' =>
                                    "use lib '$conf->{ng_etc_dir}'" },
                              $doit);
+        $fail |= ng_chmod(XPERMS, "$dst/insert.pl", $doit);
     }
 
     if (defined $conf->{ng_www_dir}) {
@@ -1002,16 +1015,31 @@ sub doinstall {
     if (defined $conf->{ng_doc_dir}) {
         $dst = $conf->{ng_doc_dir};
         $fail |= ng_mkdir($dst, $doit);
-        my @files = getfiles('examples', '^[^\.]');
+        $fail |= ng_copy('AUTHORS', "$dst", $doit);
+        $fail |= ng_copy('CHANGELOG', "$dst", $doit);
+        $fail |= ng_copy('INSTALL', "$dst", $doit);
+        $fail |= ng_copy('README', "$dst", $doit);
+        $fail |= ng_copy('TODO', "$dst", $doit);
+    }
+
+    if (defined $conf->{ng_examples_dir}) {
+        $dst = $conf->{ng_examples_dir};
+        $fail |= ng_mkdir($dst, $doit);
+        my @files = getfiles('examples', '[^~]$');
         for my $f (@files) {
             $fail |= ng_copy("examples/$f", "$dst", $doit);
         }
         $fail |= ng_copy('share/action.gif', "$dst", $doit);
         $fail |= ng_copy('share/nagiosgraph.ssi', "$dst", $doit);
-        $fail |= ng_copy('README', "$dst", $doit);
-        $fail |= ng_copy('INSTALL', "$dst", $doit);
-        $fail |= ng_copy('CHANGELOG', "$dst", $doit);
-        $fail |= ng_copy('AUTHORS', "$dst", $doit);
+    }
+
+    if (defined $conf->{ng_util_dir}) {
+        $dst = $conf->{ng_util_dir};
+        $fail |= ng_mkdir($dst, $doit);
+        $fail |= ng_copy('utils/testentry.pl', "$dst", $doit);
+        $fail |= ng_copy('utils/upgrade.pl', "$dst", $doit);
+        $fail |= ng_chmod(XPERMS, "$dst/testentry.pl", $doit);
+        $fail |= ng_chmod(XPERMS, "$dst/upgrade.pl", $doit);
     }
 
     if (defined $conf->{ng_rrd_dir}) {
@@ -1242,18 +1270,19 @@ these environment variables:
 Use one or more of these environment variables to specialize an automated
 install:
 
-  NG_VAR_DIR     - directory for log files and RRD files
-  NG_ETC_DIR     - directory for nagiosgraph configuration files
-  NG_BIN_DIR     - directory for nagiosgraph executables
-  NG_CGI_DIR     - directory for nagiosgraph CGI scripts
-  NG_DOC_DIR     - directory for nagiosgraph documentation and examples
-  NG_WWW_DIR     - directory for nagiosgraph CSS and JavaScript
-  NG_LOG_FILE    - nagiosgraph log file
-  NG_CGILOG_FILE - nagiosgraph CGI log file
-  NG_RRD_DIR     - directory for nagiosgraph RRD files
-  NG_CGI_URL     - URL to nagiosgraph CGI scripts
-  NG_CSS_URL     - URL to nagiosgraph CSS
-  NG_JS_URL      - URL to nagiosgraph Javascript
+  NG_VAR_DIR      - directory for log files and RRD files
+  NG_ETC_DIR      - directory for nagiosgraph configuration files
+  NG_BIN_DIR      - directory for nagiosgraph executables
+  NG_CGI_DIR      - directory for nagiosgraph CGI scripts
+  NG_DOC_DIR      - directory for nagiosgraph documentation
+  NG_EXAMPLES_DIR - directory for nagiosgraph examples
+  NG_WWW_DIR      - directory for nagiosgraph CSS and JavaScript
+  NG_LOG_FILE     - nagiosgraph log file
+  NG_CGILOG_FILE  - nagiosgraph CGI log file
+  NG_RRD_DIR      - directory for nagiosgraph RRD files
+  NG_CGI_URL      - URL to nagiosgraph CGI scripts
+  NG_CSS_URL      - URL to nagiosgraph CSS
+  NG_JS_URL       - URL to nagiosgraph Javascript
 
 =head1 REQUIRED ARGUMENTS
 
@@ -1283,7 +1312,8 @@ Nagiosgraph uses the following information for installation:
   ng_etc_dir           - directory for configuration files
   ng_bin_dir           - directory for executables
   ng_cgi_dir           - directory for CGI scripts
-  ng_doc_dir           - directory for documentation and examples
+  ng_doc_dir           - directory for documentation
+  ng_examples_dir      - directory for examples
   ng_www_dir           - directory for CSS and JavaScript
   ng_log_file          - path to nagiosgraph log file
   ng_cgilog_file       - path to nagiosgraph cgi log file
