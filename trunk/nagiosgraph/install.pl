@@ -106,7 +106,7 @@ my @PRESETS = (
       ng_css_url => 'nagiosgraph.css',
       ng_js_url => 'nagiosgraph.js', },
 
-    { ng_layout => 'ubuntu',
+    { ng_layout => 'debian',
       ng_dest_dir => q(/),
       ng_url => '/nagiosgraph',
       ng_etc_dir => '/etc/nagiosgraph',
@@ -125,6 +125,26 @@ my @PRESETS = (
       nagios_perfdata_file => '/var/log/nagios3/perfdata.log',
       nagios_user => 'nagios',
       www_user => 'www-data', },
+
+    { ng_layout => 'redhat',
+      ng_dest_dir => q(/),
+      ng_url => '/nagiosgraph',
+      ng_etc_dir => '/etc/nagiosgraph',
+      ng_bin_dir => '/usr/libexec/nagiosgraph',
+      ng_cgi_dir => '/usr/lib/nagiosgraph/cgi-bin',
+      ng_doc_dir => '/usr/share/nagiosgraph/doc',
+      ng_www_dir => '/usr/share/nagiosgraph/htdocs',
+      ng_util_dir => '/usr/share/nagiosgraph/util',
+      ng_var_dir => '/var/spool/nagiosgraph',
+      ng_rrd_dir => 'rrd',
+      ng_log_file => '/var/log/nagiosgraph.log',
+      ng_cgilog_file => '/var/log/nagiosgraph-cgi.log',
+      ng_cgi_url => 'cgi-bin',
+      ng_css_url => 'nagiosgraph.css',
+      ng_js_url => 'nagiosgraph.js',
+      nagios_perfdata_file => '/var/spool/nagios/perfdata.log',
+      nagios_user => 'nagios',
+      www_user => 'apache', },
     );
 
 my @CONF =
@@ -237,7 +257,7 @@ while ($ARGV[0]) {
         print "  --dry-run\n";
         print "  --verbose | --silent\n";
         print "\n";
-        print "  --layout (overlay | standalone | ubuntu)\n";
+        print "  --layout (overlay | standalone | debian | redhat | custom)\n";
         print "  --dest-dir path\n";
         print "  --var-dir path\n";
         print "  --etc-dir path\n";
@@ -255,7 +275,6 @@ while ($ARGV[0]) {
 }
 
 my $LOG;
-open $LOG, '>', LOG_FN || print 'cannot write to log file ' .LOG_FN. ": $OS_ERROR\n";
 my $failure = 0;
 
 if($action eq 'check-prereq') {
@@ -265,6 +284,8 @@ if($action eq 'check-prereq') {
     $failure |= checkconfig(\%conf);
     $failure |= checkinstallation(\%conf);
 } elsif($action eq 'install') {
+    open $LOG, '>', LOG_FN ||
+        print 'cannot write to log file ' .LOG_FN. ": $OS_ERROR\n";
     $failure |= checkprereq();
     $failure |= getconfig(\%conf);
     if (checkconfig(\%conf)) {
@@ -284,6 +305,8 @@ if($action eq 'check-prereq') {
     if (! isyes($conf{automated})) {
         printinstructions(\%conf);
     }
+    close $LOG || print "cannot close log file: $OS_ERROR\n";
+    undef $LOG;
 }
 
 if ($failure) {
@@ -292,8 +315,6 @@ if ($failure) {
     logmsg(q());
     exit EXIT_FAIL;
 }
-
-close $LOG || print "cannot close log file: $OS_ERROR\n";
 
 exit EXIT_OK;
 
@@ -307,7 +328,7 @@ sub logmsg {
         print $msg . "\n";
     }
     if (${LOG}) {
-        my $ts = strftime '%H:%M %d.%m.%Y', localtime time;
+        my $ts = strftime '%d.%m.%Y %H:%M:%S', localtime time;
         print ${LOG} "[$ts] $msg\n";
     }
     return;
@@ -662,8 +683,11 @@ sub checkexec {
     my $found = q();
     for (my $ii=0; $ii<$#dirs+1; $ii++) { ## no critic (ProhibitCStyleForLoops)
         my $a = "$dirs[$ii]/$app";
-        if (-f $a && -x $a) {
+        if (-f $a) {
             $found = $a;
+            if (! -x $a) {
+                $found .= ' (not executable)';
+            }
         }
     }
     return $found;
@@ -1088,7 +1112,7 @@ B<install.pl> [--version]
     --check-installation |
     --install [--dry-run]
               [--verbose | --silent]
-              [--layout (overlay | standalone | custom)]
+              [--layout (overlay | standalone | debian | redhat | custom)]
               [--dest-dir path]
               [--etc-dir path]
               [--var-dir path]
@@ -1113,7 +1137,8 @@ B<--verbose>        Emit messages about what is happening.
 
 B<--silent>         Do not emit messages about what is happening.
 
-B<--layout> layout  Which layout to use.  Can be I<standalone> or I<overlay>.
+B<--layout> layout  Which layout to use.  Can be I<standalone>, I<overlay>,
+                 I<debian>, I<redhat>, or I<custom>.
 
 B<--destdir> path   Directory in which files should be installed.
 
@@ -1121,9 +1146,7 @@ B<--etc-dir> path   Directory for configuration files.  The default value
                  depends upon the layout and the destination directory.
 
 B<--var-dir> path   Directory for log and RRD files.  The default value
-                 depends upon the layout.  For standalone layout, the
-                 default is /var/nagiosgraph.  For overlay layout, the
-                 default is /var/nagios.
+                 depends upon the layout.
 
 B<--nagios-cgi-url> url    URL to Nagios CGI scripts.
 
@@ -1136,7 +1159,7 @@ B<--www-user> userid       Name or uid of web server user.
 Automate this script for use in rpmbuild or other automated tools by setting
 these environment variables:
 
-  NG_LAYOUT               - standalone or overlay
+  NG_LAYOUT               - standalone, overlay, debian, redhat, or custom
   NG_DEST_DIR             - the root directory for the installation
   NG_NAGIOS_CGI_URL       - URL to Nagios CGI scripts
   NG_NAGIOS_PERFDATA_FILE - path to Nagios perfdata file
@@ -1182,7 +1205,7 @@ files into a separate directory tree.
 
 Nagiosgraph uses the following information for installation:
 
-  ng_layout            - standalone, overlay, or custom
+  ng_layout            - standalone, overlay, ubuntu, redhat, or custom
   ng_dest_dir          - directory for nagiosgraph files
   ng_etc_dir           - directory for configuration files
   ng_bin_dir           - directory for executables
@@ -1262,6 +1285,14 @@ Install overlay configuration to /opt/nagios
 Install standalone configuration to /opt/nagiosgraph
 
   install.pl --layout standalone --dest-dir /opt/nagiosgraph
+
+Install on a debian or ubuntu system with nagios3 installed from apt-get
+
+  install.pl --layout debian
+
+Install on a fedora or redhat system with nagios3 installed from RPM
+
+  install.pl --layout redhat
 
 Install nagiosgraph without prompting onto an existing Nagios installation
 at /usr/local/nagios:

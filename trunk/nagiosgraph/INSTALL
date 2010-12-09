@@ -78,10 +78,10 @@ older versions will also work.
 Nagiosgraph requires the CGI and RRDs perl modules.  The RRDs perl module
 is part of rrdtool.  The GD perl module is optional, but recommended.
 
-  Debian:
+  Debian/Ubuntu:
     rrdtool, perl, libcgi-pm-perl, librrds-perl, libgd-gd2-perl (optional)
-  Redhat:
-    ?
+  Redhat/Fedora:
+    rrdtool, perl, perl-CGI, perl-RRD-Simple, perl-GD (optional)
   Solaris:
     ?
   FreeBSD:
@@ -110,6 +110,8 @@ The install.pl script includes options for specifying the layout and location:
     install.pl --layout overlay --dest-dir /usr/local/nagios
     install.pl --layout standalone --dest-dir /opt/nagiosgraph
     install.pl --layout custom --dest-dir /usr/local/nagiosgraph
+    install.pl --layout debian
+    install.pl --layout redhat
 
 
 Installing nagiosgraph Files
