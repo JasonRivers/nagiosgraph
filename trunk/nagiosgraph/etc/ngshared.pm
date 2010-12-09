@@ -1025,7 +1025,7 @@ sub getperms {
 #
 sub havepermission {
     my ($host, $service) = @_;
-    if ( not defined %authz ) {
+    if ( not %authz ) {
         return 1;
     }
     my $ok = 0;
