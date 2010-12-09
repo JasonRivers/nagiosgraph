@@ -108,7 +108,7 @@ my @PRESETS = (
 
     { ng_layout => 'ubuntu',
       ng_dest_dir => q(/),
-      ng_url => '/nagios',
+      ng_url => '/nagiosgraph',
       ng_etc_dir => '/etc/nagiosgraph',
       ng_bin_dir => '/usr/lib/nagiosgraph',
       ng_cgi_dir => '/usr/lib/cgi-bin/nagiosgraph',
@@ -119,10 +119,10 @@ my @PRESETS = (
       ng_rrd_dir => 'rrd',
       ng_log_file => 'nagiosgraph.log',
       ng_cgilog_file => 'nagiosgraph-cgi.log',
-      ng_cgi_url => 'cgi-bin/nagiosgraph',
+      ng_cgi_url => 'cgi-bin',
       ng_css_url => 'nagiosgraph.css',
       ng_js_url => 'nagiosgraph.js',
-      nagios_perfdata_file => '/var/nagios/perfdata.log',
+      nagios_perfdata_file => '/var/log/nagios3/perfdata.log',
       nagios_user => 'nagios',
       www_user => 'www-data', },
     );
