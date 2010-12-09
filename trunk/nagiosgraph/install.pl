@@ -16,6 +16,7 @@
 ## no critic (RegularExpressions)
 ## no critic (ProhibitConstantPragma)
 ## no critic (ProhibitMagicNumbers)
+## no critic (ProhibitExcessComplexity)
 
 use English qw(-no_match_vars);
 use File::Copy qw(copy move);
@@ -40,6 +41,7 @@ use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
 # put the keys in a specific order to make it easier to see where things go
 my @CONFKEYS = qw(ng_layout ng_dest_dir ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_examples_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file modify_apache_config apache_config_file apache_config_dir);
 
+# these are standard installation configurations.
 my @PRESETS = (
     { ng_layout => 'standalone',
       ng_url => '/nagiosgraph',
