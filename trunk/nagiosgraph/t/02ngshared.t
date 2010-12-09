@@ -2909,6 +2909,7 @@ sub testformattime {
 }
 
 sub testcheckrrddir {
+    my $isroot = $ENV{LOGNAME} eq 'root' ? 1 : 0;
     my $cwd = $FindBin::Bin;
     my $gp = $cwd . '/gp';
     my $p = $gp . '/p';
@@ -2928,19 +2929,31 @@ sub testcheckrrddir {
     rmtree($gp);
     mkdir $gp, 0550;
     $msg = checkrrddir('write');
-    ok($msg, "Cannot create rrd directory $cwd/gp/p/rrd: No such file or directory");
+    if ($isroot) {
+        ok($msg, "");
+    } else {
+        ok($msg, "Cannot create rrd directory $cwd/gp/p/rrd: No such file or directory");
+    }
 
     rmtree($gp);
     mkdir $gp, 0550;
     mkdir $p, 0770;
     $msg = checkrrddir('write');
-    ok($msg, "Cannot create rrd directory $cwd/gp/p/rrd: No such file or directory");
+    if ($isroot) {
+        ok($msg, "");
+    } else {
+        ok($msg, "Cannot create rrd directory $cwd/gp/p/rrd: No such file or directory");
+    }
 
     rmtree($gp);
     mkdir $gp, 0770;
     mkdir $p, 0550;
     $msg = checkrrddir('write');
-    ok($msg, "Cannot create rrd directory $cwd/gp/p/rrd: Permission denied");
+    if ($isroot) {
+        ok($msg, "");
+    } else {
+        ok($msg, "Cannot create rrd directory $cwd/gp/p/rrd: Permission denied");
+    }
 
     rmtree($gp);
     $msg = checkrrddir('read');
