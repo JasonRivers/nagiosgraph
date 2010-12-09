@@ -37,7 +37,7 @@ use constant NAGIOS_STUB_FN => 'nagiosgraph-nagios.cfg';
 use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
 
 # put the keys in a specific order to make it easier to see where things go
-my @CONFKEYS = qw(ng_layout ng_dest_dir ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file modify_apache_config apache_config_file);
+my @CONFKEYS = qw(ng_layout ng_dest_dir ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file modify_apache_config apache_config_file apache_config_dir);
 
 my @PRESETS = (
     { ng_layout => 'standalone',
@@ -124,7 +124,9 @@ my @PRESETS = (
       ng_js_url => 'nagiosgraph.js',
       nagios_perfdata_file => '/var/log/nagios3/perfdata.log',
       nagios_user => 'nagios',
-      www_user => 'www-data', },
+      www_user => 'www-data',
+      nagios_config_file => '/etc/nagios3/nagios.cfg',
+      apache_config_dir => '/etc/httpd/conf.d', },
 
     { ng_layout => 'redhat',
       ng_dest_dir => q(/),
@@ -144,7 +146,9 @@ my @PRESETS = (
       ng_js_url => 'nagiosgraph.js',
       nagios_perfdata_file => '/var/spool/nagios/perfdata.log',
       nagios_user => 'nagios',
-      www_user => 'apache', },
+      www_user => 'apache',
+      nagios_config_file => '/etc/nagios/nagios.cfg',
+      apache_config_dir => '/etc/apache2/conf.d', },
     );
 
 my @CONF =
@@ -472,10 +476,20 @@ sub checkconfig {
     my $missing = 0;
     foreach my $ii (@CONFKEYS) {
         if (! defined $conf->{$ii}) {
-            if (($ii eq 'nagios_config_file' &&
-                 ! isyes($conf->{modify_nagios_config})) ||
-                ($ii eq 'apache_config_file' &&
-                 ! isyes($conf->{modify_apache_config}))) {
+            if ($ii eq 'nagios_config_file' &&
+                ! isyes($conf->{modify_nagios_config})) {
+                next;
+            } elsif(($ii eq 'apache_config_dir' ||
+                     $ii eq 'apache_config_file') &&
+                    ! isyes($conf->{modify_apache_config})) {
+                next;
+            } elsif($ii eq 'apache_config_file' &&
+                    defined $conf->{apache_config_dir} &&
+                    isyes($conf->{modify_apache_config})) {
+                next;
+            } elsif($ii eq 'apache_config_dir' &&
+                    defined $conf->{apache_config_file} &&
+                    isyes($conf->{modify_apache_config})) {
                 next;
             } else {
                 logmsg('parameter ' . $ii . ' is not defined');
@@ -500,16 +514,18 @@ sub getconfig {
     }
 
     if (! defined $conf->{nagios_perfdata_file}) {
-        $conf->{nagios_perfdata_file} =
-            findfile('perfdata.log', qw(/var/nagios /var/spool/nagios));
+        my $x = findfile('perfdata.log', qw(/var/nagios /var/spool/nagios /var/nagios3 /var/spool/nagios3));
+        $conf->{nagios_perfdata_file} = $x if $x ne q();
     }
 
     if (! defined $conf->{nagios_user}) {
-        $conf->{nagios_user} = finduser(qw(nagios));
+        my $x = finduser(qw(nagios));
+        $conf->{nagios_user} = $x if $x ne q();
     }
 
     if (! defined $conf->{www_user}) {
-        $conf->{www_user} = finduser(qw(www-data www apache));
+        my $x = finduser(qw(www-data www apache));
+        $conf->{www_user} = $x if $x ne q();
     }
 
     # prompt for each item in the configuration
@@ -529,29 +545,38 @@ sub getconfig {
     $conf->{modify_nagios_config} =
         getanswer('Modify the Nagios configuration file', 'n');
     if (isyes($conf->{modify_nagios_config})) {
-        my $dfltfile = defined $conf->{nagios_config_file} ?
+        my $x = defined $conf->{nagios_config_file} ?
             $conf->{nagios_config_file} : q();
-        if ($dfltfile eq q()) {
-            $dfltfile = findfile('nagios.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc));
+        if ($x eq q()) {
+            $x = findfile('nagios.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc /etc/nagios3 /usr/local/nagios3/etc /opt/nagios3/etc));
         }
         $conf->{nagios_config_file} =
-            getanswer('Path of Nagios configuration file', $dfltfile);
+            getanswer('Path of Nagios configuration file', $x);
     }
 
-    # find out if we should modify the apache configuration
+    # find out if we should modify the apache configuration.  if there is a
+    # conf.d directory, then use it.  if not, modify the .conf file.
     $conf->{modify_apache_config} =
-        getanswer('Modify the Apache configuration file', 'n');
+        getanswer('Modify the Apache configuration', 'n');
     if (isyes($conf->{modify_apache_config})) {
-        my $dfltfile = defined $conf->{apache_config_file} ?
-            $conf->{apache_config_file} : q();
-        if ($dfltfile eq q()) {
-            $dfltfile = findfile('apache2.conf', qw(/etc/apache2 /usr/local/apache2 /opt/apache2 /usr/local/httpd /opt/httpd));
+        my $x = defined $conf->{apache_config_dir} ?
+            $conf->{apache_config_dir} : q();
+        if ($x eq q()) {
+            $x = finddir('conf.d', qw(/etc/apache2 /usr/local/apache2 /opt/apache2 /etc/httpd /usr/local/httpd /opt/httpd));
+            $conf->{apache_config_dir} = $x if $x ne q();
         }
-        if ($dfltfile eq q()) {
-            $dfltfile = findfile('httpd.conf', qw(/etc/apache2/conf /usr/local/apache2/conf /opt/apache2/conf /usr/local/httpd/conf /opt/httpd/conf));
+        if ($x eq q()) {
+            $x = defined $conf->{apache_config_file} ?
+                $conf->{apache_config_file} : q();
+            if ($x eq q()) {
+                $x = findfile('apache2.conf', qw(/etc/apache2 /usr/local/apache2 /opt/apache2 /etc/httpd /usr/local/httpd /opt/httpd));
+            }
+            if ($x eq q()) {
+                $x = findfile('httpd.conf', qw(/etc/apache2/conf /usr/local/apache2/conf /opt/apache2/conf /etc/httpd /usr/local/httpd/conf /opt/httpd/conf));
+            }
+            $conf->{apache_config_file} =
+                getanswer('Path of Apache configuration file', $x);
         }
-        $conf->{apache_config_file} =
-            getanswer('Path of Apache configuration file', $dfltfile);
     }
 
     return $fail;
@@ -758,6 +783,17 @@ sub findfile {
     return $path;
 }
 
+sub finddir {
+    my ($fn, @dirs) = @_;
+    my $path = q();
+    foreach my $dir (@dirs) {
+        if (-d "$dir/$fn") {
+            $path = "$dir/$fn";
+        }
+    }
+    return $path;
+}
+
 sub getfiles {
     my ($dir, $pattern) = @_;
     my @files;
@@ -892,6 +928,7 @@ sub printinstructions {
     }
     print "\n";
     print "    You must restart nagios before data collection will occur.\n";
+    print "    You must restart apache to enable display of graphs.\n";
     print "\n";
 
     return;
@@ -1002,7 +1039,11 @@ sub doinstall {
 
     if (defined $conf->{modify_apache_config} &&
         isyes($conf->{modify_apache_config})) {
-        $fail |= appendtofile($conf->{apache_config_file}, "# nagiosgraph configuration\ninclude $conf->{ng_etc_dir}/" . APACHE_STUB_FN . "\n", $doit);
+        if (defined $conf->{apache_config_dir}) {
+            $fail |= ng_move("$conf->{ng_etc_dir}/" . APACHE_STUB_FN, $conf->{apache_config_dir}, $doit);
+        } elsif (defined $conf->{apache_config_file}) {
+            $fail |= appendtofile($conf->{apache_config_file}, "# nagiosgraph configuration\ninclude $conf->{ng_etc_dir}/" . APACHE_STUB_FN . "\n", $doit);
+        }
     }
 
     return $fail;
@@ -1260,6 +1301,7 @@ Nagiosgraph uses the following information for installation:
 
   configure apache?    - whether to configure Apache
   apache_config_file   - path to apache config file
+  apache_config_dir    - path to apache conf.d directory
 
 In some cases these can be inferred from the configuration.  In other cases
 they must be specified explicitly.
