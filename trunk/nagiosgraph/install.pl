@@ -218,7 +218,7 @@ while ($ARGV[0]) {
         $action = 'install';
     } elsif ($arg eq '--dry-run') {
         $dryrun = 1;
-    } elsif ($arg eq '--silent') {
+    } elsif ($arg eq '--silent' || $arg eq '--quiet') {
         $verbose = 0;
     } elsif ($arg eq '--verbose') {
         $verbose = 1;
@@ -228,20 +228,38 @@ while ($ARGV[0]) {
         $action = 'check-prereq';
     } elsif ($arg eq '--layout') {
         $conf{ng_layout} = shift;
+    } elsif ($arg =~ /^--layout=(.+)/) {
+        $conf{ng_layout} = $1;
     } elsif ($arg eq '--dest-dir' || $arg eq '--prefix') {
         $conf{ng_dest_dir} = trimslashes(shift);
+    } elsif ($arg =~ /^--dest-dir=(.+)/) {
+        $conf{ng_dest_dir} = trimslashes($1);
+    } elsif ($arg =~ /^--prefix=(.+)/) {
+        $conf{ng_dest_dir} = trimslashes($1);
     } elsif ($arg eq '--var-dir') {
         $conf{ng_var_dir} = trimslashes(shift);
+    } elsif ($arg =~ /^--var-dir=(.+)/) {
+        $conf{ng_var_dir} = trimslashes($1);
     } elsif ($arg eq '--etc-dir') {
         $conf{ng_etc_dir} = trimslashes(shift);
+    } elsif ($arg =~ /^--etc-dir=(.+)/) {
+        $conf{ng_etc_dir} = trimslashes($1);
     } elsif ($arg eq '--nagios-cgi-url') {
         $conf{nagios_cgi_url} = shift;
+    } elsif ($arg =~ /^--nagios-cgi-url=(.+)/) {
+        $conf{nagios_cgi_url} = $1;
     } elsif ($arg eq '--nagios-perfdata-file') {
         $conf{nagios_perfdata_file} = shift;
+    } elsif ($arg =~ /^--nagios-perfdata-file=(.+)/) {
+        $conf{nagios_perfdata_file} = $1;
     } elsif ($arg eq '--nagios-user') {
         $conf{nagios_user} = shift;
+    } elsif ($arg =~ /^--nagios-user=(.+)/) {
+        $conf{nagios_user} = $1;
     } elsif ($arg eq '--www-user') {
         $conf{www_user} = shift;
+    } elsif ($arg =~ /^--www-user=(.+)/) {
+        $conf{www_user} = $1;
     } else {
         my $code = EXIT_OK;
         if ($arg ne '--help') {
@@ -266,13 +284,22 @@ while ($ARGV[0]) {
         print "  --nagios-user userid\n";
         print "  --www-user userid\n";
         print "\n";
-        print "specify one or more environment variables to run without\n";
-        print "prompts.  environment variables include:\n";
+        print "to install without prompts, specify one or more environment\n";
+        print "variables.  recognized environment variables include:\n";
         foreach my $v (envvars()) {
             print "  $v\n";
         }
         exit $code;
     }
+}
+
+if ($conf{ng_layout} ne 'standalone' &&
+    $conf{ng_layout} ne 'overlay' &&
+    $conf{ng_layout} ne 'debian' &&
+    $conf{ng_layout} ne 'redhat' &&
+    $conf{ng_layout} ne 'custom') {
+    print "unknown layout '$conf{ng_layout}'\n";
+    exit 1;
 }
 
 my $LOG;
@@ -633,6 +660,9 @@ sub checkprereq {
     logmsg('checking nagios installation');
     @dirs = qw(/usr/local/nagios/bin /opt/nagios/bin /usr/bin /usr/sbin /bin /sbin);
     $found = checkexec('nagios', @dirs);
+    if ($found eq q()) {
+        $found = checkexec('nagios3', @dirs);
+    }
     if ($found ne q()) {
         logmsg("  found nagios at $found");
     } else {
