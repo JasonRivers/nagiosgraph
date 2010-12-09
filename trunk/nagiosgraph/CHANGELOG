@@ -26,6 +26,14 @@ $Id$
 * fixed zooming on ie8 (derekdawson)
 * added showconfig.cgi script to facilitate diagnosing of problems.
 * better handling of errors when creating rrddir
+* new configuration options (see nagiosgraph.conf for details):
+     xff
+     xffs
+     step
+     steps
+     lasts
+  these options enable per-host/service/db specification of the RRA step
+  and xfiles factor, as well as the use of LAST.
 
 1.4.3 2010-06-07
 

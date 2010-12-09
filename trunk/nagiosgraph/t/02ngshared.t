@@ -21,9 +21,9 @@ use Test;
 use lib "$FindBin::Bin/../etc";
 use ngshared;
 
-my ($log, $result, @result, $testvar, @testdata, %testdata, $ii);
+BEGIN { plan tests => 485; }
 
-BEGIN { plan tests => 484; }
+my ($log, $result, @result, $testvar);
 
 # ensure that we have a clean slate from which to work
 sub setup {
@@ -387,19 +387,19 @@ sub testmkfilename { # Test getting the file and directory for a database.
 
 # With 16 generated colors, the default rainbow and one custom.
 sub testhashcolor {
-    @testdata = ('FF0333', '3300CC', '990033', 'FF03CC', '990333', 'CC00CC', '000099', '6603CC');
-    for ($ii = 0; $ii < 8; $ii++) {
+    my @testdata = ('FF0333', '3300CC', '990033', 'FF03CC', '990333', 'CC00CC', '000099', '6603CC');
+    for (my $ii = 0; $ii < 8; $ii++) {
         $result = hashcolor('Current Load', $ii + 1);
         ok($result, $testdata[$ii - 1]);
     }
     @testdata = ('CC0300', 'FF0399', '990000', '330099', '990300', '660399', '990000', 'CC0099');
-    for ($ii = 1; $ii < 9; $ii++) {
+    for (my $ii = 1; $ii < 9; $ii++) {
         $result = hashcolor('PLW', $ii);
         ok($result, $testdata[$ii - 1]);
     }
     $Config{colors} = ['123', 'ABC'];
     @testdata = ('123', 'ABC', '123');
-    for ($ii = 0; $ii < 3; $ii++) {
+    for (my $ii = 0; $ii < 3; $ii++) {
         $result = hashcolor('test', 9);
         ok($result, $testdata[$ii]);
     }
@@ -409,14 +409,14 @@ sub testhashcolor {
 }
 
 sub testlisttodict { # Split a string separated by a configured value into hash.
-	open $LOG, '+>', \$log;
-	$Config{testsep} = ',';
-	$Config{test} = 'Current Load,PLW,Procs: total,User Count';
-	$testvar = listtodict('test');
-	foreach $ii ('Current Load','PLW','Procs: total','User Count') {
-		ok($testvar->{$ii}, 1);
-	}
-	close $LOG;
+    open $LOG, '+>', \$log;
+    $Config{testsep} = ',';
+    $Config{test} = 'Current Load,PLW,Procs: total,User Count';
+    $testvar = listtodict('test');
+    foreach my $ii ('Current Load','PLW','Procs: total','User Count') {
+        ok($testvar->{$ii}, 1);
+    }
+    close $LOG;
 }
 
 sub teststr2hash {
@@ -1264,7 +1264,7 @@ sub testgraphsizes {
 }
 
 sub testreadperfdata {
-    @testdata = ('1221495633||testbox||HTTP||CRITICAL - Socket timeout after 10 seconds||',
+    my @testdata = ('1221495633||testbox||HTTP||CRITICAL - Socket timeout after 10 seconds||',
                  '1221495690||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||losspct: 0%, rta: 37.06'
                  );
     my $fn = $FindBin::Bin . '/perfdata.log';
@@ -1275,7 +1275,7 @@ sub testreadperfdata {
     ok(@result, 0);
     # a test with data
     open $LOG, ">$fn";
-    foreach $ii (@testdata) {
+    foreach my $ii (@testdata) {
         print $LOG "$ii\n";
     }
     close $LOG;
@@ -1288,26 +1288,39 @@ sub testreadperfdata {
 }
 
 sub testgetrras {
-	@testdata = (1, 2, 3, 4);
-	# $Config{maximums}
-	@result = main::getrras('Current Load', \@testdata);
-	ok(Dumper(\@result), "\$VAR1 = [
+    my $xff = 0.5;
+    my @steps = (1, 6, 24, 288);
+    my @rows = (1, 2, 3, 4);
+    $Config{maximums} = 'Current Load,PLW,Procs: total,User Count';
+    $Config{maximums} = listtodict('maximums', q(,));
+    @result = main::getrras('Current Load', $xff, \@rows, \@steps);
+    ok(Dumper(\@result), "\$VAR1 = [
           'RRA:MAX:0.5:1:1',
           'RRA:MAX:0.5:6:2',
           'RRA:MAX:0.5:24:3',
           'RRA:MAX:0.5:288:4'
         ];\n");
-	# $Config{minimums}
-	@result = main::getrras('APCUPSD', \@testdata);
-	ok(Dumper(\@result), "\$VAR1 = [
+    $Config{minimums} = 'APCUPSD,fruitloops';
+    $Config{minimums} = listtodict('minimums', q(,));
+    @result = main::getrras('APCUPSD', $xff, \@rows, \@steps);
+    ok(Dumper(\@result), "\$VAR1 = [
           'RRA:MIN:0.5:1:1',
           'RRA:MIN:0.5:6:2',
           'RRA:MIN:0.5:24:3',
           'RRA:MIN:0.5:288:4'
         ];\n");
-	# default
-	@result = main::getrras('other value', \@testdata);
-	ok(Dumper(\@result), "\$VAR1 = [
+    $Config{lasts} = 'sunset,sunrise';
+    $Config{lasts} = listtodict('lasts', q(,));
+    @result = main::getrras('sunset', $xff, \@rows, \@steps);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'RRA:LAST:0.5:1:1',
+          'RRA:LAST:0.5:6:2',
+          'RRA:LAST:0.5:24:3',
+          'RRA:LAST:0.5:288:4'
+        ];\n");
+    # default
+    @result = main::getrras('other value', $xff, \@rows, \@steps);
+    ok(Dumper(\@result), "\$VAR1 = [
           'RRA:AVERAGE:0.5:1:1',
           'RRA:AVERAGE:0.5:6:2',
           'RRA:AVERAGE:0.5:24:3',

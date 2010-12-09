@@ -86,6 +86,8 @@ use constant {
     STEPSIZE => 300,
     HEARTBEAT => 600,
     RESOLUTIONS => '600 700 775 797',
+    STEPS => '1 6 24 288',
+    XFF => 0.5,
     PERIODS => 'day week month year',
 };
 
@@ -762,7 +764,8 @@ sub readconfig {
     $Config{rrdoptshash}{global} =
         defined $Config{rrdopts} ? $Config{rrdopts} : q();
 
-    foreach my $ii ('maximums', 'minimums', 'withmaximums', 'withminimums',
+    foreach my $ii ('maximums', 'minimums', 'lasts',
+                    'withmaximums', 'withminimums',
                     'altautoscale', 'nogridfit', 'logarithmic', 'negate',
                     'plotasLINE1', 'plotasLINE2', 'plotasLINE3',
                     'plotasAREA', 'plotasTICK', 'stack') {
@@ -774,7 +777,7 @@ sub readconfig {
     foreach my $ii ('altautoscalemax', 'altautoscalemin') {
         listtodict($ii, q(;), 1);
     }
-    foreach my $ii ('heartbeats', 'stepsizes', 'resolutions') {
+    foreach my $ii ('heartbeats', 'stepsizes', 'resolutions', 'steps', 'xffs') {
         if (defined $Config{$ii}) {
             my $key = $ii;
             chomp $key;
@@ -797,6 +800,8 @@ sub readconfig {
                     ['colormax', COLORMAX],
                     ['colormin', COLORMIN],
                     ['resolution', RESOLUTIONS],
+                    ['step', STEPS],
+                    ['xff', XFF],
                     ['heartbeat', HEARTBEAT],
                     ['stepsize', STEPSIZE],) {
         if (not $Config{$ii->[0]}) { $Config{$ii->[0]} = $ii->[1]; }
@@ -1665,10 +1670,11 @@ sub setlabels { ## no critic (ProhibitManyArgs)
                 , "CDEF:floor$id=$id,FLOOR"
                 , "$linestyle:${id}#$linecolor:$legend$sdef";
     } else {
-        push @ds, "DEF:${id}=$file:$dsname:AVERAGE";
+        my $t = defined $Config{lasts}->{$serv} ? 'LAST' : 'AVERAGE';
+        push @ds, "DEF:${id}=$file:$dsname:$t";
         if (defined $Config{negate}->{$dsname}) {
-            push @ds, "CDEF:${id}_neg=${id},-1,*";
-            push @ds, "$linestyle:${id}_neg#$linecolor:$legend$sdef";
+            push @ds, "CDEF:${id}_neg=${id},-1,*"
+                    , "$linestyle:${id}_neg#$linecolor:$legend$sdef";
         } else {
             push @ds, "$linestyle:${id}#$linecolor:$legend$sdef";
         }
@@ -2496,11 +2502,13 @@ sub readperfdata {
     return @lines;
 }
 
-# Process received data
+# construct the RRA strings
 sub getrras {
-    my ($service, $rras, $choice) = @_;
+    my ($service, $xff, $rows, $steps, $choice) = @_;
     if (not $choice) {
-        if (defined $Config{maximums}->{$service}) {
+        if (defined $Config{lasts}->{$service}) {
+            $choice = 'LAST';
+        } elsif (defined $Config{maximums}->{$service}) {
             $choice = 'MAX';
         } elsif (defined $Config{minimums}->{$service}) {
             $choice = 'MIN';
@@ -2508,8 +2516,10 @@ sub getrras {
             $choice = 'AVERAGE';
         }
     }
-    return "RRA:$choice:0.5:1:$rras->[0]", "RRA:$choice:0.5:6:$rras->[1]",
-           "RRA:$choice:0.5:24:$rras->[2]", "RRA:$choice:0.5:288:$rras->[3]";
+    return "RRA:$choice:$xff:$steps->[0]:$rows->[0]",
+           "RRA:$choice:$xff:$steps->[1]:$rows->[1]",
+           "RRA:$choice:$xff:$steps->[2]:$rows->[2]",
+           "RRA:$choice:$xff:$steps->[3]:$rows->[3]";
 }
 
 # Create new rrd databases if necessary
@@ -2545,6 +2555,8 @@ sub checkdsname {
     return 0;
 }
 
+# look up the key.  if there is a specialization for a host/service/db, then
+# use that instead.
 sub gethsdmatch {
     my ($key, $val, $host, $service, $db) = @_;
     my $x = $val;
@@ -2586,14 +2598,25 @@ sub createrrd {
         croak($msg);
     }
 
-    my $res = gethsdmatch('resolution', RESOLUTIONS, $host, $service, $db);
-    my @rras = split / /, $res;
-    if (scalar @rras != 4) {
+    my $rstr = gethsdmatch('resolution', RESOLUTIONS, $host, $service, $db);
+    my @rows = split / /, $rstr;
+    if (scalar @rows != 4) {
         my $msg = 'wrong number of values for resolution (expecting 4, got '
-            . scalar @rras . ')';
+            . scalar @rows . ')';
         debug(DBCRT, $msg);
         croak($msg);
     }
+
+    my $sstr = gethsdmatch('step', STEPS, $host, $service, $db);
+    my @steps = split / /, $sstr;
+    if (scalar @steps != 4) {
+        my $msg = 'wrong number of values for step (expecting 4, got '
+            . scalar @steps . ')';
+        debug(DBCRT, $msg);
+        croak($msg);
+    }
+
+    my $xff = gethsdmatch('xff', XFF, $host, $service, $db);
 
     my $heartbeat = gethsdmatch('heartbeat', HEARTBEAT, $host, $service, $db);
 
@@ -2601,7 +2624,9 @@ sub createrrd {
 
     debug(DBDEB, 'createrrd step=' . $stepsize
           . ' heartbeat=' . $heartbeat
-          . ' resolutions=' . join q( ), @rras);
+          . ' xff=' . $xff
+          . ' resolutions=' . join q( ), @rows
+          . ' steps=' . join q( ), @steps);
 
     my @ds = ("$directory/$filenames[0]",
               '--start', $start, '--step', $stepsize,);
@@ -2634,17 +2659,17 @@ sub createrrd {
             if (not -e "$directory/$fn") {
                 runcreate(["$directory/$fn",
                            '--start', $start, '--step', $stepsize,
-                           $ds, getrras($service, \@rras)]);
+                           $ds, getrras($service,$xff,\@rows,\@steps)]);
             }
             if (checkminmax('min', $service, $directory, $fn)) {
                 runcreate(["$directory/${fn}_min",
                            '--start', $start, '--step', $stepsize,
-                           $ds, getrras($service, \@rras, 'MIN')]);
+                           $ds, getrras($service,$xff,\@rows,\@steps,'MIN')]);
             }
             if (checkminmax('max', $service, $directory, $fn)) {
                 runcreate(["$directory/${fn}_max",
                            '--start', $start, '--step', $stepsize,
-                           $ds, getrras($service, \@rras, 'MAX')]);
+                           $ds, getrras($service,$xff,\@rows,\@steps,'MAX')]);
             }
             next;
         } else {
@@ -2660,12 +2685,12 @@ sub createrrd {
     }
     if (not -e "$directory/$filenames[0]" and
         checkdatasources(\@ds, $directory, \@filenames, $labels)) {
-        push @ds, getrras($service, \@rras);
+        push @ds, getrras($service, $xff, \@rows, \@steps);
         runcreate(\@ds);
     }
-    createminmax(\@dsmin, \@filenames, \@rras, {conf => 'min',
+    createminmax(\@dsmin, \@filenames, $xff, \@rows, \@steps, {conf => 'min',
         service => $service, directory => $directory, labels => $labels});
-    createminmax(\@dsmax, \@filenames, \@rras, {conf => 'max',
+    createminmax(\@dsmax, \@filenames, $xff, \@rows, \@steps, {conf => 'max',
         service => $service, directory => $directory, labels => $labels});
     dumper(DBDEB, 'createrrd filenames', \@filenames);
     dumper(DBDEB, 'createrrd datasets', \@datasets);
@@ -2683,13 +2708,13 @@ sub checkminmax {
 }
 
 sub createminmax {
-    my ($ds, $filenames, $rras, $opts) = @_;
+    my ($ds, $filenames, $xff, $rows, $steps, $opts) = @_;
 #    dumper(DBDEB, 'createminmax opts', $opts);
     if (checkminmax($opts->{conf}, $opts->{service}, $opts->{directory}, $filenames->[0]) and
         checkdatasources($ds, $opts->{directory}, $filenames, $opts->{labels})) {
         my $conf = $opts->{conf};
         $conf =~ tr/[a-z]/[A-Z]/;
-        push @{$ds}, getrras($opts->{service}, $rras, $conf);
+        push @{$ds}, getrras($opts->{service}, $xff, $rows, $steps, $conf);
         runcreate($ds);
     }
     return;
