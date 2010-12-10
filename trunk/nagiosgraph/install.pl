@@ -300,6 +300,16 @@ while ($ARGV[0]) {
         print "  --nagios-user userid\n";
         print "  --www-user userid\n";
         print "\n";
+        print "examples:\n";
+        print "to install on an ubuntu system with nagios3:\n";
+        print "  install.pl --layout debian\n";
+        print "to install on a redhat/fedora system with nagios3:\n";
+        print "  install.pl --layout redhat\n";
+        print "to overlay with nagios at /usr/local/nagios:\n";
+        print "  install.pl --layout overlay --dest-dir /usr/local/nagios\n";
+        print "to install at /opt/nagiosgraph:\n";
+        print "  install.pl --layout standalone --dest-dir /opt/nagiosgraph\n";
+        print "\n";
         print "to install without prompts, specify one or more environment\n";
         print "variables.  recognized environment variables include:\n";
         foreach my $v (envvars()) {
@@ -976,6 +986,11 @@ sub doinstall {
   '^logfile\\s*=.*', 'logfile = ' . $conf->{ng_log_file},
   '^cgilogfile\\s*=.*', 'cgilogfile = ' . $conf->{ng_cgilog_file},
                     }, $doit);
+        if ($conf->{ng_cgi_url} ne $conf->{nagios_cgi_url}) {
+            $fail |= replacetext("$dst/nagiosgraph.conf", {
+  '^#nagioscgiurl\\s*=.*', 'nagioscgiurl = ' . $conf->{nagios_cgi_url},
+                    }, $doit);
+        }
         $fail |= writenagiosstub($conf->{ng_etc_dir} . q(/) . NAGIOS_STUB_FN,
                                  $conf, $doit);
         $fail |= writeapachestub($conf->{ng_etc_dir} . q(/) . APACHE_STUB_FN,

@@ -21,6 +21,7 @@ modifying configuration files, or automatically using the install.pl script.
   Installation Preliminaries
     Prerequisites
     Layout and Location
+    Installation Methods
   Installing nagiosgraph Files
   Upgrade Notes
   Configuring Data Processing
@@ -112,6 +113,29 @@ The install.pl script includes options for specifying the layout and location:
     install.pl --layout custom --dest-dir /usr/local/nagiosgraph
     install.pl --layout debian
     install.pl --layout redhat
+
+
+Installation Methods
+--------------------
+
+There are a few ways to install nagiosgraph.
+
+Install Script.  Run the install.pl script.  It will prompt you for the
+parameters it needs, then it will copy and configure nagiosgraph files.
+It will also prompt you to modify apache and nagios configuration files.
+
+Manual Installation.  Copy and edit files directly.  Follow the instructions
+in the following sections of this document:
+  'Installing nagiosgraph Files'     - nagiosgraph installation
+  'Configuring Data Processing'      - nagios configuration
+  'Configuring Graphing and Display' - apache and nagios configuration
+
+Installation Using Packages.  You can generate a package for redhat/fedora
+(rpm) systems or debian/ubuntu (.deb) systems, then install the package using
+standard package management tools.
+  perl Makefile.PL
+  make build-deb      - build the .deb package
+  make build-rpm      - build the rpm package
 
 
 Installing nagiosgraph Files
