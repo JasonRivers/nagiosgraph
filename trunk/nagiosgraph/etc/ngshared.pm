@@ -2688,10 +2688,14 @@ sub createrrd {
         push @ds, getrras($service, $xff, \@rows, \@steps);
         runcreate(\@ds);
     }
-    createminmax(\@dsmin, \@filenames, $xff, \@rows, \@steps, {conf => 'min',
-        service => $service, directory => $directory, labels => $labels});
-    createminmax(\@dsmax, \@filenames, $xff, \@rows, \@steps, {conf => 'max',
-        service => $service, directory => $directory, labels => $labels});
+    createminmax('min', \@dsmin, \@filenames,
+                 { service => $service,
+                   directory => $directory, labels => $labels,
+                   xff => $xff, rows => \@rows, steps => \@steps });
+    createminmax('max', \@dsmax, \@filenames,
+                 { service => $service,
+                   directory => $directory, labels => $labels,
+                   xff => $xff, rows => \@rows, steps => \@steps });
     dumper(DBDEB, 'createrrd filenames', \@filenames);
     dumper(DBDEB, 'createrrd datasets', \@datasets);
     return \@filenames, \@datasets;
@@ -2699,7 +2703,6 @@ sub createrrd {
 
 sub checkminmax {
     my ($conf, $service, $directory, $filename) = @_;
-#    debug(DBDEB, "checkminmax($conf, $service, $directory, $filename)");
     if (defined $Config{'with' . $conf . 'imums'}->{$service} and
         not -e $directory . q(/) . $filename . q(_) . $conf) {
         return 1;
@@ -2708,13 +2711,15 @@ sub checkminmax {
 }
 
 sub createminmax {
-    my ($ds, $filenames, $xff, $rows, $steps, $opts) = @_;
-#    dumper(DBDEB, 'createminmax opts', $opts);
-    if (checkminmax($opts->{conf}, $opts->{service}, $opts->{directory}, $filenames->[0]) and
-        checkdatasources($ds, $opts->{directory}, $filenames, $opts->{labels})) {
-        my $conf = $opts->{conf};
-        $conf =~ tr/[a-z]/[A-Z]/;
-        push @{$ds}, getrras($opts->{service}, $xff, $rows, $steps, $conf);
+    my ($conf, $ds, $filenames, $opts) = @_;
+    if (checkminmax($conf,
+                    $opts->{service}, $opts->{directory}, $filenames->[0]) and
+        checkdatasources($ds,
+                         $opts->{directory}, $filenames, $opts->{labels})) {
+        my $s = $conf;
+        $s =~ tr/[a-z]/[A-Z]/;
+        push @{$ds}, getrras($opts->{service},
+                             $opts->{xff}, $opts->{rows}, $opts->{steps}, $s);
         runcreate($ds);
     }
     return;
