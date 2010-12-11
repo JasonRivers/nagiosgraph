@@ -8,9 +8,8 @@ These are the installation and configuration instructions for nagiosgraph.
 
 Nagios monitors one or more services on each host.  nagiosgraph extracts
 information from the Nagios output, processes it, then inserts it into one
-or more round-robin database (RRD) files.  Each database contains one or
-more data sources.  nagiosgraph cgi scripts display data from the RRD files
-as web pages.
+or more round-robin database (RRD) files.  nagiosgraph cgi scripts display
+data from the RRD files as web pages.
 
 Installation is a three-step process.  First install the nagiosgraph files,
 then configure Nagios for data collection, and finally customize the graphs
@@ -106,36 +105,40 @@ example /opt or /usr/local.
 Decide upon a location and layout before you start the installation.
 Examples are in the Sample Installation Layouts section.
 
-The install.pl script includes options for specifying the layout and location:
-
-    install.pl --layout overlay --dest-dir /usr/local/nagios
-    install.pl --layout standalone --dest-dir /opt/nagiosgraph
-    install.pl --layout custom --dest-dir /usr/local/nagiosgraph
-    install.pl --layout debian
-    install.pl --layout redhat
-
 
 Installation Methods
 --------------------
 
-There are a few ways to install nagiosgraph.
+There are a few ways to install nagiosgraph: manual, script, and package.
+
+Manual Installation.  Copy and edit files directly.  Follow the instructions
+in the following sections of this document:
+
+  'Installing nagiosgraph Files'     - nagiosgraph installation
+  'Configuring Data Processing'      - nagios configuration
+  'Configuring Graphing and Display' - apache and nagios configuration
 
 Install Script.  Run the install.pl script.  It will prompt you for the
 parameters it needs, then it will copy and configure nagiosgraph files.
 It will also prompt you to modify apache and nagios configuration files.
 
-Manual Installation.  Copy and edit files directly.  Follow the instructions
-in the following sections of this document:
-  'Installing nagiosgraph Files'     - nagiosgraph installation
-  'Configuring Data Processing'      - nagios configuration
-  'Configuring Graphing and Display' - apache and nagios configuration
+  install.pl --layout overlay --dest-dir /usr/local/nagios
+  install.pl --layout standalone --dest-dir /opt/nagiosgraph
+  install.pl --layout custom --dest-dir /usr/local/nagiosgraph
+  install.pl --layout debian
+  install.pl --layout redhat
 
 Installation Using Packages.  You can generate a package for redhat/fedora
 (rpm) systems or debian/ubuntu (.deb) systems, then install the package using
 standard package management tools.
+
   perl Makefile.PL
-  make build-deb      - build the .deb package
-  make build-rpm      - build the rpm package
+  make build-deb
+  dpkg -i nagiosgraph-x.y.z.deb
+
+  perl Makefile.PL
+  make build-rpm
+  rpm -i nagiosgraph-x.y.z.rpm
 
 
 Installing nagiosgraph Files
@@ -984,6 +987,23 @@ Here are samples of nagiosgraph/nagios installation layouts.
     /usr/local/nagios/share/nagiosgraph.css
     /usr/local/nagios/share/nagiosgraph.js
 
+  debian
+    /usr/lib/nagiosgraph/insert.pl
+    /usr/lib/cgi-bin/nagiosgraph/show.cgi
+    /usr/lib/cgi-bin/nagiosgraph/showgraph.cgi
+    /etc/nagiosgraph/ngshared.pm
+    /etc/nagiosgraph/nagiosgraph.conf
+    /usr/share/nagiosgraph/htdocs/nagiosgraph.css
+    /usr/share/nagiosgraph/htdocs/nagiosgraph.js
+
+  redhat
+    /usr/libexec/nagiosgraph/insert.pl
+    /usr/lib/nagiosgraph/cgi-bin/show.cgi
+    /usr/lib/nagiosgraph/cgi-bin/showgraph.cgi
+    /etc/nagiosgraph/ngshared.pm
+    /etc/nagiosgraph/nagiosgraph.conf
+    /usr/share/nagiosgraph/htdocs/nagiosgraph.css
+    /usr/share/nagiosgraph/htdocs/nagiosgraph.js
 
 
 Web Server Configuration
