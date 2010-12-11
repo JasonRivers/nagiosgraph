@@ -55,8 +55,18 @@ code-summary:
 \twc t/*.t
 \twc etc/*.conf etc/map
 
-build-rpm:
-\trpm -ba nagiosgraph.spec
+build-rpm: dist
+\tcp nagiosgraph.spec nagiosgraph-\$(VERSION).spec
+\tperl -pi -e 's%VERSION%\$(VERSION)%' nagiosgraph-\$(VERSION).spec
+\trpmbuild -ta --buildroot /var/tmp/ng nagiosgraph.\$(VERSION).tar.gz
+
+boo:
+\tmkdir rpmbuild
+\tmkdir rpmbuild/SOURCES
+\tmv nagiosgraph-\$(VERSION).tar.gz rpmbuild/SOURCES
+\tcp nagiosgraph.spec nagiosgraph-\$(VERSION).spec
+\tperl -pi -e 's%VERSION%\$(VERSION)%' nagiosgraph-\$(VERSION).spec
+\trpmbuild -ba --buildroot /var/tmp/ng nagiosgraph-\$(VERSION).spec
 
 NG_PERFDATA_FILE=/var/nagios/perfdata.log
 NG_BIN_DIR=/usr/lib/nagiosgraph
