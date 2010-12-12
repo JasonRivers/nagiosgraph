@@ -412,7 +412,7 @@ Displaying Graphs in Nagios Mouseovers
 To display graphs as mouseovers for each host and/or service, do the following:
 
   - Edit the file share/nagiosgraph.ssi to contain the correct URL to
-    nagiosgraph.js (e.g. /nagiosgraph/nagiosgraph.js)
+    nagiosgraph.js (e.g. /nagios/nagiosgraph.js)
 
   - If you have not customized the Nagios SSI, copy share/nagiosgraph.ssi to
     the nagios ssi directory, and rename it so that Nagios will insert it into

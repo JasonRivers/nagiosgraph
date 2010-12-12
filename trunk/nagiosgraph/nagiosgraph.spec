@@ -34,7 +34,15 @@ into RRD files and displays graphs in web pages.
 
 %install
 rm -rf %{buildroot}
-DESTDIR=%{buildroot} NG_LAYOUT=redhat perl install.pl --no-check-prereq
+DESTDIR=%{buildroot} NG_LAYOUT=redhat perl install.pl --no-check-prereq --no-chown
+
+%post
+cp %{_sysconfdir}/%{name}/nagiosgraph-apache.conf %{_sysconfdir}/httpd/conf.d/nagiosgraph.conf
+cp %{_sysconfdir}/%{name}/nagiosgraph-nagios.cfg %{_sysconfdir}/nagios/conf.d/nagiosgraph.cfg
+echo "# use nagiosgraph to archive data" >> %{_sysconfdir}/nagios/nagios.cfg
+echo "cfg_file=/etc/nagios/conf.d/nagiosgraph.cfg" >> %{_sysconfdir}/nagios/nagios.cfg
+%{_initrddir}/httpd restart
+%{_initrddir}/nagios restart
 
 %clean
 rm -rf ${RPM_BUILD_ROOT}

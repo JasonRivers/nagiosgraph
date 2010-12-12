@@ -60,7 +60,9 @@ build-rpm: dist
 \tmv nagiosgraph-\$(VERSION).tar.gz ~/rpmbuild/SOURCES
 \tcp nagiosgraph.spec ~/rpmbuild/SPECS
 \tperl -pi -e 's%VERSION%\$(VERSION)%' ~/rpmbuild/SPECS/nagiosgraph.spec
-\tcd ~/rpmbuild/SPECS; rpmbuild -ba --target noarch nagiosgraph.spec
+\tcd ~/rpmbuild/SPECS; rpmbuild --clean -ba --target noarch nagiosgraph.spec
+\tmv ~/rpmbuild/RPMS/noarch/nagiosgraph* .
+\tmv ~/rpmbuild/SRPMS/nagiosgraph* .
 
 build-deb:
 \trm -rf nagiosgraph-\$(VERSION)

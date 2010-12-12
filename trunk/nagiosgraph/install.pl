@@ -38,7 +38,7 @@ use constant NAGIOS_STUB_FN => 'nagiosgraph-nagios.cfg';
 use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
 
 # put the keys in a specific order to make it easier to see where things go
-my @CONFKEYS = qw(ng_layout ng_prefix ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_examples_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file modify_apache_config apache_config_file apache_config_dir);
+my @CONFKEYS = qw(ng_layout ng_prefix ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_examples_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_dir nagios_config_file modify_apache_config apache_config_dir apache_config_file);
 
 # these are standard installation configurations.
 my @PRESETS = (
@@ -137,7 +137,7 @@ my @PRESETS = (
       nagios_perfdata_file => '/var/log/nagios3/perfdata.log',
       nagios_user => 'nagios',
       www_user => 'www-data',
-      nagios_config_file => '/etc/nagios3/nagios.cfg',
+      nagios_config_dir => '/etc/nagios3/conf.d',
       apache_config_dir => '/etc/apache2/conf.d', },
 
     { ng_layout => 'redhat',
@@ -233,6 +233,7 @@ my $dryrun = 0;
 my $action = 'install';
 my %conf = qw(ng_layout standalone);
 my $checkprereq = 1;
+my $dochown = 1;
 
 while ($ARGV[0]) {
     my $arg = shift;
@@ -251,8 +252,6 @@ while ($ARGV[0]) {
         $action = 'check-installation';
     } elsif ($arg eq '--check-prereq') {
         $action = 'check-prereq';
-    } elsif ($arg eq '--no-check-prereq') {
-        $checkprereq = 0;
     } elsif ($arg eq '--layout') {
         $conf{ng_layout} = shift;
     } elsif ($arg =~ /^--layout=(.+)/) {
@@ -289,6 +288,10 @@ while ($ARGV[0]) {
         $conf{www_user} = shift;
     } elsif ($arg =~ /^--www-user=(.+)/) {
         $conf{www_user} = $1;
+    } elsif ($arg eq '--no-check-prereq') {
+        $checkprereq = 0;
+    } elsif ($arg eq '--no-chown') {
+        $dochown = 0;
     } elsif ($arg eq '--list-vars') {
         print "recognized environment variables include:\n";
         foreach my $v (envvars()) {
@@ -463,8 +466,17 @@ sub checkconfig {
     my $missing = 0;
     foreach my $ii (@CONFKEYS) {
         if (! defined $conf->{$ii}) {
-            if ($ii eq 'nagios_config_file' &&
-                ! isyes($conf->{modify_nagios_config})) {
+            if(($ii eq 'nagios_config_dir' ||
+                $ii eq 'nagios_config_file') &&
+               ! isyes($conf->{modify_nagios_config})) {
+                next;
+            } elsif($ii eq 'nagios_config_file' &&
+                    defined $conf->{nagios_config_dir} &&
+                    isyes($conf->{modify_nagios_config})) {
+                next;
+            } elsif($ii eq 'nagios_config_dir' &&
+                    defined $conf->{nagios_config_file} &&
+                    isyes($conf->{modify_nagios_config})) {
                 next;
             } elsif(($ii eq 'apache_config_dir' ||
                      $ii eq 'apache_config_file') &&
@@ -526,17 +538,26 @@ sub getconfig {
         $conf->{$ii->{conf}} = getanswer($ii->{msg}, $def);
     }
 
-    # find out if we should modify the nagios configuration
+    # find out if we should modify the nagios configuration.  if there is a
+    # conf.d directory, then use it.  if not, modify the .conf file.
     $conf->{modify_nagios_config} =
-        getanswer('Modify the Nagios configuration file', 'n');
+        getanswer('Modify the Nagios configuration', 'n');
     if (isyes($conf->{modify_nagios_config})) {
-        my $x = defined $conf->{nagios_config_file} ?
-            $conf->{nagios_config_file} : q();
+        my $x = defined $conf->{nagios_config_dir} ?
+            $conf->{nagios_config_dir} : q();
         if ($x eq q()) {
-            $x = findfile('nagios.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc /etc/nagios3 /usr/local/nagios3/etc /opt/nagios3/etc));
+            $x = finddir('conf.d', qw(/etc/nagios /etc/nagios3));
+            $conf->{nagios_config_dir} = $x if $x ne q();
         }
-        $conf->{nagios_config_file} =
-            getanswer('Path of Nagios configuration file', $x);
+        if (! defined $conf->{nagios_config_dir}) {
+            $x = defined $conf->{nagios_config_file} ?
+                $conf->{nagios_config_file} : q();
+            if ($x eq q()) {
+                $x = findfile('nagios.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc /etc/nagios3 /usr/local/nagios3/etc /opt/nagios3/etc));
+            }
+            $conf->{nagios_config_file} =
+                getanswer('Path of Nagios configuration file', $x);
+        }
     }
 
     # find out if we should modify the apache configuration.  if there is a
@@ -607,6 +628,8 @@ sub readconfigenv {
     $conf->{modify_nagios_config} = $ENV{$n} && $ENV{$n} eq 'y' ? 'y' : 'n';
     $n = mkenvname('modify_apache_config');
     $conf->{modify_apache_config} = $ENV{$n} && $ENV{$n} eq 'y' ? 'y' : 'n';
+    $n = mkenvname('nagios_config_dir');
+    $conf->{nagios_config_dir} = $ENV{$n} if $ENV{$n};
     $n = mkenvname('nagios_config_file');
     $conf->{nagios_config_file} = $ENV{$n} if $ENV{$n};
     $n = mkenvname('apache_config_dir');
@@ -636,6 +659,7 @@ sub envvars {
         push @vars, mkenvname($ii->{conf});
     }
     push @vars, 'NG_MODIFY_NAGIOS_CONFIG';
+    push @vars, 'NG_NAGIOS_CONFIG_DIR';
     push @vars, 'NG_NAGIOS_CONFIG_FILE';
     push @vars, 'NG_MODIFY_APACHE_CONFIG';
     push @vars, 'NG_APACHE_CONFIG_DIR';
@@ -921,7 +945,7 @@ sub printinstructions {
         logmsg('    * In the nagios configuration file (e.g. nagios.cfg),');
         logmsg('      add this line:');
         logmsg(q());
-        logmsg("      include $conf->{ng_etc_dir}/" . NAGIOS_STUB_FN);
+        logmsg("      cfg_file=$conf->{ng_etc_dir}/" . NAGIOS_STUB_FN);
     }
     if (!isyes($conf->{modify_apache_config})) {
         logmsg(q());
@@ -1077,9 +1101,15 @@ sub patchnagios {
     my ($conf, $doit) = @_;
     my $fail = 0;
 
+    my $dd = $ENV{DESTDIR} ? "$ENV{DESTDIR}/" : q();
+
     if (defined $conf->{modify_nagios_config} &&
         isyes($conf->{modify_nagios_config})) {
-        $fail |= appendtofile($conf->{nagios_config_file}, "# nagiosgraph configuration\ninclude $conf->{ng_etc_dir}/" . NAGIOS_STUB_FN . "\n", $doit);
+        if (defined $conf->{nagios_config_dir}) {
+            $fail |= ng_move($dd . $conf->{ng_etc_dir} . q(/) . NAGIOS_STUB_FN, $conf->{nagios_config_dir} . '/nagiosgraph.cfg', $doit);
+        } elsif (defined $conf->{nagios_config_file}) {
+            $fail |= appendtofile($conf->{nagios_config_file}, "# nagiosgraph configuration\ncfg_file=$conf->{ng_etc_dir}/" . NAGIOS_STUB_FN . "\n", $doit);
+        }
     }
 
     return $fail;
@@ -1175,6 +1205,10 @@ sub ng_chown {
     my $uid = $uname eq q(-) ? -1 : getpwnam $uname;
     my $gid = $gname eq q(-) ? -1 : getgrnam $gname;
     logmsg("chown $uname,$gname on $a");
+    if (! $dochown) {
+        logmsg('*** chown explicitly disabled');
+        return 0;
+    }
     if (! defined $uid || ! defined $gid) {
         if (! defined $uid) {
             logmsg("*** user '$uname' does not exist");
@@ -1354,11 +1388,12 @@ Nagiosgraph uses the following information for installation:
   www_user             - Apache user
 
   configure nagios?    - whether to configure Nagios
+  nagios_config_dir    - path to nagios conf.d directory
   nagios_config_file   - path to nagios config file
 
   configure apache?    - whether to configure Apache
-  apache_config_file   - path to apache config file
   apache_config_dir    - path to apache conf.d directory
+  apache_config_file   - path to apache config file
 
 In some cases these can be inferred from the configuration.  In other cases
 they must be specified explicitly.
