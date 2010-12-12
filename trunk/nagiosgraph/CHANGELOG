@@ -5,6 +5,7 @@ $Id$
 * overhaul of install.pl.  added option to check for prerequisites (poorly
    configured rrdtool and gd have been major source of installation woes).
    added options for different layouts (overlay or separate) and locations.
+   the install script now respects the DESTDIR conventions for packaging.
 * added default rule to the map file that will catch any plugin with
    standards-compliant perfdata output.
 * added a slew of unit tests for map rules.

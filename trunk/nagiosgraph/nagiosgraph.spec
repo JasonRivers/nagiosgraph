@@ -1,17 +1,17 @@
-%define name nagiosgraph
-%define version VERSION
-%define release 1
+%global name nagiosgraph
+%global version VERSION
+%global release 1
 
-%define ng_bin_dir /usr/libexec/nagiosgraph
-%define ng_cgi_dir /usr/lib/nagiosgraph/cgi-bin
-%define ng_doc_dir /usr/share/nagiosgraph/doc
-%define ng_etc_dir /etc/nagiosgraph
-%define ng_examples_dir /usr/share/nagiosgraph/examples
-%define ng_www_dir /usr/share/nagiosgraph/htdocs
-%define ng_util_dir /usr/share/nagiosgraph/util
-%define ng_rrd_dir /var/spool/nagiosgraph/rrd
-%define ng_log_file /var/log/nagiosgraph.log
-%define ng_cgilog_file /var/log/nagiosgraph-cgi.log
+%global ng_bin_dir /usr/libexec/nagiosgraph
+%global ng_cgi_dir /usr/lib/nagiosgraph/cgi-bin
+%global ng_doc_dir /usr/share/doc/nagiosgraph
+%global ng_etc_dir /etc/nagiosgraph
+%global ng_examples_dir /usr/share/nagiosgraph/examples
+%global ng_www_dir /usr/share/nagiosgraph/htdocs
+%global ng_util_dir /usr/share/nagiosgraph/util
+%global ng_rrd_dir /var/spool/nagiosgraph/rrd
+%global ng_log_file /var/log/nagiosgraph/nagiosgraph.log
+%global ng_cgilog_file /var/log/nagiosgraph/nagiosgraph-cgi.log
 
 Summary: A Nagios data archiver and grapher.
 Name: %{name}
@@ -21,7 +21,7 @@ Group: Applications/System
 Source: %{name}-%{version}.tar.gz
 URL: http://nagiosgraph.sourceforge.net/
 License: Artistic
-BuildRoot: %{_tmppath}/%{name}-root
+Requires: perl, perl-CGI, perl-RRD-Simple, perl-GD
 
 %description
 Nagiosgraph is an add-on to Nagios. It collects performance data
@@ -33,28 +33,26 @@ into RRD files and displays graphs via cgi.
 %build
 
 %install
-export NG_LAYOUT=redhat; perl install.pl
+DESTDIR=%{buildroot} NG_LAYOUT=redhat perl install.pl
 
 %clean
 rm -rf ${RPM_BUILD_ROOT}
 
 %files
+%defattr(-,root,root)
 %doc AUTHORS
 %doc CHANGELOG
 %doc INSTALL
 %doc README
 %doc TODO
-%defattr(-,root,root)
-%{ng_bin_dir}/insert.pl
-%attr(755,root,root) %{ng_bin_dir}/*
-%{ng_cgi_dir}/show.cgi
-%{ng_cgi_dir}/showconfig.cgi
-%{ng_cgi_dir}/showgraph.cgi
-%{ng_cgi_dir}/showgroup.cgi
-%{ng_cgi_dir}/showhost.cgi
-%{ng_cgi_dir}/showservice.cgi
-%{ng_cgi_dir}/testcolor.cgi
-%attr(755,root,root) %{ng_cgi_dir}/*
+%attr(755,root,root) %{ng_bin_dir}/insert.pl
+%attr(755,root,root) %{ng_cgi_dir}/show.cgi
+%attr(755,root,root) %{ng_cgi_dir}/showconfig.cgi
+%attr(755,root,root) %{ng_cgi_dir}/showgraph.cgi
+%attr(755,root,root) %{ng_cgi_dir}/showgroup.cgi
+%attr(755,root,root) %{ng_cgi_dir}/showhost.cgi
+%attr(755,root,root) %{ng_cgi_dir}/showservice.cgi
+%attr(755,root,root) %{ng_cgi_dir}/testcolor.cgi
 %doc %{ng_doc_dir}/AUTHORS
 %doc %{ng_doc_dir}/CHANGELOG
 %doc %{ng_doc_dir}/INSTALL
@@ -70,6 +68,8 @@ rm -rf ${RPM_BUILD_ROOT}
 %config %{ng_etc_dir}/nagiosgraph_fr.conf
 %config %{ng_etc_dir}/nagiosgraph_de.conf
 %config %{ng_etc_dir}/nagiosgraph_es.conf
+%config %{ng_etc_dir}/nagiosgraph-apache.conf
+%config %{ng_etc_dir}/nagiosgraph-nagios.cfg
 %config %{ng_etc_dir}/ngshared.pm
 %config %{ng_etc_dir}/rrdopts.conf
 %config %{ng_etc_dir}/servdb.conf
@@ -78,6 +78,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %{ng_examples_dir}/map_minimal
 %{ng_examples_dir}/map_examples
 %{ng_examples_dir}/map_mwall
+%{ng_examples_dir}/nagiosgraph-apache.conf
 %{ng_examples_dir}/nagiosgraph-nagios.cfg
 %{ng_examples_dir}/map_1_4_4
 %{ng_examples_dir}/map_1_3
@@ -86,19 +87,15 @@ rm -rf ${RPM_BUILD_ROOT}
 %{ng_examples_dir}/nagiosgraph.ssi
 %{ng_www_dir}/nagiosgraph.css
 %{ng_www_dir}/nagiosgraph.js
-%{ng_util_dir}/testentry.pl
-%{ng_util_dir}/upgrade.pl
-%attr(755,root,root) %{ng_util_dir}/*
-%{ng_rrd_dir}
+%attr(755,root,root) %{ng_util_dir}/testentry.pl
+%attr(755,root,root) %{ng_util_dir}/upgrade.pl
 %attr(775,nagios,www-data) %{ng_rrd_dir}
-%{ng_log_file}
 %attr(755,nagios,nagios) %{ng_log_file}
-%{ng_cgilog_file}
 %attr(755,www-data,www-data) %{ng_cgilog_file}
 
 %changelog
 * Fri Nov 5 2010 Matthew Wall
-- refactor for use with new install script
+- refactor for use with new install script and latest fedora/redhat
 
 * Wed Nov 11 2009 Craig Dunn <craig@craigdunn.org>
 - action.gif renamed to nagiosgraph_action.gif to avoid package conflict with nagios
