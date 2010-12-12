@@ -232,6 +232,7 @@ my $verbose = 1;
 my $dryrun = 0;
 my $action = 'install';
 my %conf = qw(ng_layout standalone);
+my $checkprereq = 1;
 
 while ($ARGV[0]) {
     my $arg = shift;
@@ -250,6 +251,8 @@ while ($ARGV[0]) {
         $action = 'check-installation';
     } elsif ($arg eq '--check-prereq') {
         $action = 'check-prereq';
+    } elsif ($arg eq '--no-check-prereq') {
+        $checkprereq = 0;
     } elsif ($arg eq '--layout') {
         $conf{ng_layout} = shift;
     } elsif ($arg =~ /^--layout=(.+)/) {
@@ -356,7 +359,7 @@ if($action eq 'check-prereq') {
 } elsif($action eq 'install') {
     open $LOG, '>', LOG_FN ||
         print 'cannot write to log file ' . LOG_FN . ": $OS_ERROR\n";
-    $failure |= checkprereq();
+    $failure |= checkprereq() if $checkprereq;
     $failure |= getconfig(\%conf);
     if (checkconfig(\%conf)) {
         logmsg('*** one or more missing configuration parameters!');

@@ -1,50 +1,46 @@
-%global name nagiosgraph
-%global version VERSION
 %global release 1
 
-%global ng_bin_dir /usr/libexec/nagiosgraph
-%global ng_cgi_dir /usr/lib/nagiosgraph/cgi-bin
-%global ng_doc_dir /usr/share/doc/nagiosgraph
-%global ng_etc_dir /etc/nagiosgraph
-%global ng_examples_dir /usr/share/nagiosgraph/examples
-%global ng_www_dir /usr/share/nagiosgraph/htdocs
-%global ng_util_dir /usr/share/nagiosgraph/util
-%global ng_rrd_dir /var/spool/nagiosgraph/rrd
-%global ng_log_file /var/log/nagiosgraph/nagiosgraph.log
-%global ng_cgilog_file /var/log/nagiosgraph/nagiosgraph-cgi.log
+%global ng_bin_dir %{_libexecdir}/%{name}
+%global ng_cgi_dir %{_libdir}/%{name}/cgi-bin
+%global ng_doc_dir %{_defaultdocdir}/%{name}
+%global ng_etc_dir %{_sysconfdir}/%{name}
+%global ng_examples_dir %{_datadir}/%{name}/examples
+%global ng_www_dir %{_datadir}/%{name}/htdocs
+%global ng_util_dir %{_datadir}/%{name}/util
+%global ng_rrd_dir %{_localstatedir}/spool/%{name}/rrd
+%global ng_log_file %{_localstatedir}/log/%{name}/nagiosgraph.log
+%global ng_cgilog_file %{_localstatedir}/log/%{name}/nagiosgraph-cgi.log
 
-Summary: A Nagios data archiver and grapher.
-Name: %{name}
-Version: %{version}
+Summary: A Nagios add-on which archives and graphs data
+Name: nagiosgraph
+Version: VERSION
 Release: %{release}
 Group: Applications/System
-Source: %{name}-%{version}.tar.gz
+Source: http://sourceforge.net/projects/nagiosgraph/files/nagiosgraph/%{version}/%{name}-%{version}.tar.gz
 URL: http://nagiosgraph.sourceforge.net/
-License: Artistic
-Requires: perl, perl-CGI, perl-RRD-Simple, perl-GD
+License: Artistic 2.0
+Requires: nagios, httpd, perl, perl(CGI), perl(RRDs), perl(GD)
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildRequires: perl
 
 %description
 Nagiosgraph is an add-on to Nagios. It collects performance data
-into RRD files and displays graphs via cgi.
+into RRD files and displays graphs in web pages.
 
 %prep
-%setup
+%setup -q
 
 %build
 
 %install
-DESTDIR=%{buildroot} NG_LAYOUT=redhat perl install.pl
+rm -rf %{buildroot}
+DESTDIR=%{buildroot} NG_LAYOUT=redhat perl install.pl --no-check-prereq
 
 %clean
 rm -rf ${RPM_BUILD_ROOT}
 
 %files
 %defattr(-,root,root)
-%doc AUTHORS
-%doc CHANGELOG
-%doc INSTALL
-%doc README
-%doc TODO
 %attr(755,root,root) %{ng_bin_dir}/insert.pl
 %attr(755,root,root) %{ng_cgi_dir}/show.cgi
 %attr(755,root,root) %{ng_cgi_dir}/showconfig.cgi
@@ -58,21 +54,21 @@ rm -rf ${RPM_BUILD_ROOT}
 %doc %{ng_doc_dir}/INSTALL
 %doc %{ng_doc_dir}/README
 %doc %{ng_doc_dir}/TODO
-%config %{ng_etc_dir}/access.conf
-%config %{ng_etc_dir}/datasetdb.conf
-%config %{ng_etc_dir}/groupdb.conf
-%config %{ng_etc_dir}/hostdb.conf
-%config %{ng_etc_dir}/labels.conf
-%config %{ng_etc_dir}/map
-%config %{ng_etc_dir}/nagiosgraph.conf
-%config %{ng_etc_dir}/nagiosgraph_fr.conf
-%config %{ng_etc_dir}/nagiosgraph_de.conf
-%config %{ng_etc_dir}/nagiosgraph_es.conf
-%config %{ng_etc_dir}/nagiosgraph-apache.conf
-%config %{ng_etc_dir}/nagiosgraph-nagios.cfg
-%config %{ng_etc_dir}/ngshared.pm
-%config %{ng_etc_dir}/rrdopts.conf
-%config %{ng_etc_dir}/servdb.conf
+%config(noreplace) %{ng_etc_dir}/access.conf
+%config(noreplace) %{ng_etc_dir}/datasetdb.conf
+%config(noreplace) %{ng_etc_dir}/groupdb.conf
+%config(noreplace) %{ng_etc_dir}/hostdb.conf
+%config(noreplace) %{ng_etc_dir}/labels.conf
+%config(noreplace) %{ng_etc_dir}/map
+%config(noreplace) %{ng_etc_dir}/nagiosgraph.conf
+%config(noreplace) %{ng_etc_dir}/nagiosgraph_fr.conf
+%config(noreplace) %{ng_etc_dir}/nagiosgraph_de.conf
+%config(noreplace) %{ng_etc_dir}/nagiosgraph_es.conf
+%config(noreplace) %{ng_etc_dir}/nagiosgraph-apache.conf
+%config(noreplace) %{ng_etc_dir}/nagiosgraph-nagios.cfg
+%config(noreplace) %{ng_etc_dir}/ngshared.pm
+%config(noreplace) %{ng_etc_dir}/rrdopts.conf
+%config(noreplace) %{ng_etc_dir}/servdb.conf
 %{ng_examples_dir}/nagiosgraph.1.css
 %{ng_examples_dir}/nagiosgraph.2.css
 %{ng_examples_dir}/map_minimal
@@ -89,12 +85,12 @@ rm -rf ${RPM_BUILD_ROOT}
 %{ng_www_dir}/nagiosgraph.js
 %attr(755,root,root) %{ng_util_dir}/testentry.pl
 %attr(755,root,root) %{ng_util_dir}/upgrade.pl
-%attr(775,nagios,www-data) %{ng_rrd_dir}
-%attr(755,nagios,nagios) %{ng_log_file}
-%attr(755,www-data,www-data) %{ng_cgilog_file}
+%attr(775,nagios,apache) %{ng_rrd_dir}
+%attr(644,nagios,nagios) %{ng_log_file}
+%attr(644,apache,apache) %{ng_cgilog_file}
 
 %changelog
-* Fri Nov 5 2010 Matthew Wall
+* Fri Nov 5 2010 Matthew Wall <nagiosgraph@sourceforge.net> 1.4.4-1
 - refactor for use with new install script and latest fedora/redhat
 
 * Wed Nov 11 2009 Craig Dunn <craig@craigdunn.org>
