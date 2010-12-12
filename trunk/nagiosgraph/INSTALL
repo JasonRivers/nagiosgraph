@@ -122,9 +122,9 @@ Install Script.  Run the install.pl script.  It will prompt you for the
 parameters it needs, then it will copy and configure nagiosgraph files.
 It will also prompt you to modify apache and nagios configuration files.
 
-  install.pl --layout overlay --dest-dir /usr/local/nagios
-  install.pl --layout standalone --dest-dir /opt/nagiosgraph
-  install.pl --layout custom --dest-dir /usr/local/nagiosgraph
+  install.pl --layout overlay --prefix /usr/local/nagios
+  install.pl --layout standalone --prefix /opt/nagiosgraph
+  install.pl --layout custom --prefix /usr/local/nagiosgraph
   install.pl --layout debian
   install.pl --layout redhat
 

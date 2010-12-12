@@ -965,6 +965,7 @@ sub installfiles {
   '^stylesheet\\s*=.*', 'stylesheet = ' . $conf->{ng_css_url},
   '^logfile\\s*=.*', 'logfile = ' . $conf->{ng_log_file},
   '^cgilogfile\\s*=.*', 'cgilogfile = ' . $conf->{ng_cgilog_file},
+  '^groupdb\\s*=.*', 'groupdb = ' . $conf->{ng_etc_dir} . '/groupdb.conf',
                     }, $doit);
         if ($conf->{ng_cgi_url} ne $conf->{nagios_cgi_url}) {
             $fail |= replacetext("$dst/nagiosgraph.conf", {
