@@ -1150,7 +1150,8 @@ sub ng_mkdir {
     my $rc = 0;
     logmsg("mkdir $a");
     if ($doit) {
-        mkpath($a, {error => \my $err});
+        my $err;
+        mkpath($a, {error => \$err});
         if (@{$err}) {
             logmsg("*** cannot create directory $a: $OS_ERROR");
             $rc = 1;
