@@ -55,7 +55,7 @@ code-summary:
 \twc t/*.t
 \twc etc/*.conf etc/map
 
-build-rpm: dist
+rpm-package: dist
 \trpmdev-setuptree
 \tmv nagiosgraph-\$(VERSION).tar.gz ~/rpmbuild/SOURCES
 \tcp nagiosgraph.spec ~/rpmbuild/SPECS
@@ -64,7 +64,7 @@ build-rpm: dist
 \tmv ~/rpmbuild/RPMS/noarch/nagiosgraph* .
 \tmv ~/rpmbuild/SRPMS/nagiosgraph* .
 
-build-deb:
+deb-package:
 \trm -rf nagiosgraph-\$(VERSION)
 \tmkdir nagiosgraph-\$(VERSION)
 \tDESTDIR=nagiosgraph-\$(VERSION) NG_LAYOUT=debian fakeroot perl install.pl --no-check-prereq

@@ -133,11 +133,11 @@ Installation Using Packages.  You can generate a package for redhat/fedora
 standard package management tools.
 
   perl Makefile.PL
-  make build-deb
+  make deb-package
   dpkg -i nagiosgraph-x.y.z.deb
 
   perl Makefile.PL
-  make build-rpm
+  make rpm-package
   rpm -i nagiosgraph-x.y.z.rpm
 
 
@@ -816,8 +816,7 @@ or using a standalone nagiosgraph configuration file.
 To use nagios access controls, define the following in nagiosgraph.conf:
 
   authzmethod=nagios3
-  authz_nagios_cfg=/etc/nagios/nagios.cfg
-  authz_cgi_cfg=/etc/nagios/cgi.cfg
+  authzfile=/etc/nagios/cgi.cfg
 
 nagiosgraph respects the following nagios variables:
 
@@ -1135,9 +1134,9 @@ The makefile rules control pretty much everything.  To create the makefile,
 There are rules to build a source distribution, debian, and redhat packages.
 
   perl Makefile.PL
-  make dist
-  make build-deb
-  make build-rpm
+  make dist                  creates nagiosgraph-x.y.z.tar.gz
+  make deb-package           creates nagsiograph-x.y.z.deb
+  make rpm-package           creates nagiosgraph-x.y.z.rpm
 
 These rules are useful for maintaining the perl module:
 
@@ -1208,19 +1207,19 @@ easier.
     perldoc cgi/show.cgi
     perldoc etc/ngshared.pm
 
-As of 30oct2010, the codebase for nagiosgraph looks like this:
+As of 15dec2010, the codebase for nagiosgraph looks like this:
 
  lines  words  bytes
-   197    647   5393 cgi/show.cgi
-   323   1000   7839 cgi/showconfig.cgi
-   204    660   5325 cgi/showgraph.cgi
-   197    733   5295 cgi/showgroup.cgi
-   202    710   5578 cgi/showhost.cgi
-   189    669   5113 cgi/showservice.cgi
+   197    652   5425 cgi/show.cgi
+   515   1488  12479 cgi/showconfig.cgi
+   204    659   5306 cgi/showgraph.cgi
+   197    732   5280 cgi/showgroup.cgi
+   202    709   5564 cgi/showhost.cgi
+   189    668   5096 cgi/showservice.cgi
    176    734   5487 cgi/testcolor.cgi
-  2947  12088 100847 etc/ngshared.pm
+  2979  12345 103163 etc/ngshared.pm
     72    329   2162 lib/insert.pl
-  4507  17570 143039 total
+  4731  18316 149962 total
 
    153    310   2478 share/nagiosgraph.css
   1436   5057  40859 share/nagiosgraph.js
@@ -1228,30 +1227,33 @@ As of 30oct2010, the codebase for nagiosgraph looks like this:
   1590   5370  43412 total
 
     12     41    251 t/01required_modules.t
-  3178   8170  86884 t/02ngshared.t
-   903   1998  23932 t/03defaults.t
+  3545   9108 100284 t/02ngshared.t
+   908   2010  24090 t/03defaults.t
    125    394   3132 t/04show.t
-   632   1649  19312 t/05permissions.t
-   785   1688  18807 t/06rules.t
+   784   2007  23942 t/05permissions.t
+  1901   4035  46315 t/06rules.t
+  1215   2180  25729 t/07perfdata.t
+  1986   3910  44318 t/09plugins.t
     11     27    346 t/97pod.t
      6     20    178 t/98podcoverage.t
      7     19    162 t/99kwalitee.t
-  5659  14006 153004 total
+ 10500  23751 268747 total
 
     32    163    879 etc/access.conf
     20     83    714 etc/datasetdb.conf
     63    249   2251 etc/groupdb.conf
     42    164   1446 etc/hostdb.conf
    144    326   2717 etc/labels.conf
-   309   1805  12006 etc/nagiosgraph.conf
+   341   2032  13399 etc/nagiosgraph.conf
     52     81    793 etc/nagiosgraph_de.conf
     52     92    865 etc/nagiosgraph_es.conf
     52    102    935 etc/nagiosgraph_fr.conf
     20    119    660 etc/rrdopts.conf
     16     78    480 etc/servdb.conf
-   355   1656  13367 etc/map
-  1157   4918  37113 total
+   420   2104  15725 etc/map
+  1254   5593  40864 total
+
 
 Test coverage looks like this:
                                stmt   bran   cond    sub    pod   time  total
-etc/ngshared.pm                83.4   76.7   61.1   90.9    n/a  100.0   79.4
+etc/ngshared.pm                82.7   73.7   62.2   91.1    0.0  100.0   75.7

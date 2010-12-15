@@ -852,51 +852,37 @@ sub readnagiosperms {
         debug(DBWRN, 'no discernable user, defaulting to no permissions');
         return q();
     }
-    if ( not defined $Config{authz_nagios_cfg}
-         or $Config{authz_nagios_cfg} eq q() ) {
-        return 'authz_nagios_cfg is not defined';
+    if ( not defined $Config{authzfile}
+         or $Config{authzfile} eq q() ) {
+        return 'authzfile is not defined';
     }
-    my $authenabled = 0;
-    my $fn = $Config{authz_nagios_cfg};
-    open my $FH, '<', $fn or
+    my $fn = $Config{authzfile};
+    my $authenabled = 1;  # nagios defaults to use authentication
+    my $host_users = q();
+    my $serv_users = q();
+    my $default_user = q();
+    open my $FH, '<', $fn or ## no critic (RequireBriefOpen)
         return "cannot open nagios config $fn: $OS_ERROR";
     while (<$FH>) {
-        next if /^\s*#/;        # skip commented lines
-        if ( /\s*use_authentication\s*=\s*([\d])/ ) {
+        my $line = $_;
+        $line =~ s/\s//g;
+        if ( $line =~ /^authorized_for_all_hosts=(.*)/ ) {
+            $host_users = $1;
+        } elsif ( $line =~ /^authorized_for_all_services=(.*)/ ) {
+            $serv_users = $1;
+        } elsif ( $line =~ /^default_user_name=(.*)/ ) {
+            $default_user = $1;
+        } elsif ( $line =~ /^use_authentication=([\d])/ ) {
             $authenabled = $1;
-            last;
         }
     }
     close $FH or return "close failed for $fn: $OS_ERROR";
 
-    if ( not $authenabled ) {
+    if ( $authenabled == 0 ) {
         undef %authz;
         debug(DBINF, 'nagios authorization is disabled, full access granted');
         return q();
     }
-
-    if (not defined $Config{authz_cgi_cfg} or $Config{authz_cgi_cfg} eq q()) {
-        return 'authz_cgi_cfg is not defined';
-    }
-    $fn = $Config{authz_cgi_cfg};
-    my $host_users = q();
-    my $serv_users = q();
-    my $default_user = q();
-    open $FH, '<', $fn or ## no critic (RequireBriefOpen)
-        return "cannot open nagios cgi config $fn: $OS_ERROR";
-    while (<$FH>) {
-        next if /^\s*#/;        # skip commented lines
-        if ( /\s*authorized_for_all_hosts=\s*(.*)/ ) {
-            $host_users = $1;
-            $host_users =~ s/\s//g;
-        } elsif ( /\s*authorized_for_all_services=\s*(.*)/ ) {
-            $serv_users = $1;
-            $serv_users =~ s/\s//g;
-        } elsif ( /\s*default_user_name\s*=\s*(.*)/ ) {
-            $default_user = $1;
-        }
-    }
-    close $FH or return "close failed for $fn: $OS_ERROR";
 
     # if there is a nagios default user, they can do anything
     if ( $user eq $default_user ) {

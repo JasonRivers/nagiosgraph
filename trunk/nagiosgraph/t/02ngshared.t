@@ -21,7 +21,7 @@ use Test;
 use lib "$FindBin::Bin/../etc";
 use ngshared;
 
-BEGIN { plan tests => 485; }
+BEGIN { plan tests => 531; }
 
 my ($log, $result, @result, $testvar);
 
@@ -533,13 +533,80 @@ sub testinitlog {
 
 sub testreadconfig {
     my $fn = "$FindBin::Bin/testlog.txt";
-
     open $LOG, '+>', \$log;
+
     $Config{junklog} = $fn;;
     my $msg = readconfig('read', 'junklog');
     ok($msg, q());
-    close $LOG;
     unlink $fn;
+
+    $Config{logfile} = $fn;;
+    $msg = readconfig('read', '');
+    ok($msg, q());
+    unlink $fn;
+
+    # test handling of hash/list variables
+
+    $Config{logfile} = $fn;;
+    $msg = readconfig('read');
+    ok($msg, q());
+    ok($Config{rrdopts}, undef);
+    ok(Dumper(\$Config{rrdoptshash}), "\$VAR1 = \\{
+            'global' => ''
+          };\n");
+    ok($Config{heartbeats}, undef);
+    ok(Dumper(\$Config{heartbeatslist}), "\$VAR1 = \\undef;\n");
+    ok($Config{stepsizes}, undef);
+    ok(Dumper(\$Config{stepsizeslist}), "\$VAR1 = \\undef;\n");
+    ok($Config{resolutions}, undef);
+    ok(Dumper(\$Config{resolutionslist}), "\$VAR1 = \\undef;\n");
+    ok($Config{steps}, undef);
+    ok(Dumper(\$Config{stepslist}), "\$VAR1 = \\undef;\n");
+    ok($Config{xffs}, undef);
+    ok(Dumper(\$Config{xffslist}), "\$VAR1 = \\undef;\n");
+    unlink $fn;
+
+    $Config{logfile} = $fn;;
+    $Config{rrdopts} = '--flymetothemoon';
+    $Config{heartbeats} = 'host1,svc1,db1=100;host2,svc2,db2=200';
+    $Config{stepsizes} = 'host1,svc1,db1=30;host2,svc2,db2=50';
+    $Config{resolutions} = 'host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2';
+    $Config{steps} = 'host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2';
+    $Config{xffs} = 'host1,svc1,db1=1;host2,svc2,db2=2';
+    $msg = readconfig('read');
+    ok($msg, q());
+    ok($Config{rrdopts}, "--flymetothemoon");
+    ok(Dumper(\$Config{rrdoptshash}), "\$VAR1 = \\{
+            'global' => '--flymetothemoon'
+          };\n");
+    ok($Config{heartbeats}, "host1,svc1,db1=100;host2,svc2,db2=200");
+    ok(Dumper(\$Config{heartbeatslist}), "\$VAR1 = \\[
+            'host1,svc1,db1=100',
+            'host2,svc2,db2=200'
+          ];\n");
+    ok($Config{stepsizes}, "host1,svc1,db1=30;host2,svc2,db2=50");
+    ok(Dumper(\$Config{stepsizeslist}), "\$VAR1 = \\[
+            'host1,svc1,db1=30',
+            'host2,svc2,db2=50'
+          ];\n");
+    ok($Config{resolutions}, "host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2");
+    ok(Dumper(\$Config{resolutionslist}), "\$VAR1 = \\[
+            'host1,svc1,db1=1 1 1 1',
+            'host2,svc2,db2=2 2 2 2'
+          ];\n");
+    ok($Config{steps}, "host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2");
+    ok(Dumper(\$Config{stepslist}), "\$VAR1 = \\[
+            'host1,svc1,db1=1 1 1 1',
+            'host2,svc2,db2=2 2 2 2'
+          ];\n");
+    ok($Config{xffs}, "host1,svc1,db1=1;host2,svc2,db2=2");
+    ok(Dumper(\$Config{xffslist}), "\$VAR1 = \\[
+            'host1,svc1,db1=1',
+            'host2,svc2,db2=2'
+          ];\n");
+    unlink $fn;
+
+    close $LOG;
 }
 
 sub testgetparams {
@@ -749,6 +816,14 @@ sub testrrdline {
     # test a minimal invocation with no data for the host
     my %params = qw(host host30 service ping);
     my ($ds,$err) = rrdline(\%params);
+    ok($err, "No data available: host=host30 service=ping");
+    ok(Dumper($ds), "\$VAR1 = [];\n");
+
+    # host and service but no data match
+    %params = qw(host host30 service PING);
+    $params{db} = [qw(foobar)];
+    ($ds,$err) = rrdline(\%params);
+    ok($err, "No data available: host=host30 service=PING db=foobar");
     ok(Dumper($ds), "\$VAR1 = [];\n");
 
     # minimal invocation when data exist for the host
@@ -1070,16 +1145,16 @@ sub testgetserverlist {
     'host3' => {
       'ping' => [
         [
+          'loss',
+          'losscrit',
+          'losspct',
+          'losswarn'
+        ],
+        [
           'rta',
           'rtacrit',
           'rta',
           'rtawarn'
-        ],
-        [
-          'loss',
-          'losscrit',
-          'losswarn',
-          'losspct'
         ]
       ]
     },
@@ -1087,8 +1162,8 @@ sub testgetserverlist {
       'c:\\\\ space' => [
         [
           'ntdisk',
-          'used',
-          'total'
+          'total',
+          'used'
         ]
       ]
     },
@@ -1096,8 +1171,8 @@ sub testgetserverlist {
       'ntdisk' => [
         [
           'c:\\\\ space',
-          'used',
-          'total'
+          'total',
+          'used'
         ]
       ]
     }
@@ -1133,16 +1208,16 @@ sub testgetserverlist {
     'host3' => {
       'ping' => [
         [
+          'loss',
+          'losscrit',
+          'losspct',
+          'losswarn'
+        ],
+        [
           'rta',
           'rtacrit',
           'rta',
           'rtawarn'
-        ],
-        [
-          'loss',
-          'losscrit',
-          'losswarn',
-          'losspct'
         ]
       ]
     },
@@ -1150,8 +1225,8 @@ sub testgetserverlist {
       'c:\\\\ space' => [
         [
           'ntdisk',
-          'used',
-          'total'
+          'total',
+          'used'
         ]
       ]
     },
@@ -1159,8 +1234,8 @@ sub testgetserverlist {
       'ntdisk' => [
         [
           'c:\\\\ space',
-          'used',
-          'total'
+          'total',
+          'used'
         ]
       ]
     }
@@ -1233,7 +1308,7 @@ menudata[2] = [\"host2\"
  ,[\"PING\",[\"ping\",\"losspct\",\"rta\"]]
 ];
 menudata[3] = [\"host3\"
- ,[\"ping\",[\"rta\",\"rta\",\"rtacrit\",\"rtawarn\"],[\"loss\",\"losscrit\",\"losspct\",\"losswarn\"]]
+ ,[\"ping\",[\"loss\",\"losscrit\",\"losspct\",\"losswarn\"],[\"rta\",\"rta\",\"rtacrit\",\"rtawarn\"]]
 ];
 menudata[4] = [\"host4\"
  ,[\"c:\\\\ space\",[\"ntdisk\",\"total\",\"used\"]]
@@ -2762,8 +2837,8 @@ sub testscanhsdata {
   },
   'host3' => {
     'ping' => [
-      'rta',
-      'loss'
+      'loss',
+      'rta'
     ]
   },
   'host4' => {
@@ -3185,6 +3260,222 @@ sub testgethsdmatch {
     undef $Config{heartbeatlist};
 }
 
+sub testsetlabels {
+    $Config{colorscheme} = 2;
+    $Config{plotas} = 'LINE1';
+
+    undef $Config{minimums};
+    undef $Config{maximums};
+    undef $Config{lasts};
+    undef $Config{stack};
+    my @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds=file:ds:AVERAGE',
+          'LINE1:db_ds#990033:label               '
+        ];\n");
+
+    undef $Config{minimums};
+    undef $Config{maximums};
+    undef $Config{lasts};
+    $Config{stack} = 'ds';
+    listtodict('stack', q(,));
+    @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds=file:ds:AVERAGE',
+          'LINE1:db_ds#990033:label               :STACK'
+        ];\n");
+
+    undef $Config{minimums};
+    $Config{maximums} = 'serv';
+    $Config{maximums} = listtodict('maximums', q(,));
+    undef $Config{lasts};
+    undef $Config{stack};
+    @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds=file:ds:MAX',
+          'CDEF:ceildb_ds=db_ds,CEIL',
+          'LINE1:db_ds#990033:label               '
+        ];\n");
+
+    $Config{minimums} = 'serv';
+    $Config{minimums} = listtodict('minimums', q(,));
+    undef $Config{lasts};
+    undef $Config{maximums};
+    undef $Config{stack};
+    @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds=file:ds:MIN',
+          'CDEF:floordb_ds=db_ds,FLOOR',
+          'LINE1:db_ds#990033:label               '
+        ];\n");
+
+    undef $Config{minimums};
+    undef $Config{maximums};
+    $Config{lasts} = 'serv';
+    $Config{lasts} = listtodict('lasts', q(,));
+    undef $Config{stack};
+    @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds=file:ds:LAST',
+          'LINE1:db_ds#990033:label               '
+        ];\n");
+
+    # if defined for all of them, then max is used because we look for it first
+
+    $Config{minimums} = 'serv';
+    $Config{minimums} = listtodict('minimums', q(,));
+    $Config{maximums} = 'serv';
+    $Config{maximums} = listtodict('maximums', q(,));
+    $Config{lasts} = 'serv';
+    $Config{lasts} = listtodict('lasts', q(,));
+    $Config{stack} = 'ds';
+    listtodict('stack', q(,));
+    @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds=file:ds:MAX',
+          'CDEF:ceildb_ds=db_ds,CEIL',
+          'LINE1:db_ds#990033:label               :STACK'
+        ];\n");
+
+    undef %Config;
+}
+
+sub testsetdata {
+    undef $Config{withminimums};
+    undef $Config{withmaximums};
+    undef $Config{minimums};
+    undef $Config{maximums};
+    undef $Config{lasts};
+    undef $Config{stack};
+
+    my @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'GPRINT:db_ds:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:db_ds:MIN:Min\\\\:%7.2lf%s',
+          'GPRINT:db_ds:LAST:Cur\\\\:%7.2lf%s\\\\n'
+        ];\n");
+
+    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'GPRINT:db_ds:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:db_ds:MIN:Min\\\\:%7.2lf%s\\\\n'
+        ];\n");
+
+    @result = setdata('ds', 'db', 'file', 'serv', 1, 1_000);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'GPRINT:db_ds:MAX:Max\\\\:%7.2lf',
+          'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf',
+          'GPRINT:db_ds:MIN:Min\\\\:%7.2lf',
+          'GPRINT:db_ds:LAST:Cur\\\\:%7.2lf\\\\n'
+        ];\n");
+
+    @result = setdata('ds', 'db', 'file', 'serv', 1, 1_000_000);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'GPRINT:db_ds:MAX:Max\\\\:%7.2lf',
+          'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf',
+          'GPRINT:db_ds:MIN:Min\\\\:%7.2lf\\\\n'
+        ];\n");
+
+    $Config{withminimums} =  'serv';
+    listtodict('withminimums', q(,));
+    undef $Config{withmaximums};
+    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds_min=file_min:ds:MIN',
+          'LINE1:db_ds_min#BBBBBB:minimum',
+          'GPRINT:db_ds:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
+          'CDEF:db_ds_minif=db_ds_min,UN',
+          'CDEF:db_ds_mini=db_ds_minif,db_ds,db_ds_min,IF',
+          'GPRINT:db_ds_mini:MIN:Min\\\\:%7.2lf%s\\\\n'
+        ];\n");
+
+    undef $Config{withminimums};
+    $Config{withmaximums} =  'serv';
+    listtodict('withmaximums', q(,));
+    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds_max=file_max:ds:MAX',
+          'LINE1:db_ds_max#888888:maximum',
+          'CDEF:db_ds_maxif=db_ds_max,UN',
+          'CDEF:db_ds_maxi=db_ds_maxif,db_ds,db_ds_max,IF',
+          'GPRINT:db_ds_maxi:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
+          'GPRINT:db_ds:MIN:Min\\\\:%7.2lf%s\\\\n'
+        ];\n");
+
+    $Config{withminimums} =  'serv';
+    listtodict('withminimums', q(,));
+    $Config{withmaximums} =  'serv';
+    listtodict('withmaximums', q(,));
+    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds_max=file_max:ds:MAX',
+          'LINE1:db_ds_max#888888:maximum',
+          'DEF:db_ds_min=file_min:ds:MIN',
+          'LINE1:db_ds_min#BBBBBB:minimum',
+          'CDEF:db_ds_maxif=db_ds_max,UN',
+          'CDEF:db_ds_maxi=db_ds_maxif,db_ds,db_ds_max,IF',
+          'GPRINT:db_ds_maxi:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
+          'CDEF:db_ds_minif=db_ds_min,UN',
+          'CDEF:db_ds_mini=db_ds_minif,db_ds,db_ds_min,IF',
+          'GPRINT:db_ds_mini:MIN:Min\\\\:%7.2lf%s\\\\n'
+        ];\n");
+
+    $Config{colormin} = '111111';
+    undef $Config{colormax};
+    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds_max=file_max:ds:MAX',
+          'LINE1:db_ds_max#888888:maximum',
+          'DEF:db_ds_min=file_min:ds:MIN',
+          'LINE1:db_ds_min#111111:minimum',
+          'CDEF:db_ds_maxif=db_ds_max,UN',
+          'CDEF:db_ds_maxi=db_ds_maxif,db_ds,db_ds_max,IF',
+          'GPRINT:db_ds_maxi:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
+          'CDEF:db_ds_minif=db_ds_min,UN',
+          'CDEF:db_ds_mini=db_ds_minif,db_ds,db_ds_min,IF',
+          'GPRINT:db_ds_mini:MIN:Min\\\\:%7.2lf%s\\\\n'
+        ];\n");
+
+    undef $Config{colormin};
+    $Config{colormax} = 'eeeeee';
+    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds_max=file_max:ds:MAX',
+          'LINE1:db_ds_max#eeeeee:maximum',
+          'DEF:db_ds_min=file_min:ds:MIN',
+          'LINE1:db_ds_min#BBBBBB:minimum',
+          'CDEF:db_ds_maxif=db_ds_max,UN',
+          'CDEF:db_ds_maxi=db_ds_maxif,db_ds,db_ds_max,IF',
+          'GPRINT:db_ds_maxi:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
+          'CDEF:db_ds_minif=db_ds_min,UN',
+          'CDEF:db_ds_mini=db_ds_minif,db_ds,db_ds_min,IF',
+          'GPRINT:db_ds_mini:MIN:Min\\\\:%7.2lf%s\\\\n'
+        ];\n");
+
+    $Config{colormin} = '111111';
+    $Config{colormax} = 'eeeeee';
+    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'DEF:db_ds_max=file_max:ds:MAX',
+          'LINE1:db_ds_max#eeeeee:maximum',
+          'DEF:db_ds_min=file_min:ds:MIN',
+          'LINE1:db_ds_min#111111:minimum',
+          'CDEF:db_ds_maxif=db_ds_max,UN',
+          'CDEF:db_ds_maxi=db_ds_maxif,db_ds,db_ds_max,IF',
+          'GPRINT:db_ds_maxi:MAX:Max\\\\:%7.2lf%s',
+          'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
+          'CDEF:db_ds_minif=db_ds_min,UN',
+          'CDEF:db_ds_mini=db_ds_minif,db_ds,db_ds_min,IF',
+          'GPRINT:db_ds_mini:MIN:Min\\\\:%7.2lf%s\\\\n'
+        ];\n");
+}
 
 
 setup();
@@ -3250,3 +3541,5 @@ testbuildurl();
 testcfgparams();
 testgetparams();
 testgethsdmatch();
+testsetlabels();
+testsetdata();

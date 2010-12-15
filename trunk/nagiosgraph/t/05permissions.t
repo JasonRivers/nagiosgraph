@@ -13,7 +13,7 @@ use Test;
 use lib "$FindBin::Bin/../etc";
 use ngshared;
 
-BEGIN { plan tests => 148; }
+BEGIN { plan tests => 178; }
 
 sub testcheckuserlist {
     ok(checkuserlist('bill,bob,nancy'), 0);
@@ -166,13 +166,13 @@ sub testloadperms {
                                    }
         };\n");
     $errmsg = loadperms('guest');
-    ok($errmsg, 'authz_nagios_cfg is not defined');
+    ok($errmsg, 'authzfile is not defined');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
                                    }
         };\n");
-    $Config{authz_nagios_cfg} = 'boo';
+    $Config{authzfile} = 'boo';
     $errmsg = loadperms('guest');
     ok($errmsg, 'cannot open nagios config boo: No such file or directory');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -181,13 +181,12 @@ sub testloadperms {
                                    }
         };\n");
 
-    my $fn1 = "$FindBin::Bin/test_nagios.cfg";
-    my $fn2 = "$FindBin::Bin/test_cgi.cfg";
-    $Config{authz_nagios_cfg} = $fn1;
+    my $fn = "$FindBin::Bin/test_cgi.cfg";
+    $Config{authzfile} = $fn;
 
     # authentication disabled in nagios
 
-    open TEST, ">$fn1";
+    open TEST, ">$fn";
     print TEST "use_authentication=0\n";
     close TEST;
 
@@ -195,32 +194,12 @@ sub testloadperms {
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {};\n");
 
-    open TEST, ">$fn1";
+    # authentication enabled in nagios
+
+    open TEST, ">$fn";
     print TEST "use_authentication=1\n";
     close TEST;
 
-    $errmsg = loadperms('guest');
-    ok($errmsg, 'authz_cgi_cfg is not defined');
-    ok(Dumper(\%authz), "\$VAR1 = {
-          'default_host_access' => {
-                                     'default_service_access' => 0
-                                   }
-        };\n");
-
-    $Config{authz_cgi_cfg} = 'boo';
-    $errmsg = loadperms('guest');
-    ok($errmsg, 'cannot open nagios cgi config boo: No such file or directory');
-    ok(Dumper(\%authz), "\$VAR1 = {
-          'default_host_access' => {
-                                     'default_service_access' => 0
-                                   }
-        };\n");
-
-    open TEST, ">$fn2";
-    print TEST "\n";
-    close TEST;
-
-    $Config{authz_cgi_cfg} = $fn2;
     $errmsg = loadperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -232,6 +211,7 @@ sub testloadperms {
     # nagiosgraph access control
 
     $Config{authzmethod} = 'nagiosgraph';
+    undef $Config{authzfile};
     $errmsg = loadperms('');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -257,30 +237,79 @@ sub testloadperms {
 
     undef $Config{authzmethod};
     undef $Config{authzfile};
-    undef $Config{authz_nagios_cfg};
-    undef $Config{authz_cgi_cfg};
-    unlink $fn1;
-    unlink $fn2;
+    unlink $fn;
 }
 
 sub testreadnagiosperms {
-    my $fn1 = "$FindBin::Bin/test_nagios.cfg";
-    my $fn2 = "$FindBin::Bin/test_cgi.cfg";
-    $Config{authz_nagios_cfg} = $fn1;
-    $Config{authz_cgi_cfg} = $fn2;
+    my $fn = "$FindBin::Bin/test_cgi.cfg";
 
-    open TEST, ">$fn1";
-    print TEST "#nagios config\n";
-    print TEST "random junk should be ignored for the tests";
+    open TEST, ">$fn";
     print TEST "use_authentication=1\n";
-    close TEST;
-
-    # admin is default user
-
-    open TEST, ">$fn2";
     print TEST "default_user_name=admin\n";
     close TEST;
+
+    # no config file defined
+
+    undef $Config{authzfile};
     my $errmsg = readnagiosperms('guest');
+    ok($errmsg, 'authzfile is not defined');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
+
+    # valid config file
+
+    $Config{authzfile} = $fn;
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
+
+    # file does not exist
+
+    $Config{authzfile} = 'foobar';
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, "cannot open nagios config foobar: No such file or directory");
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
+
+    $Config{authzfile} = $fn;
+
+    # authentication disabled
+
+    open TEST, ">$fn";
+    print TEST "use_authentication=0\n";
+    print TEST "default_user_name=admin\n";
+    close TEST;
+    $errmsg = readnagiosperms('admin');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {};\n");
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {};\n");
+
+    # authentication enabled
+
+    open TEST, ">$fn";
+    print TEST "use_authentication=1\n";
+    print TEST "default_user_name=admin\n";
+    close TEST;
+    $errmsg = readnagiosperms('admin');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 1
+                                   }
+        };\n");
+    $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
@@ -290,9 +319,17 @@ sub testreadnagiosperms {
 
     # guest is default user
 
-    open TEST, ">$fn2";
+    open TEST, ">$fn";
+    print TEST "use_authentication=1\n";
     print TEST "default_user_name=guest\n";
     close TEST;
+    $errmsg = readnagiosperms('admin');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -303,9 +340,8 @@ sub testreadnagiosperms {
 
     # guest has host access
 
-    open TEST, ">$fn2";
-    print TEST "#nagios config\n";
-    print TEST "random junk should be ignored for the tests";
+    open TEST, ">$fn";
+    print TEST "use_authentication=1\n";
     print TEST "authorized_for_all_hosts=guest\n";
     close TEST;
     $errmsg = readnagiosperms('guest');
@@ -316,7 +352,8 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    open TEST, ">$fn2";
+    open TEST, ">$fn";
+    print TEST "use_authentication=1\n";
     print TEST "authorized_for_all_hosts=bill, bob , guest , nancy\n";
     close TEST;
     $errmsg = readnagiosperms('guest');
@@ -327,11 +364,22 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
+    open TEST, ">$fn";
+    print TEST "use_authentication=1\n";
+    print TEST "authorized_for_all_hosts=bill, bob , nancy\n";
+    close TEST;
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
+
     # guest has service access
 
-    open TEST, ">$fn2";
-    print TEST "#nagios config\n";
-    print TEST "random junk should be ignored for the tests";
+    open TEST, ">$fn";
+    print TEST "use_authentication=1\n";
     print TEST "authorized_for_all_services=guest\n";
     close TEST;
     $errmsg = readnagiosperms('guest');
@@ -342,8 +390,9 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    open TEST, ">$fn2";
-    print TEST "authorized_for_all_hosts=  jane, guest,bill\n";
+    open TEST, ">$fn";
+    print TEST "use_authentication=1\n";
+    print TEST "authorized_for_all_services=  jane, guest,bill\n";
     close TEST;
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
@@ -353,10 +402,113 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    undef $Config{authz_nagios_cfg};
-    undef $Config{authz_cgi_cfg};
-    unlink $fn1;
-    unlink $fn2;
+    open TEST, ">$fn";
+    print TEST "use_authentication=1\n";
+    print TEST "authorized_for_all_services=  jane,bill\n";
+    close TEST;
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
+
+    # check config file formatting
+
+    open TEST, ">$fn";
+    print TEST "#comments should be ignored\n";
+    print TEST "other parameters should be ignored\n";
+    print TEST "default_user_name=guest\n";
+    print TEST "#comments should be ignored\n";
+    print TEST "other parameters should be ignored\n";
+    print TEST "use_authentication=1\n";
+    close TEST;
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 1
+                                   }
+        };\n");
+
+    # ignore anything non 0 or 1
+    open TEST, ">$fn";
+    print TEST "use_authentication=false\n";
+    print TEST "default_user_name=guest\n";
+    close TEST;
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 1
+                                   }
+        };\n");
+
+    open TEST, ">$fn";
+    print TEST "use_authentication=true\n";
+    print TEST "default_user_name=guest\n";
+    close TEST;
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 1
+                                   }
+        };\n");
+
+    open TEST, ">$fn";
+    print TEST "bogus_use_authentication=1\n";
+    print TEST "default_user_name=guest\n";
+    close TEST;
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 1
+                                   }
+        };\n");
+
+    open TEST, ">$fn";
+    print TEST "bogus_use_authentication=0\n";
+    print TEST "default_user_name=guest\n";
+    close TEST;
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 1
+                                   }
+        };\n");
+
+    open TEST, ">$fn";
+    print TEST "  use_authentication=0\n";
+    print TEST "default_user_name=guest\n";
+    close TEST;
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {};\n");
+
+    open TEST, ">$fn";
+    print TEST "use_authentication   =0\n";
+    print TEST "default_user_name=guest\n";
+    close TEST;
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {};\n");
+
+    open TEST, ">$fn";
+    print TEST "use_authentication   =   0\n";
+    print TEST "default_user_name=guest\n";
+    close TEST;
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {};\n");
+
+    # clean up
+
+    undef $Config{authzfile};
+    unlink $fn;
 }
 
 sub testreadpermsfile {
