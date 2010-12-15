@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# set permissions on nagiosgraph files
+chmod 755 /var/nagiosgraph/rrd
+chown nagios /var/nagiosgraph/rrd
+chmod 775 /var/log/nagiosgraph
+chmod nagios:www-data /var/log/nagiosgraph
+chown nagios:adm /var/log/nagiosgraph/nagiosgraph.log
+chown www-data:adm /var/log/nagiosgraph/nagiosgraph-cgi.log
+
+# configure apache and nagios
+cp /etc/nagiosgraph/nagiosgraph-apache.conf /etc/nagiosgraph/apache2/conf.d/nagiosgraph.conf
+cp /etc/nagiosgraph/nagiosgraph-nagios.cfg /etc/nagios/conf.d/nagiosgraph.cfg
+
+# restart apache and nagios
+/etc/init.d/httpd restart
+/etc/init.d/nagios restart
