@@ -9,9 +9,12 @@ cgi/showservice.cgi
 cgi/testcolor.cgi
 CHANGELOG
 debian/compat
+debian/conffiles
 debian/control
 debian/copyright
 debian/docs
+debian/postinst
+debian/postrm
 debian/rules
 etc/access.conf
 etc/datasetdb.conf
@@ -33,6 +36,7 @@ examples/map_examples
 examples/map_minimal
 examples/map_mwall
 examples/nagiosgraph-apache.conf
+examples/nagiosgraph-commands.cfg
 examples/nagiosgraph-nagios.cfg
 examples/nagiosgraph.1.css
 examples/nagiosgraph.2.css

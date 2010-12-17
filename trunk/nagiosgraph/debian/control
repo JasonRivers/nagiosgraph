@@ -6,7 +6,7 @@ Section: Application/System
 Priority: extra
 Maintainer: Alan Brenner
 Architecture: all
-Depends: rrdtool, libcgi-pm-perl, librrds-perl
+Depends: libcgi-pm-perl, librrds-perl
 Recommends: libgd-gd2-perl
 Pre-Depends: perl
 Enhances: nagios

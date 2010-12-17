@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# remove apache configuration changes
+rm /etc/apache2/conf.d/nagiosgraph.conf
+
+# remove nagios configuration changes
+# we do not want to touch nagios.cfg if changes have been made
+
+# restart apache and nagios
+/etc/init.d/apache2 restart
+/etc/init.d/nagios3 restart

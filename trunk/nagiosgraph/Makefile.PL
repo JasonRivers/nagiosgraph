@@ -31,8 +31,8 @@ WriteMakefile(
     'dist'          => { 'SUFFIX'       => ".gz",
                          'DIST_DEFAULT' => 'all tardist',
                          'COMPRESS'     => "gzip -9f" },
-    'realclean'     => { 'FILES' => 'cover_db Makefile.old' },
-    'clean'         => { 'FILES' => 'perltidy.ERR test.* Debian_CPANTS.txt install-log' },
+    'realclean'     => { 'FILES' => 'Makefile.old nagiosgraph-*.tar.gz nagiosgraph-*.deb nagiosgraph-*.rpm' },
+    'clean'         => { 'FILES' => 'cover_db perltidy.ERR test.* Debian_CPANTS.txt install-log' },
 );
 
 sub MY::install { "
@@ -70,11 +70,13 @@ deb-package:
 \tDESTDIR=nagiosgraph-\$(VERSION) NG_LAYOUT=debian fakeroot perl install.pl --no-check-prereq
 \tmkdir -p nagiosgraph-\$(VERSION)/DEBIAN
 \tcp debian/compat nagiosgraph-\$(VERSION)/DEBIAN
+\tcp debian/conffiles nagiosgraph-\$(VERSION)/DEBIAN
 \tcp debian/control nagiosgraph-\$(VERSION)/DEBIAN
 \tcp debian/copyright nagiosgraph-\$(VERSION)/DEBIAN
 \tcp debian/docs nagiosgraph-\$(VERSION)/DEBIAN
 \tcp debian/rules nagiosgraph-\$(VERSION)/DEBIAN
 \tcp debian/postinst nagiosgraph-\$(VERSION)/DEBIAN
+\tcp debian/postrm nagiosgraph-\$(VERSION)/DEBIAN
 \tutils/cvtchangelog.pl > nagiosgraph-\$(VERSION)/DEBIAN/changelog
 \tperl -pi -e 's/Version:.*/Version: \$(VERSION)/' nagiosgraph-\$(VERSION)/DEBIAN/control
 \tdpkg -b nagiosgraph-\$(VERSION)

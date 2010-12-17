@@ -38,9 +38,11 @@ DESTDIR=%{buildroot} NG_LAYOUT=redhat perl install.pl --no-check-prereq --no-cho
 
 %post
 cp %{_sysconfdir}/%{name}/nagiosgraph-apache.conf %{_sysconfdir}/httpd/conf.d/nagiosgraph.conf
-cp %{_sysconfdir}/%{name}/nagiosgraph-nagios.cfg %{_sysconfdir}/nagios/conf.d/nagiosgraph.cfg
-echo "# use nagiosgraph to archive data" >> %{_sysconfdir}/nagios/nagios.cfg
-echo "cfg_file=/etc/nagios/conf.d/nagiosgraph.cfg" >> %{_sysconfdir}/nagios/nagios.cfg
+cp -p %{_sysconfdir}/nagios/nagios.cfg %{_sysconfdir}/nagios/nagios.cfg-saved
+cat %{_sysconfdir}/%{name}/nagiosgraph-nagios.cfg >> %{_sysconfdir}/nagios/nagios.cfg
+cp -p %{_sysconfdir}/nagios/commands.cfg %{_sysconfdir}/nagios/commands.cfg-saved
+perl -pi -e 's/process-service-perfdata/process-service-perfdata-disabled/' %{_sysconfdir}/nagios/commands.cfg
+cat %{_sysconfdir}/%{name}/nagiosgraph-commands.cfg >> %{_sysconfdir}/nagios/commands.cfg
 %{_initrddir}/httpd restart
 %{_initrddir}/nagios restart
 
@@ -74,6 +76,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %config(noreplace) %{ng_etc_dir}/nagiosgraph_es.conf
 %config(noreplace) %{ng_etc_dir}/nagiosgraph-apache.conf
 %config(noreplace) %{ng_etc_dir}/nagiosgraph-nagios.cfg
+%config(noreplace) %{ng_etc_dir}/nagiosgraph-commands.cfg
 %config(noreplace) %{ng_etc_dir}/ngshared.pm
 %config(noreplace) %{ng_etc_dir}/rrdopts.conf
 %config(noreplace) %{ng_etc_dir}/servdb.conf
@@ -84,6 +87,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %{ng_examples_dir}/map_mwall
 %{ng_examples_dir}/nagiosgraph-apache.conf
 %{ng_examples_dir}/nagiosgraph-nagios.cfg
+%{ng_examples_dir}/nagiosgraph-commands.cfg
 %{ng_examples_dir}/map_1_4_4
 %{ng_examples_dir}/map_1_3
 %{ng_examples_dir}/map_1_4_3

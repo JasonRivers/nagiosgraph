@@ -102,6 +102,11 @@ nagiosgraph components with nagios components.
 Nagios and nagiosgraph can be installed in just about any location, for
 example /opt or /usr/local.
 
+Redhat (Fedora, CentOS) and Debian (Ubuntu) systems have their own layouts.
+If you installed Nagios from a package, you can overlay nagiosgraph or you
+can install nagiosgraph to its own standalone location.  The standalone option
+is usually easier to manage across updates.
+
 Decide upon a location and layout before you start the installation.
 Examples are in the Sample Installation Layouts section.
 
@@ -129,7 +134,7 @@ It will also prompt you to modify apache and nagios configuration files.
   install.pl --layout redhat
 
 Installation Using Packages.  You can generate a package for redhat/fedora
-(rpm) systems or debian/ubuntu (.deb) systems, then install the package using
+(rpm) systems or debian/ubuntu (deb) systems, then install the package using
 standard package management tools.
 
   perl Makefile.PL
@@ -735,7 +740,7 @@ data source.  The dump option will emit data in XML format:
 
   rrdtool dump service___db.rrd > service_db.xml
 
-You can modify the XML with any text editor, the convert to RRD format:
+You can modify the XML with any text editor, then convert to RRD format:
 
   rrdtool restore service_db.xml service___db-new.rrd
 
@@ -798,10 +803,13 @@ resolution of data:
   stepsize
   resolution
   heartbeat
+  step
 
-These parameters are used only when an RRD file is created.  To modify these
-values for an existing RRD file you must do a dump/edit/restore.  See the
-rrdtool documentation for details.
+These parameters are used only when an RRD file is created.  By default they
+are the same for all hosts and services, but they can be specified for
+individual hosts, services, and or databases in the nagiosgraph configuration
+file.  To modify these values for an existing RRD file you must do a
+dump/edit/restore.  See the rrdtool documentation for details.
 
 
 

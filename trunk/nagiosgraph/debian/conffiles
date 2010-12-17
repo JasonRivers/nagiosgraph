@@ -1,0 +1,12 @@
+/etc/nagiosgraph/nagiosgraph.conf
+/etc/nagiosgraph/map
+/etc/nagiosgraph/access.conf
+/etc/nagiosgraph/datasetdb.conf
+/etc/nagiosgraph/groupdb.conf
+/etc/nagiosgraph/hostdb.conf
+/etc/nagiosgraph/labels.conf
+/etc/nagiosgraph/rrdopts.conf
+/etc/nagiosgraph/servdb.conf
+/etc/nagiosgraph/nagiosgraph_de.conf
+/etc/nagiosgraph/nagiosgraph_es.conf
+/etc/nagiosgraph/nagiosgraph_fr.conf

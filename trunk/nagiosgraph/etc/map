@@ -39,7 +39,7 @@ and return ('ignore');
 /output:CRITICAL - Socket timeout after/
 and return ('ignore');
 
-/output:Connection refused by host/
+/output:Connection refused/
 and return ('ignore');
 
 /output:CRITICAL - Plugin timed out after/

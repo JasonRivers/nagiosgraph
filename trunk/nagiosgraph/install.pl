@@ -34,11 +34,12 @@ use constant DPERMS => oct 755;
 use constant FPERMS => oct 644;
 use constant XPERMS => oct 755;
 use constant LOG_FN => 'install-log';
-use constant NAGIOS_STUB_FN => 'nagiosgraph-nagios.cfg';
+use constant NAGIOS_CFG_STUB_FN => 'nagiosgraph-nagios.cfg';
+use constant NAGIOS_CMD_STUB_FN => 'nagiosgraph-commands.cfg';
 use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
 
 # put the keys in a specific order to make it easier to see where things go
-my @CONFKEYS = qw(ng_layout ng_prefix ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_examples_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_dir nagios_config_file modify_apache_config apache_config_dir apache_config_file);
+my @CONFKEYS = qw(ng_layout ng_prefix ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_examples_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file nagios_commands_file modify_apache_config apache_config_dir apache_config_file);
 
 # these are standard installation configurations.
 my @PRESETS = (
@@ -126,7 +127,7 @@ my @PRESETS = (
       ng_examples_dir => '/usr/share/nagiosgraph/examples',
       ng_www_dir => '/usr/share/nagiosgraph/htdocs',
       ng_util_dir => '/usr/share/nagiosgraph/util',
-      ng_var_dir => '/var/nagiosgraph',
+      ng_var_dir => '/var/spool/nagiosgraph',
       ng_rrd_dir => 'rrd',
       ng_log_dir => '/var/log/nagiosgraph',
       ng_log_file => 'nagiosgraph.log',
@@ -134,10 +135,12 @@ my @PRESETS = (
       ng_cgi_url => 'cgi-bin',
       ng_css_url => 'nagiosgraph.css',
       ng_js_url => 'nagiosgraph.js',
-      nagios_perfdata_file => '/var/log/nagios3/perfdata.log',
+      nagios_cgi_url => '/nagios3/cgi-url',
+      nagios_perfdata_file => '/tmp/perfdata.log',
       nagios_user => 'nagios',
       www_user => 'www-data',
-      nagios_config_dir => '/etc/nagios3/conf.d',
+      nagios_config_file => '/etc/nagios3/nagios.cfg',
+      nagios_commands_file => '/etc/nagios3/commands.cfg',
       apache_config_dir => '/etc/apache2/conf.d', },
 
     { ng_layout => 'redhat',
@@ -162,6 +165,7 @@ my @PRESETS = (
       nagios_user => 'nagios',
       www_user => 'apache',
       nagios_config_file => '/etc/nagios/nagios.cfg',
+      nagios_commands_file => '/etc/nagios/commands.cfg',
       apache_config_dir => '/etc/httpd/conf.d', },
     );
 
@@ -297,7 +301,7 @@ while ($ARGV[0]) {
         foreach my $v (envvars()) {
             print "  $v\n";
         }
-        print "when building RPM or .deb package, use DESTDIR\n";
+        print "when building RPM or DEB package, use DESTDIR\n";
         exit EXIT_OK;
     } else {
         my $code = EXIT_OK;
@@ -466,17 +470,11 @@ sub checkconfig {
     my $missing = 0;
     foreach my $ii (@CONFKEYS) {
         if (! defined $conf->{$ii}) {
-            if(($ii eq 'nagios_config_dir' ||
-                $ii eq 'nagios_config_file') &&
+            if($ii eq 'nagios_config_file' &&
                ! isyes($conf->{modify_nagios_config})) {
                 next;
-            } elsif($ii eq 'nagios_config_file' &&
-                    defined $conf->{nagios_config_dir} &&
-                    isyes($conf->{modify_nagios_config})) {
-                next;
-            } elsif($ii eq 'nagios_config_dir' &&
-                    defined $conf->{nagios_config_file} &&
-                    isyes($conf->{modify_nagios_config})) {
+            } elsif($ii eq 'nagios_commands_file' &&
+                    ! isyes($conf->{modify_nagios_config})) {
                 next;
             } elsif(($ii eq 'apache_config_dir' ||
                      $ii eq 'apache_config_file') &&
@@ -543,21 +541,21 @@ sub getconfig {
     $conf->{modify_nagios_config} =
         getanswer('Modify the Nagios configuration', 'n');
     if (isyes($conf->{modify_nagios_config})) {
-        my $x = defined $conf->{nagios_config_dir} ?
-            $conf->{nagios_config_dir} : q();
+        my $x = defined $conf->{nagios_config_file} ?
+            $conf->{nagios_config_file} : q();
         if ($x eq q()) {
-            $x = finddir('conf.d', qw(/etc/nagios /etc/nagios3));
-            $conf->{nagios_config_dir} = $x if $x ne q();
+            $x = findfile('nagios.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc /etc/nagios3 /usr/local/nagios3/etc /opt/nagios3/etc));
         }
-        if (! defined $conf->{nagios_config_dir}) {
-            $x = defined $conf->{nagios_config_file} ?
-                $conf->{nagios_config_file} : q();
-            if ($x eq q()) {
-                $x = findfile('nagios.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc /etc/nagios3 /usr/local/nagios3/etc /opt/nagios3/etc));
-            }
-            $conf->{nagios_config_file} =
-                getanswer('Path of Nagios configuration file', $x);
+        $conf->{nagios_config_file} =
+            getanswer('Path of Nagios configuration file', $x);
+
+        $x = defined $conf->{nagios_commands_file} ?
+            $conf->{nagios_commands_file} : q();
+        if ($x eq q()) {
+            $x = findfile('commands.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc /etc/nagios3 /usr/local/nagios3/etc /opt/nagios3/etc));
         }
+        $conf->{nagios_commands_file} =
+            getanswer('Path of Nagios commands file', $x);
     }
 
     # find out if we should modify the apache configuration.  if there is a
@@ -628,10 +626,10 @@ sub readconfigenv {
     $conf->{modify_nagios_config} = $ENV{$n} && $ENV{$n} eq 'y' ? 'y' : 'n';
     $n = mkenvname('modify_apache_config');
     $conf->{modify_apache_config} = $ENV{$n} && $ENV{$n} eq 'y' ? 'y' : 'n';
-    $n = mkenvname('nagios_config_dir');
-    $conf->{nagios_config_dir} = $ENV{$n} if $ENV{$n};
     $n = mkenvname('nagios_config_file');
     $conf->{nagios_config_file} = $ENV{$n} if $ENV{$n};
+    $n = mkenvname('nagios_commands_file');
+    $conf->{nagios_commands_file} = $ENV{$n} if $ENV{$n};
     $n = mkenvname('apache_config_dir');
     $conf->{apache_config_dir} = $ENV{$n} if $ENV{$n};
     $n = mkenvname('apache_config_file');
@@ -659,8 +657,8 @@ sub envvars {
         push @vars, mkenvname($ii->{conf});
     }
     push @vars, 'NG_MODIFY_NAGIOS_CONFIG';
-    push @vars, 'NG_NAGIOS_CONFIG_DIR';
     push @vars, 'NG_NAGIOS_CONFIG_FILE';
+    push @vars, 'NG_NAGIOS_COMMANDS_FILE';
     push @vars, 'NG_MODIFY_APACHE_CONFIG';
     push @vars, 'NG_APACHE_CONFIG_DIR';
     push @vars, 'NG_APACHE_CONFIG_FILE';
@@ -873,28 +871,13 @@ sub replacetext {
     return $fail;
 }
 
-sub writeapachestub {
-    my ($fn, $conf, $doit) = @_;
-    logmsg("write apache stub to $fn");
+sub writestub {
+    my ($fn, $str, $doit) = @_;
+    logmsg("write stub to $fn");
     return 0 if !$doit;
     my $fail = 0;
     if (open my $FILE, '>', $fn) {
-        print ${FILE} "# enable nagiosgraph CGI scripts\n";
-        print ${FILE} "ScriptAlias $conf->{ng_cgi_url} \"$conf->{ng_cgi_dir}\"\n";
-        print ${FILE} "<Directory \"$conf->{ng_cgi_dir}\">\n";
-        print ${FILE} "   Options ExecCGI\n";
-        print ${FILE} "   AllowOverride None\n";
-        print ${FILE} "   Order allow,deny\n";
-        print ${FILE} "   Allow from all\n";
-        print ${FILE} "</Directory>\n";
-        print ${FILE} "# enable nagiosgraph CSS and JavaScript\n";
-        print ${FILE} "Alias $conf->{ng_url} \"$conf->{ng_www_dir}\"\n";
-        print ${FILE} "<Directory \"$conf->{ng_www_dir}\">\n";
-        print ${FILE} "   Options None\n";
-        print ${FILE} "   AllowOverride None\n";
-        print ${FILE} "   Order allow,deny\n";
-        print ${FILE} "   Allow from all\n";
-        print ${FILE} "</Directory>\n";
+        print ${FILE} $str;
         if (! close $FILE) {
             logmsg("*** cannot close $fn: $OS_ERROR");
             $fail = 1;
@@ -906,28 +889,47 @@ sub writeapachestub {
     return $fail;
 }
 
-sub writenagiosstub {
-    my ($fn, $conf, $doit) = @_;
-    logmsg("write nagios stub to $fn");
-    return 0 if !$doit;
-    my $fail = 0;
-    if (open my $FILE, '>', $fn) {
-        print ${FILE} "# process nagios performance data using nagiosgraph\n";
-        print ${FILE} "     process_performance_data=1\n";
-        print ${FILE} "     service_perfdata_file=$conf->{nagios_perfdata_file}\n";
-        print ${FILE} "     service_perfdata_file_template=\$LASTSERVICECHECK\$\|\|\$HOSTNAME\$\|\|\$SERVICEDESC\$\|\|\$SERVICEOUTPUT\$\|\|\$SERVICEPERFDATA\$\n";
-        print ${FILE} "     service_perfdata_file_mode=a\n";
-        print ${FILE} "     service_perfdata_file_processing_interval=30\n";
-        print ${FILE} "     service_perfdata_file_processing_command=process-service-perfdata\n";
-        if (! close $FILE) {
-            logmsg("*** cannot close $fn: $OS_ERROR");
-            $fail = 1;
-        }
-    } else {
-        logmsg("*** cannot write to $fn: $OS_ERROR");
-        $fail = 1;
-    }
-    return $fail;
+sub printapacheconf {
+    my ($cgiurl, $cgidir, $ngurl, $wwwdir) = @_;
+    my $str = "# enable nagiosgraph CGI scripts\n";
+    $str .= "ScriptAlias $cgiurl \"$cgidir\"\n";
+    $str .= "<Directory \"$cgidir\">\n";
+    $str .= "   Options ExecCGI\n";
+    $str .= "   AllowOverride None\n";
+    $str .= "   Order allow,deny\n";
+    $str .= "   Allow from all\n";
+    $str .= "</Directory>\n";
+    $str .= "# enable nagiosgraph CSS and JavaScript\n";
+    $str .= "Alias $ngurl \"$wwwdir\"\n";
+    $str .= "<Directory \"$wwwdir\">\n";
+    $str .= "   Options None\n";
+    $str .= "   AllowOverride None\n";
+    $str .= "   Order allow,deny\n";
+    $str .= "   Allow from all\n";
+    $str .= "</Directory>\n";
+    return $str;
+}
+
+sub printnagioscfg {
+    my ($fn) = @_;
+    my $str = "# process nagios performance data using nagiosgraph\n";
+    $str .= "process_performance_data=1\n";
+    $str .= "service_perfdata_file=$fn\n";
+    $str .= "service_perfdata_file_template=\$LASTSERVICECHECK\$\|\|\$HOSTNAME\$\|\|\$SERVICEDESC\$\|\|\$SERVICEOUTPUT\$\|\|\$SERVICEPERFDATA\$\n";
+    $str .= "service_perfdata_file_mode=a\n";
+    $str .= "service_perfdata_file_processing_interval=30\n";
+    $str .= "service_perfdata_file_processing_command=process-service-perfdata\n";
+    return $str;
+}
+
+sub printnagioscmd {
+    my ($fn) = @_;
+    my $str = "# command to process nagios performance data for nagiosgraph\n";
+    $str .= "define command {\n";
+    $str .= "  command_name process-service-perfdata\n";
+    $str .= "  command_line $fn\n";
+    $str .= "}\n";
+    return $str;
 }
 
 # ensure that the instructions are printed out whether or not we are vebose.
@@ -943,9 +945,15 @@ sub printinstructions {
     if (!isyes($conf->{modify_nagios_config})) {
         logmsg(q());
         logmsg('    * In the nagios configuration file (e.g. nagios.cfg),');
-        logmsg('      add this line:');
+        logmsg('      add these lines:');
         logmsg(q());
-        logmsg("      cfg_file=$conf->{ng_etc_dir}/" . NAGIOS_STUB_FN);
+        logmsg(printnagioscfg($conf->{nagios_perfdata_file}));
+        logmsg(q());
+        logmsg('    * In the nagios command file (e.g. command.cfg), comment');
+        logmsg('      any existing definition for process-service-perfdata');
+        logmsg('      then add these lined:');
+        logmsg(q());
+        logmsg(printnagioscmd("$conf->{ng_bin_dir}/insert.pl"));
     }
     if (!isyes($conf->{modify_apache_config})) {
         logmsg(q());
@@ -999,8 +1007,18 @@ sub installfiles {
   '^#nagioscgiurl\\s*=.*', 'nagioscgiurl = ' . $conf->{nagios_cgi_url},
                     }, $doit);
         }
-        $fail |= writenagiosstub($dst . q(/) . NAGIOS_STUB_FN, $conf, $doit);
-        $fail |= writeapachestub($dst . q(/) . APACHE_STUB_FN, $conf, $doit);
+        $fail |= writestub($dst . q(/) . NAGIOS_CFG_STUB_FN,
+                           printnagioscfg($conf->{nagios_perfdata_file}),
+                           $doit);
+        $fail |= writestub($dst . q(/) . NAGIOS_CMD_STUB_FN,
+                           printnagioscmd("$conf->{ng_bin_dir}/insert.pl"),
+                           $doit);
+        $fail |= writestub($dst . q(/) . APACHE_STUB_FN,
+                           printapacheconf($conf->{ng_cgi_url},
+                                           $conf->{ng_cgi_dir},
+                                           $conf->{ng_url},
+                                           $conf->{ng_www_dir}),
+                           $doit);
     }
 
     if (defined $conf->{ng_cgi_dir}) {
@@ -1105,16 +1123,25 @@ sub patchnagios {
 
     if (defined $conf->{modify_nagios_config} &&
         isyes($conf->{modify_nagios_config})) {
-        if (defined $conf->{nagios_config_dir}) {
-            $fail |= ng_move($dd . $conf->{ng_etc_dir} . q(/) . NAGIOS_STUB_FN, $conf->{nagios_config_dir} . '/nagiosgraph.cfg', $doit);
-        } elsif (defined $conf->{nagios_config_file}) {
-            $fail |= appendtofile($conf->{nagios_config_file}, "# nagiosgraph configuration\ncfg_file=$conf->{ng_etc_dir}/" . NAGIOS_STUB_FN . "\n", $doit);
+        if (defined $conf->{nagios_config_file}) {
+            $fail |= appendtofile($conf->{nagios_config_file},
+                                  printnagioscfg($conf->{nagios_perfdata_file}),
+                                  $doit);
+        }
+        if (defined $conf->{nagios_commands_file}) {
+            $fail |= replacetext($conf->{nagios_commands_file}, {
+                'process-service-perfdata', 'process-service-perfdata-disabled',
+                                 }, $doit);
+            $fail |= appendtofile($conf->{nagios_commands_file},
+                                printnagioscmd("$conf->{ng_bin_dir}/insert.pl"),
+                                  $doit);
         }
     }
 
     return $fail;
 }
 
+# TODO: do the right thing when nagios and nagiosgraph share same cgi dir/url
 sub patchapache {
     my ($conf, $doit) = @_;
     my $fail = 0;
@@ -1389,8 +1416,8 @@ Nagiosgraph uses the following information for installation:
   www_user             - Apache user
 
   configure nagios?    - whether to configure Nagios
-  nagios_config_dir    - path to nagios conf.d directory
   nagios_config_file   - path to nagios config file
+  nagios_commands_file - path to nagios commands files
 
   configure apache?    - whether to configure Apache
   apache_config_dir    - path to apache conf.d directory

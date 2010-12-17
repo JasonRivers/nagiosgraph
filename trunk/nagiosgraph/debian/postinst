@@ -1,17 +1,23 @@
 #!/bin/sh
 
 # set permissions on nagiosgraph files
-chmod 755 /var/nagiosgraph/rrd
-chown nagios /var/nagiosgraph/rrd
+chmod 755 /var/spool/nagiosgraph/rrd
+chown nagios /var/spool/nagiosgraph/rrd
 chmod 775 /var/log/nagiosgraph
-chmod nagios:www-data /var/log/nagiosgraph
+chown nagios:www-data /var/log/nagiosgraph
 chown nagios:adm /var/log/nagiosgraph/nagiosgraph.log
 chown www-data:adm /var/log/nagiosgraph/nagiosgraph-cgi.log
 
-# configure apache and nagios
-cp /etc/nagiosgraph/nagiosgraph-apache.conf /etc/nagiosgraph/apache2/conf.d/nagiosgraph.conf
-cp /etc/nagiosgraph/nagiosgraph-nagios.cfg /etc/nagios/conf.d/nagiosgraph.cfg
+# configure apache
+cp /etc/nagiosgraph/nagiosgraph-apache.conf /etc/apache2/conf.d/nagiosgraph.conf
+
+# configure nagios
+cp -p /etc/nagios3/nagios.cfg /etc/nagios3/nagios.cfg-saved
+cat /etc/nagiosgraph/nagiosgraph-nagios.cfg >> /etc/nagios3/nagios.cfg
+cp -p /etc/nagios3/commands.cfg /etc/nagios3/commands.cfg-saved
+perl -pi -e 's/process-service-perfdata/process-service-perfdata-disabled/' /etc/nagios3/commands.cfg
+cat /etc/nagiosgraph/nagiosgraph-commands.cfg >> /etc/nagios3/commands.cfg
 
 # restart apache and nagios
-/etc/init.d/httpd restart
-/etc/init.d/nagios restart
+/etc/init.d/apache2 restart
+/etc/init.d/nagios3 restart

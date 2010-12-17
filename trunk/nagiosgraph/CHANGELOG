@@ -6,7 +6,7 @@ $Id$
    configured rrdtool and gd have been major source of installation woes).
    added options for different layouts (overlay or separate) and locations.
    the install script now respects the DESTDIR conventions for packaging.
-* added make targets for creating rpm and .deb packages.
+* added make targets for creating rpm and deb packages.
 * added default rule to the map file that will catch any plugin with
    standards-compliant perfdata output.
 * added a slew of unit tests for map rules.
