@@ -45,6 +45,9 @@ and return ('ignore');
 /output:CRITICAL - Plugin timed out after/
 and return ('ignore');
 
+/output:.*plugin may be missing/
+and return ('ignore');
+
 ########################################################################
 # Service type: ping
 #   output:PING OK - Packet loss = 0%, RTA = 0.00 ms

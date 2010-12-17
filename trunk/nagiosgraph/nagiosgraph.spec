@@ -40,8 +40,8 @@ DESTDIR=%{buildroot} NG_LAYOUT=redhat perl install.pl --no-check-prereq --no-cho
 cp %{_sysconfdir}/%{name}/nagiosgraph-apache.conf %{_sysconfdir}/httpd/conf.d/nagiosgraph.conf
 cp -p %{_sysconfdir}/nagios/nagios.cfg %{_sysconfdir}/nagios/nagios.cfg-saved
 cat %{_sysconfdir}/%{name}/nagiosgraph-nagios.cfg >> %{_sysconfdir}/nagios/nagios.cfg
-cp -p %{_sysconfdir}/nagios/commands.cfg %{_sysconfdir}/nagios/commands.cfg-saved
-cat %{_sysconfdir}/%{name}/nagiosgraph-commands.cfg >> %{_sysconfdir}/nagios/commands.cfg
+cp -p %{_sysconfdir}/nagios/objects/commands.cfg %{_sysconfdir}/nagios/objects/commands.cfg-saved
+cat %{_sysconfdir}/%{name}/nagiosgraph-commands.cfg >> %{_sysconfdir}/nagios/objects/commands.cfg
 %{_initrddir}/httpd restart
 %{_initrddir}/nagios restart
 

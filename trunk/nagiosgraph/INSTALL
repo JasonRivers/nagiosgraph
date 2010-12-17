@@ -43,6 +43,7 @@ modifying configuration files, or automatically using the install.pl script.
     CentOS 5 and Nagiosgraph 0.9
     MacOSX 10.5 and Nagios 2.12
     Fedora Core 6, Nagios 2.6+, and HTTP output parsing
+  Platform Test Matrix
   Notes For Developers
 
 
@@ -1129,6 +1130,19 @@ with Nagios 2.6 and later.  This is what did work.
 	/output:.*?HTTP.*?([.0-9]+) sec/
 	and push @s, [ http,
 		[ rt, GAUGE, $1 ] ];
+
+
+
+Platform Test Matrix
+--------------------
+
+These are the platforms on which installation has been tested.
+
+platform       method
+------------------------
+debian 5       manual
+fedora 14      rpm
+ubuntu 10.04   deb
 
 
 

@@ -8,6 +8,26 @@
 #   nagios-plugins-1.4.15
 #   nrpe-2.12
 
+# here are the default plugins for various system configurations
+#
+# Fedora 14
+# Current Load
+# Current Users
+# HTTP
+# PING
+# Root Partition
+# SSH
+# Swap Usage
+# Total Processes
+#
+# ubuntu 10.04
+# Current Load
+# Current Users
+# Disk Space
+# HTTP
+# SSH
+# Total Processes
+
 use strict;
 use FindBin;
 use Test;

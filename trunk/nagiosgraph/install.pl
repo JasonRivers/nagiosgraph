@@ -161,11 +161,11 @@ my @PRESETS = (
       ng_cgi_url => 'cgi-bin',
       ng_css_url => 'nagiosgraph.css',
       ng_js_url => 'nagiosgraph.js',
-      nagios_perfdata_file => '/var/spool/nagios/perfdata.log',
+      nagios_perfdata_file => '/tmp/perfdata.log',
       nagios_user => 'nagios',
       www_user => 'apache',
       nagios_config_file => '/etc/nagios/nagios.cfg',
-      nagios_commands_file => '/etc/nagios/commands.cfg',
+      nagios_commands_file => '/etc/nagios/objects/commands.cfg',
       apache_config_dir => '/etc/httpd/conf.d', },
     );
 
