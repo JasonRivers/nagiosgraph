@@ -918,7 +918,7 @@ sub printnagioscfg {
     $str .= "service_perfdata_file_template=\$LASTSERVICECHECK\$\|\|\$HOSTNAME\$\|\|\$SERVICEDESC\$\|\|\$SERVICEOUTPUT\$\|\|\$SERVICEPERFDATA\$\n";
     $str .= "service_perfdata_file_mode=a\n";
     $str .= "service_perfdata_file_processing_interval=30\n";
-    $str .= "service_perfdata_file_processing_command=process-service-perfdata\n";
+    $str .= "service_perfdata_file_processing_command=process-service-perfdata-for-nagiosgraph\n";
     return $str;
 }
 
@@ -926,7 +926,7 @@ sub printnagioscmd {
     my ($fn) = @_;
     my $str = "# command to process nagios performance data for nagiosgraph\n";
     $str .= "define command {\n";
-    $str .= "  command_name process-service-perfdata\n";
+    $str .= "  command_name process-service-perfdata-for-nagiosgraph\n";
     $str .= "  command_line $fn\n";
     $str .= "}\n";
     return $str;
@@ -949,9 +949,8 @@ sub printinstructions {
         logmsg(q());
         logmsg(printnagioscfg($conf->{nagios_perfdata_file}));
         logmsg(q());
-        logmsg('    * In the nagios command file (e.g. command.cfg), comment');
-        logmsg('      any existing definition for process-service-perfdata');
-        logmsg('      then add these lined:');
+        logmsg('    * In the nagios commands file (e.g. command.cfg),');
+        logmsg('      add these lines:');
         logmsg(q());
         logmsg(printnagioscmd("$conf->{ng_bin_dir}/insert.pl"));
     }
@@ -1129,9 +1128,6 @@ sub patchnagios {
                                   $doit);
         }
         if (defined $conf->{nagios_commands_file}) {
-            $fail |= replacetext($conf->{nagios_commands_file}, {
-                'process-service-perfdata', 'process-service-perfdata-disabled',
-                                 }, $doit);
             $fail |= appendtofile($conf->{nagios_commands_file},
                                 printnagioscmd("$conf->{ng_bin_dir}/insert.pl"),
                                   $doit);

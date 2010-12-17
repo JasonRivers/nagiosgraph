@@ -41,8 +41,12 @@ cp %{_sysconfdir}/%{name}/nagiosgraph-apache.conf %{_sysconfdir}/httpd/conf.d/na
 cp -p %{_sysconfdir}/nagios/nagios.cfg %{_sysconfdir}/nagios/nagios.cfg-saved
 cat %{_sysconfdir}/%{name}/nagiosgraph-nagios.cfg >> %{_sysconfdir}/nagios/nagios.cfg
 cp -p %{_sysconfdir}/nagios/commands.cfg %{_sysconfdir}/nagios/commands.cfg-saved
-perl -pi -e 's/process-service-perfdata/process-service-perfdata-disabled/' %{_sysconfdir}/nagios/commands.cfg
 cat %{_sysconfdir}/%{name}/nagiosgraph-commands.cfg >> %{_sysconfdir}/nagios/commands.cfg
+%{_initrddir}/httpd restart
+%{_initrddir}/nagios restart
+
+%postun
+rm %{_sysconfdir}/httpd/conf.d/nagiosgraph.conf
 %{_initrddir}/httpd restart
 %{_initrddir}/nagios restart
 
