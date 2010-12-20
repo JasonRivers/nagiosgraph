@@ -1,3 +1,11 @@
+# File:    $Id$
+# License: OSI Artistic License
+#          http://www.opensource.org/licenses/artistic-license.php
+# Author:  (c) 2010 Matthew Wall
+#
+# this map file catches output from any nagios plugin that emits performance
+# data according to the standard format.
+
 # avoid unuseful timeout and errors
 /output:CHECK_NRPE: Socket timeout/
 and return ('ignore');
@@ -8,11 +16,15 @@ and return ('ignore');
 /output:CRITICAL - Socket timeout after/
 and return ('ignore');
 
-/output:Connection refused by host/
+/output:Connection refused/
 and return ('ignore');
 
 /output:CRITICAL - Plugin timed out after/
 and return ('ignore');
+
+/output:.*plugin may be missing/
+and return ('ignore');
+
 
 # default rule.  if none of the other rules did anything, then check for
 # perfdata that meets the standard format.

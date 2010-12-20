@@ -1,5 +1,11 @@
 # File:    $Id$
+# Author:  (c) 2010 Matthew Wall
 # map rules from a small nagios installation owned by mwall
+#
+# i tend to use short, lowercase names for the data sources (in this map file)
+# and service names (in my nagios service definitions), then use the
+# labels.conf file to provide more user-friendly strings that appear
+# in the web pages.
 
 # avoid unuseful timeout and errors 
 /output:CHECK_NRPE: Socket timeout/ 

@@ -1,32 +1,20 @@
-# File:    $Id: map,v 1.10 2006/07/21 14:18:17 sauber Stab $
-# Author:  (c) Soren Dossing, 2005
+# File:    $Id$
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
+# Author:  (c) Soren Dossing, 2005
+# Author:  (c) 2008 Alan Brenner, Ithaka Harbors
+# Author:  (c) 2010 Matthew Wall
+#          Plus contributions by other authors as indicated below.
 
-########################################################################
+# This file contains map rules that you might find useful when parsing output
+# from custom plugins or for storing the data in configurations other than the
+# standard map output.
 #
-# INSTRUCTIONS:
-#
-# This file contains several example of service types. Edit this file to
-# add more service types. The data string from Nagios is in $_ . Use
-# regular expressions to identify and extract data like the examples below
-# below.  Match on either output: or perfdata: . The code is pure perl,
-# that will be run inside an eval{}. Results are expected in @s. The
-# general format is:
-#
-# /output|perfdata:<servicetype> <key>=<value> <key2=value2> .../
-# and push @s, [ <databasename>,
-#                [ <key>,  GAUGE|DERIVE, <value>  ],
-#                [ <key2>, GAUGE|DERIVE, <value2> ],
-#                [ .       .              .        ],
-#                [ .       .              .        ] ];
-#
-# But more advanced code is possible, as long as the resulting
-# data structure is correct.
-#
-########################################################################
+# Some of these rules match the same service output, so do not just copy all
+# of the rules from this file into your map file!
 
-# Network-ish stuff ############################################################
+
+# Network-ish stuff ###########################################################
 # Service type: ping
 #   output:PING OK - Packet loss = 0%, RTA = 0.00 ms
 /output:PING.* (\d+)%.+([.\d]+)\sms/
@@ -40,45 +28,45 @@ and push @s, [ 'ping',
 #   tcpActiveOpens=1451583, tcpPassiveOpens=1076181, tcpAttemptFails=1909,
 #   tcpEstabResets=5045, tcpCurrEstab=6, tcpOutDataBytes=3162434373,
 #   tcpInDataBytes=1942718261, tcpRetransBytes=215439
-#/perfdata:.*udpInDatagrams=(\d+), udpOutDatagrams=(\d+), udpInErrors=(\d+), tcpActiveOpens=(\d+), tcpPassiveOpens=(\d+), tcpAttemptFails=(\d+), tcpEstabResets=(\d+), tcpCurrEstab=(\d+), tcpOutDataBytes=(\d+), tcpInDataBytes=(\d+), tcpRetransBytes=(\d+)/
-#and push @s, [ udp,
-#               [ InPkts,  DERIVE, int $1/300 ],
-#               [ OutPkts, DERIVE, int $2/300 ],
-#               [ Errors,  DERIVE, int $3/300 ] ],
-#             [ tcp,
-#               [ ActOpens,    DERIVE, int $4/300    ],
-#               [ PsvOpens,    DERIVE, int $5/300    ],
-#               [ AttmptFails, DERIVE, int $6/300    ],
-#               [ OutBytes,    DERIVE, int $9/300*8  ],
-#               [ InBytes,     DERIVE, int $10/300*8 ] ];
+/perfdata:.*udpInDatagrams=(\d+), udpOutDatagrams=(\d+), udpInErrors=(\d+), tcpActiveOpens=(\d+), tcpPassiveOpens=(\d+), tcpAttemptFails=(\d+), tcpEstabResets=(\d+), tcpCurrEstab=(\d+), tcpOutDataBytes=(\d+), tcpInDataBytes=(\d+), tcpRetransBytes=(\d+)/
+and push @s, [ udp,
+               [ InPkts,  DERIVE, int $1/300 ],
+               [ OutPkts, DERIVE, int $2/300 ],
+               [ Errors,  DERIVE, int $3/300 ] ],
+             [ tcp,
+               [ ActOpens,    DERIVE, int $4/300    ],
+               [ PsvOpens,    DERIVE, int $5/300    ],
+               [ AttmptFails, DERIVE, int $6/300    ],
+               [ OutBytes,    DERIVE, int $9/300*8  ],
+               [ InBytes,     DERIVE, int $10/300*8 ] ];
 
 # Service type: unix-dns
 #   output:DNS OK - 0.008 seconds response time (test.test.1M IN A192.169.0.47)
 #   perfdata:time=8260us;;;0
-#/output:DNS.*?([.0-9]+) sec/
-#and push @s, [ dns,
-#               [ response,  GAUGE, $1 ] ];
+/output:DNS.*?([.0-9]+) sec/
+and push @s, [ dns,
+               [ response,  GAUGE, $1 ] ];
 
 # Service type: unix-ntp
 #   output:NTP OK: Offset 0.001083 secs, jitter 14.84 msec, peer is stratum 1
-#/output:NTP.*Offset ([-.0-9]+).*jitter ([-.0-9]+).*stratum (\d+)/
-#and push @s, [ ntp,
-#               [ offset,  GAUGE, $1      ],
-#               [ jitter,  GAUGE, $2/1000 ],
-#               [ stratum, GAUGE, $3+1    ] ];
+/output:NTP.*Offset ([-.0-9]+).*jitter ([-.0-9]+).*stratum (\d+)/
+and push @s, [ ntp,
+               [ offset,  GAUGE, $1      ],
+               [ jitter,  GAUGE, $2/1000 ],
+               [ stratum, GAUGE, $3+1    ] ];
 
 # Service type: unix-tcp
 #   output:TCP OK - 0.061 second response time on port 22
 #   perfdata:time=0.060777s;0.000000;0.000000;0.000000;10.000000
-#/output:TCP.*?on port (\d+)\s*perfdata:time=(\d+\.\d+).*(\d+\.\d+)\D*(\d+\.\d+)\D*(\d+\.\d+)\D*(\d+\.\d+)/
-#and push @s, [ "tcp_$1",
-#               [ 'connect_time',   GAUGE, $2 ],
-#               [ 'warning_time',   GAUGE, $3 ],
-#               [ 'critical_time',  GAUGE, $4 ],
-#               [ 'socket_timeout', GAUGE, $6 ],
-#             ];
+/output:TCP.*?on port (\d+)\s*perfdata:time=(\d+\.\d+).*(\d+\.\d+)\D*(\d+\.\d+)\D*(\d+\.\d+)\D*(\d+\.\d+)/
+and push @s, [ "tcp_$1",
+               [ 'connect_time',   GAUGE, $2 ],
+               [ 'warning_time',   GAUGE, $3 ],
+               [ 'critical_time',  GAUGE, $4 ],
+               [ 'socket_timeout', GAUGE, $6 ],
+             ];
 
-# Overall load stuff ###########################################################
+# Overall load stuff ##########################################################
 # Service type: unix-load
 #   output: OK - load average: 0.66, 0.70, 0.73
 #   perfdata:load1=0;15;30;0 load5=0;10;25;0 load15=0;5;20;0
@@ -96,9 +84,9 @@ and push @s, [ 'procs',
 
 # Service type: unix-zombies
 #   ouput:PROCS OK: 0 processes with STATE = Z
-#/output:PROCS.*: (\d+) process.*Z/
-#and push @s, [ 'zombie',
-#               [ 'zombies', GAUGE, $1 ] ];
+/output:PROCS.*: (\d+) process.*Z/
+and push @s, [ 'zombie',
+               [ 'zombies', GAUGE, $1 ] ];
 
 # Service type: unix-memory
 #	output:CHECK_MEMORY OK - 3344M free
@@ -130,7 +118,7 @@ and push @s, [ 'users',
 #	output:OK
 /servicedescr:OpenManage/ and push @s, 'ignore';
 
-# Disk stuff ###################################################################
+# Disk stuff ##################################################################
 # Service type: single disk
 #  output:DISK OK - free space: /tmp 663 MB (90%):
 /output:DISK.*free space: (\S+) (\d+) MB \((\d+)\%\)/
@@ -165,7 +153,7 @@ and push @s, [ 'diskgd',
 /OK: device is functional and stable \(temperature: (\d+)\)/
 and push @s, 'ignore';
 
-# email-ish stuff ##############################################################
+# email-ish stuff #############################################################
 # Service type: SMTP server
 #   output:SMTP OK - 0.187 sec. response time
 /output:SMTP.*?([-.0-9]+) sec/
@@ -217,19 +205,19 @@ and push @s, [ 'clamd',
 and push @s, [ 'clamdb',
                [ 'version', COUNTER, $1 ] ];
 
-# Application server stuff #####################################################
+# Application server stuff ####################################################
 # Service type: ldap sever
 #   ouput:LDAP OK - 0.004 seconds response time
 #   perfdata:time=3657us;;;0
-#/output:LDAP.*?([.0-9]+) sec/
-#and push @s, [ ldap,
-#               [ response, GAUGE, $1 ] ];
+/output:LDAP.*?([.0-9]+) sec/
+and push @s, [ ldap,
+               [ response, GAUGE, $1 ] ];
 
 # Service type: web server
 #   output:HTTP OK HTTP/1.1 200 OK - 1456 bytes in 0.003 seconds
-#/output:HTTP.*?(\d+) byte.*?([.0-9]+) sec/
-#	output:HTTP OK HTTP/1.1 200 OK - 0.578 second response time
-#	perfdata:time=0.577628s;;;0.000000 size=18242B;;;0
+/output:HTTP.*?(\d+) byte.*?([.0-9]+) sec/
+	output:HTTP OK HTTP/1.1 200 OK - 0.578 second response time
+	perfdata:time=0.577628s;;;0.000000 size=18242B;;;0
 /perfdata:time=(\d+\.\d+)s.*size=(\d+)B/
 and push @s, [ 'http',
                [ 'bps', GAUGE, $2/$1 ] ];
@@ -238,7 +226,7 @@ and push @s, [ 'http',
 #	output: OK - Certificate will expire on 12/14/2008 13:35.
 /output:OK - Certificate will expire/ and push @s, 'ignore';
 
-# Sercurity stuff ##############################################################
+# Security stuff ##############################################################
 # Service type: CheckRootKit
 #	output:CHKROOTKIT OK
 /output:CHKROOTKIT OK/ and push @s, 'ignore';
@@ -260,7 +248,7 @@ and push @s, [ 'http',
   push @s, [ 'plw', @_r ];
 };
 
-# Other stuff ##################################################################
+# Other stuff #################################################################
 # Service type: Asterisk hardware interface (Zaptel)
 #	output: ZAPTEL OK: WCFXO/0
 /output:ZAPTEL OK/ and push @s, 'ignore';
@@ -275,3 +263,115 @@ and push @s, [ 'http',
   }
   push @s, [ 'apcupsd', @_r ];
 };
+
+
+# Windows clients via NSClient (rules by kbn) #################################
+# http://nerhood.wordpress.com/2004/09/22/nagiosgraph-with-windows-support/
+#
+# Service type: ntload
+#   check command: check_nt -H Address -v CPULOAD -l5,70,90,30,70,90
+#   output: CPU Load 9% (5 min average) 11% (30 min average)
+#   perfdata: '5 min avg Load'=9%;70;80;0;100 '30 min avg Load'=11%;70;90;0;100
+#/perfdata:.*5 min avg Load'=(\d+)%;(\d+);(\d+);\d+;\d+ '30 min avg Load'=(\d+)%;\d+;\d+;\d+;\d+ /
+/output:.*?(\d+)% .*?(\d+)% /
+and push @s, [ ntload,
+       [ avg05min, GAUGE, $1 ],
+       [ avg30min, GAUGE, $2 ] ];
+
+# Service type: ntmem
+#   check command: check_nt -H Address -v MEMUSE -w 50 -c 90
+#   output: Memory usage: total:2467.75 Mb - used: 510.38 Mb (21%) - free: 1957.37 Mb (79%)
+#   perfdata: Memory usage=510.38Mb;1233.88;2220.98;0.00;2467.75
+/perfdata:.*usage=([.0-9]+)Mb;([.0-9]+);([.0-9]+);([.0-9]+);([.0-9]+)/
+and push @s, [ ntmem,
+       [ memused, GAUGE, $1*1024**2 ],
+       [ memwarn, GAUGE, $2*1024**2 ],
+       [ memcrit, GAUGE, $3*1024**2 ],
+       [ memmmax, GAUGE, $5*1024**2 ] ];
+
+# Service type: ntdisk
+#   check command: check_nt -H Address -v USEDDISKSPACE -lc -w 75 -c 90
+#   output: c:\ - total: 25.87 Gb - used: 4.10 Gb (16%) - free 21.77 Gb (84%)
+#   perfdata: c:\ Used Space=4.10Gb;19.40;23.28;0.00;25.87
+/perfdata:.*Space=([.0-9]+)Gb;([.0-9]+);([.0-9]+);([.0-9]+);([.0-9]+)/
+and push @s, [ ntdisk,
+       [ diskused, GAUGE, $1*1024**3 ],
+       [ diskwarn, GAUGE, $2*1024**3 ],
+       [ diskcrit, GAUGE, $3*1024**3 ],
+       [ diskmaxi, GAUGE, $5*1024**3 ] ];
+
+# Service type: fping
+#   output:FPING OK - 10.1.1.1 (loss=20%, rta=385.000000 ms)
+#   perfdata: loss=20%;79;100;0;100 rta=0.385000s;2.000000;5.000000;0.000000
+#/output:PING.*?(\d+)%.+?([.\d]+)\sms/
+/perfdata:.*loss=(\d+)%.*rta=([.0-9]+)s;/
+and push @s, [ fping,
+       [ losspct, GAUGE, $1 ],
+       [ rta,     GAUGE, $2 ] ];
+
+# Service type: mssql
+#   output:   OK - MS SQL Server 2000 has 42 user(s) connected:  18 appTrendCtrMgr, 1 nagios, 2 NTAUTHORITY\SYSTEM.
+#   perfdata: users=36;;;;
+#/output:*.MS SQL Server 2000 has ([0-9]+) use/
+/perfdata:.*users=([0-9]+)/
+and push @s, [ mssql,
+       [ users, GAUGE, $1 ] ];
+
+
+# Windows clients via NSClient++ (rules by Rambling Techie) ###################
+# http://rambling-techie.blogspot.com/2009/02/nagiosgraph-windows-clients.html
+
+# Service type: memory
+# check command: check_nt -H Address -v MEMUSE -w 50 -c 90
+#output: Memory usage: tootal:2467.75 Mb - used: 510.38 Mb (21%) - free: 1957.37 Mb (79%)
+/perfdata:Memory usage=([.0-9])+Mb;([.0-9+);([.0-9+);([.0-9+);([.0-9]+)/
+and push @s, [ ntmem,
+               [ memused, GAUGE, $1*1024**2 ] ];
+
+# Service type: ntload
+# Check command: check_nt -H Address -v CPULOAD -l1,70,90,5,70,90,30,70,90
+# output: CPU Load 9% (5 min average) 11% (30 min average)
+#perfdata: '5 min avg Load'=9%;70;80;0;100 '30 min avg Load'=11%;70;90;0;100
+/output:.*?(\d+)% .*?(\d+)% /
+and push @s, [ ntload,
+               [ avg05min, GAUGE, $1 ],
+               [ avg30min, GAUGE, $2 ] ];
+
+# Service type: ntdisk
+# check command: check_nt -H Address -v USEDDISKSPACE -lc -w 75 -c 90
+# output: c:\ - total: 25.87 Gb - used: 4.10 Gb (16%) - free 21.77 Gb (84%)
+# perfdata: c:\ Used Space=4.10Gb;19.40;23.28;0.00;25.87
+/perfdata:.*Space=([.0-9]+)Gb;([.0-9]+);([.0-9]+);([.0-9]+);([.0-9]+)/
+and push @s, [ ntdisk,
+               [ diskused, GAUGE, $1*1024**3 ],
+               [ diskwarn, GAUGE, $2*1024**3 ],
+               [ diskcrit, GAUGE, $3*1024**3 ],
+               [ diskmaxi, GAUGE, $5*1024**3 ] ];
+
+
+# Windows clients via NSClient++ (rules by claudiokuenzler) ###################
+# http://www.claudiokuenzler.com/blog/120/nagiosgraph-map-windows-nsclient-memory-cpu-disk
+
+# CPU Load (Nagios output: CPU Load 23% (15 min average) )
+# This one is based on the example delivered on nerhood.wordpress.com
+/output:.*CPU Load .*?(\d+)%/
+and push @s, [ ntload,
+               ['avg15min', GAUGE, $1 ] ];
+
+# Service type memory for Windows (NSClient++)
+# This map-entry works with the actual NSClient++ (0.3.6-0.3.8) outputs
+# Regex by Fabien Huttin
+#output: Memory usage: total:9732.64 Mb - used: 2203.30 Mb (23%) - free: 7529.34 Mb (77%)
+/output:Memory usage.*:.*:(\d+)\.\d* Mb .*: (\d+)\.\d* Mb .*: (\d+)\.\d* Mb .*/
+and push @s, [ntmem,
+               ['memtotal', GAUGE, $1*1024**2 ],
+               ['memused', GAUGE, $2*1024**2] ];
+
+# Service tpye disk space for Windows (NSClient++)
+# This map-entry works with current NSClient++ versions (0.3.6-0.3.8)
+# by Claudio Kuenzler
+# Nagios Output: c: - total: 40.00 Gb - used: 22.69 Gb (57%) - free 17.31 Gb (43%)
+/output:.* total: (\d+\.\d*) Gb .*used: (\d+\.\d*) Gb .*free (\d+\.\d*).*/
+and push @s, [ntdisk,
+               ['disktotal', GAUGE, $1 ],
+               ['diskused', GAUGE, $2 ] ];
