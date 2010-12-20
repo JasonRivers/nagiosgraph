@@ -279,43 +279,50 @@ sub initlog {
 # we must have a type (the CGI script that is being invoked).  we may or may
 # not have a host and/or service.
 sub getdebug {
-    my ($type, $server, $service) = @_;
+    my ($type, $host, $service) = @_;
     if (not defined $type) {
         debug(DBWRN, 'no type defined, enabling debug');
         $Config{debug} = DBDEB;
         return;
     }
 
-    if (not $server) { $server = q(); }
+    if (not $host) { $host = q(); }
     if (not $service) { $service = q(); }
-    debug(DBDEB, "getdebug($type, $server, $service)");
+    debug(DBDEB, "getdebug($type, $host, $service)");
 
-    # All this allows debugging one service, or one server,
-    # or one service on one server, for each line of input.
-    my $base = 'debug_' . $type;
-    my $host = 'debug_' . $type . '_host';
-    my $serv = 'debug_' . $type . '_service';
-    if (defined $Config{$base}) {
-        debug(DBDEB, "getdebug found $base");
-        if (defined $Config{$host}) {
-            debug(DBDEB, "getdebug found host $host");
-            if ($Config{$host} eq $server) {
-                if (defined $Config{$serv}) {
-                    debug(DBDEB, "getdebug found $serv with $host");
-                    if ($Config{$serv} eq $service) {
-                        $Config{debug} = $Config{$base};
+    # All this allows debugging one service, or one host,
+    # or one service on one host, for each line of input.
+    my $key = 'debug_' . $type;
+    my $hkey = 'debug_' . $type . '_host';
+    my $skey = 'debug_' . $type . '_service';
+    if (defined $Config{$key}) {
+        debug(DBDEB, "getdebug $key = $Config{$key}");
+        if (defined $Config{$hkey}) {
+            debug(DBDEB, "getdebug $hkey = $Config{$hkey}");
+            if ($Config{$hkey} eq $host) {
+                if (defined $Config{$skey}) {
+                    debug(DBDEB, "getdebug $skey = $Config{$skey}");
+                    if ($Config{$skey} eq $service) {
+                        debug(DBDEB, "service matched $Config{$key}");
+                        $Config{debug} = $Config{$key};
+                    } else {
+                        $Config{debug} = 0;
                     }
                 } else {
-                    $Config{debug} = $Config{$base};
+                    $Config{debug} = $Config{$key};
                 }
+            } else {
+                $Config{debug} = 0;
             }
-        } elsif (defined $Config{$serv}) {
-            debug(DBDEB, "getdebug found service $serv");
-            if ($Config{$serv} eq $service) {
-                $Config{debug} = $Config{$base};
+        } elsif (defined $Config{$skey}) {
+            debug(DBDEB, "getdebug $skey = $Config{$skey}");
+            if ($Config{$skey} eq $service) {
+                $Config{debug} = $Config{$key};
+            } else {
+                $Config{debug} = 0;
             }
         } else {
-            $Config{debug} = $Config{$base};
+            $Config{debug} = $Config{$key};
         }
     }
     return;
