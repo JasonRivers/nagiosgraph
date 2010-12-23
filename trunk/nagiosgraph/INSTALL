@@ -63,7 +63,7 @@ Installation Preliminaries
 --------------------------
 
 Before installing, ensure that the prerequisite software has been installed
-and decide upon a layout and location.
+then decide upon a layout and location.
 
 
 Prerequisites
@@ -105,7 +105,7 @@ example /opt or /usr/local.
 
 Redhat (Fedora, CentOS) and Debian (Ubuntu) systems have their own layouts.
 If you installed Nagios from a package, you can overlay nagiosgraph or you
-can install nagiosgraph to its own standalone location.  The standalone option
+can install nagiosgraph to its own standalone location.  The standalone layout
 is usually easier to manage across updates.
 
 Decide upon a location and layout before you start the installation.
@@ -134,16 +134,12 @@ It will also prompt you to modify apache and nagios configuration files.
   install.pl --layout debian
   install.pl --layout redhat
 
-Installation Using Packages.  You can generate a package for redhat/fedora
-(rpm) systems or debian/ubuntu (deb) systems, then install the package using
-standard package management tools.
+Installation Using Packages.  Packages are available for redhat/fedora (rpm)
+or debian/ubuntu (deb) systems.  These packages assume that Nagios and apache
+were installed from packages.  Do not use a nagiosgraph package if you
+installed Nagios or apache from source!
 
-  perl Makefile.PL
-  make deb-package
   dpkg -i nagiosgraph-x.y.z.deb
-
-  perl Makefile.PL
-  make rpm-package
   rpm -i nagiosgraph-x.y.z.rpm
 
 
@@ -188,8 +184,8 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios.
      chown nagios /var/nagios/rrd
      chmod 755 /var/nagios/rrd
 
-If you want to keep nagiosgraph log output separate from nagios and web server
-output, do the following:
+To keep nagiosgraph log output separate from nagios and web server output,
+do the following:
 
  - Edit nagiosgraph.conf.  Set the following:
      logfile           = /var/log/nagiosgraph.log
@@ -230,6 +226,25 @@ Upgrade Notes
 
  - If you are upgrading from nagiosgraph 1.4.1 or earlier, move your service
    and database/datasource labels from nagiosgraph.conf to labels.conf.
+
+ - If you are upgrading from nagiosgraph 1.4.3 or earlier and you were using
+   nagios3 for the authzmethod, you must replace authz_nagios_cfg and
+   authz_cgi_cfg with authzfile.  All of the Nagios authorization parameters
+   should be in the Nagios CGI configuration file (typically cgi.cfg).
+
+ - If you are upgrading from nagiosgraph 1.4.3 or earlier, you might want to
+   add the generic map rule to the end of your map file.
+
+ - If you are upgrading from nagiosgraph 1.4.3 or earlier, you should make any
+   ignore rules explicit.  For example, change this:
+
+          /output:CHECK_NRPE: Socket timeout/
+          and return;
+
+   to this:
+
+          /output:CHECK_NRPE: Socket timeout/
+          and return ('ignore');
 
 
 Configuring Data Processing
@@ -1138,11 +1153,13 @@ Platform Test Matrix
 
 These are the platforms on which installation has been tested.
 
-platform       method
-------------------------
-debian 5       manual
-fedora 14      rpm
-ubuntu 10.04   deb
+os             arch     method             nagios
+-------------------------------------------------------------------------------
+debian 5       ppc      manual             3.2.0, 3.2.1, 3.2.2, 3.2.3
+fedora 14      i386     rpm, installer     3.2.3
+ubuntu 10.04   i386     deb, installer     3.2.0
+centos 5.5     i385     rpm, installer
+centos 5.5     x86_64   rpm, installer
 
 
 

@@ -39,10 +39,13 @@ and return ('ignore');
 /output:CRITICAL - Socket timeout after/
 and return ('ignore');
 
-/output:Connection refused/
+/output:CRITICAL - Plugin timed out after/
 and return ('ignore');
 
-/output:CRITICAL - Plugin timed out after/
+/output:NTP CRITICAL: No response from NTP server/
+and return ('ignore');
+
+/output:Connection refused/
 and return ('ignore');
 
 /output:.*plugin may be missing/
@@ -141,12 +144,30 @@ and push @s, [ 'udp',
                [ 'InBytes',     DERIVE, int $10/300*8 ] ];
 
 # Service type: unix-ntp
+#   output:NTP OK: Offset 0.001083 secs
+# perfdata:offset=1032.98s;60.00000;120.00000;
+#
+# Service type: unix-ntp
 #   output:NTP OK: Offset 0.001083 secs, jitter 14.84 msec, peer is stratum 1
-/output:NTP.*Offset ([-.0-9]+).*jitter ([-.0-9]+).*stratum (\d+)/
+#
+# Service type: unix-ntp
+#   output:NTP OK: Offset 0.001083 secs
+#
+(/perfdata:\s*offset=([-.0-9]+)s;\s*(.\d+);\s*(.\d+)/
+and push @s, [ 'data',
+               [ 'offset',  GAUGE, $1 ],
+               [ 'warn',  GAUGE, $2 ],
+               [ 'crit', GAUGE, $3 ] ])
+or
+(/output:NTP.*Offset ([-.0-9]+).*jitter ([-.0-9]+).*stratum (\d+)/
 and push @s, [ 'ntp',
                [ 'offset',  GAUGE, $1      ],
                [ 'jitter',  GAUGE, $2/1000 ],
-               [ 'stratum', GAUGE, $3+1    ] ];
+               [ 'stratum', GAUGE, $3+1    ] ])
+or
+(/output:NTP.*Offset ([-.0-9]+) secs/
+and push @s, [ 'ntp',
+               [ 'offset',  GAUGE, $1 ] ]);
 
 # Service type: unix-pop
 #   output:POP OK - 0.008 second response time on port 110
@@ -257,21 +278,6 @@ or (/output:.*uptime is.*?([.\d]+)\sHours/
 or (/output:.*uptime is.*?([.\d]+)\sMinutes/
     and push @s, [ 'data',
                [ 'days', GAUGE, $1/1440 ] ]);
-
-# Service type: macosx-ntp
-#   output:NTP OK: Offset 0.001083 secs
-/output:NTP.*Offset ([-.0-9]+)/
-and push @s, [ 'ntp',
-               [ 'offset',  GAUGE, $1 ] ];
-
-# Service type: unix-ntp-client
-#   output:NTP OK: Offset 0.001083 secs
-# perfdata:offset=1032.98;60.00000; 120.00000;
-/perfdata: offset=([-.0-9]+)s;(.\d+);(.\d+);/
-and push @s, [ 'data',
-               [ 'offset',  GAUGE, $1 ],
-               [ 'warn',  GAUGE, $2 ],
-               [ 'crit', GAUGE, $3 ] ];
 
 # Service type: unix total processes
 #   output:OK: Total: 90, Zombie: 0, RSDT: 23

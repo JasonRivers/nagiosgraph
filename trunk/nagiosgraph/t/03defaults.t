@@ -478,14 +478,6 @@ sub testmaprules {
               'GAUGE',
               '2'
             ]
-          ],
-          [
-            'ntp',
-            [
-              'offset',
-              'GAUGE',
-              '0.001083'
-            ]
           ]
         ];\n");
 

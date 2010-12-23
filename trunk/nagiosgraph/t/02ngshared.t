@@ -219,7 +219,7 @@ sub testgetdebug {
     ok($Config{debug}, 1);		# _host set to same hostname, so change
     $Config{debug} = -1;
     getdebug('test', 'testing', 'ping');
-    ok($Config{debug}, -1);		# _host set to different hostname, so no change
+    ok($Config{debug}, 0);		# _host set to different hostname, so no logging
     $Config{debug} = -1;
     
     # program, hostname and service tests
@@ -228,13 +228,13 @@ sub testgetdebug {
     ok($Config{debug}, 1);		# _host and _service same, so change
     $Config{debug} = -1;
     getdebug('test', 'testbox', 'smtp');
-    ok($Config{debug}, -1);		# _host same, but _service not, so no change
+    ok($Config{debug}, 0);		# _host same, but _service not, so no logging
     $Config{debug} = -1;
     getdebug('test', 'testing', 'ping');
-    ok($Config{debug}, -1);		# _service same, but _host not, so no change
+    ok($Config{debug}, 0);		# _service same, but _host not, so no logging
     $Config{debug} = -1;
     getdebug('test', 'testing', 'smtp');
-    ok($Config{debug}, -1);		# neither _host or _service not, so no change
+    ok($Config{debug}, 0);		# neither _host or _service not, so no logging
     $Config{debug} = -1;
     
     # just program and service tests
@@ -243,7 +243,9 @@ sub testgetdebug {
     ok($Config{debug}, 1);		# _service same, so change
     $Config{debug} = -1;
     getdebug('test', 'testbox', 'smtp');
-    ok($Config{debug}, -1);		# _service not, so no change
+    ok($Config{debug}, 0);		# _service not, so no logging
+
+    # clean up
     $Config{debug} = 0;
 }
 

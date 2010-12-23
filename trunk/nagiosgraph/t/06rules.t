@@ -10,6 +10,9 @@
 # to ensure we know exactly what will happen with each release.  there are
 # tests for each version of the map file.
 
+# FIXME: create a standard block of output/performance data then run that
+#        block through the map file from each release.
+
 use strict;
 use FindBin;
 use Test;
@@ -1749,9 +1752,18 @@ sub testrules_1_4_4 {
 
     @data = ('0', 'host', 'ntp', 'NTP OK: Offset 0.001083 secs', '');
     @s = evalrules( formatdata( @data ) );
-    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'ntp',
+            [
+              'offset',
+              'GAUGE',
+              '0.001083'
+            ]
+          ]
+        ];\n");
 
-    @data = ('0', 'host', 'NTP', 'NTP OK: Offset 0.001083 secs', 'offset=1032.98;60.00000; 120.00000;');
+    @data = ('0', 'host', 'NTP', 'NTP OK: Offset 0.001083 secs', 'offset=1032.98s;60.00000;120.00000;');
     @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
 
