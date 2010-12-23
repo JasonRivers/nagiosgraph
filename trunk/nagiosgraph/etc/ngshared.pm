@@ -288,7 +288,6 @@ sub getdebug {
 
     if (not $host) { $host = q(); }
     if (not $service) { $service = q(); }
-    debug(DBDEB, "getdebug($type, $host, $service)");
 
     # All this allows debugging one service, or one host,
     # or one service on one host, for each line of input.
@@ -296,14 +295,10 @@ sub getdebug {
     my $hkey = 'debug_' . $type . '_host';
     my $skey = 'debug_' . $type . '_service';
     if (defined $Config{$key}) {
-        debug(DBDEB, "getdebug $key = $Config{$key}");
         if (defined $Config{$hkey}) {
-            debug(DBDEB, "getdebug $hkey = $Config{$hkey}");
             if ($Config{$hkey} eq $host) {
                 if (defined $Config{$skey}) {
-                    debug(DBDEB, "getdebug $skey = $Config{$skey}");
                     if ($Config{$skey} eq $service) {
-                        debug(DBDEB, "service matched $Config{$key}");
                         $Config{debug} = $Config{$key};
                     } else {
                         $Config{debug} = 0;
@@ -315,7 +310,6 @@ sub getdebug {
                 $Config{debug} = 0;
             }
         } elsif (defined $Config{$skey}) {
-            debug(DBDEB, "getdebug $skey = $Config{$skey}");
             if ($Config{$skey} eq $service) {
                 $Config{debug} = $Config{$key};
             } else {
@@ -325,6 +319,17 @@ sub getdebug {
             $Config{debug} = $Config{$key};
         }
     }
+
+    if (defined $Config{$key}) {
+        debug(DBDEB, "getdebug $key = $Config{$key}");
+    }
+    if (defined $Config{$hkey}) {
+        debug(DBDEB, "getdebug $hkey = $Config{$hkey}");
+    }
+    if (defined $Config{$skey}) {
+        debug(DBDEB, "getdebug $skey = $Config{$skey}");
+    }
+
     return;
 }
 
@@ -1639,6 +1644,7 @@ sub mkvname {
 # escape colons so they do not confuse rrdtool
 sub mklegend {
     my ($s, $maxlen) = @_;
+    $s =~ s/\\/\\\\/g;
     $s =~ s/:/\\:/g;
     return sprintf "%-${maxlen}s", $s;
 }
