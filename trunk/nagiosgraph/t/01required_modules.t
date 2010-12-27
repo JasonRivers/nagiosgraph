@@ -5,7 +5,7 @@
 # Author:  (c) Matthew Wall, 2010
 
 use strict;
-use Test::More;
+use Test::More tests => 4;
 use File::Temp qw(tempfile);
 
 eval { require RRDs; };
@@ -30,5 +30,3 @@ SKIP: {
     my $img = new GD::Image(5,5);
     isa_ok($img, "GD::Image");
 }
-
-done_testing();
