@@ -4,9 +4,9 @@
 rm /etc/apache2/conf.d/nagiosgraph.conf
 
 # remove nagios configuration changes
-# FIXME: this assumes that no changes were made since we cached to -saved
-mv /etc/nagios3/nagios.cfg-saved /etc/nagios3/nagios.cfg
-mv /etc/nagios3/commands.cfg-saved /etc/nagios3/commands.cfg
+# FIXME: this assumes that no changes were made since we cached to -ngsave
+mv /etc/nagios3/nagios.cfg-ngsave /etc/nagios3/nagios.cfg
+mv /etc/nagios3/commands.cfg-ngsave /etc/nagios3/commands.cfg
 
 # restart apache and nagios
 /etc/init.d/apache2 restart

@@ -63,22 +63,22 @@ DESTDIR=%{buildroot} NG_LAYOUT=%{layout} perl install.pl --no-check-prereq --no-
 
 %post
 cp %{_sysconfdir}/%{name}/nagiosgraph-apache.conf %{apacheconfdir}/nagiosgraph.conf
-cp -p %{n_cfg_file} %{n_cfg_file}-saved
+cp -p %{n_cfg_file} %{n_cfg_file}-ngsave
 echo %{stag} >> %{n_cfg_file}
 cat %{_sysconfdir}/%{name}/nagiosgraph-nagios.cfg >> %{n_cfg_file}
 echo %{etag} >> %{n_cfg_file}
-cp -p %{n_cmd_file} %{n_cmd_file}-saved
+cp -p %{n_cmd_file} %{n_cmd_file}-ngsave
 echo %{stag} >> %{n_cmd_file}
 cat %{_sysconfdir}/%{name}/nagiosgraph-commands.cfg >> %{n_cmd_file}
 echo %{etag} >> %{n_cmd_file}
 %{_initrddir}/httpd restart
 %{_initrddir}/nagios restart
 
-# FIXME: this assumes no changes were made since we cached to -saved
+# FIXME: this assumes no changes were made since we cached to -ngsave
 %postun
 rm %{apacheconfdir}/nagiosgraph.conf
-mv %{n_cfg_file}-saved %{n_cfg_file}
-mv %{n_cmd_file}-saved %{n_cmd_file}
+mv %{n_cfg_file}-ngsave %{n_cfg_file}
+mv %{n_cmd_file}-ngsave %{n_cmd_file}
 %{_initrddir}/httpd restart
 %{_initrddir}/nagios restart
 

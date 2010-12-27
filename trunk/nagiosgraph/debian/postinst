@@ -15,11 +15,11 @@ chown www-data:adm /var/log/nagiosgraph/nagiosgraph-cgi.log
 cp /etc/nagiosgraph/nagiosgraph-apache.conf /etc/apache2/conf.d/nagiosgraph.conf
 
 # configure nagios
-cp -p /etc/nagios3/nagios.cfg /etc/nagios3/nagios.cfg-saved
+cp -p /etc/nagios3/nagios.cfg /etc/nagios3/nagios.cfg-ngsave
 echo $stag >> /etc/nagios3/nagios.cfg
 cat /etc/nagiosgraph/nagiosgraph-nagios.cfg >> /etc/nagios3/nagios.cfg
 echo $etag >> /etc/nagios3/nagios.cfg
-cp -p /etc/nagios3/commands.cfg /etc/nagios3/commands.cfg-saved
+cp -p /etc/nagios3/commands.cfg /etc/nagios3/commands.cfg-ngsave
 echo $stag >> /etc/nagios3/commands.cfg
 cat /etc/nagiosgraph/nagiosgraph-commands.cfg >> /etc/nagios3/commands.cfg
 echo $etag >> /etc/nagios3/commands.cfg
