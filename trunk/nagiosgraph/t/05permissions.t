@@ -6,14 +6,18 @@
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 # Author:  (c) Matthew Wall, 2010
 
-use strict;
 use FindBin;
-use Data::Dumper;
 use Test;
-use lib "$FindBin::Bin/../etc";
-use ngshared;
+use strict;
 
-BEGIN { plan tests => 178; }
+BEGIN {
+    plan tests => 178;
+    eval "require RRDs; RRDs->import();
+          use Data::Dumper;
+          use lib \"$FindBin::Bin/../etc\";
+          use ngshared;";
+    exit 0 if $@;
+}
 
 sub testcheckuserlist {
     ok(checkuserlist('bill,bob,nancy'), 0);

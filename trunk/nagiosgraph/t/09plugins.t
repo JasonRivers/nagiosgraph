@@ -4,7 +4,7 @@
 #          http://www.opensource.org/licenses/artistic-license-2.0.php
 # Author:  (c) Matthew Wall, 2010
 
-# test output from all of the standard nagios plugins.
+# test output from all of the standard nagios plugins with latest map file.
 #   nagios-plugins-1.4.15
 #   nrpe-2.12
 
@@ -28,15 +28,20 @@
 # SSH
 # Total Processes
 
-use strict;
 use FindBin;
 use Test;
-use File::Copy qw(copy);
-use Data::Dumper;
-use lib "$FindBin::Bin/../etc";
-use ngshared;
+use strict;
 
-BEGIN { plan tests => 58; }
+BEGIN {
+    plan tests => 58;
+    eval "require RRDs; RRDs->import();
+          use Data::Dumper;
+          use File::Copy qw(copy);
+          use lib \"$FindBin::Bin/../etc\";
+          use ngshared;";
+    exit 0 if $@;
+}
+
 my $logfile = 'test.log';
 my $mapfile = 'map_minimal';
 

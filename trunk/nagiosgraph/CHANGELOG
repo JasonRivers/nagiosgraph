@@ -8,8 +8,12 @@ $Id$
    the install script now respects the DESTDIR conventions for packaging.
 * added make targets for creating rpm and deb packages.
 * added default rule to the map file that will catch any plugin with
-   standards-compliant perfdata output.
+   standards-compliant perfdata output.  removed old/redundant rules from the
+   map file, bringing everything up to date with the latest nagios plugin
+   output.  the new map file is much smaller, since a single rule recognizes
+   more plugins.
 * added a slew of unit tests for map rules.
+* added checks in unit tests for prerequisites.
 * better parsing/handling of use_authentication to match Nagios defaults.
 * use only the nagios cgi config file for authentication parameters.
 * added a slew of authentication unit tests.

@@ -11,15 +11,19 @@
 # brittle set of tests.  prolly better to compare for just a portion of the
 # HTML.
 
-use strict;
 use FindBin;
-use File::Copy qw(copy);
-use File::Path qw(rmtree);
 use Test;
-use lib "$FindBin::Bin/../etc";
-use ngshared qw(createrrd %Config);
+use strict;
 
-BEGIN { plan tests => 0; }
+BEGIN {
+    plan tests => 0;
+    eval "require RRDs; RRDs->import();
+          use File::Copy qw(copy);
+          use File::Path qw(rmtree);
+          use lib \"$FindBin::Bin/../etc\";
+          use ngshared;";
+    exit 0 if $@;
+}
 
 my $src = $FindBin::Bin . '/..';
 my $dst = $FindBin::Bin . '/cgitest';

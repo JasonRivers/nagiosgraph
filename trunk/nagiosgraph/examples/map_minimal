@@ -81,15 +81,15 @@ and return ('ignore');
                 $mult = 1 / 1_000_000;
             } elsif ($u eq 'B') {
                 $mult = 1;
-            } elsif ($u eq 'KB' || $u eq 'K') {
+            } elsif ($u eq 'KB' || $u eq 'K' || $u eq 'kB') {
                 $mult = 1024;
-            } elsif ($u eq 'MB' || $u eq 'M') {
+            } elsif ($u eq 'MB' || $u eq 'M' || $u eq 'mB') {
                 $mult = 1024 * 1024;
-            } elsif ($u eq 'GB' || $u eq 'G') {
+            } elsif ($u eq 'GB' || $u eq 'G' || $u eq 'gB') {
                 $mult = 1024 * 1024 * 1024;
-            } elsif ($u eq 'TB' || $u eq 'T') {
+            } elsif ($u eq 'TB' || $u eq 'T' || $u eq 'tB') {
                 $mult = 1024 * 1024 * 1024 * 1024;
-            } elsif ($u eq 'PB' || $u eq 'P') {
+            } elsif ($u eq 'PB' || $u eq 'P' || $u eq 'pB') {
                 $mult = 1024 * 1024 * 1024 * 1024 * 1024;
             }
             if ($mult != 1) {

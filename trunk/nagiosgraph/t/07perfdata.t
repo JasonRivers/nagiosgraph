@@ -4,20 +4,33 @@
 #          http://www.opensource.org/licenses/artistic-license-2.0.php
 # Author:  (c) Matthew Wall, 2010
 
+# the tests in this file exercise the rule parsing, specifically for the
+# default map rule (the one that looks at performance data).  the tests should
+# cover as many combinations and permutations of performance data formatting as
+# possible.
+#
+# the tests in this file use the minimal map definition - just the perfdata
+# rule.
+#
 # ensure that any standards-compliant plugin perfdata will be handled.
 # ensure that any bogus perfdata will be reported.
 # test for various units
 # test for variations in perfdata formatting
 
-use strict;
 use FindBin;
 use Test;
-use File::Copy qw(copy);
-use Data::Dumper;
-use lib "$FindBin::Bin/../etc";
-use ngshared;
+use strict;
 
-BEGIN { plan tests => 47; }
+BEGIN {
+    plan tests => 52;
+    eval "require RRDs; RRDs->import();
+          use Data::Dumper;
+          use File::Copy qw(copy);
+          use lib \"$FindBin::Bin/../etc\";
+          use ngshared;";
+    exit 0 if $@;
+}
+
 my $logfile = 'test.log';
 my $mapfile = 'map_minimal';
 
@@ -153,6 +166,73 @@ sub testperfdatalabels {
     ok(Dumper(\@s), "\$VAR1 = [
           [
             'a!@#\$%^&*()',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a:b=2');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a:b',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', ':=2');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            ':',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'bill\'s value=2');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'bill\\'s value',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ]
+          ]
+        ];\n");
+
+# FIXME: too many backslashes?
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'c:\\=2');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'c:\\\\',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', '\\\\server\\share=2');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            '\\\\\\\\server\\\\share',
             [
               'data',
               'GAUGE',

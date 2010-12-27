@@ -12,16 +12,20 @@
 #        have fewer side effects and global dependencies.
 
 use FindBin;
-use strict;
-use CGI qw(:standard escape unescape);
-use Data::Dumper;
-use File::Find;
-use File::Path qw(rmtree);
 use Test;
-use lib "$FindBin::Bin/../etc";
-use ngshared;
+use strict;
 
-BEGIN { plan tests => 531; }
+BEGIN {
+    plan tests => 531;
+    eval "require RRDs; RRDs->import();
+          use CGI qw(:standard escape unescape);
+          use Data::Dumper;
+          use File::Find;
+          use File::Path qw(rmtree);
+          use lib \"$FindBin::Bin/../etc\";
+          use ngshared;";
+    exit 0 if $@;
+}
 
 my ($log, $result, @result, $testvar);
 

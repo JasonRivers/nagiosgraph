@@ -234,7 +234,15 @@ Upgrade Notes
    should be in the Nagios CGI configuration file (typically cgi.cfg).
 
  - If you are upgrading from nagiosgraph 1.4.3 or earlier, you might want to
-   add the generic map rule to the end of your map file.
+   add the generic map rule to the end of your map file.  This rule will
+   catch performance data from any additional plugins you add.  Using the
+   generic rule results in RRD files with the following structure, one file
+   per named performance data element, with one or more data sources:
+
+          host0/service0___name0 (data[,warn][,crit][,min][,max])
+          host0/service0___name1 (data[,warn][,crit][,min][,max])
+          host0/service0___name2 (data[,warn][,crit][,min][,max])
+          host0/service1___name0 (data[,warn][,crit][,min][,max])
 
  - If you are upgrading from nagiosgraph 1.4.3 or earlier, you should make any
    ignore rules explicit.  For example, change this:
