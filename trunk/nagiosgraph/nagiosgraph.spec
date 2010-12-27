@@ -30,6 +30,10 @@
 %global ng_rrd_dir %{_localstatedir}/spool/%{name}/rrd
 %global ng_log_file %{_localstatedir}/log/%{name}/nagiosgraph.log
 %global ng_cgilog_file %{_localstatedir}/log/%{name}/nagiosgraph-cgi.log
+%global n_cfg_file %{_sysconfdir}/nagios/nagios.cfg
+%global n_cmd_file %{_sysconfdir}/nagios/objects/commands.cfg
+%global stag "# begin nagiosgraph configuration"
+%global etag "# end nagiosgraph configuration"
 
 Summary: Nagios add-on for performance data storage and graphing
 Name: nagiosgraph
@@ -59,15 +63,22 @@ DESTDIR=%{buildroot} NG_LAYOUT=%{layout} perl install.pl --no-check-prereq --no-
 
 %post
 cp %{_sysconfdir}/%{name}/nagiosgraph-apache.conf %{apacheconfdir}/nagiosgraph.conf
-cp -p %{_sysconfdir}/nagios/nagios.cfg %{_sysconfdir}/nagios/nagios.cfg-saved
-cat %{_sysconfdir}/%{name}/nagiosgraph-nagios.cfg >> %{_sysconfdir}/nagios/nagios.cfg
-cp -p %{_sysconfdir}/nagios/objects/commands.cfg %{_sysconfdir}/nagios/objects/commands.cfg-saved
-cat %{_sysconfdir}/%{name}/nagiosgraph-commands.cfg >> %{_sysconfdir}/nagios/objects/commands.cfg
+cp -p %{n_cfg_file} %{n_cfg_file}-saved
+echo %{stag} >> %{n_cfg_file}
+cat %{_sysconfdir}/%{name}/nagiosgraph-nagios.cfg >> %{n_cfg_file}
+echo %{etag} >> %{n_cfg_file}
+cp -p %{n_cmd_file} %{n_cmd_file}-saved
+echo %{stag} >> %{n_cmd_file}
+cat %{_sysconfdir}/%{name}/nagiosgraph-commands.cfg >> %{n_cmd_file}
+echo %{etag} >> %{n_cmd_file}
 %{_initrddir}/httpd restart
 %{_initrddir}/nagios restart
 
+# FIXME: this assumes no changes were made since we cached to -saved
 %postun
 rm %{apacheconfdir}/nagiosgraph.conf
+mv %{n_cfg_file}-saved %{n_cfg_file}
+mv %{n_cmd_file}-saved %{n_cmd_file}
 %{_initrddir}/httpd restart
 %{_initrddir}/nagios restart
 

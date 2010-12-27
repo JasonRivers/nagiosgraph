@@ -1,5 +1,8 @@
 #!/bin/sh
 
+stag="# begin nagiosgraph configuration"
+etag="# end nagiosgraph configuration"
+
 # set permissions on nagiosgraph files
 chmod 755 /var/spool/nagiosgraph/rrd
 chown nagios /var/spool/nagiosgraph/rrd
@@ -13,9 +16,13 @@ cp /etc/nagiosgraph/nagiosgraph-apache.conf /etc/apache2/conf.d/nagiosgraph.conf
 
 # configure nagios
 cp -p /etc/nagios3/nagios.cfg /etc/nagios3/nagios.cfg-saved
+echo $stag >> /etc/nagios3/nagios.cfg
 cat /etc/nagiosgraph/nagiosgraph-nagios.cfg >> /etc/nagios3/nagios.cfg
+echo $etag >> /etc/nagios3/nagios.cfg
 cp -p /etc/nagios3/commands.cfg /etc/nagios3/commands.cfg-saved
+echo $stag >> /etc/nagios3/commands.cfg
 cat /etc/nagiosgraph/nagiosgraph-commands.cfg >> /etc/nagios3/commands.cfg
+echo $etag >> /etc/nagios3/commands.cfg
 
 # restart apache and nagios
 /etc/init.d/apache2 restart

@@ -37,6 +37,8 @@ use constant LOG_FN => 'install-log';
 use constant NAGIOS_CFG_STUB_FN => 'nagiosgraph-nagios.cfg';
 use constant NAGIOS_CMD_STUB_FN => 'nagiosgraph-commands.cfg';
 use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
+use constant STAG => '# begin nagiosgraph configuration';
+use constant ETAG => '# end nagiosgraph configuration';
 
 # put the keys in a specific order to make it easier to see where things go
 my @CONFKEYS = qw(ng_layout ng_prefix ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_examples_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file nagios_commands_file modify_apache_config apache_config_dir apache_config_file);
@@ -1152,12 +1154,16 @@ sub patchnagios {
         isyes($conf->{modify_nagios_config})) {
         if (defined $conf->{nagios_config_file}) {
             $fail |= appendtofile($conf->{nagios_config_file},
-                                  printnagioscfg($conf->{nagios_perfdata_file}),
+                                  STAG . "\n" .
+                               printnagioscfg($conf->{nagios_perfdata_file}) .
+                                  ETAG . "\n",
                                   $doit);
         }
         if (defined $conf->{nagios_commands_file}) {
             $fail |= appendtofile($conf->{nagios_commands_file},
-                                printnagioscmd("$conf->{ng_bin_dir}/insert.pl"),
+                                  STAG . "\n" .
+                               printnagioscmd("$conf->{ng_bin_dir}/insert.pl") .
+                                  ETAG . "\n",
                                   $doit);
         }
     }
@@ -1166,6 +1172,7 @@ sub patchnagios {
 }
 
 # TODO: do the right thing when nagios and nagiosgraph share same cgi dir/url
+# TODO: do the right thing when nagios and nagiosgraph share same www dir
 sub patchapache {
     my ($conf, $doit) = @_;
     my $fail = 0;
@@ -1175,9 +1182,15 @@ sub patchapache {
     if (defined $conf->{modify_apache_config} &&
         isyes($conf->{modify_apache_config})) {
         if (defined $conf->{apache_config_dir}) {
-            $fail |= ng_move($dd . $conf->{ng_etc_dir} . q(/) . APACHE_STUB_FN, $conf->{apache_config_dir} . '/nagiosgraph.conf', $doit);
+            $fail |= ng_move($dd . $conf->{ng_etc_dir} . q(/) . APACHE_STUB_FN,
+                             $conf->{apache_config_dir} . '/nagiosgraph.conf',
+                             $doit);
         } elsif (defined $conf->{apache_config_file}) {
-            $fail |= appendtofile($conf->{apache_config_file}, "# nagiosgraph configuration\ninclude $conf->{ng_etc_dir}/" . APACHE_STUB_FN . "\n", $doit);
+            $fail |= appendtofile($conf->{apache_config_file},
+                                  STAG . "\n" .
+                       "include $conf->{ng_etc_dir}/" . APACHE_STUB_FN . "\n" .
+                                  ETAG . "\n",
+                                  $doit);
         }
     }
 
