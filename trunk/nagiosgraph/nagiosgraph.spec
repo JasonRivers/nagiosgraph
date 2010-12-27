@@ -1,3 +1,22 @@
+# $Id$
+# License: OSI Artistic License
+# Author:  (c) 2008 Alan Brenner, Ithaka Harbors
+# Author:  (c) 2010 Matthew Wall
+
+%define layout unknown
+%if "%{_vendor}" == "suse"
+%define layout suse
+%define apacheconfdir %{_sysconfdir}/apache2/conf.d
+%define apacheuser wwwrun
+%define apachegroup wwwrun
+%endif
+%if "%{_vendor}" == "redhat"
+%define layout redhat
+%define apacheconfdir %{_sysconfdir}/httpd/conf.d
+%define apacheuser apache
+%define apachegroup apache
+%endif
+
 %global release 1
 
 %global ng_bin_dir %{_libexecdir}/%{name}
@@ -21,6 +40,7 @@ URL: http://nagiosgraph.sourceforge.net/
 License: Artistic 2.0
 Requires: nagios, httpd, perl, perl(CGI), perl(RRDs), perl(GD)
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildArch: noarch
 BuildRequires: perl
 
 %description
@@ -34,10 +54,10 @@ into RRD files and displays graphs in web pages.
 
 %install
 rm -rf %{buildroot}
-DESTDIR=%{buildroot} NG_LAYOUT=redhat perl install.pl --no-check-prereq --no-chown
+DESTDIR=%{buildroot} NG_LAYOUT=%{layout} perl install.pl --no-check-prereq --no-chown
 
 %post
-cp %{_sysconfdir}/%{name}/nagiosgraph-apache.conf %{_sysconfdir}/httpd/conf.d/nagiosgraph.conf
+cp %{_sysconfdir}/%{name}/nagiosgraph-apache.conf %{apacheconfdir}/nagiosgraph.conf
 cp -p %{_sysconfdir}/nagios/nagios.cfg %{_sysconfdir}/nagios/nagios.cfg-saved
 cat %{_sysconfdir}/%{name}/nagiosgraph-nagios.cfg >> %{_sysconfdir}/nagios/nagios.cfg
 cp -p %{_sysconfdir}/nagios/objects/commands.cfg %{_sysconfdir}/nagios/objects/commands.cfg-saved
@@ -46,7 +66,7 @@ cat %{_sysconfdir}/%{name}/nagiosgraph-commands.cfg >> %{_sysconfdir}/nagios/obj
 %{_initrddir}/nagios restart
 
 %postun
-rm %{_sysconfdir}/httpd/conf.d/nagiosgraph.conf
+rm %{apacheconfdir}/nagiosgraph.conf
 %{_initrddir}/httpd restart
 %{_initrddir}/nagios restart
 
@@ -101,12 +121,15 @@ rm -rf ${RPM_BUILD_ROOT}
 %{ng_www_dir}/nagiosgraph.js
 %attr(755,root,root) %{ng_util_dir}/testentry.pl
 %attr(755,root,root) %{ng_util_dir}/upgrade.pl
-%attr(775,nagios,apache) %{ng_rrd_dir}
+%attr(775,nagios,%{apachegroup}) %{ng_rrd_dir}
 %attr(644,nagios,nagios) %{ng_log_file}
-%attr(644,apache,apache) %{ng_cgilog_file}
+%attr(644,%{apacheuser},%{apachegroup}) %{ng_cgilog_file}
 
 %changelog
-* Fri Nov 5 2010 Matthew Wall <nagiosgraph@sourceforge.net> 1.4.4-1
+* Sat Dec 25 2010 Matthew Wall <nagiosgraph@sourceforge.net>
+- added suse layout
+
+* Fri Nov 5 2010 Matthew Wall <nagiosgraph@sourceforge.net>
 - refactor for use with new install script and latest fedora/redhat
 
 * Wed Nov 11 2009 Craig Dunn <craig@craigdunn.org>

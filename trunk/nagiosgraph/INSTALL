@@ -133,6 +133,7 @@ It will also prompt you to modify apache and nagios configuration files.
   install.pl --layout custom --prefix /usr/local/nagiosgraph
   install.pl --layout debian
   install.pl --layout redhat
+  install.pl --layout suse
 
 Installation Using Packages.  Packages are available for redhat/fedora (rpm)
 or debian/ubuntu (deb) systems.  These packages assume that Nagios and apache
@@ -1156,11 +1157,11 @@ These are the platforms on which installation has been tested.
 os             arch     method             nagios
 -------------------------------------------------------------------------------
 debian 5       ppc      manual             3.2.0, 3.2.1, 3.2.2, 3.2.3
-fedora 14      i386     rpm, installer     3.2.3
 ubuntu 10.04   i386     deb, installer     3.2.0
-centos 5.5     i385     rpm, installer
+fedora 14      i386     rpm, installer     3.2.3
+centos 5.5     i386     rpm, installer
 centos 5.5     x86_64   rpm, installer
-
+opensuse 11.3  i386     rpm, installer
 
 
 Notes For Developers

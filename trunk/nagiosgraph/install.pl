@@ -167,6 +167,31 @@ my @PRESETS = (
       nagios_config_file => '/etc/nagios/nagios.cfg',
       nagios_commands_file => '/etc/nagios/objects/commands.cfg',
       apache_config_dir => '/etc/httpd/conf.d', },
+
+    { ng_layout => 'suse',
+      ng_prefix => q(/),
+      ng_url => '/nagiosgraph',
+      ng_etc_dir => '/etc/nagiosgraph',
+      ng_bin_dir => '/usr/libexec/nagiosgraph',
+      ng_cgi_dir => '/usr/lib/nagiosgraph/cgi-bin',
+      ng_doc_dir => '/usr/share/doc/nagiosgraph',
+      ng_examples_dir => '/usr/share/nagiosgraph/examples',
+      ng_www_dir => '/usr/share/nagiosgraph/htdocs',
+      ng_util_dir => '/usr/share/nagiosgraph/util',
+      ng_var_dir => '/var/spool/nagiosgraph',
+      ng_rrd_dir => 'rrd',
+      ng_log_dir => '/var/log/nagiosgraph',
+      ng_log_file => 'nagiosgraph.log',
+      ng_cgilog_file => 'nagiosgraph-cgi.log',
+      ng_cgi_url => 'cgi-bin',
+      ng_css_url => 'nagiosgraph.css',
+      ng_js_url => 'nagiosgraph.js',
+      nagios_perfdata_file => '/tmp/perfdata.log',
+      nagios_user => 'nagios',
+      www_user => 'wwwrun',
+      nagios_config_file => '/etc/nagios/nagios.cfg',
+      nagios_commands_file => '/etc/nagios/objects/commands.cfg',
+      apache_config_dir => '/etc/apache2/conf.d', },
     );
 
 my @CONF =
@@ -319,7 +344,7 @@ while ($ARGV[0]) {
         print "  --verbose | --silent\n";
         print "  --list-vars           list recognized environment variables\n";
         print "\n";
-        print "  --layout (overlay | standalone | debian | redhat | custom)\n";
+        print "  --layout (overlay | standalone | debian | redhat | suse | custom)\n";
         print "  --prefix path\n";
         print "  --etc-dir path\n";
         print "  --var-dir path\n";
@@ -334,6 +359,8 @@ while ($ARGV[0]) {
         print "  install.pl --layout debian\n";
         print "to install on a redhat/fedora system with nagios3:\n";
         print "  install.pl --layout redhat\n";
+        print "to install on a suse system with nagios3:\n";
+        print "  install.pl --layout suse\n";
         print "to overlay with nagios at /usr/local/nagios:\n";
         print "  install.pl --layout overlay --prefix /usr/local/nagios\n";
         print "to install at /opt/nagiosgraph:\n";
@@ -349,6 +376,7 @@ if ($conf{ng_layout} ne 'standalone' &&
     $conf{ng_layout} ne 'overlay' &&
     $conf{ng_layout} ne 'debian' &&
     $conf{ng_layout} ne 'redhat' &&
+    $conf{ng_layout} ne 'suse' &&
     $conf{ng_layout} ne 'custom') {
     print "unknown layout '$conf{ng_layout}'\n";
     exit 1;
@@ -1295,7 +1323,7 @@ B<install.pl> [--version]
     --check-installation |
     --install [--dry-run]
               [--verbose | --silent]
-              [--layout (overlay | standalone | debian | redhat | custom)]
+              [--layout (overlay | standalone | debian | redhat | suse | custom)]
               [--prefix path]
               [--etc-dir path]
               [--var-dir path]
@@ -1322,7 +1350,7 @@ B<--verbose>        Emit messages about what is happening.
 B<--silent>         Do not emit messages about what is happening.
 
 B<--layout> layout  Which layout to use.  Can be I<standalone>, I<overlay>,
-                 I<debian>, I<redhat>, or I<custom>.
+                 I<debian>, I<redhat>, I<suse>, or I<custom>.
 
 B<--prefix> path    Base directory in which files should be installed.
 
@@ -1343,7 +1371,7 @@ B<--www-user> userid       Name or uid of web server user.
 Automate this script for use in rpmbuild or other automated tools by setting
 these environment variables:
 
-  NG_LAYOUT               - standalone, overlay, debian, redhat, or custom
+  NG_LAYOUT               - standalone, overlay, debian, redhat, suse, or custom
   NG_PREFIX               - the root directory for the installation
   NG_NAGIOS_CGI_URL       - URL to Nagios CGI scripts
   NG_NAGIOS_PERFDATA_FILE - path to Nagios perfdata file
@@ -1392,7 +1420,7 @@ files into a separate directory tree.
 
 Nagiosgraph uses the following information for installation:
 
-  ng_layout            - standalone, overlay, ubuntu, redhat, or custom
+  ng_layout            - standalone, overlay, ubuntu, redhat, suse, or custom
   ng_prefix            - directory for nagiosgraph files
   ng_etc_dir           - directory for configuration files
   ng_bin_dir           - directory for executables
@@ -1483,6 +1511,10 @@ Install on a debian or ubuntu system with nagios3 installed from apt-get
 Install on a fedora or redhat system with nagios3 installed from RPM
 
   install.pl --layout redhat
+
+Install on a fedora or suse system with nagios3 installed from RPM
+
+  install.pl --layout suse
 
 Install nagiosgraph without prompting onto an existing Nagios installation
 at /usr/local/nagios:
