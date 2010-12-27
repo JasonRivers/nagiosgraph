@@ -5,7 +5,6 @@ WriteMakefile(
     'ABSTRACT'      => 'Nagios performance data storage and graphing',
     'AUTHOR'        => 'Alan Brenner <alan.brenner@ithaka.org>',
     'NAME'	    => 'nagiosgraph',
-    'LICENSE'       => 'OSI Artistic License',
     'VERSION_FROM'  => 'etc/ngshared.pm',
     'EXE_FILES'     => [ 'lib/insert.pl',
                          'cgi/show.cgi',
