@@ -16,7 +16,6 @@ use Test;
 use strict;
 
 BEGIN {
-    plan tests => 531;
     eval "require RRDs; RRDs->import();
           use CGI qw(:standard escape unescape);
           use Data::Dumper;
@@ -24,7 +23,12 @@ BEGIN {
           use File::Path qw(rmtree);
           use lib \"$FindBin::Bin/../etc\";
           use ngshared;";
-    exit 0 if $@;
+    if ($@) {
+        plan tests => 0;
+        exit 0;
+    } else {
+        plan tests => 531;
+    }
 }
 
 my ($log, $result, @result, $testvar);

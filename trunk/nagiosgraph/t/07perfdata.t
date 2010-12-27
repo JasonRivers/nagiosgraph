@@ -22,13 +22,17 @@ use Test;
 use strict;
 
 BEGIN {
-    plan tests => 52;
     eval "require RRDs; RRDs->import();
           use Data::Dumper;
           use File::Copy qw(copy);
           use lib \"$FindBin::Bin/../etc\";
           use ngshared;";
-    exit 0 if $@;
+    if ($@) {
+        plan tests => 0;
+        exit 0;
+    } else {
+        plan tests => 52;
+    }
 }
 
 my $logfile = 'test.log';
