@@ -55,13 +55,20 @@ code-summary:
 \twc etc/*.conf etc/map
 
 rpm-package: dist
-\trpmdev-setuptree
-\tmv nagiosgraph-\$(VERSION).tar.gz ~/rpmbuild/SOURCES
-\tcp nagiosgraph.spec ~/rpmbuild/SPECS
-\tperl -pi -e 's%VERSION%\$(VERSION)%' ~/rpmbuild/SPECS/nagiosgraph.spec
-\tcd ~/rpmbuild/SPECS; rpmbuild --clean -ba --target noarch nagiosgraph.spec
-\tmv ~/rpmbuild/RPMS/noarch/nagiosgraph* .
-\tmv ~/rpmbuild/SRPMS/nagiosgraph* .
+\tmkdir -p /tmp/rpmbuild
+\tmkdir -p /tmp/rpmbuild/BUILD
+\tmkdir -p /tmp/rpmbuild/BUILDROOT
+\tmkdir -p /tmp/rpmbuild/RPMS
+\tmkdir -p /tmp/rpmbuild/SOURCES
+\tmkdir -p /tmp/rpmbuild/SPECS
+\tmkdir -p /tmp/rpmbuild/SRPMS
+\tmv nagiosgraph-\$(VERSION).tar.gz /tmp/rpmbuild/SOURCES
+\tcp nagiosgraph.spec /tmp/rpmbuild/SPECS
+\tperl -pi -e 's%VERSION%\$(VERSION)%' /tmp/rpmbuild/SPECS/nagiosgraph.spec
+\trpmbuild -ba --clean --define '_topdir /tmp/rpmbuild' --target noarch /tmp/rpmbuild/SPECS/nagiosgraph.spec
+\tmv /tmp/rpmbuild/RPMS/noarch/nagiosgraph* .
+\tmv /tmp/rpmbuild/SRPMS/nagiosgraph* .
+\trm -rf /tmp/rpmbuild
 
 deb-package:
 \trm -rf nagiosgraph-\$(VERSION)
