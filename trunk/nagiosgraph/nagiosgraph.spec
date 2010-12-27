@@ -30,7 +30,7 @@
 %global ng_log_file %{_localstatedir}/log/%{name}/nagiosgraph.log
 %global ng_cgilog_file %{_localstatedir}/log/%{name}/nagiosgraph-cgi.log
 
-Summary: A Nagios add-on which archives and graphs data
+Summary: Nagios add-on for performance data storage and graphing
 Name: nagiosgraph
 Version: VERSION
 Release: %{release}
@@ -44,7 +44,7 @@ BuildArch: noarch
 BuildRequires: perl
 
 %description
-Nagiosgraph is an add-on to Nagios. It collects performance data
+nagiosgraph is an add-on to Nagios. It collects performance data
 into RRD files and displays graphs in web pages.
 
 %prep

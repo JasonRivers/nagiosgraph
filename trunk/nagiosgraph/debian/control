@@ -11,5 +11,5 @@ Recommends: libgd-gd2-perl
 Pre-Depends: perl
 Enhances: nagios
 Provides: nagiosgraph
-Description: Nagiosgraph is an add-on to Nagios. It collects performance data
-             into RRD files and displays graphs via cgi.
+Description: nagiosgraph is an add-on to Nagios. It collects performance data
+into RRD files and displays graphs in web pages.

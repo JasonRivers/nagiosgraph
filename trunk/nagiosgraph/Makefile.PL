@@ -2,7 +2,7 @@ use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile(
-    'ABSTRACT'      => 'Nagios performance data storage and graphing',
+    'ABSTRACT'      => 'nagiosgraph is an add-on to Nagios. It collects performance data into RRD files and displays graphs in web pages.',
     'AUTHOR'        => 'Alan Brenner <alan.brenner@ithaka.org>',
     'NAME'	    => 'nagiosgraph',
     'VERSION_FROM'  => 'etc/ngshared.pm',
