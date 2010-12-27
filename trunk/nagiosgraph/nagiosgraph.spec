@@ -15,14 +15,15 @@
 %define apacheconfdir %{_sysconfdir}/httpd/conf.d
 %define apacheuser apache
 %define apachegroup apache
+
 %endif
 
 %global release 1
 
 %global ng_bin_dir %{_libexecdir}/%{name}
 %global ng_cgi_dir /usr/lib/%{name}/cgi-bin
-%global ng_doc_dir %{_defaultdocdir}/%{name}
 %global ng_etc_dir %{_sysconfdir}/%{name}
+%global ng_doc_dir %{_defaultdocdir}/%{name}
 %global ng_examples_dir %{_datadir}/%{name}/examples
 %global ng_www_dir %{_datadir}/%{name}/htdocs
 %global ng_util_dir %{_datadir}/%{name}/util
