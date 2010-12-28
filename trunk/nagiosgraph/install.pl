@@ -1032,6 +1032,8 @@ sub installfiles {
   '^logfile\\s*=.*', 'logfile = ' . $conf->{ng_log_file},
   '^cgilogfile\\s*=.*', 'cgilogfile = ' . $conf->{ng_cgilog_file},
   '^groupdb\\s*=.*', 'groupdb = ' . $conf->{ng_etc_dir} . '/groupdb.conf',
+  '^#labelfile\\s*=.*', 'labelfile = ' . $conf->{ng_etc_dir} . '/labels.conf',
+  '^#datasetdb\\s*=.*', 'datasetdb = ' . $conf->{ng_etc_dir} . '/datasetdb.conf',
                     }, $doit);
         if ($conf->{ng_cgi_url} ne $conf->{nagios_cgi_url}) {
             $fail |= replacetext("$dst/nagiosgraph.conf", {
