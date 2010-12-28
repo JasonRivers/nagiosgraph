@@ -198,10 +198,10 @@ my @PRESETS = (
 
 my @CONF =
     ( { conf => 'ng_prefix',
-        msg => 'Destination directory',
+        msg => 'Destination directory (prefix)',
         def => '/usr/local/nagiosgraph' },
       { conf => 'ng_etc_dir',
-        msg => 'Location of configuration files',
+        msg => 'Location of configuration files (etc-dir)',
         parent => 'ng_prefix' },
       { conf => 'ng_bin_dir',
         msg => 'Location of executables',
@@ -210,7 +210,7 @@ my @CONF =
         msg => 'Location of CGI scripts',
         parent => 'ng_prefix' },
       { conf => 'ng_doc_dir',
-        msg => 'Location of documentation',
+        msg => 'Location of documentation (doc-dir)',
         parent => 'ng_prefix' },
       { conf => 'ng_examples_dir',
         msg => 'Location of examples',
@@ -222,13 +222,13 @@ my @CONF =
         msg => 'Location of utilities',
         parent => 'ng_prefix' },
       { conf => 'ng_var_dir',
-        msg => 'Location of data files',
+        msg => 'Location of state files (var-dir)',
         parent => 'ng_prefix' },
       { conf => 'ng_rrd_dir',
         msg => 'Location of RRD files',
         parent => 'ng_var_dir' },
       { conf => 'ng_log_dir',
-        msg => 'Location of log files',
+        msg => 'Location of log files (log-dir)',
         parent => 'ng_prefix' },
       { conf => 'ng_log_file',
         msg => 'Path of log file',
@@ -301,10 +301,12 @@ while ($ARGV[0]) {
         $conf{ng_log_dir} = trimslashes($1);
     } elsif ($arg eq '--etc-dir') {
         $conf{ng_etc_dir} = trimslashes(shift);
-    } elsif ($arg eq '--doc-dir') {
-        $conf{ng_doc_dir} = trimslashes(shift);
     } elsif ($arg =~ /^--etc-dir=(.+)/) {
         $conf{ng_etc_dir} = trimslashes($1);
+    } elsif ($arg eq '--doc-dir') {
+        $conf{ng_doc_dir} = trimslashes(shift);
+    } elsif ($arg =~ /^--doc-dir=(.+)/) {
+        $conf{ng_doc_dir} = trimslashes($1);
     } elsif ($arg eq '--nagios-cgi-url') {
         $conf{nagios_cgi_url} = shift;
     } elsif ($arg =~ /^--nagios-cgi-url=(.+)/) {
@@ -353,6 +355,7 @@ while ($ARGV[0]) {
         print "  --etc-dir path\n";
         print "  --var-dir path\n";
         print "  --log-dir path\n";
+        print "  --doc-dir path\n";
         print "  --nagios-cgi-url url\n";
         print "  --nagios-perfdata-file path\n";
         print "  --nagios-user userid\n";
@@ -1345,6 +1348,7 @@ B<install.pl> [--version]
               [--etc-dir path]
               [--var-dir path]
               [--log-dir path]
+              [--doc-dir path]
               [--nagios-cgi-url url]
               [--nagios-perfdata-file path]
               [--nagios-user userid]
@@ -1376,6 +1380,8 @@ B<--etc-dir> path   Directory for configuration files.
 B<--var-dir> path   Directory for RRD files.
 
 B<--log-dir> path   Directory for log files.
+
+B<--etc-dir> path   Directory for configuration files.
 
 B<--nagios-cgi-url> url    URL to Nagios CGI scripts.
 

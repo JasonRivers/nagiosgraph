@@ -8,14 +8,21 @@
 %define layout suse
 %define apacheconfdir %{_sysconfdir}/apache2/conf.d
 %define apacheuser wwwrun
-%define apachegroup wwwrun
+%define apachegroup nagcmd
+%define apachecmd apache2
+%define nagiosuser nagios
+%define nagiosgroup nagios
+%define nagioscmd nagios
 %endif
 %if "%{_vendor}" == "redhat"
 %define layout redhat
 %define apacheconfdir %{_sysconfdir}/httpd/conf.d
 %define apacheuser apache
 %define apachegroup apache
-
+%define apachecmd httpd
+%define nagiosuser nagios
+%define nagiosgroup nagios
+%define nagioscmd nagios
 %endif
 
 %global release 1
@@ -28,8 +35,9 @@
 %global ng_www_dir %{_datadir}/%{name}/htdocs
 %global ng_util_dir %{_datadir}/%{name}/util
 %global ng_rrd_dir %{_localstatedir}/spool/%{name}/rrd
-%global ng_log_file %{_localstatedir}/log/%{name}/nagiosgraph.log
-%global ng_cgilog_file %{_localstatedir}/log/%{name}/nagiosgraph-cgi.log
+%global ng_log_dir %{_localstatedir}/log/%{name}
+%global ng_log_file %{ng_log_dir}/nagiosgraph.log
+%global ng_cgilog_file %{ng_log_dir}/nagiosgraph-cgi.log
 %global n_cfg_file %{_sysconfdir}/nagios/nagios.cfg
 %global n_cmd_file %{_sysconfdir}/nagios/objects/commands.cfg
 %global stag "# begin nagiosgraph configuration"
@@ -71,16 +79,16 @@ cp -p %{n_cmd_file} %{n_cmd_file}-ngsave
 echo %{stag} >> %{n_cmd_file}
 cat %{_sysconfdir}/%{name}/nagiosgraph-commands.cfg >> %{n_cmd_file}
 echo %{etag} >> %{n_cmd_file}
-%{_initrddir}/httpd restart
-%{_initrddir}/nagios restart
+%{_initrddir}/%{apachecmd} restart
+%{_initrddir}/%{nagioscmd} restart
 
 # FIXME: this assumes no changes were made since we cached to -ngsave
 %postun
 rm %{apacheconfdir}/nagiosgraph.conf
 mv %{n_cfg_file}-ngsave %{n_cfg_file}
 mv %{n_cmd_file}-ngsave %{n_cmd_file}
-%{_initrddir}/httpd restart
-%{_initrddir}/nagios restart
+%{_initrddir}/%{apachecmd} restart
+%{_initrddir}/%{nagioscmd} restart
 
 %clean
 rm -rf ${RPM_BUILD_ROOT}
@@ -133,8 +141,9 @@ rm -rf ${RPM_BUILD_ROOT}
 %{ng_www_dir}/nagiosgraph.js
 %attr(755,root,root) %{ng_util_dir}/testentry.pl
 %attr(755,root,root) %{ng_util_dir}/upgrade.pl
-%attr(775,nagios,%{apachegroup}) %{ng_rrd_dir}
-%attr(644,nagios,nagios) %{ng_log_file}
+%attr(775,%{nagiosuser},%{apachegroup}) %{ng_rrd_dir}
+%attr(775,root,%{apachegroup}) %{ng_log_dir}
+%attr(644,%{nagiosuser},%{nagiosgroup}) %{ng_log_file}
 %attr(644,%{apacheuser},%{apachegroup}) %{ng_cgilog_file}
 
 %changelog
