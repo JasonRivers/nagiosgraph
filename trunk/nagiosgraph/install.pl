@@ -301,6 +301,8 @@ while ($ARGV[0]) {
         $conf{ng_log_dir} = trimslashes($1);
     } elsif ($arg eq '--etc-dir') {
         $conf{ng_etc_dir} = trimslashes(shift);
+    } elsif ($arg eq '--doc-dir') {
+        $conf{ng_doc_dir} = trimslashes(shift);
     } elsif ($arg =~ /^--etc-dir=(.+)/) {
         $conf{ng_etc_dir} = trimslashes($1);
     } elsif ($arg eq '--nagios-cgi-url') {

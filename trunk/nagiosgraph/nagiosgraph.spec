@@ -23,7 +23,7 @@
 %global ng_bin_dir %{_libexecdir}/%{name}
 %global ng_cgi_dir /usr/lib/%{name}/cgi-bin
 %global ng_etc_dir %{_sysconfdir}/%{name}
-%global ng_doc_dir %{_defaultdocdir}/%{name}
+%global ng_doc_dir %{_defaultdocdir}/%{name}-%{version}
 %global ng_examples_dir %{_datadir}/%{name}/examples
 %global ng_www_dir %{_datadir}/%{name}/htdocs
 %global ng_util_dir %{_datadir}/%{name}/util
@@ -59,7 +59,7 @@ into RRD files and displays graphs in web pages.
 
 %install
 rm -rf %{buildroot}
-DESTDIR=%{buildroot} NG_LAYOUT=%{layout} perl install.pl --no-check-prereq --no-chown
+DESTDIR=%{buildroot} NG_LAYOUT=%{layout} perl install.pl --no-check-prereq --no-chown --doc-dir %{ng_doc_dir}
 
 %post
 cp %{_sysconfdir}/%{name}/nagiosgraph-apache.conf %{apacheconfdir}/nagiosgraph.conf
