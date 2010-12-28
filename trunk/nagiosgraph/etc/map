@@ -114,15 +114,15 @@ or (/output:.*uptime is.*?([.\d]+)\sMinutes/
 
 # Service type: unix-procs
 #   output:PROCS OK: 43 processes
-/output:PROCS.*?(\d+) processes\n/
+/output:PROCS.*?(\d+) processes with STATE = RSZDT/
 and push @s, [ 'procs',
-               [ 'procs', GAUGE, $1 ] ];
+               [ 'data', GAUGE, $1 ] ];
 
 # Service type: unix-zombies
 #   ouput:PROCS OK: 0 processes with STATE = Z
-/output:PROCS.*?(\d+) processes.*Z/
-and push @s, [ 'zombie',
-               [ 'zombies', GAUGE, $1 ] ];
+/output:PROCS.*?(\d+) processes with STATE = Z/
+and push @s, [ 'zombies',
+               [ 'data', GAUGE, $1 ] ];
 
 # default rule.  if none of the other rules did anything, then check for
 # perfdata that meets the standard format.

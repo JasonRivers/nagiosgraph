@@ -21,6 +21,7 @@ $Id$
 * added option to disable javascript warnings even though it results in
    limited functionality.
 * fixed typo for ntp,offset in labels.conf
+* fixed javascript bug in selection of data sources
 * provide more feedback when javascript is disabled (Michael Urban).
 * provide better error handling when output and/or perfdata are not available.
    this fixes the 'spotty data' behavior that occurred when batch processing 
