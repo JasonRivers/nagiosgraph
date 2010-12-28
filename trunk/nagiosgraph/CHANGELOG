@@ -2,6 +2,11 @@ $Id$
 
 1.4.4 TBD
 
+* this release includes many changes to the default map configuration and the
+   default colors and labels.  this was designed to make new installations
+   easier right out of the box.  the bug fixes and feature additions are
+   backward compatible, so configuration files from existing installations
+   will still work.  see the upgrade section of the INSTALL file for details.
 * overhaul of install.pl.  added option to check for prerequisites (poorly
    configured rrdtool and gd have been major source of installation woes).
    added options for different layouts (overlay or separate) and locations.
@@ -14,31 +19,32 @@ $Id$
    more plugins.
 * added a slew of unit tests for map rules.
 * added checks in unit tests for prerequisites.
-* better parsing/handling of use_authentication to match Nagios defaults.
-* use only the nagios cgi config file for authentication parameters.
+* added better parsing/handling of use_authentication to match Nagios defaults.
+* fixed authz parsing to use only the nagios cgi config file for authorization
+   parameters.
 * added a slew of authentication unit tests.
 * added better warnings when javascript is disabled.
 * added option to disable javascript warnings even though it results in
    limited functionality.
-* fixed typo for ntp,offset in labels.conf
-* fixed javascript bug in selection of data sources
-* provide more feedback when javascript is disabled (Michael Urban).
-* provide better error handling when output and/or perfdata are not available.
+* fixed typo for ntp,offset in labels.conf.
+* fixed javascript bug in selection of data sources.
+* added more feedback when javascript is disabled (Michael Urban).
+* added better error handling when output and/or perfdata are not available.
    this fixes the 'spotty data' behavior that occurred when batch processing 
    would fail prematurely due to missing perfdata (hinder90 and ljorg6)
-* explicit handling and reporting of ignored output/perfdata.  if your map
-   file contains any 'short-circuit' rules, they should return an array with
-   the string 'ignore' so they are reported as ignored rather than as not
+* added explicit handling and reporting of ignored output/perfdata.  if your
+   map file contains any 'short-circuit' rules, they should return an array
+   with the string 'ignore' so they are reported as ignored rather than as not
    recognized.
-* provide better reporting of missing host, service, output and/or perfdata.
+* added better reporting of missing host, service, output and/or perfdata.
 * fixed timestamp bug (Matthias Motzke).
 * fixed heartbeat/stepsize/resolution bug (obermufti).
-* fixed zooming on ie8 (derekdawson)
+* fixed zooming on ie8 (derekdawson).
 * added showconfig.cgi script to facilitate diagnosing of problems.
-* better handling and reporting of errors when creating rrddir
-* new configuration options (see nagiosgraph.conf for details).  these options
-   enable per-host/service/db specification of the RRA step and xfiles factor,
-   as well as the use of LAST.
+* added better handling and reporting of errors when creating rrddir.
+* added new configuration options (see nagiosgraph.conf for details).  these
+   options enable per-host/service/db specification of the RRA step and xfiles
+   factor, as well as the use of LAST.
      xff
      xffs
      step

@@ -72,50 +72,46 @@ sub testconfig {
     ok($Config{debug_testcolor}, undef);
     ok($Config{geometries}, '650x50,800x100,1000x200,2000x100');
     ok($Config{default_geometry}, undef);
-    ok($Config{colorscheme}, 1);
+    ok($Config{colorscheme}, 9);
     ok(Dumper($Config{colors}), "\$VAR1 = [
-          'D05050',
-          'D08050',
-          'D0D050',
-          '50D050',
-          '50D0D0',
-          '5050D0',
-          'D050D0',
-          '505050'
+          '90d080',
+          '30a030',
+          '90c0e0',
+          '304090',
+          'ffc0ff',
+          'a050a0',
+          'ffc060',
+          'c07020'
         ];\n");
     ok($Config{colormax}, '888888');
     ok($Config{colormin}, 'BBBBBB');
     ok($Config{plotas}, 'LINE2');
     ok(Dumper($Config{plotasLINE1}), "\$VAR1 = {
-          'avg15min' => 1,
-          'avg5min' => 1
+          'data[load5]' => 1,
+          'data[load15]' => 1
         };\n");
     ok(Dumper($Config{plotasLINE2}), "\$VAR1 = {};\n");
     ok(Dumper($Config{plotasLINE3}), "\$VAR1 = {};\n");
     ok(Dumper($Config{plotasAREA}), "\$VAR1 = {
-          'system' => 1,
-          'user' => 1,
-          'idle' => 1,
-          'nice' => 1
+          'data[idle]' => 1,
+          'data[nice]' => 1,
+          'data[user]' => 1,
+          'data[system]' => 1
         };\n");
     ok(Dumper($Config{plotasTICK}), "\$VAR1 = {};\n");
     ok(Dumper($Config{stack}), "\$VAR1 = {
-          'system' => 1,
-          'user' => 1,
-          'nice' => 1
+          'data[nice]' => 1,
+          'data[user]' => 1,
+          'data[system]' => 1
         };\n");
     ok(Dumper($Config{lineformat}), "\$VAR1 = {
           'warn,LINE1,D0D050' => 1,
-          'rtacrit,LINE1,D05050' => 1,
-          'rtawarn,LINE1,D0D050' => 1,
-          'losswarn,LINE1,D0D050' => 1,
-          'crit,LINE1,D05050' => 1,
-          'losscrit,LINE1,D05050' => 1
+          'crit,LINE1,D05050' => 1
         };\n");
     ok($Config{timeall}, 'day,week,month,year');
     ok($Config{timehost}, 'day,week,month');
-    ok($Config{timeservice}, 'day,week');
-    ok($Config{timegroup}, 'day,week');
+    ok($Config{timeservice}, 'day,week,month');
+    ok($Config{timegroup}, 'day,week,month');
     ok($Config{expand_timeall}, 'day,week,month,year');
     ok($Config{expand_timehost}, 'week');
     ok($Config{expand_timeservice}, 'week');
@@ -147,9 +143,11 @@ sub testconfig {
           'Mem: free' => 1
         };\n");
     ok(Dumper($Config{withmaximums}), "\$VAR1 = {
+          'HTTP' => 1,
           'PING' => 1
         };\n");
     ok(Dumper($Config{withminimums}), "\$VAR1 = {
+          'HTTP' => 1,
           'PING' => 1
         };\n");
     ok(Dumper($Config{negate}), "\$VAR1 = {};\n");

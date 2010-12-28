@@ -5,23 +5,28 @@
 # Author:  (c) 2008 Alan Brenner, Ithaka Harbors
 # Author:  (c) 2010 Matthew Wall
 
-########################################################################
+###############################################################################
 #
-# INSTRUCTIONS:
+# This file contains rules that match data from Nagios and create the structure
+# used to create and/or update RRD files.  Edit this file to add more service
+# types. The data from Nagios are a single string in $_ with this format:
 #
-# This file contains several examples of service types. Edit this file to
-# add more service types. The data string from Nagios is in $_ .  Use
-# regular expressions to identify and extract data like the examples below
-# below.  Match on either output: or perfdata: . The code is pure perl,
-# that will be run inside an eval{}. Results are expected in @s. The
-# general format is:
+# hostname:HOST
+# servicedesc:SERVICE
+# output:PLUGIN_OUTPUT
+# perfdata:PLUGIN_PERFORMANCE_DATA
+#
+# Use regular expressions to identify and extract data.  Match on either
+# output: or perfdata: .  Matching on host and/or service is also possible.
+# The code is pure perl, that will be run inside an eval{}.  Results are
+# expected in @s. The general format is:
 #
 # /output|perfdata:<servicetype> <key>=<value> <key2=value2> .../
 # and push @s, [ <databasename>,
-#                [ <key>,  GAUGE|DERIVE, <value>  ],
-#                [ <key2>, GAUGE|DERIVE, <value2> ],
-#                [ .       .             .        ],
-#                [ .       .             .        ] ];
+#                [ <key>,  GAUGE|COUNTER|DERIVE, <value>  ],
+#                [ <key2>, GAUGE|COUNTER|DERIVE, <value2> ],
+#                [ .       .                     .        ],
+#                [ .       .                     .        ] ];
 #
 # Of course, more advanced code is possible, as long as the resulting
 # data structure is correct.
@@ -32,7 +37,18 @@
 # perfdata in a non-standard format, or plugins for which you want a custom
 # RRD structure.
 #
-########################################################################
+# The default rule results in RRD files with the following names and structure:
+#
+#     host0/service0___label0.rrd   (data[,warn][,crit][,min][,max])
+#     host0/service0___label1.rrd   (data[,warn][,crit][,min][,max])
+#     host0/service0___label2.rrd   (data[,warn][,crit][,min][,max])
+#     host0/service1___label0.rrd   (data[,warn][,crit][,min][,max])
+#
+# Each RRD file contains data values and might contain warning, critical,
+# minimum, and/or maximum values as well.  If a service check returns multiple
+# performance data, each is recorded to a separate file.
+#
+###############################################################################
 # skip these quickly since Nagios will already notice (from Eric Gerbier)
 
 /output:CHECK_NRPE: Socket timeout/
@@ -56,7 +72,7 @@ and return ('ignore');
 /output:.*plugin may be missing/
 and return ('ignore');
 
-########################################################################
+###############################################################################
 
 # Service type: unix-netstat
 #   output:OK
@@ -103,14 +119,14 @@ and push @s, [ 'ntp',
 # Service type: unix uptime
 #   output:OK - uptime is 36 Days, 2 Hours, 42 Minutes
 /output:.*uptime is.*?([.\d]+)\sDays/
-and push @s, [ 'data',
-               [ 'days', GAUGE, $1 ] ]
+and push @s, [ 'days',
+               [ 'data', GAUGE, $1 ] ]
 or (/output:.*uptime is.*?([.\d]+)\sHours/
-    and push @s, [ 'data',
-               [ 'days', GAUGE, $1/24 ] ])
+    and push @s, [ 'days',
+               [ 'data', GAUGE, $1/24 ] ])
 or (/output:.*uptime is.*?([.\d]+)\sMinutes/
-    and push @s, [ 'data',
-               [ 'days', GAUGE, $1/1440 ] ]);
+    and push @s, [ 'days',
+               [ 'data', GAUGE, $1/1440 ] ]);
 
 # Service type: unix-procs
 #   output:PROCS OK: 43 processes

@@ -26,7 +26,7 @@ BEGIN {
         plan tests => 0;
         exit 0;
     } else {
-        plan tests => 153;
+        plan tests => 156;
     }
 }
 
@@ -646,7 +646,7 @@ my @testdata =
             ]
           ]"
       ,  "ditto"
-      ,  "ditto"
+      ,  "" # FIXME
       ],
 
      [
@@ -776,7 +776,14 @@ my @testdata =
             ]
           ]"
       ,  "ditto"
-      ,  "ditto"
+      ,  "[
+            'zombies',
+            [
+              'data',
+              'GAUGE',
+              '0'
+            ]
+          ]"
       ],
 
      [
@@ -1018,7 +1025,14 @@ my @testdata =
               '36'
             ]
           ]"
-      ,  "ditto"
+      ,  "[
+            'days',
+            [
+              'data',
+              'GAUGE',
+              '36'
+            ]
+          ]"
       ],
 
      [
@@ -2159,6 +2173,27 @@ my @testdata =
               'max',
               'GAUGE',
               '10.000000'
+            ]
+          ]"
+      ],
+
+     [
+      ['0', 'host', 'PROCS', 'PROCS OK: 0 processes with STATE = RSZDT', '']
+      ,  "[
+            'zombie',
+            [
+              'zombies',
+              'GAUGE',
+              '0'
+            ]
+          ]"
+      ,  "ditto"
+      ,  "[
+            'procs',
+            [
+              'data',
+              'GAUGE',
+              '0'
             ]
           ]"
       ],

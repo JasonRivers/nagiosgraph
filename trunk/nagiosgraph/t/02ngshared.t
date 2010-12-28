@@ -15,6 +15,13 @@ use FindBin;
 use Test;
 use strict;
 
+#use CGI qw(:standard escape unescape);
+#use Data::Dumper;
+#use File::Find;
+#use File::Path qw(rmtree);
+#use lib "$FindBin::Bin/../etc";
+#use ngshared;
+
 BEGIN {
     eval "require RRDs; RRDs->import();
           use CGI qw(:standard escape unescape);
@@ -27,7 +34,7 @@ BEGIN {
         plan tests => 0;
         exit 0;
     } else {
-        plan tests => 531;
+        plan tests => 564;
     }
 }
 
@@ -727,6 +734,7 @@ sub testgraphinfo {
 
 sub testgetlineattr {
     # test individual line attribute options
+    $Config{colorscheme} = 1;
     $Config{plotas} = 'LINE1';
     $Config{plotasLINE1} = {'avg5min' => 1, 'avg15min' => 1};
     $Config{plotasLINE2} = {'a' => 1};
@@ -794,6 +802,62 @@ sub testgetlineattr {
     ($linestyle, $linecolor, $stack) = getlineattr('total');
     ok($linestyle, 'AREA');
     ok($linecolor, 'dddddd88');
+    ok($stack, 1);
+
+    # test for datasource[database] formatting
+    $Config{lineformat} = 'warn,LINE1,D0D050;data[total],STACK,AREA,dddddd88;data[fleece],LINE3,ffffff';
+    listtodict('lineformat', q(;));
+    ($linestyle, $linecolor, $stack) = getlineattr('warn');
+    ok($linestyle, 'LINE1');
+    ok($linecolor, 'D0D050');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('data','total');
+    ok($linestyle, 'AREA');
+    ok($linecolor, 'dddddd88');
+    ok($stack, 1);
+    ($linestyle, $linecolor, $stack) = getlineattr('data','fleece');
+    ok($linestyle, 'LINE3');
+    ok($linecolor, 'ffffff');
+    ok($stack, 0);
+
+    # test for datasource[database] formatting (overlapping definition case)
+    $Config{lineformat} = 'warn,LINE1,D0D050;data[total],STACK,AREA,dddddd88;data[fleece],LINE3,ffffff;data,STACK,TICK,222222';
+    listtodict('lineformat', q(;));
+    ($linestyle, $linecolor, $stack) = getlineattr('warn');
+    ok($linestyle, 'LINE1');
+    ok($linecolor, 'D0D050');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('data','total');
+    ok($linestyle, 'AREA');
+    ok($linecolor, 'dddddd88');
+    ok($stack, 1);
+    ($linestyle, $linecolor, $stack) = getlineattr('data','fleece');
+    ok($linestyle, 'LINE3');
+    ok($linecolor, 'ffffff');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('data');
+    ok($linestyle, 'TICK');
+    ok($linecolor, '222222');
+    ok($stack, 1);
+
+    # test for datasource[database] formatting (reverse overlapping case)
+    $Config{lineformat} = 'data,STACK,TICK,222222;warn,LINE1,D0D050;data[total],STACK,AREA,dddddd88;data[fleece],LINE3,ffffff';
+    listtodict('lineformat', q(;));
+    ($linestyle, $linecolor, $stack) = getlineattr('warn');
+    ok($linestyle, 'LINE1');
+    ok($linecolor, 'D0D050');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('data','total');
+    ok($linestyle, 'AREA');
+    ok($linecolor, 'dddddd88');
+    ok($stack, 1);
+    ($linestyle, $linecolor, $stack) = getlineattr('data','fleece');
+    ok($linestyle, 'LINE3');
+    ok($linecolor, 'ffffff');
+    ok($stack, 0);
+    ($linestyle, $linecolor, $stack) = getlineattr('data');
+    ok($linestyle, 'TICK');
+    ok($linecolor, '222222');
     ok($stack, 1);
 
     $Config{plotas} = 'LINE2';

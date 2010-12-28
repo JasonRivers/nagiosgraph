@@ -239,13 +239,10 @@ Upgrade Notes
    generic rule results in RRD files with the following structure, one file
    per named performance data element, with one or more data sources:
 
-          host0/service0___name0 (data[,warn][,crit][,min][,max])
-          host0/service0___name1 (data[,warn][,crit][,min][,max])
-          host0/service0___name2 (data[,warn][,crit][,min][,max])
-          host0/service1___name0 (data[,warn][,crit][,min][,max])
+          host0/service___label (data[,warn][,crit][,min][,max])
 
  - If you are upgrading from nagiosgraph 1.4.3 or earlier, you should make any
-   ignore rules explicit.  For example, change this:
+   ignore map rules explicit.  For example, in the map file change this:
 
           /output:CHECK_NRPE: Socket timeout/
           and return;
@@ -822,6 +819,20 @@ It is a good idea to plan your configuration before you start recording data.
 Although it is possible to reconfigure data after the RRD files are full,
 doing so is somewhat tedious, especially for large numbers of hosts/services.
 
+The 1.4.4 release of nagiosgraph added a generic map rule that matches any
+standard performance data.  This rule puts the data into RRD files using this
+structure:
+
+  host0/service___label.rrd     (data[,warn][,crit][,min][,max])
+
+For example, for service0 with 3 perfdata labels and service1 with 1 perfdata
+labels, the rule generates the following RRD files:
+
+  host0/service0___label0.rrd   (data[,warn][,crit][,min][,max])
+  host0/service0___label1.rrd   (data[,warn][,crit][,min][,max])
+  host0/service0___label2.rrd   (data[,warn][,crit][,min][,max])
+  host0/service1___label0.rrd   (data[,warn][,crit][,min][,max])
+
 There are a few rrdtool parameters that affect size of the RRD files and the
 resolution of data:
 
@@ -1256,7 +1267,7 @@ os             arch     method             nagios
 debian 5       ppc      manual             3.2.0, 3.2.1, 3.2.2, 3.2.3
 ubuntu 10.04   i386     deb, installer     3.2.0
 fedora 14      i386     rpm, installer     3.2.3
-centos 5.5     i386     rpm, installer     
+centos 5.5     i386     rpm, installer     3.2.3
 centos 5.5     x86_64   rpm, installer
 opensuse 11.3  i386     rpm, installer     3.2.1
 

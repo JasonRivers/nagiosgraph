@@ -1592,33 +1592,49 @@ sub graphinfo {
 }
 
 sub getlineattr {
-    my ($ds) = @_;
+    my ($ds,$db) = @_;
+    $db |= q();
+    my $dds = "${ds}[${db}]"; # distinguished ds
     my $stack = 0;
-    if (defined $Config{stack}->{$ds}) {
+    if (defined $Config{stack}->{$ds} ||
+        defined $Config{stack}->{$dds}) {
         $stack = 1;
     }
     my $linestyle = $Config{plotas};
     foreach my $ii (qw(LINE1 LINE2 LINE3 AREA TICK)) {
-        if (defined $Config{'plotas' . $ii}->{$ds}) {
+        if (defined $Config{'plotas' . $ii}->{$ds} ||
+            defined $Config{'plotas' . $ii}->{$dds}) {
             $linestyle = $ii;
             last;
         }
     }
     my $linecolor = q();
     if (defined $Config{lineformat}) {
-        foreach my $tuple (keys %{$Config{lineformat}}) {
-            if ($tuple =~ /^$ds,/) {
-                my @values = split /,/, $tuple;
-                foreach my $value (@values) {
-                    if ($value eq 'LINE1' || $value eq 'LINE2' ||
-                        $value eq 'LINE3' || $value eq 'AREA' ||
-                        $value eq 'TICK') {
-                        $linestyle = $value;
-                    } elsif ($value =~ /[0-9a-f][0-9a-f][0-9a-f]+/) {
-                        $linecolor = $value;
-                    } elsif ($value eq 'STACK') {
-                        $stack = 1;
-                    }
+        my $tuple = q();
+        my $distinguished = 0;
+        foreach my $t (keys %{$Config{lineformat}}) {
+            my ($id) = $t =~ /^([^,]+)/;
+            $id =~ s/\s+$//g;
+            $id =~ s/^\s+//g;
+            if ($id eq $ds && !$distinguished) {
+                $tuple = $t;
+            }
+            if ($id eq $dds) {
+                $tuple = $t;
+                $distinguished = 1;
+            }
+        }
+        if ($tuple ne q()) {
+            my @values = split /,/, $tuple;
+            foreach my $value (@values) {
+                if ($value eq 'LINE1' || $value eq 'LINE2' ||
+                    $value eq 'LINE3' || $value eq 'AREA' ||
+                    $value eq 'TICK') {
+                    $linestyle = $value;
+                } elsif ($value =~ /[0-9a-f][0-9a-f][0-9a-f]+/) {
+                    $linecolor = $value;
+                } elsif ($value eq 'STACK') {
+                    $stack = 1;
                 }
             }
         }
@@ -1655,7 +1671,7 @@ sub setlabels { ## no critic (ProhibitManyArgs)
     my @ds;
     my $id = mkvname($dbname, $dsname);
     my $legend = mklegend($label, $maxlen);
-    my ($linestyle, $linecolor, $stack) = getlineattr($dsname);
+    my ($linestyle, $linecolor, $stack) = getlineattr($dsname,$dbname);
     my $sdef = q();
     if ($stack) {
         $sdef = ':STACK';
@@ -1671,7 +1687,9 @@ sub setlabels { ## no critic (ProhibitManyArgs)
     } else {
         my $t = defined $Config{lasts}->{$serv} ? 'LAST' : 'AVERAGE';
         push @ds, "DEF:${id}=$file:$dsname:$t";
-        if (defined $Config{negate}->{$dsname}) {
+        my $ddsname = "${dsname}[${dbname}]";
+        if (defined $Config{negate}->{$dsname} ||
+            defined $Config{negate}->{$ddsname}) {
             push @ds, "CDEF:${id}_neg=${id},-1,*"
                     , "$linestyle:${id}_neg#$linecolor:$legend$sdef";
         } else {

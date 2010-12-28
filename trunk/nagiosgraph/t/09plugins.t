@@ -4,29 +4,40 @@
 #          http://www.opensource.org/licenses/artistic-license-2.0.php
 # Author:  (c) Matthew Wall, 2010
 
-# test output from all of the standard nagios plugins with latest map file.
+# Test output from all of the standard nagios plugins with latest map file.
+#   nagios 3.x
 #   nagios-plugins-1.4.15
 #   nrpe-2.12
+#
+# Try to test against the output of as many plugins as possible.
+# Try to test many permutations of the output from each plugin, for example
+# OK, WARN, CRITICAL not just OK.
+#
+# Here are the default service_description definitions defined for the default
+# Nagios install on various system configurations:
+#
+#                           CentOS 5.5   Fedora 14    ubuntu 10.04  suse 11.3
+# -----------------------   -------------------------------------------------
+# Current Load              x            x            x             x
+# Current Users             x            x            x             x
+# Disk Space                                          x
+# HTTP                      x            x            x             x
+# PING                      x            x            x             x
+# Root Partition            x            x                          x
+# SSH                       x            x            x             x
+# Swap Usage                x            x                          x
+# Total Processes           x            x            x             x
+# Printer Status            x                                       x
+# Uptime                    x                                       x
+# Port 1 Link Status        x                                       x
+# Port 1 Bandwidth Usage    x                                       x
+# NSClient++ Version        x                                       x
+# CPU Load                  x                                       x
+# Memory Usage              x                                       x
+# C:\ Drive Space           x                                       x
+# W3SVC                     x                                       x
+# Explorer                  x                                       x
 
-# here are the default plugins for various system configurations
-#
-# Fedora 14
-# Current Load
-# Current Users
-# HTTP
-# PING
-# Root Partition
-# SSH
-# Swap Usage
-# Total Processes
-#
-# ubuntu 10.04
-# Current Load
-# Current Users
-# Disk Space
-# HTTP
-# SSH
-# Total Processes
 
 use FindBin;
 use Test;
