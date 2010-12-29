@@ -141,7 +141,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %{ng_www_dir}/nagiosgraph.js
 %attr(755,root,root) %{ng_util_dir}/testentry.pl
 %attr(755,root,root) %{ng_util_dir}/upgrade.pl
-%attr(775,%{nagiosuser},%{apachegroup}) %{ng_rrd_dir}
+%attr(755,%{nagiosuser},%{apachegroup}) %{ng_rrd_dir}
 %attr(775,root,%{apachegroup}) %{ng_log_dir}
 %attr(644,%{nagiosuser},%{nagiosgroup}) %{ng_log_file}
 %attr(644,%{apacheuser},%{apachegroup}) %{ng_cgilog_file}

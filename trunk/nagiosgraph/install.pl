@@ -1009,7 +1009,7 @@ sub installfiles {
     my $dst;
     my $fail = 0;
 
-    my $dd = $ENV{DESTDIR} ? "$ENV{DESTDIR}/" : q();
+    my $dd = $ENV{DESTDIR} ? "$ENV{DESTDIR}" : q();
 
     if (defined $conf->{ng_prefix}) {
         $dst = $dd . $conf->{ng_prefix};
@@ -1155,8 +1155,6 @@ sub patchnagios {
     my ($conf, $doit) = @_;
     my $fail = 0;
 
-    my $dd = $ENV{DESTDIR} ? "$ENV{DESTDIR}/" : q();
-
     if (defined $conf->{modify_nagios_config} &&
         isyes($conf->{modify_nagios_config})) {
         if (defined $conf->{nagios_config_file}) {
@@ -1184,7 +1182,7 @@ sub patchapache {
     my ($conf, $doit) = @_;
     my $fail = 0;
 
-    my $dd = $ENV{DESTDIR} ? "$ENV{DESTDIR}/" : q();
+    my $dd = $ENV{DESTDIR} ? "$ENV{DESTDIR}" : q();
 
     if (defined $conf->{modify_apache_config} &&
         isyes($conf->{modify_apache_config})) {
