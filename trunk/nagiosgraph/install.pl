@@ -19,8 +19,10 @@
 ## no critic (ProhibitExcessComplexity)
 
 use English qw(-no_match_vars);
+use Fcntl ':mode';
 use File::Copy qw(copy move);
 use File::Path qw(mkpath);
+use File::Temp qw(tempfile);
 use POSIX qw(strftime);
 use strict;
 use warnings;
@@ -39,6 +41,11 @@ use constant NAGIOS_CMD_STUB_FN => 'nagiosgraph-commands.cfg';
 use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
 use constant STAG => '# begin nagiosgraph configuration';
 use constant ETAG => '# end nagiosgraph configuration';
+
+my @NAGIOS_USERS = qw(nagios);
+my @NAGIOS_GROUPS = qw(nagios);
+my @APACHE_USERS = qw(www-data www apache);
+my @APACHE_GROUPS = qw(nagcmd www);
 
 # put the keys in a specific order to make it easier to see where things go
 my @CONFKEYS = qw(ng_layout ng_prefix ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_examples_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file nagios_commands_file modify_apache_config apache_config_dir apache_config_file);
@@ -395,9 +402,7 @@ my $failure = 0;
 if($action eq 'check-prereq') {
     $failure |= checkprereq();
 } elsif($action eq 'check-installation') {
-    $failure |= getconfig(\%conf);
-    $failure |= checkconfig(\%conf);
-    $failure |= checkinstallation(\%conf);
+    $failure |= checkinstallation();
 } elsif($action eq 'install') {
     open $LOG, '>', LOG_FN ||
         print 'cannot write to log file ' . LOG_FN . ": $OS_ERROR\n";
@@ -549,12 +554,12 @@ sub getconfig {
     }
 
     if (! defined $conf->{nagios_user}) {
-        my $x = finduser(qw(nagios));
+        my $x = finduser(@NAGIOS_USERS);
         $conf->{nagios_user} = $x if $x ne q();
     }
 
     if (! defined $conf->{www_user}) {
-        my $x = finduser(qw(www-data www apache));
+        my $x = finduser(@APACHE_USERS);
         $conf->{www_user} = $x if $x ne q();
     }
 
@@ -810,16 +815,131 @@ sub checkexec {
     return $found;
 }
 
-# FIXME: ensure that rrdtool works
-# FIXME: check nagios perfdata configuration
-# FIXME: ensure service_perfdata_command defined only once
-# FIXME: check permissions on log files
-# FIXME: check permissions on rrd directory
-# FIXME: check map file syntax
+# check for things that are often broken
 sub checkinstallation {
-    my ($conf) = @_;
+    my $fail = 0;
 
-    return 0;
+    my $mapfn = getanswer('Path of map file', '/etc/nagiosgraph/map');
+    my $rrddir = getanswer('Path of RRD directory', '/var/nagiosgraph/rrd');
+    my $logdir = getanswer('Path of log directory', '/var/log/nagiosgraph');
+    my $nuser = finduser(@NAGIOS_USERS);
+    my $ngroup = findgroup(@NAGIOS_GROUPS);
+    my $auser = finduser(@APACHE_USERS);
+    my $agroup = findgroup(@APACHE_GROUPS);
+    $nuser = getanswer('nagios user', $nuser);
+    $ngroup = getanswer('nagios group', $ngroup);
+    $auser = getanswer('apache user', $auser);
+    $agroup = getanswer('apache group', $agroup);
+
+    logmsg('checking RRDs');
+    eval { require RRDs; };
+    if (! $@) {
+        my ($fh,$fn) = tempfile();
+        RRDs::create("$fn","-s 60",
+                     "DS:temp:GAUGE:600:0:100",
+                     "RRA:AVERAGE:0.5:1:576",
+                     "RRA:AVERAGE:0.5:6:672",
+                     "RRA:AVERAGE:0.5:24:732",
+                     "RRA:AVERAGE:0.5:144:1460");
+        my $err = RRDs::error();
+        if (! $err) {
+            logmsg('  RRDs::create: ok');
+            RRDs::update("$fn", "-t", "temp", "N:50");
+            $err = RRDs::error();
+            if (! $err) {
+                logmsg('  RRDs::update: ok');
+            } else {
+                logmsg('*** RRDs::update failed: ' . $err);
+                $fail = 1;
+            }
+        } else {
+            logmsg('*** RRDs::create failed: ' . $err);
+            $fail = 1;
+        }
+        if (-f $fn) {
+            unlink($fn);
+        }
+    } else {
+        logmsg('*** RRDs is not installed');
+        $fail = 1;
+    }
+
+    logmsg('checking GD');
+    eval { require GD; };
+    if (! $@) {
+        my $img = new GD::Image(5,5);
+        if ($img) {
+            logmsg('  GD:Image ok');
+        } else {
+            logmsg('*** GD::Image: failed');
+            $fail = 1;
+        }
+    } else {
+        logmsg('  GD is not installed (GD is recommended but not required)');
+    }
+
+    logmsg('checking map file');
+    if (open my $FH, '<', $mapfn) {
+        my @rules;
+        while(<$FH>) {
+            push @rules, $_;
+        }
+        close $FH;
+        # this code must match the code in ngshared
+        my $code = 'sub evalrules {' . "\n" . 
+            ' $_ = $_[0];' . "\n" .
+            ' my ($d, @s) = ($_);' . "\n" .
+            ' no strict "subs";' . "\n" .
+            join(q(), @rules) .
+            ' use strict "subs";' . "\n" .
+            ' return () if ($#s > -1 && $s[0] eq "ignore");' . "\n" .
+            ' return @s;' . "\n" .
+            '}';
+        my $rc = eval $code; ;
+        if ($rc || $EVAL_ERROR) {
+            logmsg("*** map file eval error: map file is not valid perl!");
+            $fail = 1;
+        } else {
+            logmsg('  map file smells like valid perl');
+        }
+    } else {
+        logmsg("*** cannot open map file $mapfn: $OS_ERROR");
+        $fail = 1;
+    }
+
+    logmsg('checking RRD directory permissions');
+    if (-d $rrddir) {
+        if (canwrite($rrddir, $nuser, $ngroup)) {
+            logmsg("  writeable by $nuser");
+        } else {
+            logmsg("*** RRD directory is not writeable by $nuser");
+        }
+        if (canread($rrddir, $auser, $agroup)) {
+            logmsg("  readable by $auser");
+        } else {
+            logmsg("*** RRD directory is not readable by $auser");
+        }
+    } else {
+        logmsg("*** no RRD directory at $rrddir");
+    }
+
+    logmsg('checking log directory permissions');
+    if (-d $logdir) {
+        if (canwrite($logdir, $nuser, $ngroup)) {
+            logmsg("  writeable by $nuser");
+        } else {
+            logmsg("*** log directory is not writeable by $nuser");
+        }
+        if (canwrite($logdir, $auser, $agroup)) {
+            logmsg("  writeable by $auser");
+        } else {
+            logmsg("*** log directory is not writeable by $auser");
+        }
+    } else {
+        logmsg("*** no log directory at $logdir");
+    }
+
+    return $fail;
 }
 
 sub finduser {
@@ -831,6 +951,17 @@ sub finduser {
         }
     }
     return $users[0];
+}
+
+sub findgroup {
+    my @groups = @_;
+    foreach my $g (@groups) {
+        my $gid = getgrnam $g;
+        if (defined $gid) {
+            return $g;
+        }
+    }
+    return $groups[0];
 }
 
 sub findfile {
@@ -1176,8 +1307,8 @@ sub patchnagios {
     return $fail;
 }
 
-# TODO: do the right thing when nagios and nagiosgraph share same cgi dir/url
-# TODO: do the right thing when nagios and nagiosgraph share same www dir
+# FIXME: do the right thing when nagios and nagiosgraph share same cgi dir/url
+# FIXME: do the right thing when nagios and nagiosgraph share same www dir
 sub patchapache {
     my ($conf, $doit) = @_;
     my $fail = 0;
@@ -1211,6 +1342,33 @@ sub trimslashes {
     my ($path) = @_;
     while(length($path) > 1 && $path =~ /\/$/) { $path =~ s/\/$//; }
     return $path;
+}
+
+sub canread {
+    my ($fn, $user, $group) = @_;
+    my @s = stat($fn);
+    my $mode = $s[2];
+    my $uname = getpwuid($s[4]);
+    my $gname = getgrgid($s[5]);
+    if (($mode & S_IRUSR && $uname eq $user) ||
+        ($mode & S_IRGRP && $gname eq $group) ||
+        ($mode & S_IROTH)) {
+        return 1;
+    }
+    return 0;
+}
+
+sub canwrite {
+    my ($fn, $user, $group) = @_;
+    my @s = stat($fn);
+    my $mode = $s[2];
+    my $uname = getpwuid($s[4]);
+    my $gname = getgrgid($s[5]);
+    if (($mode & S_IWUSR && $uname eq $user) ||
+        ($mode & S_IWGRP && $gname eq $group)) {
+        return 1;
+    }
+    return 0;
 }
 
 sub ng_mkdir {
