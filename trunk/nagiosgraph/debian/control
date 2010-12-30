@@ -6,10 +6,9 @@ Section: Application/System
 Priority: extra
 Maintainer: Alan Brenner
 Architecture: all
-Depends: libcgi-pm-perl, librrds-perl
+Depends: nagios3, apache2, libcgi-pm-perl, librrds-perl
 Recommends: libgd-gd2-perl
 Pre-Depends: perl
 Enhances: nagios
 Provides: nagiosgraph
-Description: nagiosgraph is an add-on to Nagios. It collects performance data
-into RRD files and displays graphs in web pages.
+Description: Nagios add-on for performance data storage and graphing

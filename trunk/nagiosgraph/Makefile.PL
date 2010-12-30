@@ -73,7 +73,7 @@ rpm-package: dist
 deb-package:
 \trm -rf nagiosgraph-\$(VERSION)
 \tmkdir nagiosgraph-\$(VERSION)
-\tDESTDIR=nagiosgraph-\$(VERSION) NG_LAYOUT=debian fakeroot perl install.pl --no-check-prereq
+\tDESTDIR=nagiosgraph-\$(VERSION) NG_LAYOUT=debian fakeroot perl install.pl --no-check-prereq --no-chown
 \tmkdir -p nagiosgraph-\$(VERSION)/DEBIAN
 \tcp debian/compat nagiosgraph-\$(VERSION)/DEBIAN
 \tcp debian/conffiles nagiosgraph-\$(VERSION)/DEBIAN
