@@ -886,15 +886,16 @@ sub checkinstallation {
         }
         close $FH or logmsg("close failed for $mapfn");
         # this code must match the code in ngshared
-        my $code = "sub evalrules {\n" .
-            " $_ = $_[0];\n" .
-            " my ($d, @s) = ($_);\n" .
-            " no strict 'subs';\n" .
+        ## no critic (RequireInterpolationOfMetachars)
+        my $code = 'sub evalrules {' . "\n" .
+            ' $_ = $_[0];' . "\n" .
+            ' my ($d, @s) = ($_);' . "\n" .
+            ' no strict "subs";' . "\n" .
             join(q(), @rules) .
-            " use strict 'subs';\n" .
-            " return () if ($#s > -1 && $s[0] eq 'ignore');\n" .
-            " return @s;\n" .
-            "}\n";
+            ' use strict "subs";' . "\n" .
+            ' return () if ($#s > -1 && $s[0] eq "ignore");' . "\n" .
+            ' return @s;' . "\n" .
+            '}' . "\n";
         my $rc = eval $code; ## no critic (ProhibitStringyEval)
         if ($rc) {
             logmsg('*** map file eval error: map file is not valid perl!');
