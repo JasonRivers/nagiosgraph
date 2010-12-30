@@ -130,7 +130,8 @@ or (/output:.*uptime is.*?([.\d]+)\sMinutes/
 
 # Service type: unix-procs
 #   output:PROCS OK: 43 processes
-/output:PROCS.*?(\d+) processes with STATE = RSZDT/
+(/output:PROCS.*?(\d+) processes\n/ or
+ /output:PROCS.*?(\d+) processes with STATE = RSZDT/)
 and push @s, [ 'procs',
                [ 'data', GAUGE, $1 ] ];
 
