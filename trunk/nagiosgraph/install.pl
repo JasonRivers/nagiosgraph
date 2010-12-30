@@ -895,9 +895,9 @@ sub checkinstallation {
             ' use strict "subs";' . "\n" .
             ' return () if ($#s > -1 && $s[0] eq "ignore");' . "\n" .
             ' return @s;' . "\n" .
-            '}' . "\n";
-        eval $code; ## no critic (ProhibitStringyEval)
-        if (! $@) {
+            '} 1' . "\n";
+        my $rc = eval $code;  ## no critic (ProhibitStringyEval)
+        if (defined $rc && $rc) {
             logmsg('  map file smells like valid perl');
         } else {
             logmsg('*** map file eval error: map file is not valid perl!');
