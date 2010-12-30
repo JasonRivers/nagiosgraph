@@ -896,12 +896,12 @@ sub checkinstallation {
             ' return () if ($#s > -1 && $s[0] eq "ignore");' . "\n" .
             ' return @s;' . "\n" .
             '}' . "\n";
-        my $rc = eval $code; ## no critic (ProhibitStringyEval)
-        if ($rc) {
+        eval $code; ## no critic (ProhibitStringyEval)
+        if (! $@) {
+            logmsg('  map file smells like valid perl');
+        } else {
             logmsg('*** map file eval error: map file is not valid perl!');
             $fail = 1;
-        } else {
-            logmsg('  map file smells like valid perl');
         }
     } else {
         logmsg("*** cannot open map file $mapfn: $OS_ERROR");
@@ -911,14 +911,14 @@ sub checkinstallation {
     logmsg('checking RRD directory permissions');
     if (-d $rrddir) {
         if (canwrite($rrddir, $nuser, $ngroup)) {
-            logmsg("  writeable by $nuser");
+            logmsg("  writeable by nagios user $nuser");
         } else {
-            logmsg("*** RRD directory is not writeable by $nuser");
+            logmsg("*** not writeable by nagios user $nuser:$ngroup");
         }
         if (canread($rrddir, $auser, $agroup)) {
-            logmsg("  readable by $auser");
+            logmsg("  readable by apache user $auser");
         } else {
-            logmsg("*** RRD directory is not readable by $auser");
+            logmsg("*** not readable by apache user $auser:$agroup");
         }
     } else {
         logmsg("*** no RRD directory at $rrddir");
@@ -927,14 +927,14 @@ sub checkinstallation {
     logmsg('checking log directory permissions');
     if (-d $logdir) {
         if (canwrite($logdir, $nuser, $ngroup)) {
-            logmsg("  writeable by $nuser");
+            logmsg("  writeable by nagios user $nuser");
         } else {
-            logmsg("*** log directory is not writeable by $nuser");
+            logmsg("*** not writeable by nagios user $nuser:$ngroup");
         }
         if (canwrite($logdir, $auser, $agroup)) {
-            logmsg("  writeable by $auser");
+            logmsg("  writeable by apache user $auser");
         } else {
-            logmsg("*** log directory is not writeable by $auser");
+            logmsg("*** not writeable by apache user $auser:$agroup");
         }
     } else {
         logmsg("*** no log directory at $logdir");
