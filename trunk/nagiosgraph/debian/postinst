@@ -3,7 +3,7 @@
 stag="# begin nagiosgraph configuration"
 etag="# end nagiosgraph configuration"
 
-# set permissions on nagiosgraph files
+# set permissions and ownership on nagiosgraph files
 chmod 755 /var/spool/nagiosgraph/rrd
 chown nagios /var/spool/nagiosgraph/rrd
 chmod 775 /var/log/nagiosgraph
