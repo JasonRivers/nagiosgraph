@@ -832,19 +832,19 @@ sub checkinstallation {
     $agroup = getanswer('apache group', $agroup);
 
     logmsg('checking RRDs');
-    eval { require RRDs; };
-    if (! $@) {
+    my $rval = eval { require RRDs; };
+    if (defined $rval && $rval == 1) {
         my ($fh,$fn) = tempfile();
-        RRDs::create("$fn","-s 60",
-                     "DS:temp:GAUGE:600:0:100",
-                     "RRA:AVERAGE:0.5:1:576",
-                     "RRA:AVERAGE:0.5:6:672",
-                     "RRA:AVERAGE:0.5:24:732",
-                     "RRA:AVERAGE:0.5:144:1460");
+        RRDs::create("$fn",'-s 60',
+                     'DS:temp:GAUGE:600:0:100',
+                     'RRA:AVERAGE:0.5:1:576',
+                     'RRA:AVERAGE:0.5:6:672',
+                     'RRA:AVERAGE:0.5:24:732',
+                     'RRA:AVERAGE:0.5:144:1460');
         my $err = RRDs::error();
         if (! $err) {
             logmsg('  RRDs::create: ok');
-            RRDs::update("$fn", "-t", "temp", "N:50");
+            RRDs::update("$fn", '-t', 'temp', 'N:50');
             $err = RRDs::error();
             if (! $err) {
                 logmsg('  RRDs::update: ok');
@@ -857,7 +857,7 @@ sub checkinstallation {
             $fail = 1;
         }
         if (-f $fn) {
-            unlink($fn);
+            unlink $fn;
         }
     } else {
         logmsg('*** RRDs is not installed');
@@ -865,8 +865,8 @@ sub checkinstallation {
     }
 
     logmsg('checking GD');
-    eval { require GD; };
-    if (! $@) {
+    $rval = eval { require GD; };
+    if (defined $rval && $rval == 1) {
         my $img = new GD::Image(5,5);
         if ($img) {
             logmsg('  GD:Image ok');
@@ -884,20 +884,20 @@ sub checkinstallation {
         while(<$FH>) {
             push @rules, $_;
         }
-        close $FH;
+        close $FH or logmsg("close failed for $mapfn");
         # this code must match the code in ngshared
-        my $code = 'sub evalrules {' . "\n" . 
-            ' $_ = $_[0];' . "\n" .
-            ' my ($d, @s) = ($_);' . "\n" .
-            ' no strict "subs";' . "\n" .
+        my $code = "sub evalrules {\n" .
+            " $_ = $_[0];\n" .
+            " my ($d, @s) = ($_);\n" .
+            " no strict 'subs';\n" .
             join(q(), @rules) .
-            ' use strict "subs";' . "\n" .
-            ' return () if ($#s > -1 && $s[0] eq "ignore");' . "\n" .
-            ' return @s;' . "\n" .
-            '}';
-        my $rc = eval $code; ;
-        if ($rc || $EVAL_ERROR) {
-            logmsg("*** map file eval error: map file is not valid perl!");
+            " use strict 'subs';\n" .
+            " return () if ($#s > -1 && $s[0] eq 'ignore');\n" .
+            " return @s;\n" .
+            "}\n";
+        my $rc = eval $code; ## no critic (ProhibitStringyEval)
+        if ($rc) {
+            logmsg('*** map file eval error: map file is not valid perl!');
             $fail = 1;
         } else {
             logmsg('  map file smells like valid perl');
@@ -1346,10 +1346,10 @@ sub trimslashes {
 
 sub canread {
     my ($fn, $user, $group) = @_;
-    my @s = stat($fn);
+    my @s = stat $fn;
     my $mode = $s[2];
-    my $uname = getpwuid($s[4]);
-    my $gname = getgrgid($s[5]);
+    my $uname = getpwuid $s[4];
+    my $gname = getgrgid $s[5];
     if (($mode & S_IRUSR && $uname eq $user) ||
         ($mode & S_IRGRP && $gname eq $group) ||
         ($mode & S_IROTH)) {
@@ -1360,10 +1360,10 @@ sub canread {
 
 sub canwrite {
     my ($fn, $user, $group) = @_;
-    my @s = stat($fn);
+    my @s = stat $fn;
     my $mode = $s[2];
-    my $uname = getpwuid($s[4]);
-    my $gname = getgrgid($s[5]);
+    my $uname = getpwuid $s[4];
+    my $gname = getgrgid $s[5];
     if (($mode & S_IWUSR && $uname eq $user) ||
         ($mode & S_IWGRP && $gname eq $group)) {
         return 1;

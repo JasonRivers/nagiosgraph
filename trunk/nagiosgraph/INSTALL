@@ -80,9 +80,11 @@ Nagiosgraph requires the CGI and RRDs perl modules.  The RRDs perl module
 is part of rrdtool.  The GD perl module is optional, but recommended.
 
   Debian/Ubuntu:
-    rrdtool, perl, libcgi-pm-perl, librrds-perl, libgd-gd2-perl (optional)
-  Redhat/Fedora:
-    rrdtool, perl, perl-CGI, perl-RRD-Simple, perl-GD (optional)
+    rrdtool, perl, libcgi-pm-perl, librrds-perl, libgd-gd2-perl
+  Redhat/Fedora/CentOS:
+    rrdtool, perl, perl-rrdtool, perl-GD
+  SUSE:
+    rrdtool, perl, perl-GD
   Solaris:
     ?
   FreeBSD:
@@ -103,10 +105,10 @@ nagiosgraph components with nagios components.
 Nagios and nagiosgraph can be installed in just about any location, for
 example /opt or /usr/local.
 
-Redhat (Fedora, CentOS) and Debian (Ubuntu) systems have their own layouts.
-If you installed Nagios from a package, you can overlay nagiosgraph or you
-can install nagiosgraph to its own standalone location.  The standalone layout
-is usually easier to manage across updates.
+Redhat (Fedora, CentOS), SUSE, and Debian (Ubuntu) systems have their own
+layouts.  If you installed Nagios from a package, you can overlay nagiosgraph
+or you can install nagiosgraph to its own standalone location.  The standalone
+layout is usually easier to manage across updates when installing from source.
 
 Decide upon a location and layout before you start the installation.
 Examples are in the Sample Installation Layouts section.
@@ -116,6 +118,8 @@ Installation Methods
 --------------------
 
 There are a few ways to install nagiosgraph: manual, script, and package.
+On most systems the installation requires root permissions, so either do
+the installation as root or preface commands with sudo.
 
 Manual Installation.  Copy and edit files directly.  Follow the instructions
 in the following sections of this document:
