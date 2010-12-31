@@ -10,6 +10,7 @@
 # suse
 %if "%{_vendor}" == "suse"
 %define layout suse
+%define relos .suse%{suse_version}
 %define apacheconfdir %{_sysconfdir}/apache2/conf.d
 %define apacheuser wwwrun
 %define apachegroup nagcmd
@@ -22,6 +23,7 @@
 # redhat, fedora, centos
 %if "%{_vendor}" == "redhat"
 %define layout redhat
+%define relos %{dist}
 %define apacheconfdir %{_sysconfdir}/httpd/conf.d
 %define apacheuser apache
 %define apachegroup apache
@@ -32,7 +34,7 @@
 %endif
 
 %global relnum 1
-%global release %{relnum}%{dist}
+%global release %{relnum}%{?relos:%{relos}}
 
 %global ng_bin_dir %{_libexecdir}/%{name}
 %global ng_cgi_dir /usr/lib/%{name}/cgi-bin
