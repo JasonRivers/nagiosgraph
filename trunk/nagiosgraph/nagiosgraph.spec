@@ -3,7 +3,11 @@
 # Author:  (c) 2008 Alan Brenner, Ithaka Harbors
 # Author:  (c) 2010 Matthew Wall
 
+# default configuration when OS is not known - this will fail.  when it does,
+# add a vendor section with an appropriate configuration.
 %define layout unknown
+
+# suse
 %if "%{_vendor}" == "suse"
 %define layout suse
 %define apacheconfdir %{_sysconfdir}/apache2/conf.d
@@ -14,6 +18,8 @@
 %define nagiosgroup nagios
 %define nagioscmd nagios
 %endif
+
+# redhat, fedora, centos
 %if "%{_vendor}" == "redhat"
 %define layout redhat
 %define apacheconfdir %{_sysconfdir}/httpd/conf.d
@@ -25,7 +31,8 @@
 %define nagioscmd nagios
 %endif
 
-%global release 1
+%global relnum 1
+%global release %{relnum}%{dist}
 
 %global ng_bin_dir %{_libexecdir}/%{name}
 %global ng_cgi_dir /usr/lib/%{name}/cgi-bin
