@@ -23,7 +23,7 @@
 # redhat, fedora, centos
 %if "%{_vendor}" == "redhat"
 %define layout redhat
-%define relos %{dist}
+%define relos %{?dist:%{dist}}
 %define apacheconfdir %{_sysconfdir}/httpd/conf.d
 %define apacheuser apache
 %define apachegroup apache
