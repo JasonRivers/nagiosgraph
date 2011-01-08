@@ -130,43 +130,37 @@ sub setuprrd {
     rmtree($Config{rrddir});
     mkdir $Config{rrddir};
 
-    my $testvar = ['ping',
-                   ['losspct', 'GAUGE', 0],
-                   ['rta', 'GAUGE', .006] ];
-    my @result = createrrd('host0', 'PING', 1221495632, $testvar);
-    $testvar = ['http',
-                ['Bps', 'GAUGE', 0] ];
-    @result = createrrd('host0', 'HTTP', 1221495632, $testvar);
+    my $testvar = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    my @result = createrrd(1221495632, 'host0', 'PING', $testvar);
+    $testvar = ['http', ['Bps', 'GAUGE', 0] ];
+    @result = createrrd(1221495632, 'host0', 'HTTP', $testvar);
 
-    $testvar = ['http',
-                ['Bps', 'GAUGE', 0] ];
-    @result = createrrd('host1', 'HTTP', 1221495632, $testvar);
+    $testvar = ['http', ['Bps', 'GAUGE', 0] ];
+    @result = createrrd(1221495632, 'host1', 'HTTP', $testvar);
 
-    $testvar = ['ping',
-                ['losspct', 'GAUGE', 0],
-                ['rta', 'GAUGE', .006] ];
-    @result = createrrd('host2', 'PING', 1221495632, $testvar);
+    $testvar = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd(1221495632, 'host2', 'PING', $testvar);
 
     $testvar = ['loss',
                 ['losspct', 'GAUGE', 0],
                 ['losswarn', 'GAUGE', 5],
                 ['losscrit', 'GAUGE', 10] ];
-    @result = createrrd('host3', 'ping', 1221495632, $testvar);
+    @result = createrrd(1221495632, 'host3', 'ping', $testvar);
     $testvar = ['rta',
                 ['rta', 'GAUGE', 0.01],
                 ['rtawarn', 'GAUGE', 0.1],
                 ['rtacrit', 'GAUGE', 0.5] ];
-    @result = createrrd('host3', 'ping', 1221495632, $testvar);
+    @result = createrrd(1221495632, 'host3', 'ping', $testvar);
 
     $testvar = ['ntdisk',
                 ['total', 'GAUGE', 100],
                 ['used', 'GAUGE', 10] ];
-    @result = createrrd('host4', 'c:\\ space', 1221495632, $testvar);
+    @result = createrrd(1221495632, 'host4', 'c:\\ space', $testvar);
 
     $testvar = ['c:\\ space',
                 ['total', 'GAUGE', 500],
                 ['used', 'GAUGE', 20] ];
-    @result = createrrd('host5', 'ntdisk', 1221495632, $testvar);
+    @result = createrrd(1221495632, 'host5', 'ntdisk', $testvar);
 }
 
 sub teardownrrd {
@@ -704,7 +698,7 @@ sub testgraphinfo {
     $Config{hostservvarsep} = ';';
     $Config{hostservvar} = listtodict('hostservvar');
     ok($Config{hostservvar}->{testbox}->{procs}->{users}, 1);
-    my @result = createrrd('testbox', 'procs', 1221495632, $testvar);
+    my @result = createrrd(1221495632, 'testbox', 'procs', $testvar);
     ok($result[0]->[1], 'testbox_procsusers_procs.rrd');
     ok(-f $FindBin::Bin . '/testbox_procsusers_procs.rrd');
     ok(-f $FindBin::Bin . '/testbox_procs_procs.rrd');
@@ -722,7 +716,7 @@ sub testgraphinfo {
     # create default data file
     $Config{dbseparator} = 'subdir';
     $testvar = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    @result = createrrd('testbox', 'PING', 1221495632, $testvar);
+    @result = createrrd(1221495632, 'testbox', 'PING', $testvar);
     ok($result[0]->[0], 'PING___ping.rrd');
     ok($result[1]->[0]->[0], 0);
     ok($result[1]->[0]->[1], 1);
@@ -1489,11 +1483,11 @@ sub testgetrras {
 sub testcheckdatasources {
     $Config{debug} = 0;
     open $LOG, '+>', \$log;
-    my $result = checkdatasources([0], 'test', [0], 'junk');
+    my $result = checkdatasources([0], 'test', [0]);
     ok($result, 1);
-    $result = checkdatasources([0,1,2], 'test', [0, 1], 'junk');
+    $result = checkdatasources([0,1,2], 'test', [0, 1]);
     ok($result, 1);
-    $result = checkdatasources([0,1,2], 'test', [0], 'junk');
+    $result = checkdatasources([0,1,2], 'test', [0]);
     ok($result, 0);
     close $LOG;
     $Config{debug} = 0;
@@ -1503,8 +1497,9 @@ sub testcheckdatasources {
 #  in order to maintain backward compatibility
 # beware! createrrd modifies the contents of $s
 sub testcreaterrd {
-    $Config{debug} = 0;
-    open $LOG, '+>', \$log;
+#    $Config{debug} = 5;
+#    open $LOG, '+>', 'testcreaterrd';
+
     my $rrddir = gettestrrddir();
     $Config{rrddir} = $rrddir;
     my $s;
@@ -1521,7 +1516,7 @@ sub testcreaterrd {
     undef $Config{withmaximums};
     mkdir $Config{rrddir};
     $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    @result = createrrd(1221495632, 'testbox', 'PING', $s);
     ok($result[0]->[0], $fn);
     ok(-f "${rrddir}/$fn");
     ok(! -f "${rrddir}/${fn}_min");
@@ -1533,7 +1528,7 @@ sub testcreaterrd {
     $Config{withminimums} = listtodict('withminimums', q(,));
     mkdir $Config{rrddir};
     $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    @result = createrrd(1221495632, 'testbox', 'PING', $s);
     ok($result[0]->[0], $fn);
     ok(-f "${rrddir}/$fn");
     ok(-f "${rrddir}/${fn}_min");
@@ -1545,7 +1540,7 @@ sub testcreaterrd {
     $Config{withmaximums} = listtodict('withmaximums', q(,));
     mkdir $Config{rrddir};
     $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    @result = createrrd(1221495632, 'testbox', 'PING', $s);
     ok($result[0]->[0], $fn);
     ok(-f "${rrddir}/$fn");
     ok(-f "${rrddir}/${fn}_min");
@@ -1559,7 +1554,7 @@ sub testcreaterrd {
     $Config{hostservvar} = listtodict('hostservvar');
     ok($Config{hostservvar}->{testbox}->{procs}->{users}, 1);
     mkdir $Config{rrddir};
-    @result = createrrd('testbox', 'procs', 1221495632, $s);
+    @result = createrrd(1221495632, 'testbox', 'procs', $s);
     ok($result[0]->[1], 'testbox_procsusers_procs.rrd');
     ok(-f $rrddir . '/testbox_procsusers_procs.rrd');
     ok(-f $rrddir . '/testbox_procs_procs.rrd');
@@ -1575,7 +1570,7 @@ sub testcreaterrd {
     undef $Config{withmaximums};
     mkdir $Config{rrddir};
     $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    @result = createrrd(1221495632, 'testbox', 'PING', $s);
     ok($result[0]->[0], $fn);
     ok($result[1]->[0]->[0], 0);
     ok($result[1]->[0]->[1], 1);
@@ -1589,7 +1584,7 @@ sub testcreaterrd {
     $Config{withminimums} = listtodict('withminimums', q(,));
     mkdir $Config{rrddir};
     $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    @result = createrrd(1221495632, 'testbox', 'PING', $s);
     ok($result[0]->[0], $fn);
     ok($result[1]->[0]->[0], 0);
     ok($result[1]->[0]->[1], 1);
@@ -1603,7 +1598,7 @@ sub testcreaterrd {
     $Config{withmaximums} = listtodict('withmaximums', q(,));
     mkdir $Config{rrddir};
     $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    @result = createrrd(1221495632, 'testbox', 'PING', $s);
     ok($result[0]->[0], $fn);
     ok($result[1]->[0]->[0], 0);
     ok($result[1]->[0]->[1], 1);
@@ -1619,14 +1614,13 @@ sub testcreaterrd {
     $Config{hostservvar} = listtodict('hostservvar');
     ok($Config{hostservvar}->{testbox}->{procs}->{users}, 1);
     mkdir $Config{rrddir};
-    @result = createrrd('testbox', 'procs', 1221495632, $s);
+    @result = createrrd(1221495632, 'testbox', 'procs', $s);
     ok($result[0]->[1], 'procsusers___procs.rrd');
     ok(-f $rrddir . '/testbox/procsusers___procs.rrd');
     ok(-f $rrddir . '/testbox/procs___procs.rrd');
     rmtree($rrddir);
 
-    close $LOG;
-    $Config{debug} = 0;
+#    close $LOG;
 }
 
 sub testrrdupdate {
@@ -1645,13 +1639,13 @@ sub testrrdupdate {
     undef $Config{withmaximums};
     mkdir $Config{rrddir};
     $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    @result = createrrd(1221495632, 'testbox', 'PING', $s);
     $f = "${rrddir}/${fn}";
     $ts1 = (stat($f))[9];
     sleep(2);
     $s = [ ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    rrdupdate($result[0]->[0], 1221495635, $s,
-              'testbox', 'PING', $result[1]->[0]);
+    rrdupdate($result[0]->[0], 1221495635,
+              'testbox', 'PING', $result[1]->[0], $s);
     $ts2 = (stat($f))[9];
     ok(-f $f);
     ok($ts2 > $ts1);
@@ -1666,13 +1660,13 @@ sub testrrdupdate {
     undef $Config{withmaximums};
     mkdir $Config{rrddir};
     $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    @result = createrrd(1221495632, 'testbox', 'PING', $s);
     $f = "${rrddir}/testbox/${fn}";
     $ts1 = (stat($f))[9];
     sleep(2);
     $s = [ ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    rrdupdate($result[0]->[0], 1221495635, $s,
-              'testbox', 'PING', $result[1]->[0]);
+    rrdupdate($result[0]->[0], 1221495635,
+              'testbox', 'PING', $result[1]->[0], $s);
     $ts2 = (stat($f))[9];
     ok(-f $f);
     ok($ts2 > $ts1);
@@ -1681,8 +1675,8 @@ sub testrrdupdate {
     # test regression for handling of services with underscore in the name
     # https://sourceforge.net/projects/nagiosgraph/forums/forum/394748/topic/4043301
 
-    open $LOG, '>', 'testrrdupdate.log';
-    $Config{debug} = 5;
+#    open $LOG, '>', 'testrrdupdate.log';
+#    $Config{debug} = 5;
 
     $fn = 'PING_MAX___ping.rrd';
     $Config{withminimums} = 'PING';
@@ -1691,18 +1685,17 @@ sub testrrdupdate {
     $Config{withmaximums} = listtodict('withmaximums', q(,));
     mkdir $Config{rrddir};
     $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    @result = createrrd('testbox', 'PING_MAX', 1221495632, $s);
+    @result = createrrd(1221495632, 'testbox', 'PING_MAX', $s);
     $f = "${rrddir}/testbox/${fn}";
     ok(-f $f);
     ok(! -f "{$f}_min");
     ok(! -f "{$f}_max");
     $s = [ ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    rrdupdate($result[0]->[0], 1221495635, $s,
-              'testbox', 'PING_MAX', $result[1]->[0]);
+    rrdupdate($result[0]->[0], 1221495635,
+              'testbox', 'PING_MAX', $result[1]->[0], $s);
     rmtree($rrddir);
 
-    close $LOG;
-    $Config{debug} = 0;
+#    close $LOG;
 }
 
 sub testcheckdsname {

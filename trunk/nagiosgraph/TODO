@@ -12,17 +12,28 @@ Bugs
 Desired Features
 
 * Custom unit labels on the graphs.
+* graph templates in addition to existing service-based patterns
 * do pattern matching in the groupdb and hostdb files
 * do test coverage on the cgi scripts, not just ngshared.pm
 * make authz understand groups, not just users
 * make offset accept abbreviations (e.g. 1w, 2d, 3m)
 * make everything behave well when javascript is disabled
-* process host performance data
-* process nagios performance data
-* graph templates in addition to existing service-based patterns
-* optionally display host/service perfdata in a table in show.cgi
-* link to nagios availability report for timerange for each graph
-* link to nagios alerts for timerange for each graph
+* process host performance data in out-of-box configuration
+* process nagios performance data in out-of-box configuration
+* in graph details:
+    optionally display host/service perfdata in a table in show.cgi
+    link to nagios availability report for timerange for each graph
+    link to nagios alerts for timerange for each graph
+    host status
+    host notifications
+    host history
+    host trends
+    host state breakdowns
+* maximums/minimums specification of host,service,db,ds
+* enable specification of host,service,db,ds not just ds[db]
+* testing with incinga, nagios xi
+* cron job to archive or delete old rrd files
+* logrotate scripts for nagiosgraph.log and nagiosgraph-cgi.log    
 
 Notes
 

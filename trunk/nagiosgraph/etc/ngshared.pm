@@ -2553,10 +2553,9 @@ sub runcreate {
 }
 
 sub checkdatasources {
-    my ($dsmin, $directory, $filenames, $labels) = @_;
-    if (scalar @{$dsmin} == 3 and scalar @{$filenames} == 1) {
+    my ($ds, $directory, $filenames) = @_;
+    if (scalar @{$ds} == 3 and scalar @{$filenames} == 1) {
         debug(DBCRT, "no data sources defined for $directory/$filenames->[0]");
-        dumper(DBCRT, 'labels', $labels);
         return 0;
     }
     return 1;
@@ -2593,8 +2592,8 @@ sub gethsdmatch {
 }
 
 sub createrrd {
-    my ($host, $service, $start, $labels) = @_;
-    debug(DBDEB, "createrrd($host,$service,$start,$labels->[0])");
+    my ($start, $host, $service, $labels) = @_;
+    debug(DBDEB, "createrrd($start,$host,$service,$labels->[0])");
     my ($directory,             # directory in which to put rrd files
         @filenames);            # rrd file name(s)
 
@@ -2701,17 +2700,17 @@ sub createrrd {
         }
     }
     if (not -e "$directory/$filenames[0]" and
-        checkdatasources(\@ds, $directory, \@filenames, $labels)) {
+        checkdatasources(\@ds, $directory, \@filenames)) {
         push @ds, getrras($service, $xff, \@rows, \@steps);
         runcreate(\@ds);
     }
     createminmax('min', \@dsmin, \@filenames,
                  { service => $service,
-                   directory => $directory, labels => $labels,
+                   directory => $directory,
                    xff => $xff, rows => \@rows, steps => \@steps });
     createminmax('max', \@dsmax, \@filenames,
                  { service => $service,
-                   directory => $directory, labels => $labels,
+                   directory => $directory,
                    xff => $xff, rows => \@rows, steps => \@steps });
     dumper(DBDEB, 'createrrd filenames', \@filenames);
     dumper(DBDEB, 'createrrd datasets', \@datasets);
@@ -2731,8 +2730,7 @@ sub createminmax {
     my ($conf, $ds, $filenames, $opts) = @_;
     if (checkminmax($conf,
                     $opts->{service}, $opts->{directory}, $filenames->[0]) and
-        checkdatasources($ds,
-                         $opts->{directory}, $filenames, $opts->{labels})) {
+        checkdatasources($ds, $opts->{directory}, $filenames)) {
         my $s = $conf;
         $s =~ tr/[a-z]/[A-Z]/;
         push @{$ds}, getrras($opts->{service},
@@ -2756,7 +2754,7 @@ sub runupdate {
 }
 
 sub rrdupdate {
-    my ($file, $time, $values, $host, $service, $ds) = @_;
+    my ($file, $time, $host, $service, $ds, $values) = @_;
     my $directory = $Config{rrddir};
 
     # Select target folder depending on config settings
@@ -2859,11 +2857,11 @@ sub processdata {
             debug(DBINF, "processing output/perfdata:\n" . $dstr);
             $n += 1;
             for my $s ( @x ) {
-                my ($rrds, $sets) = createrrd($data[1],$data[2],$data[0]-1,$s);
+                my ($rrds, $sets) = createrrd($data[0]-1,$data[1],$data[2],$s);
                 next if not $rrds;
                 for my $ii (0 .. @{$rrds} - 1) {
-                    rrdupdate($rrds->[$ii], $data[0], $s,
-                              $data[1], $data[2], $sets->[$ii]);
+                    rrdupdate($rrds->[$ii], $data[0],
+                              $data[1], $data[2], $sets->[$ii], $s);
                 }
             }
         }
