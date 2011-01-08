@@ -26,12 +26,13 @@ $Id$
 * added better warnings when javascript is disabled.
 * added option to disable javascript warnings even though it results in
    limited functionality.
+* fixed service name with underscores bug in rrdupdate (thanks to bstas).
 * fixed typo for ntp,offset in labels.conf.
 * fixed javascript bug in selection of data sources.
 * added more feedback when javascript is disabled (Michael Urban).
 * added better error handling when output and/or perfdata are not available.
    this fixes the 'spotty data' behavior that occurred when batch processing 
-   would fail prematurely due to missing perfdata (hinder90 and ljorg6)
+   would fail prematurely due to missing perfdata (hinder90 and ljorg6).
 * added explicit handling and reporting of ignored output/perfdata.  if your
    map file contains any 'short-circuit' rules, they should return an array
    with the string 'ignore' so they are reported as ignored rather than as not

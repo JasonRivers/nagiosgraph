@@ -34,11 +34,11 @@ BEGIN {
         plan tests => 0;
         exit 0;
     } else {
-        plan tests => 570;
+        plan tests => 607;
     }
 }
 
-my ($log, $result, @result, $testvar);
+my ($log);
 
 # ensure that we have a clean slate from which to work
 sub setup {
@@ -187,7 +187,7 @@ sub testdebug { # Test the logger.
 
 sub testdumper { # Test the list/hash output debugger.
 	open $LOG, '+>', \$log;
-	$testvar = 'test';
+	my $testvar = 'test';
 	dumper(0, 'test', \$testvar);
 	ok($log, qr/02ngshared.t none test = .'test';$/);
 	close $LOG;
@@ -266,7 +266,7 @@ sub testgetdebug {
 
 sub testformatelapsedtime {
     my $s = gettimestamp();
-    $result = formatelapsedtime($s, $s+3_000_000);
+    my $result = formatelapsedtime($s, $s+3_000_000);
     ok($result, "00:00:03.000");
     $result = formatelapsedtime($s, $s+60_010_000);
     ok($result, "00:01:00.010");
@@ -288,7 +288,7 @@ sub testhtmlerror {
     close STDOUT;
     open STDOUT, ">&SAVEOUT";
     close SAVEOUT;
-    $result = readtestfile($fn);
+    my $result = readtestfile($fn);
     ok($result, "Content-Type: text/html; charset=ISO-8859-1\r
 \r
 <!DOCTYPE html
@@ -324,7 +324,7 @@ sub testimgerror {
     close STDOUT;
     open STDOUT, ">&SAVEOUT";
     close SAVEOUT;
-    $result = readtestfile($fn);
+    my $result = readtestfile($fn);
     ok($result, "Content-Type: image/png\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\0\5\0\0\0\5\b\6\0\0\0\x8Do&\xE5\0\0\0!tEXtSoftware\0GraphicConverter (Intel)w\x87\xFA\31\0\0\0\31IDATx\x9Cb\xF8\xFF\xFF?\3:\xC6\20\xA0\x82 \0\0\0\xFF\xFF\3\0x\xC3J\xB6\x9F\xEB2\35\0\0\0\0IEND\xAEB`\x82");
     unlink $fn;
 
@@ -376,7 +376,7 @@ sub testmkfilename { # Test getting the file and directory for a database.
     $Config{rrddir} = $FindBin::Bin;
 
     $Config{dbseparator} = '';
-    @result = mkfilename();
+    my @result = mkfilename();
     ok($result[0], 'BOGUSDIR');
     ok($result[1], 'BOGUSFILE');
     @result = mkfilename('host');
@@ -406,18 +406,18 @@ sub testmkfilename { # Test getting the file and directory for a database.
 sub testhashcolor {
     my @testdata = ('FF0333', '3300CC', '990033', 'FF03CC', '990333', 'CC00CC', '000099', '6603CC');
     for (my $ii = 0; $ii < 8; $ii++) {
-        $result = hashcolor('Current Load', $ii + 1);
+        my $result = hashcolor('Current Load', $ii + 1);
         ok($result, $testdata[$ii - 1]);
     }
     @testdata = ('CC0300', 'FF0399', '990000', '330099', '990300', '660399', '990000', 'CC0099');
     for (my $ii = 1; $ii < 9; $ii++) {
-        $result = hashcolor('PLW', $ii);
+        my $result = hashcolor('PLW', $ii);
         ok($result, $testdata[$ii - 1]);
     }
     $Config{colors} = ['123', 'ABC'];
     @testdata = ('123', 'ABC', '123');
     for (my $ii = 0; $ii < 3; $ii++) {
-        $result = hashcolor('test', 9);
+        my $result = hashcolor('test', 9);
         ok($result, $testdata[$ii]);
     }
     undef %Config;
@@ -425,11 +425,11 @@ sub testhashcolor {
     ok(hashcolor('x'), '009900');
 }
 
-sub testlisttodict { # Split a string separated by a configured value into hash.
+sub testlisttodict { # Split a string separated by a configured value into hash
     open $LOG, '+>', \$log;
     $Config{testsep} = ',';
     $Config{test} = 'Current Load,PLW,Procs: total,User Count';
-    $testvar = listtodict('test');
+    my $testvar = listtodict('test');
     foreach my $ii ('Current Load','PLW','Procs: total','User Count') {
         ok($testvar->{$ii}, 1);
     }
@@ -658,21 +658,21 @@ sub testgetparams {
 }
 
 sub testdbfilelist { # Check getting a list of rrd files
-	$Config{debug} = 0;
-	open $LOG, '+>', \$log;
-	$Config{rrddir} = $FindBin::Bin;
-	$Config{dbseparator} = '';
-	$result = dbfilelist('testbox', 'Partition: /');
-	ok(@{$result}, 0);
-	my $file = "$FindBin::Bin/testbox_Partition%3A%20%2F_test.rrd";
-	open TEST, ">$file";
-	print TEST "test\n";
-	close TEST;
-	@result = dbfilelist('testbox', 'Partition: /');
-	ok(@result, 1);
-	unlink $file;
-	close $LOG;
-	$Config{debug} = 0;
+    $Config{debug} = 0;
+    open $LOG, '+>', \$log;
+    $Config{rrddir} = $FindBin::Bin;
+    $Config{dbseparator} = '';
+    my $result = dbfilelist('testbox', 'Partition: /');
+    ok(@{$result}, 0);
+    my $file = "$FindBin::Bin/testbox_Partition%3A%20%2F_test.rrd";
+    open TEST, ">$file";
+    print TEST "test\n";
+    close TEST;
+    my @result = dbfilelist('testbox', 'Partition: /');
+    ok(@result, 1);
+    unlink $file;
+    close $LOG;
+    $Config{debug} = 0;
 }
 
 sub testgetdataitems {
@@ -694,21 +694,22 @@ sub testgetdataitems {
     teardownrrd();
 }
 
+# FIXME: bad use of result variable here
 sub testgraphinfo {
     $Config{rrddir} = $FindBin::Bin;
 
     $Config{dbseparator} = '';
-    $testvar = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    my $testvar = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
     $Config{hostservvar} = 'testbox,procs,users';
     $Config{hostservvarsep} = ';';
     $Config{hostservvar} = listtodict('hostservvar');
     ok($Config{hostservvar}->{testbox}->{procs}->{users}, 1);
-    @result = createrrd('testbox', 'procs', 1221495632, $testvar);
+    my @result = createrrd('testbox', 'procs', 1221495632, $testvar);
     ok($result[0]->[1], 'testbox_procsusers_procs.rrd');
     ok(-f $FindBin::Bin . '/testbox_procsusers_procs.rrd');
     ok(-f $FindBin::Bin . '/testbox_procs_procs.rrd');
 
-    $result = graphinfo('testbox', 'procs', ['procs']);
+    my $result = graphinfo('testbox', 'procs', ['procs']);
     my $file = $FindBin::Bin . '/testbox_procs_procs.rrd';
     skip(! -f $file, $result->[0]->{file}, 'testbox_procs_procs.rrd');
     skip(! -f $file, $result->[0]->{line}->{uwarn}, 1);
@@ -1371,7 +1372,7 @@ sub testprintmenudatascript {
 
     # when no javascript, print nothing
     undef $Config{javascript};
-    $result = printmenudatascript(\@servers, \%servers);
+    my $result = printmenudatascript(\@servers, \%servers);
     ok($result, "");
 
     # when we have javascript, we should have menudata
@@ -1406,18 +1407,18 @@ menudata[5] = [\"host5\"
 }
 
 sub testgraphsizes {
-	$Config{debug} = 0;
-	open $LOG, '+>', \$log;
-	@result = graphsizes(''); # defaults
-	ok($result[0][0], 'day');
-	ok($result[1][2], 604800);
-	@result = graphsizes('year month quarter'); # comes back in length order
-	ok($result[0][0], 'month');
-	ok($result[1][2], 7776000);
-	@result = graphsizes('test junk week'); # only returns week
-	ok(@result, 1);
-	close $LOG;
-	$Config{debug} = 0;
+    $Config{debug} = 0;
+    open $LOG, '+>', \$log;
+    my @result = graphsizes(''); # defaults
+    ok($result[0][0], 'day');
+    ok($result[1][2], 604800);
+    @result = graphsizes('year month quarter'); # comes back in length order
+    ok($result[0][0], 'month');
+    ok($result[1][2], 7776000);
+    @result = graphsizes('test junk week'); # only returns week
+    ok(@result, 1);
+    close $LOG;
+    $Config{debug} = 0;
 }
 
 sub testreadperfdata {
@@ -1428,7 +1429,7 @@ sub testreadperfdata {
     # a test without data
     open $LOG, ">$fn";
     close $LOG;
-    @result = readperfdata($fn);
+    my @result = readperfdata($fn);
     ok(@result, 0);
     # a test with data
     open $LOG, ">$fn";
@@ -1450,7 +1451,7 @@ sub testgetrras {
     my @rows = (1, 2, 3, 4);
     $Config{maximums} = 'Current Load,PLW,Procs: total,User Count';
     $Config{maximums} = listtodict('maximums', q(,));
-    @result = main::getrras('Current Load', $xff, \@rows, \@steps);
+    my @result = main::getrras('Current Load', $xff, \@rows, \@steps);
     ok(Dumper(\@result), "\$VAR1 = [
           'RRA:MAX:0.5:1:1',
           'RRA:MAX:0.5:6:2',
@@ -1486,40 +1487,220 @@ sub testgetrras {
 }
 
 sub testcheckdatasources {
-	$Config{debug} = 0;
-	open $LOG, '+>', \$log;
-	$result = checkdatasources([0], 'test', [0], 'junk');
-	ok($result, 1);
-	$result = checkdatasources([0,1,2], 'test', [0, 1], 'junk');
-	ok($result, 1);
-	$result = checkdatasources([0,1,2], 'test', [0], 'junk');
-	ok($result, 0);
-	close $LOG;
-	$Config{debug} = 0;
+    $Config{debug} = 0;
+    open $LOG, '+>', \$log;
+    my $result = checkdatasources([0], 'test', [0], 'junk');
+    ok($result, 1);
+    $result = checkdatasources([0,1,2], 'test', [0, 1], 'junk');
+    ok($result, 1);
+    $result = checkdatasources([0,1,2], 'test', [0], 'junk');
+    ok($result, 0);
+    close $LOG;
+    $Config{debug} = 0;
 }
 
+# FIXME: the hostservar naming convention is awful, but we must respect it
+#  in order to maintain backward compatibility
+# beware! createrrd modifies the contents of $s
 sub testcreaterrd {
     $Config{debug} = 0;
     open $LOG, '+>', \$log;
-    $Config{rrddir} = $FindBin::Bin;
-    # test creation of a separate file for specific data
+    my $rrddir = gettestrrddir();
+    $Config{rrddir} = $rrddir;
+    my $s;
+    my @result;
+    my $fn;
+
+    # test the old directory structure
     $Config{dbseparator} = '';
-    $testvar = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    $fn = 'testbox_PING_ping.rrd';
+
+    # single data file
+    undef $Config{hostservvar};
+    undef $Config{withminimums};
+    undef $Config{withmaximums};
+    mkdir $Config{rrddir};
+    $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    ok($result[0]->[0], $fn);
+    ok(-f "${rrddir}/$fn");
+    ok(! -f "${rrddir}/${fn}_min");
+    ok(! -f "${rrddir}/${fn}_max");
+    rmtree($rrddir);
+
+    # add minimums
+    $Config{withminimums} = 'PING';
+    $Config{withminimums} = listtodict('withminimums', q(,));
+    mkdir $Config{rrddir};
+    $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    ok($result[0]->[0], $fn);
+    ok(-f "${rrddir}/$fn");
+    ok(-f "${rrddir}/${fn}_min");
+    ok(! -f "${rrddir}/${fn}_max");
+    rmtree($rrddir);
+
+    # add maximums
+    $Config{withmaximums} = 'PING';
+    $Config{withmaximums} = listtodict('withmaximums', q(,));
+    mkdir $Config{rrddir};
+    $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    ok($result[0]->[0], $fn);
+    ok(-f "${rrddir}/$fn");
+    ok(-f "${rrddir}/${fn}_min");
+    ok(-f "${rrddir}/${fn}_max");
+    rmtree($rrddir);
+
+    # test hostservvar
+    $s = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
     $Config{hostservvar} = 'testbox,procs,users';
     $Config{hostservvarsep} = ';';
     $Config{hostservvar} = listtodict('hostservvar');
     ok($Config{hostservvar}->{testbox}->{procs}->{users}, 1);
-    @result = createrrd('testbox', 'procs', 1221495632, $testvar);
+    mkdir $Config{rrddir};
+    @result = createrrd('testbox', 'procs', 1221495632, $s);
     ok($result[0]->[1], 'testbox_procsusers_procs.rrd');
-    ok(-f $FindBin::Bin . '/testbox_procsusers_procs.rrd');
-    ok(-f $FindBin::Bin . '/testbox_procs_procs.rrd');
-    # test creation of a default data file
+    ok(-f $rrddir . '/testbox_procsusers_procs.rrd');
+    ok(-f $rrddir . '/testbox_procs_procs.rrd');
+    rmtree($rrddir);
+
+    # test the new directory structure
     $Config{dbseparator} = 'subdir';
-    $testvar = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
-    @result = createrrd('testbox', 'PING', 1221495632, $testvar);
-    ok($result[0]->[0], 'PING___ping.rrd');
+    $fn = 'PING___ping.rrd';
+
+    # single data file
+    undef $Config{hostservvar};
+    undef $Config{withminimums};
+    undef $Config{withmaximums};
+    mkdir $Config{rrddir};
+    $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    ok($result[0]->[0], $fn);
     ok($result[1]->[0]->[0], 0);
     ok($result[1]->[0]->[1], 1);
+    ok(-f "${rrddir}/testbox/$fn");
+    ok(! -f "${rrddir}/testbox/${fn}_min");
+    ok(! -f "${rrddir}/testbox/${fn}_max");
+    rmtree($rrddir);
+
+    # add minimums
+    $Config{withminimums} = 'PING';
+    $Config{withminimums} = listtodict('withminimums', q(,));
+    mkdir $Config{rrddir};
+    $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    ok($result[0]->[0], $fn);
+    ok($result[1]->[0]->[0], 0);
+    ok($result[1]->[0]->[1], 1);
+    ok(-f "${rrddir}/testbox/$fn");
+    ok(-f "${rrddir}/testbox/${fn}_min");
+    ok(! -f "${rrddir}/testbox/${fn}_max");
+    rmtree($rrddir);
+
+    # add maximums
+    $Config{withmaximums} = 'PING';
+    $Config{withmaximums} = listtodict('withmaximums', q(,));
+    mkdir $Config{rrddir};
+    $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    ok($result[0]->[0], $fn);
+    ok($result[1]->[0]->[0], 0);
+    ok($result[1]->[0]->[1], 1);
+    ok(-f "${rrddir}/testbox/$fn");
+    ok(-f "${rrddir}/testbox/${fn}_min");
+    ok(-f "${rrddir}/testbox/${fn}_max");
+    rmtree($rrddir);
+
+    # test hostservvar
+    $s = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    $Config{hostservvar} = 'testbox,procs,users';
+    $Config{hostservvarsep} = ';';
+    $Config{hostservvar} = listtodict('hostservvar');
+    ok($Config{hostservvar}->{testbox}->{procs}->{users}, 1);
+    mkdir $Config{rrddir};
+    @result = createrrd('testbox', 'procs', 1221495632, $s);
+    ok($result[0]->[1], 'procsusers___procs.rrd');
+    ok(-f $rrddir . '/testbox/procsusers___procs.rrd');
+    ok(-f $rrddir . '/testbox/procs___procs.rrd');
+    rmtree($rrddir);
+
+    close $LOG;
+    $Config{debug} = 0;
+}
+
+sub testrrdupdate {
+    my $rrddir = gettestrrddir();
+    $Config{rrddir} = $rrddir;
+    mkdir $Config{rrddir};
+
+    my (@result, $s, $fn, $f, $ts1, $ts2);
+
+    # test the old directory structure
+    $Config{dbseparator} = '';
+    $fn = 'testbox_PING_ping.rrd';
+
+    # single data file
+    undef $Config{withminimums};
+    undef $Config{withmaximums};
+    mkdir $Config{rrddir};
+    $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    $f = "${rrddir}/${fn}";
+    $ts1 = (stat($f))[9];
+    sleep(2);
+    $s = [ ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    rrdupdate($result[0]->[0], 1221495635, $s,
+              'testbox', 'PING', $result[1]->[0]);
+    $ts2 = (stat($f))[9];
+    ok(-f $f);
+    ok($ts2 > $ts1);
+    rmtree($rrddir);
+
+    # test the new directory structure
+    $Config{dbseparator} = 'subdir';
+    $fn = 'PING___ping.rrd';
+
+    # single data file
+    undef $Config{withminimums};
+    undef $Config{withmaximums};
+    mkdir $Config{rrddir};
+    $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd('testbox', 'PING', 1221495632, $s);
+    $f = "${rrddir}/testbox/${fn}";
+    $ts1 = (stat($f))[9];
+    sleep(2);
+    $s = [ ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    rrdupdate($result[0]->[0], 1221495635, $s,
+              'testbox', 'PING', $result[1]->[0]);
+    $ts2 = (stat($f))[9];
+    ok(-f $f);
+    ok($ts2 > $ts1);
+    rmtree($rrddir);
+
+    # test regression for handling of services with underscore in the name
+    # https://sourceforge.net/projects/nagiosgraph/forums/forum/394748/topic/4043301
+
+    open $LOG, '>', 'testrrdupdate.log';
+    $Config{debug} = 5;
+
+    $fn = 'PING_MAX___ping.rrd';
+    $Config{withminimums} = 'PING';
+    $Config{withminimums} = listtodict('withminimums', q(,));
+    $Config{withmaximums} = 'PING';
+    $Config{withmaximums} = listtodict('withmaximums', q(,));
+    mkdir $Config{rrddir};
+    $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    @result = createrrd('testbox', 'PING_MAX', 1221495632, $s);
+    $f = "${rrddir}/testbox/${fn}";
+    ok(-f $f);
+    ok(! -f "{$f}_min");
+    ok(! -f "{$f}_max");
+    $s = [ ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
+    rrdupdate($result[0]->[0], 1221495635, $s,
+              'testbox', 'PING_MAX', $result[1]->[0]);
+    rmtree($rrddir);
+
     close $LOG;
     $Config{debug} = 0;
 }
@@ -1545,17 +1726,6 @@ sub testmkvname {
     ok(mkvname('ping','loss%20pct'), 'ping_loss_20pct');
     ok(mkvname('0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789','abcdefghijklmnopqrstuvwxyz'), '0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789_abcd');
     ok(mkvname('a-b','r_s,'), 'a-b_r_s_');
-}
-
-sub testrrdupdate { # depends on testcreaterrd making a file
-	$Config{debug} = 0;
-	open $LOG, '+>', \$log;
-#	dumpdata($log, \@result, 'result');
-	rrdupdate($result[0]->[0], 1221495635, $testvar, 'testbox', $result[1]->[0]);
-	skip(! -f $FindBin::Bin . '/testbox/PING___ping.rrd', $log, "");
-	close $LOG;
-#	dumpdata($log, \@result, 'result');
-	$Config{debug} = 0;
 }
 
 sub testgetrules {
@@ -1757,7 +1927,7 @@ sub testi18n {
 
 sub testprinti18nscript {
     undef $Config{javascript};
-    $result = printi18nscript();
+    my $result = printi18nscript();
     ok($result, "");
 
     $Config{javascript} = 'foo';
@@ -3590,7 +3760,7 @@ testcheckdatasources();
 testcheckdsname();
 testmkvname();
 testcreaterrd();
-testrrdupdate(); # must be run after createrrd
+testrrdupdate();
 testgetrules();
 testgetlineattr();
 testrrdline();

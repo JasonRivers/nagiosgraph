@@ -2756,7 +2756,7 @@ sub runupdate {
 }
 
 sub rrdupdate {
-    my ($file, $time, $values, $host, $ds) = @_;
+    my ($file, $time, $values, $host, $service, $ds) = @_;
     my $directory = $Config{rrddir};
 
     # Select target folder depending on config settings
@@ -2777,7 +2777,6 @@ sub rrdupdate {
     }
     runupdate(\@dataset);
 
-    my $service = (split /_/, $file)[0];
     if (defined $Config{withminimums}->{$service}) {
         $dataset[0] = "$directory/${file}_min";
         runupdate(\@dataset);
@@ -2863,7 +2862,8 @@ sub processdata {
                 my ($rrds, $sets) = createrrd($data[1],$data[2],$data[0]-1,$s);
                 next if not $rrds;
                 for my $ii (0 .. @{$rrds} - 1) {
-                    rrdupdate($rrds->[$ii],$data[0],$s,$data[1],$sets->[$ii]);
+                    rrdupdate($rrds->[$ii], $data[0], $s,
+                              $data[1], $data[2], $sets->[$ii]);
                 }
             }
         }
