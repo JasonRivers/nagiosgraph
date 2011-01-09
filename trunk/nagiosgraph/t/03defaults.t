@@ -131,16 +131,13 @@ sub testconfig {
     ok($Config{hidelegend}, undef);
     ok($Config{graphonly}, undef);
     ok(Dumper($Config{maximums}), "\$VAR1 = {
-          'Procs: total' => 1,
           'PLW' => 1,
           'Current Load' => 1,
-          'Procs: zombie' => 1,
-          'User Count' => 1
+          'Total Processes' => 1,
+          'Current Users' => 1
         };\n");
     ok(Dumper($Config{minimums}), "\$VAR1 = {
-          'Mem: swap' => 1,
-          'APCUPSD' => 1,
-          'Mem: free' => 1
+          'APCUPSD' => 1
         };\n");
     ok(Dumper($Config{withmaximums}), "\$VAR1 = {
           'HTTP' => 1,
