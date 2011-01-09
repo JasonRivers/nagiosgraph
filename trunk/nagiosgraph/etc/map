@@ -72,6 +72,15 @@ and return ('ignore');
 /output:.*plugin may be missing/
 and return ('ignore');
 
+/output:.*Host Unreachable/
+and return ('ignore');
+
+/output:Connection to \S+ failed/
+and return ('ignore');
+
+/output:.*timed out waiting for/
+and return ('ignore');
+
 ###############################################################################
 
 # Service type: unix-netstat
