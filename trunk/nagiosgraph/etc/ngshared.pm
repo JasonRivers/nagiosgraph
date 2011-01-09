@@ -2753,7 +2753,7 @@ sub runupdate {
     return;
 }
 
-sub rrdupdate {
+sub rrdupdate { ## no critic (ProhibitManyArgs)
     my ($file, $time, $host, $service, $ds, $values) = @_;
     my $directory = $Config{rrddir};
 
