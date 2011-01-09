@@ -1018,24 +1018,44 @@ sub writestub {
     return $fail;
 }
 
+# if the nagiosgraph cgi url is the same as the nagios cgi url, do not add a
+# new entry - that would cause a configuration error.  same goes for the
+# nagiosgraph base url, but in that case we must guess since the nagios base
+# url is not specified for us anywhere.  for that we match nagios or nagios3.
 sub printapacheconf {
-    my ($cgiurl, $cgidir, $ngurl, $wwwdir) = @_;
-    my $str = "# enable nagiosgraph CGI scripts\n";
-    $str .= "ScriptAlias $cgiurl \"$cgidir\"\n";
-    $str .= "<Directory \"$cgidir\">\n";
-    $str .= "   Options ExecCGI\n";
-    $str .= "   AllowOverride None\n";
-    $str .= "   Order allow,deny\n";
-    $str .= "   Allow from all\n";
-    $str .= "</Directory>\n";
+    my ($cgiurl, $cgidir, $ngurl, $wwwdir, $nagioscgiurl) = @_;
+    $nagioscgiurl = q() if ! defined $nagioscgiurl;
+    my $str = q();
+    my $cmmt = q();
+
+    $str .= "# enable nagiosgraph CGI scripts\n";
+    if ($cgiurl eq $nagioscgiurl) {
+        $cmmt = q(#);
+    } else {
+        $cmmt = q();
+    }
+    $str .= $cmmt . "ScriptAlias $cgiurl \"$cgidir\"\n";
+    $str .= $cmmt . "<Directory \"$cgidir\">\n";
+    $str .= $cmmt . "   Options ExecCGI\n";
+    $str .= $cmmt . "   AllowOverride None\n";
+    $str .= $cmmt . "   Order allow,deny\n";
+    $str .= $cmmt . "   Allow from all\n";
+    $str .= $cmmt . "</Directory>\n";
+
     $str .= "# enable nagiosgraph CSS and JavaScript\n";
-    $str .= "Alias $ngurl \"$wwwdir\"\n";
-    $str .= "<Directory \"$wwwdir\">\n";
-    $str .= "   Options None\n";
-    $str .= "   AllowOverride None\n";
-    $str .= "   Order allow,deny\n";
-    $str .= "   Allow from all\n";
-    $str .= "</Directory>\n";
+    if ($ngurl =~ /nagios\d*\/*$/) {
+        $cmmt = q(#);
+    } else {
+        $cmmt = q();
+    }
+    $str .= $cmmt . "Alias $ngurl \"$wwwdir\"\n";
+    $str .= $cmmt . "<Directory \"$wwwdir\">\n";
+    $str .= $cmmt . "   Options None\n";
+    $str .= $cmmt . "   AllowOverride None\n";
+    $str .= $cmmt . "   Order allow,deny\n";
+    $str .= $cmmt . "   Allow from all\n";
+    $str .= $cmmt . "</Directory>\n";
+
     return $str;
 }
 
@@ -1147,7 +1167,8 @@ sub installfiles {
                            printapacheconf($conf->{ng_cgi_url},
                                            $conf->{ng_cgi_dir},
                                            $conf->{ng_url},
-                                           $conf->{ng_www_dir}),
+                                           $conf->{ng_www_dir},
+                                           $conf->{nagios_cgi_url}),
                            $doit);
     }
 
@@ -1270,8 +1291,6 @@ sub patchnagios {
     return $fail;
 }
 
-# FIXME: do the right thing when nagios and nagiosgraph share same cgi dir/url
-# FIXME: do the right thing when nagios and nagiosgraph share same www dir
 sub patchapache {
     my ($conf, $doit) = @_;
     my $fail = 0;
