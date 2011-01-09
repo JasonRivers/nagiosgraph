@@ -351,7 +351,7 @@ sub dumpfile {
         if (open my $FH, '<', $fn) {
             while (<$FH>) {
                 my $line = $_;
-                next if $line =~ /\s*\#/;
+                next if $line =~ /^\s*\#/;
                 print $line;
             }
             close $FH or print "close failed for $fn: $OS_ERROR";
