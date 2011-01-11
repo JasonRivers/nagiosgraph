@@ -344,7 +344,11 @@ example, with Apache do something like this in the Apache configuration:
      Allow from all
   </Directory>
 
-Verify that nagiosgraph is working by running show.cgi or showgraph.cgi.
+Verify that nagiosgraph is working by running showconfig.cgi
+
+  http://server/nagios/cgi-bin/showconfig.cgi
+
+Try graphing some data by running show.cgi
 
   http://server/nagios/cgi-bin/show.cgi
 
@@ -625,8 +629,8 @@ knowledge. Knowledge of RRD is also helpful.
 
 There has to be one entry for each type of service. The map file included 
 with nagiosgraph has several examples for cpu, memory, disk, network etc.
-Most examples follow the of identifying data from either Nagios output or
-Nagios perfdata and defining a number of RRD data sources.
+Most examples identify data from either Nagios output or Nagios perfdata
+then define a number of RRD data sources.
 
 insert.pl receives data from Nagios.  It formats data into a string consisting
 of four lines of text.  This string might look like this:
@@ -692,7 +696,7 @@ PING example above, becomes:
 
 In this case the database name is called 'ping' and the DS-names stored 
 are losspct and rta. The Nagios output reports round trip time in 
-milliseconds, so the value is multiplied by 1000 to convert to seconds. 
+milliseconds, so the value is divided by 1000 to convert to seconds. 
 The type for each DS is GAUGE.
 
 Be careful about the database names and DS names. In the code example 
@@ -906,6 +910,14 @@ make sure that it is working properly.  For example:
 
   check_ping -H host -w 100,10% -c 200,20%
 
+Are permissions set correctly?  The nagios user must be able to write to
+the rrd directory.  The nagios user must be able to write to the nagiosgraph
+log file.  The web server user must be able to write to the nagiosgraph cgi
+log file (which might be the same as the nagiosgraph log file for older
+nagiosgraph installations).  If the web server user does not have permission
+to modify the log file, nagiosgraph cgi logging will end up in the web server
+error log.
+
 Is nagiosgraph running?  In nagiosgraph.conf, set debug_insert=5 then look
 at the nagiosgraph log file.  You should see messages from insert.pl.  Ensure
 that insert.pl is being called as expected, either periodically by Nagios or
@@ -925,14 +937,6 @@ Are the RRD file contents sane?  Use 'rrdtool dump filename.rrd'.  It is
 normal for a new RRD file to be full of NaN.  As the file is updated those
 should be replaced with proper values.  Ensure that the data source names in
 the RRD file correspond to the names in the map rule.
-
-Are permissions set correctly?  The nagios user must be able to write to
-the rrd directory.  The nagios user must be able to write to the nagiosgraph
-log file.  The web server user must be able to write to the nagiosgraph cgi
-log file (which might be the same as the nagiosgraph log file for older
-nagiosgraph installations).  If the web server user does not have permission
-to modify the log file, nagiosgraph cgi logging will end up in the web server
-error log.
 
 Are there old or unused RRD files lying about?  Older versions of nagiosgraph
 can be confused by multiple RRD files with the same data source for a single
@@ -956,8 +960,8 @@ debug_showhost (showhost.cgi), debug_showservice (showservice.cgi), or
 debug_showgroup (showgroup.cgi) as appropriate.
 
 For installations with many hosts and services, use the host/service
-extensions (e.g. debug_showgraph_host = host) to make the log information
-easier to grok.
+extensions when setting the log level (e.g. debug_showgraph_host = host)
+to make the log information easier to grok.
 
 
 

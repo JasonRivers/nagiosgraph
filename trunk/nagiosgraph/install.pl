@@ -840,7 +840,17 @@ sub checkinstallation {
         logmsg('  GD is not installed (GD is recommended but not required)');
     }
 
-    logmsg('checking map file');
+    logmsg('checking map file with perl');
+    my $result = `perl -c $mapfn 2>&1`;
+    if ($result =~ /syntax OK/) {
+        logmsg('  no errors detected in map file.');
+    } else {
+        logmsg('  one or more problems with map file');
+        logmsg($result);
+        $fail = 1;
+    }
+
+    logmsg('checking ability to load map file');
     if (open my $FH, '<', $mapfn) {
         my @rules;
         while(<$FH>) {
@@ -860,9 +870,9 @@ sub checkinstallation {
             '} 1' . "\n";
         my $rc = eval $code;  ## no critic (ProhibitStringyEval)
         if (defined $rc && $rc) {
-            logmsg('  map file smells like valid perl');
+            logmsg('  map file loaded successfully');
         } else {
-            logmsg('*** map file eval error: map file is not valid perl!');
+            logmsg('*** map file eval error!');
             $fail = 1;
         }
     } else {

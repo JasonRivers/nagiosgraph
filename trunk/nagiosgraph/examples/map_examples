@@ -216,8 +216,12 @@ and push @s, [ ldap,
 # Service type: web server
 #   output:HTTP OK HTTP/1.1 200 OK - 1456 bytes in 0.003 seconds
 /output:HTTP.*?(\d+) byte.*?([.0-9]+) sec/
-	output:HTTP OK HTTP/1.1 200 OK - 0.578 second response time
-	perfdata:time=0.577628s;;;0.000000 size=18242B;;;0
+and push @s, [ 'http',
+               [ 'bps', GAUGE, $1/$2 ] ];
+
+# Service type: web server
+#   output:HTTP OK HTTP/1.1 200 OK - 0.578 second response time
+#   perfdata:time=0.577628s;;;0.000000 size=18242B;;;0
 /perfdata:time=(\d+\.\d+)s.*size=(\d+)B/
 and push @s, [ 'http',
                [ 'bps', GAUGE, $2/$1 ] ];
