@@ -15,12 +15,12 @@ use FindBin;
 use Test;
 use strict;
 
-#use CGI qw(:standard escape unescape);
-#use Data::Dumper;
-#use File::Find;
-#use File::Path qw(rmtree);
-#use lib "$FindBin::Bin/../etc";
-#use ngshared;
+use CGI qw(:standard escape unescape);
+use Data::Dumper;
+use File::Find;
+use File::Path qw(rmtree);
+use lib "$FindBin::Bin/../etc";
+use ngshared;
 
 BEGIN {
     eval "require RRDs; RRDs->import();
@@ -34,7 +34,7 @@ BEGIN {
         plan tests => 0;
         exit 0;
     } else {
-        plan tests => 607;
+        plan tests => 644;
     }
 }
 
@@ -430,20 +430,43 @@ sub testlisttodict { # Split a string separated by a configured value into hash
     close $LOG;
 }
 
-sub teststr2hash {
-    my $val = str2hash('H,S,D=10;*,*=50');
-    ok(Dumper($val), "\$VAR1 = {
-          'H,S,D' => '10',
-          '*,*' => '50'
-        };\n");
-}
-
 sub teststr2list {
     my $val = str2list('H,S,D=10;*,*=50');
     ok(Dumper($val), "\$VAR1 = [
           'H,S,D=10',
           '*,*=50'
         ];\n");
+    # reverse the order
+    $val = str2list('*,*=50;H,S,D=10');
+    ok(Dumper($val), "\$VAR1 = [
+          '*,*=50',
+          'H,S,D=10'
+        ];\n");
+
+    my $str = "\$VAR1 = [
+          '*,*=50',
+          'H,S,D=10'
+        ];\n";
+
+    # trailing delimiter
+    $val = str2list('*,*=50;H,S,D=10;');
+    ok(Dumper($val), $str);
+    # trailing delimiters
+    $val = str2list('*,*=50;H,S,D=10;;');
+    ok(Dumper($val), $str);
+    # leading delimiters
+    $val = str2list(';;;*,*=50;H,S,D=10');
+    ok(Dumper($val), $str);
+
+    # check stripping of spaces
+    $val = str2list('*,*=50;H,S,D=10  ');
+    ok(Dumper($val), $str);
+    $val = str2list('   *,*=50;H,S,D=10  ');
+    ok(Dumper($val), $str);
+    $val = str2list('   *,*=50; H,S,D=10  ');
+    ok(Dumper($val), $str);
+    $val = str2list('*,*=50     ; H,S,D=10  ');
+    ok(Dumper($val), $str);
 }
 
 sub testarrayorstring {
@@ -463,6 +486,152 @@ sub testcheckdirempty { # Test with an empty directory, then one with a file.
 	ok(checkdirempty('checkdir'), 0);
 	unlink 'checkdir/tmp';
 	rmdir 'checkdir';
+}
+
+sub testhsddmatch {
+    ok(hsddmatch('XX', 'h,s,db,ds', 'DS', 'h', 's', 'db', 'ds'), 1);
+    ok(hsddmatch('XX', ',s,db,ds', 'DS', 'h', 's', 'db', 'ds'), 0);
+    ok(hsddmatch('XX', ',,db,ds', 'DS', 'h', 's', 'db', 'ds'), 0);
+    ok(hsddmatch('XX', ',,,ds', 'DS', 'h', 's', 'db', 'ds'), 0);
+
+    ok(hsddmatch('XX', '.*,.*,.*,ds', 'DS', 'h', 's', 'db', 'ds'), 1);
+
+    ok(hsddmatch('XX', '.*.com,.*,.*,ds', 'DS', 'h.com', 's', 'db', 'ds'), 1);
+    ok(hsddmatch('XX', '.*.com,.*,.*,ds', 'DS', 'h.edu', 's', 'db', 'ds'), 0);
+
+    ok(hsddmatch('XX', 'h,s,db,ds', 'DS', 'h', 's', 'db', 'ds'), 1);
+    ok(hsddmatch('XX', 'h,s,db,ds', 'DS', 'H', 's', 'db', 'ds'), 0);
+    ok(hsddmatch('XX', 'h,s,db', 'S', 'h', 's', 'db'), 1);
+    ok(hsddmatch('XX', 'h,s,db', 'S', 'H', 's', 'db'), 0);
+}
+
+sub testgethsdd {
+    # datasource priority
+    $Config{hsd} = 'h,s,db,ds';
+    $Config{hsdlist} = str2list($Config{hsd});
+    ok(gethsdd('DS', 'hsd', '0', 'h', 's', 'db', 'ds'), 1);
+    ok(gethsdd('DS', 'hsd', '0', 'H', 's', 'db', 'ds'), 0);
+
+    # pattern too long for datasource priority
+    $Config{hsd} = 'h,s,db,ds,LINE,COLOR';
+    $Config{hsdlist} = str2list($Config{hsd});
+    ok(gethsdd('DS', 'hsd', '0', 'h', 's', 'db', 'ds'), 0);
+
+    # service priority
+    $Config{hsd} = 'h,s,db';
+    $Config{hsdlist} = str2list($Config{hsd});
+    ok(gethsdd('S', 'hsd', '0', 'h', 's', 'db'), 1);
+    ok(gethsdd('S', 'hsd', '0', 'H', 's', 'db'), 0);
+
+    # pattern too long for service priority
+    $Config{hsd} = 'h,s,db,ds';
+    $Config{hsdlist} = str2list($Config{hsd});
+    ok(gethsdd('S', 'hsd', '0', 'h', 's', 'db', 'ds'), 0);
+
+    undef $Config{hsd};
+    undef $Config{hsdlist};
+}
+
+sub testgethsddvalue {
+#    $Config{debug} = 5;
+#    open $LOG, '>', 'testgethsddvalue';
+    $Config{hsd} = 'h,s,db,ds';
+    $Config{hsdlist} = str2list($Config{hsd});
+    ok(gethsddvalue('hsd', '0', 'h', 's', 'db', 'ds'), 1);
+    ok(gethsddvalue('hsd', '0', 'H', 's', 'db', 'ds'), 0);
+    undef $Config{hsd};
+    undef $Config{hsdlist};
+#    close $LOG;
+}
+
+sub testgethsdvalue {
+    $Config{hsd} = 'h,s,db';
+    $Config{hsdlist} = str2list($Config{hsd});
+    ok(gethsdvalue('hsd', '0', 'h', 's', 'db'), '1');
+    ok(gethsdvalue('hsd', '0', 'H', 's', 'db'), '0');
+    ok(gethsdvalue('hsd', '0', 'ha', 's', 'db'), '0');
+    ok(gethsdvalue('hsd', '0', 'ah', 's', 'db'), '0');
+    $Config{hsd} = 'hh,s,db';
+    $Config{hsdlist} = str2list($Config{hsd});
+    ok(gethsdvalue('hsd', '0', 'hh', 's', 'db'), '1');
+    ok(gethsdvalue('hsd', '0', 'h', 's', 'db'), '0');
+    undef $Config{hsd};
+    undef $Config{hsdlist};
+}
+
+sub testgethsdvalue2 {
+    $Config{hsdlist} = str2list('host0,ping,rta=10;host5,http,bps=30');
+    my $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '50');
+    $Config{hsd} = 100;
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '100');
+    $Config{hsdlist} = str2list('host1,ping,rta=10;host5,http,bps=30');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '10');
+    $Config{hsdlist} = str2list('host1,ping,rta=10;host5,http,bps=30');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'loss');
+    ok($x, '100');
+
+    # test matching precedence - should be first match
+    $Config{hsd} = 100;
+    $Config{hsdlist} = str2list('.*,.*,.*=30');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '30');
+    $Config{hsdlist} = str2list('.*,ping,.*=30');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '30');
+    $Config{hsdlist} = str2list('.*,PING,.*=30');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '100');
+    $Config{hsdlist} = str2list('host1,ping,.*=10;.*,.*,.*=30');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '10');
+    $Config{hsdlist} = str2list('.*,.*,.*=30;host1,ping,.*=10');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '30');
+    $Config{hsdlist} = str2list('host1,.*,.*=10;.*,.*,.*=30');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '10');
+    $Config{hsdlist} = str2list('.*,ping,.*=10;.*,.*,.*=30');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '10');
+
+    # test combinations
+    $Config{hsd} = 100;
+    $Config{hsdlist} = str2list('.*,.*,delay=30;.*,ping,loss=10');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '100');
+    $Config{hsdlist} = str2list('.*,.*,rta=30;.*,ping,loss=10');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '30');
+    $Config{hsdlist} = str2list('.*,.*,rta=20;.*,ping,rta=10');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'rta');
+    ok($x, '20');
+    $Config{hsdlist} = str2list('host1,.*,rta=30;.*,ping,RTA=10');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'ping', 'RTA');
+    ok($x, '10');
+    $Config{hsdlist} = str2list('host1,.*,rta=30;.*,ping,RTA=10');
+    $x = gethsdvalue2('hsd', 50, 'host1', 'frak', 'rta');
+    ok($x, '30');
+
+    # test partial specifications
+
+    undef $Config{hsd};
+    undef $Config{hsdlist};
+
+    # simulate what happens with the 'heartbeat' parameter
+    $Config{heartbeat} = 600;
+    $x = gethsdvalue2('heartbeat', 5, 'host1', 'ping', 'loss');
+    ok($x, 600);
+    $x = gethsdvalue2('heartbeat', 5, 'host2', 'ping', 'loss');
+    ok($x, 600);
+    $Config{heartbeatlist} = str2list('host1,ping,loss=20;.*,.*,.*=500');
+    $x = gethsdvalue2('heartbeat', 5, 'host1', 'ping', 'loss');
+    ok($x, 20);
+    $x = gethsdvalue2('heartbeat', 5, 'host2', 'ping', 'loss');
+    ok($x, 500);
+    undef $Config{heartbeatlist};
 }
 
 sub testreadfile {
@@ -728,142 +897,172 @@ sub testgraphinfo {
 }
 
 sub testgetlineattr {
-    # test individual line attribute options
     $Config{colorscheme} = 1;
     $Config{plotas} = 'LINE1';
-    $Config{plotasLINE1} = {'avg5min' => 1, 'avg15min' => 1};
-    $Config{plotasLINE2} = {'a' => 1};
-    $Config{plotasLINE3} = {'b' => 1};
-    $Config{plotasAREA} = {'ping' => 1};
-    $Config{plotasTICK} = {'http' => 1};
-    $Config{stack} = {'s' => 1};
+    $Config{plotasLINE1} = 'avg5min,avg15min';
+    $Config{plotasLINE2} = 'a';
+    $Config{plotasLINE3} = 'b';
+    $Config{plotasAREA} = 'ping';
+    $Config{plotasTICK} = 'http';
+    $Config{stack} = 's';
 
-    my ($linestyle, $linecolor, $stack) = getlineattr('foo');
+    $Config{plotasLINE1list} = str2list($Config{plotasLINE1}, q(,));
+    $Config{plotasLINE2list} = str2list($Config{plotasLINE2}, q(,));
+    $Config{plotasLINE3list} = str2list($Config{plotasLINE3}, q(,));
+    $Config{plotasAREAlist} = str2list($Config{plotasAREA}, q(,));
+    $Config{plotasTICKlist} = str2list($Config{plotasTICK}, q(,));
+    $Config{stacklist} = str2list($Config{stack}, q(,));
+
+    my ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'foo');
     ok($linestyle, 'LINE1');
     ok($linecolor, '000399');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('ping');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'ping');
     ok($linestyle, 'AREA');
     ok($linecolor, '990333');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('http');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'http');
     ok($linestyle, 'TICK');
     ok($linecolor, '000099');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('avg15min');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'avg15min');
     ok($linestyle, 'LINE1');
     ok($linecolor, '6600FF');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('a');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'a');
     ok($linestyle, 'LINE2');
     ok($linecolor, 'CC00CC');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('b');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'b');
     ok($linestyle, 'LINE3');
     ok($linecolor, 'CC00FF');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('s');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 's');
     ok($linestyle, 'LINE1');
     ok($linecolor, 'CC03CC');
     ok($stack, 1);
 
     # test basic lineformat behavior
-    $Config{lineformat} = 'warn,LINE1,D0D050;crit,LINE2,D05050;total,AREA,dddddd88';
-    listtodict('lineformat', q(;));
-    ($linestyle, $linecolor, $stack) = getlineattr('warn');
+    $Config{lineformat} = 'warn=LINE1,D0D050;crit=LINE2,D05050;total=AREA,dddddd88';
+    $Config{lineformatlist} = str2list($Config{lineformat});
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'warn');
     ok($linestyle, 'LINE1');
     ok($linecolor, 'D0D050');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('crit');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'crit');
     ok($linestyle, 'LINE2');
     ok($linecolor, 'D05050');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('total');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'total');
     ok($linestyle, 'AREA');
     ok($linecolor, 'dddddd88');
     ok($stack, 0);
 
     # test various combinations and permutations
-    $Config{lineformat} = 'warn,LINE1,D0D050;crit,D05050,LINE2;total,STACK,AREA,dddddd88';
-    listtodict('lineformat', q(;));
-    ($linestyle, $linecolor, $stack) = getlineattr('warn');
+    $Config{lineformat} = 'warn=LINE1,D0D050;crit=D05050,LINE2;total=STACK,AREA,dddddd88';
+    $Config{lineformatlist} = str2list($Config{lineformat});
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'warn');
     ok($linestyle, 'LINE1');
     ok($linecolor, 'D0D050');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('crit');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'crit');
     ok($linestyle, 'LINE2');
     ok($linecolor, 'D05050');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('total');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'total');
     ok($linestyle, 'AREA');
     ok($linecolor, 'dddddd88');
     ok($stack, 1);
 
-    # test for datasource[database] formatting
-    $Config{lineformat} = 'warn,LINE1,D0D050;data[total],STACK,AREA,dddddd88;data[fleece],LINE3,ffffff';
-    listtodict('lineformat', q(;));
-    ($linestyle, $linecolor, $stack) = getlineattr('warn');
+    # test for database,datasource formatting
+    $Config{lineformat} = 'warn=LINE1,D0D050;total,data=STACK,AREA,dddddd88;fleece,data=LINE3,ffffff';
+    $Config{lineformatlist} = str2list($Config{lineformat});
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'warn');
     ok($linestyle, 'LINE1');
     ok($linecolor, 'D0D050');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('data','total');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'total', 'data');
     ok($linestyle, 'AREA');
     ok($linecolor, 'dddddd88');
     ok($stack, 1);
-    ($linestyle, $linecolor, $stack) = getlineattr('data','fleece');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'fleece', 'data');
     ok($linestyle, 'LINE3');
     ok($linecolor, 'ffffff');
     ok($stack, 0);
 
-    # test for datasource[database] formatting (overlapping definition case)
-    $Config{lineformat} = 'warn,LINE1,D0D050;data[total],STACK,AREA,dddddd88;data[fleece],LINE3,ffffff;data,STACK,TICK,222222';
-    listtodict('lineformat', q(;));
-    ($linestyle, $linecolor, $stack) = getlineattr('warn');
+    # test for database,datasource formatting (overlapping definition case)
+    $Config{lineformat} = 'warn=LINE1,D0D050;total,data=STACK,AREA,dddddd88;fleece,data=LINE3,ffffff;data=STACK,TICK,222222';
+    $Config{lineformatlist} = str2list($Config{lineformat});
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'warn');
     ok($linestyle, 'LINE1');
     ok($linecolor, 'D0D050');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('data','total');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'total', 'data');
     ok($linestyle, 'AREA');
     ok($linecolor, 'dddddd88');
     ok($stack, 1);
-    ($linestyle, $linecolor, $stack) = getlineattr('data','fleece');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'fleece', 'data');
     ok($linestyle, 'LINE3');
     ok($linecolor, 'ffffff');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('data');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'data');
     ok($linestyle, 'TICK');
     ok($linecolor, '222222');
     ok($stack, 1);
-    ($linestyle, $linecolor, $stack) = getlineattr('data','foobar');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'foobar', 'data');
     ok($linestyle, 'TICK');
     ok($linecolor, '222222');
     ok($stack, 1);
 
-    # test for datasource[database] formatting (reverse overlapping case)
-    $Config{lineformat} = 'data,STACK,TICK,222222;warn,LINE1,D0D050;data[total],STACK,AREA,dddddd88;data[fleece],LINE3,ffffff';
-    listtodict('lineformat', q(;));
-    ($linestyle, $linecolor, $stack) = getlineattr('warn');
+    # test for database,datasource formatting (reverse overlapping case)
+    $Config{lineformat} = 'data=STACK,TICK,222222;warn=LINE1,D0D050;total,data=STACK,AREA,dddddd88;fleece,data=LINE3,ffffff';
+    $Config{lineformatlist} = str2list($Config{lineformat});
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'warn');
     ok($linestyle, 'LINE1');
     ok($linecolor, 'D0D050');
     ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('data','total');
-    ok($linestyle, 'AREA');
-    ok($linecolor, 'dddddd88');
-    ok($stack, 1);
-    ($linestyle, $linecolor, $stack) = getlineattr('data','fleece');
-    ok($linestyle, 'LINE3');
-    ok($linecolor, 'ffffff');
-    ok($stack, 0);
-    ($linestyle, $linecolor, $stack) = getlineattr('data');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'total', 'data');
     ok($linestyle, 'TICK');
     ok($linecolor, '222222');
     ok($stack, 1);
-    ($linestyle, $linecolor, $stack) = getlineattr('data','foobar');
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'fleece', 'data');
     ok($linestyle, 'TICK');
     ok($linecolor, '222222');
     ok($stack, 1);
-
-    $Config{plotas} = 'LINE2';
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'database', 'data');
+    ok($linestyle, 'TICK');
+    ok($linecolor, '222222');
+    ok($stack, 1);
+    ($linestyle, $linecolor, $stack) =
+        getlineattr('host', 'service', 'foobar', 'data');
+    ok($linestyle, 'TICK');
+    ok($linecolor, '222222');
+    ok($stack, 1);
 }
 
 # return a set of parameters for testing rrdline
@@ -1084,7 +1283,8 @@ sub testrrdline {
     # test negate
     %params = getrrdlineparams();
     $params{db} = ['ping,rta'];
-    $Config{negate}{rta} = 1;
+    $Config{negate} = 'rta';
+    $Config{negatelist} = str2list($Config{negate});
     ($ds,$err) = rrdline(\%params);
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
@@ -1099,16 +1299,10 @@ sub testrrdline {
           600
         ];\n");
     undef $Config{negate};
+    undef $Config{negatelist};
 
-    # test min/max options
+    # test withminimums and withmaximums
 
-    # FIXME: get make listtodict more obvious (no side effects)
-    # FIXME: use 'maximums' and 'maximumshash' rather than replacing 'maximums'
-    #        same for all the other stuff replaced by listtodict.
-    $Config{maximums} = 'Current Load,PLW,Procs: total,Procs: zombie,User Count';
-    $Config{maximums} = listtodict('maximums', q(,));
-    $Config{minimums} = 'APCUPSD,Mem: free,Mem: swap';
-    $Config{minimums} = listtodict('minimums', q(,));
     $Config{withmaximums} = 'PING';
     $Config{withmaximums} = listtodict('withmaximums', q(,));
     $Config{withminimums} = 'PING';
@@ -1132,8 +1326,6 @@ sub testrrdline {
           '-w',
           600
         ];\n");
-    undef $Config{minimums};
-    undef $Config{maximums};
     undef $Config{withminimums};
     undef $Config{withmaximums};
 
@@ -1443,35 +1635,81 @@ sub testgetrras {
     my $xff = 0.5;
     my @steps = (1, 6, 24, 288);
     my @rows = (1, 2, 3, 4);
-    $Config{maximums} = 'Current Load,PLW,Procs: total,User Count';
-    $Config{maximums} = listtodict('maximums', q(,));
-    my @result = main::getrras('Current Load', $xff, \@rows, \@steps);
+
+    undef $Config{maximums};
+    undef $Config{maximumslist};
+    undef $Config{minimums};
+    undef $Config{minimumslist};
+    undef $Config{lasts};
+    undef $Config{lastslist};
+
+    # test fully-qualified formatting
+
+    $Config{maximums} = 'host1,Current Load,data;host2,Current Users,data;host3,Total Processes,data;host1,PLW,critical';
+    $Config{maximumslist} = str2list($Config{maximums});
+    my @result = main::getrras('host1', 'Current Load', 'data',
+                               $xff, \@rows, \@steps);
     ok(Dumper(\@result), "\$VAR1 = [
           'RRA:MAX:0.5:1:1',
           'RRA:MAX:0.5:6:2',
           'RRA:MAX:0.5:24:3',
           'RRA:MAX:0.5:288:4'
         ];\n");
-    $Config{minimums} = 'APCUPSD,fruitloops';
-    $Config{minimums} = listtodict('minimums', q(,));
-    @result = main::getrras('APCUPSD', $xff, \@rows, \@steps);
+
+    # test single fully-qualified
+
+    $Config{minimums} = 'host1,APCUPSD,data;';
+    $Config{minimumslist} = str2list($Config{minimums});
+    @result = main::getrras('host1', 'APCUPSD', 'data',
+                            $xff, \@rows, \@steps);
     ok(Dumper(\@result), "\$VAR1 = [
           'RRA:MIN:0.5:1:1',
           'RRA:MIN:0.5:6:2',
           'RRA:MIN:0.5:24:3',
           'RRA:MIN:0.5:288:4'
         ];\n");
-    $Config{lasts} = 'sunset,sunrise';
-    $Config{lasts} = listtodict('lasts', q(,));
-    @result = main::getrras('sunset', $xff, \@rows, \@steps);
+    @result = main::getrras('host1', 'APCUPSD', 'critical',
+                            $xff, \@rows, \@steps);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'RRA:AVERAGE:0.5:1:1',
+          'RRA:AVERAGE:0.5:6:2',
+          'RRA:AVERAGE:0.5:24:3',
+          'RRA:AVERAGE:0.5:288:4'
+        ];\n");
+    @result = main::getrras('host10', 'APCUPSD', 'data',
+                            $xff, \@rows, \@steps);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'RRA:AVERAGE:0.5:1:1',
+          'RRA:AVERAGE:0.5:6:2',
+          'RRA:AVERAGE:0.5:24:3',
+          'RRA:AVERAGE:0.5:288:4'
+        ];\n");
+
+    # test mix of fully qualified and not
+
+    $Config{lasts} = 'host1,sunrise,data;sunset;moonshine,data';
+    $Config{lastslist} = str2list($Config{lasts});
+    @result = main::getrras('host1', 'sunset', 'data',
+                            $xff, \@rows, \@steps);
     ok(Dumper(\@result), "\$VAR1 = [
           'RRA:LAST:0.5:1:1',
           'RRA:LAST:0.5:6:2',
           'RRA:LAST:0.5:24:3',
           'RRA:LAST:0.5:288:4'
         ];\n");
-    # default
-    @result = main::getrras('other value', $xff, \@rows, \@steps);
+    @result = main::getrras('host1', 'moonshine', 'data',
+                            $xff, \@rows, \@steps);
+    ok(Dumper(\@result), "\$VAR1 = [
+          'RRA:LAST:0.5:1:1',
+          'RRA:LAST:0.5:6:2',
+          'RRA:LAST:0.5:24:3',
+          'RRA:LAST:0.5:288:4'
+        ];\n");
+
+    # default to average when no match
+
+    @result = main::getrras('host1', 'other value', 'data',
+                            $xff, \@rows, \@steps);
     ok(Dumper(\@result), "\$VAR1 = [
           'RRA:AVERAGE:0.5:1:1',
           'RRA:AVERAGE:0.5:6:2',
@@ -3439,115 +3677,48 @@ sub testcfgparams {
     undef %Config;
 }
 
-sub testgethsdmatch {
-    $Config{hsdlist} = str2list('host0,ping=10;host5,http=30');
-    my $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '50');
-    $Config{hsd} = 100;
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '100');
-    $Config{hsdlist} = str2list('host1,ping=10;host5,http=30');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '10');
-
-    # test matching precedence - should be last match
-    $Config{hsd} = 100;
-    $Config{hsdlist} = str2list('.*,.*=30');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '30');
-    $Config{hsdlist} = str2list('.*,ping=30');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '30');
-    $Config{hsdlist} = str2list('.*,PING=30');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '100');
-    $Config{hsdlist} = str2list('host1,ping=10;.*,.*=30');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '30');
-    $Config{hsdlist} = str2list('.*,.*=30;host1,ping=10');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '10');
-    $Config{hsdlist} = str2list('.*,.*=30;host1,.*=10');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '10');
-    $Config{hsdlist} = str2list('.*,.*=30;.*,ping=10');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '10');
-
-    # test database
-    $Config{hsdlist} = str2list('.*,.*,delay=30;.*,ping,loss=10');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '100');
-    $Config{hsdlist} = str2list('.*,.*,rta=30;.*,ping,loss=10');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '30');
-    $Config{hsdlist} = str2list('.*,.*,rta=30;.*,ping,rta=10');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '10');
-    $Config{hsdlist} = str2list('host1,.*,rta=30;.*,ping,RTA=10');
-    $x = gethsdmatch('hsd', 50, 'host1', 'ping', 'rta');
-    ok($x, '30');
-
-    undef $Config{hsd};
-    undef $Config{hsdlist};
-
-    # simulate what happens with the 'heartbeat' parameter
-    $Config{heartbeat} = 600;
-    $x = gethsdmatch('heartbeat', 5, 'host1', 'ping', 'loss');
-    ok($x, 600);
-    $x = gethsdmatch('heartbeat', 5, 'host2', 'ping', 'loss');
-    ok($x, 600);
-    $Config{heartbeatlist} = str2list('.*,.*,.*=500;host1,ping,loss=20');
-    $x = gethsdmatch('heartbeat', 5, 'host1', 'ping', 'loss');
-    ok($x, 20);
-    $x = gethsdmatch('heartbeat', 5, 'host2', 'ping', 'loss');
-    ok($x, 500);
-    undef $Config{heartbeatlist};
-}
-
 sub testsetlabels {
     $Config{colorscheme} = 2;
     $Config{plotas} = 'LINE1';
 
     undef $Config{minimums};
+    undef $Config{minimumslist};
     undef $Config{maximums};
+    undef $Config{maximumslist};
     undef $Config{lasts};
+    undef $Config{lastslist};
     undef $Config{stack};
-    my @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    undef $Config{stacklist};
+    my @result = setlabels('host', 'serv', 'db', 'ds', 'file', 'label', 20);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:AVERAGE',
           'LINE1:db_ds#990033:label               '
         ];\n");
 
-    undef $Config{minimums};
-    undef $Config{maximums};
-    undef $Config{lasts};
     $Config{stack} = 'ds';
-    listtodict('stack', q(,));
-    @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    $Config{stacklist} = str2list($Config{stack});
+    @result = setlabels('host', 'serv', 'db', 'ds', 'file', 'label', 20);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:AVERAGE',
           'LINE1:db_ds#990033:label               :STACK'
         ];\n");
 
-    undef $Config{minimums};
-    $Config{maximums} = 'serv';
-    $Config{maximums} = listtodict('maximums', q(,));
-    undef $Config{lasts};
     undef $Config{stack};
-    @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    undef $Config{stacklist};
+    $Config{maximums} = 'serv';
+    $Config{maximumslist} = str2list($Config{maximums});
+    @result = setlabels('host', 'serv', 'db', 'ds', 'file', 'label', 20);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:MAX',
           'CDEF:ceildb_ds=db_ds,CEIL',
           'LINE1:db_ds#990033:label               '
         ];\n");
 
-    $Config{minimums} = 'serv';
-    $Config{minimums} = listtodict('minimums', q(,));
-    undef $Config{lasts};
     undef $Config{maximums};
-    undef $Config{stack};
-    @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    undef $Config{maximumslist};
+    $Config{minimums} = 'serv';
+    $Config{minimumslist} = str2list($Config{minimums});
+    @result = setlabels('host', 'serv', 'db', 'ds', 'file', 'label', 20);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:MIN',
           'CDEF:floordb_ds=db_ds,FLOOR',
@@ -3555,11 +3726,11 @@ sub testsetlabels {
         ];\n");
 
     undef $Config{minimums};
-    undef $Config{maximums};
+    undef $Config{minimumslist};
     $Config{lasts} = 'serv';
-    $Config{lasts} = listtodict('lasts', q(,));
+    $Config{lastslist} = str2list($Config{lasts});
     undef $Config{stack};
-    @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    @result = setlabels('host', 'serv', 'db', 'ds', 'file', 'label', 20);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:LAST',
           'LINE1:db_ds#990033:label               '
@@ -3568,14 +3739,14 @@ sub testsetlabels {
     # if defined for all of them, then max is used because we look for it first
 
     $Config{minimums} = 'serv';
-    $Config{minimums} = listtodict('minimums', q(,));
+    $Config{minimumslist} = str2list($Config{minimums});
     $Config{maximums} = 'serv';
-    $Config{maximums} = listtodict('maximums', q(,));
+    $Config{maximumslist} = str2list($Config{maximums});
     $Config{lasts} = 'serv';
-    $Config{lasts} = listtodict('lasts', q(,));
+    $Config{lastslist} = str2list($Config{lasts});
     $Config{stack} = 'ds';
-    listtodict('stack', q(,));
-    @result = setlabels('ds', 'db', 'file', 'serv', 'label', 20);
+    $Config{stacklist} = str2list($Config{stack});
+    @result = setlabels('host', 'serv', 'db', 'ds', 'file', 'label', 20);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:MAX',
           'CDEF:ceildb_ds=db_ds,CEIL',
@@ -3588,12 +3759,8 @@ sub testsetlabels {
 sub testsetdata {
     undef $Config{withminimums};
     undef $Config{withmaximums};
-    undef $Config{minimums};
-    undef $Config{maximums};
-    undef $Config{lasts};
-    undef $Config{stack};
 
-    my @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000);
+    my @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'GPRINT:db_ds:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
@@ -3601,14 +3768,14 @@ sub testsetdata {
           'GPRINT:db_ds:LAST:Cur\\\\:%7.2lf%s\\\\n'
         ];\n");
 
-    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'GPRINT:db_ds:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:db_ds:MIN:Min\\\\:%7.2lf%s\\\\n'
         ];\n");
 
-    @result = setdata('ds', 'db', 'file', 'serv', 1, 1_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 1, 1_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'GPRINT:db_ds:MAX:Max\\\\:%7.2lf',
           'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf',
@@ -3616,7 +3783,7 @@ sub testsetdata {
           'GPRINT:db_ds:LAST:Cur\\\\:%7.2lf\\\\n'
         ];\n");
 
-    @result = setdata('ds', 'db', 'file', 'serv', 1, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 1, 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'GPRINT:db_ds:MAX:Max\\\\:%7.2lf',
           'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf',
@@ -3626,7 +3793,7 @@ sub testsetdata {
     $Config{withminimums} =  'serv';
     listtodict('withminimums', q(,));
     undef $Config{withmaximums};
-    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_min=file_min:ds:MIN',
           'LINE1:db_ds_min#BBBBBB:minimum',
@@ -3640,7 +3807,7 @@ sub testsetdata {
     undef $Config{withminimums};
     $Config{withmaximums} =  'serv';
     listtodict('withmaximums', q(,));
-    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_max=file_max:ds:MAX',
           'LINE1:db_ds_max#888888:maximum',
@@ -3655,7 +3822,7 @@ sub testsetdata {
     listtodict('withminimums', q(,));
     $Config{withmaximums} =  'serv';
     listtodict('withmaximums', q(,));
-    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_max=file_max:ds:MAX',
           'LINE1:db_ds_max#888888:maximum',
@@ -3672,7 +3839,7 @@ sub testsetdata {
 
     $Config{colormin} = '111111';
     undef $Config{colormax};
-    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_max=file_max:ds:MAX',
           'LINE1:db_ds_max#888888:maximum',
@@ -3689,7 +3856,7 @@ sub testsetdata {
 
     undef $Config{colormin};
     $Config{colormax} = 'eeeeee';
-    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_max=file_max:ds:MAX',
           'LINE1:db_ds_max#eeeeee:maximum',
@@ -3706,7 +3873,7 @@ sub testsetdata {
 
     $Config{colormin} = '111111';
     $Config{colormax} = 'eeeeee';
-    @result = setdata('ds', 'db', 'file', 'serv', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_max=file_max:ds:MAX',
           'LINE1:db_ds_max#eeeeee:maximum',
@@ -3735,10 +3902,15 @@ testdircreation();
 testmkfilename();
 testhashcolor();
 testlisttodict();
-teststr2hash();
 teststr2list();
 testarrayorstring();
 testcheckdirempty();
+testhsddmatch();
+testgethsdd();
+testgethsddvalue();
+testgethsdvalue();
+testgethsdvalue2();
+#testgethsddvalue();
 testreadfile();
 testinitlog();
 testreadconfig();
@@ -3785,6 +3957,6 @@ testgetdatalabel();
 testbuildurl();
 testcfgparams();
 testgetparams();
-testgethsdmatch();
 testsetlabels();
 testsetdata();
+

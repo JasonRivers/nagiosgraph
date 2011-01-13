@@ -86,28 +86,13 @@ sub testconfig {
     ok($Config{colormax}, '888888');
     ok($Config{colormin}, 'BBBBBB');
     ok($Config{plotas}, 'LINE2');
-    ok(Dumper($Config{plotasLINE1}), "\$VAR1 = {
-          'data[load5]' => 1,
-          'data[load15]' => 1
-        };\n");
-    ok(Dumper($Config{plotasLINE2}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{plotasLINE3}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{plotasAREA}), "\$VAR1 = {
-          'data[idle]' => 1,
-          'data[nice]' => 1,
-          'data[user]' => 1,
-          'data[system]' => 1
-        };\n");
-    ok(Dumper($Config{plotasTICK}), "\$VAR1 = {};\n");
-    ok(Dumper($Config{stack}), "\$VAR1 = {
-          'data[nice]' => 1,
-          'data[user]' => 1,
-          'data[system]' => 1
-        };\n");
-    ok(Dumper($Config{lineformat}), "\$VAR1 = {
-          'warn,LINE1,D0D050' => 1,
-          'crit,LINE1,D05050' => 1
-        };\n");
+    ok(Dumper($Config{plotasLINE1}), "\$VAR1 = 'load5,data;load15,data';\n");
+    ok(Dumper($Config{plotasLINE2}), "\$VAR1 = '';\n");
+    ok(Dumper($Config{plotasLINE3}), "\$VAR1 = '';\n");
+    ok(Dumper($Config{plotasAREA}), "\$VAR1 = 'idle,data;system,data;user,data;nice,data';\n");
+    ok(Dumper($Config{plotasTICK}), "\$VAR1 = '';\n");
+    ok(Dumper($Config{stack}), "\$VAR1 = 'system,data;user,data;nice,data';\n");
+    ok(Dumper($Config{lineformat}), "\$VAR1 = 'warn=LINE1,D0D050;crit=LINE1,D05050';\n");
     ok($Config{timeall}, 'day,week,month,year');
     ok($Config{timehost}, 'day,week,month');
     ok($Config{timeservice}, 'day,week,month');
@@ -130,15 +115,8 @@ sub testconfig {
     ok($Config{showgraphtitle}, undef);
     ok($Config{hidelegend}, undef);
     ok($Config{graphonly}, undef);
-    ok(Dumper($Config{maximums}), "\$VAR1 = {
-          'PLW' => 1,
-          'Current Load' => 1,
-          'Total Processes' => 1,
-          'Current Users' => 1
-        };\n");
-    ok(Dumper($Config{minimums}), "\$VAR1 = {
-          'APCUPSD' => 1
-        };\n");
+    ok(Dumper($Config{maximums}), "\$VAR1 = 'Current Load,.*;Current Users,.*;Total Processes,.*;PLW,.*';\n");
+    ok(Dumper($Config{minimums}), "\$VAR1 = 'APCUPSD,.*;';\n");
     ok(Dumper($Config{withmaximums}), "\$VAR1 = {
           'HTTP' => 1,
           'PING' => 1
@@ -147,7 +125,7 @@ sub testconfig {
           'HTTP' => 1,
           'PING' => 1
         };\n");
-    ok(Dumper($Config{negate}), "\$VAR1 = {};\n");
+    ok(Dumper($Config{negate}), "\$VAR1 = undef;\n");
     ok(Dumper($Config{hostservvar}), "\$VAR1 = {};\n");
     ok(Dumper($Config{altautoscale}), "\$VAR1 = {};\n");
     ok(Dumper($Config{altautoscalemin}), "\$VAR1 = {};\n");

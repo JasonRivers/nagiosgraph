@@ -34,6 +34,8 @@ Desired Features
 * testing with incinga, nagios xi
 * cron job to archive or delete old rrd files
 * logrotate scripts for nagiosgraph.log and nagiosgraph-cgi.log    
+* the topology of data mapping should all reside in the map file instead of
+    being split between the map file and the configuration file
 
 Notes
 

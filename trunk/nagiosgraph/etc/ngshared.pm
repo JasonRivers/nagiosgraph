@@ -41,7 +41,7 @@ use vars qw($VERSION %Config %Labels %i18n %authhosts %authz %hsdata $colorsub $
 # permit tests to have access.
 # FIXME: this should be done as EXPORT_OK or EXPORT_TAGS
 ## no critic (Modules::ProhibitAutomaticExportation)
-our @EXPORT = qw($VERSION $CFGNAME %Config DBCRT DBERR DBWRN DBINF DBDEB cfgparams checkrrddir dbfilelist debug dumper getdebug getimg getlabel getparams getperiodctrls getperiodlabel getrules getstyle gettimestamp graphsizes hashcolor havepermission htmlerror imgerror init initperiods loadperms printfooter printgraphlinks printheader printinitscript printperiodlinks processdata readconfig readdatasetdb readgroupdb readhostdb readi18nfile readlabelsfile readperfdata readrrdoptsfile readservdb rrdline $LOG %authz %authhosts %hsdata %Labels %i18n addopt arrayorstring buildurl checkdatasources checkdirempty checkdsname checkminmax checkuserlist cleanline createminmax createrrd filterdb formatelapsedtime formattime getcfgfn getdataitems getdatalabel getdbs gethsdmatch getlineattr getperms getrefresh getrras getserverlist graphinfo initlog listtodict mergeopts mkfilename mki18nfilename mklegend mkvname parsedb printcontrols printdefaultscript printi18nscript printincludescript printmenudatascript printsummary readfile readnagiosperms readpermsfile rrdupdate runcreate runupdate scandirectory scanhierarchy scanhsdata scrubuserlist setdata setlabels sortnaturally stacktrace str2hash str2list evalrules);
+our @EXPORT = qw($VERSION $CFGNAME %Config DBCRT DBERR DBWRN DBINF DBDEB cfgparams checkrrddir convertdeprecated dbfilelist debug dumper getdebug getimg getlabel getparams getperiodctrls getperiodlabel getrules getstyle gettimestamp graphsizes hashcolor havepermission htmlerror imgerror init initperiods loadperms printfooter printgraphlinks printheader printinitscript printperiodlinks processdata readconfig readdatasetdb readgroupdb readhostdb readi18nfile readlabelsfile readperfdata readrrdoptsfile readservdb rrdline $LOG %authz %authhosts %hsdata %Labels %i18n addopt arrayorstring buildurl checkdatasources checkdirempty checkdsname checkminmax checkuserlist cleanline createminmax createrrd filterdb formatelapsedtime formattime getcfgfn getdataitems getdatalabel getdbs gethsdd gethsddvalue gethsdvalue gethsdvalue2 getlineattr getperms getrefresh getrras getserverlist graphinfo hsddmatch initlog listtodict mergeopts mkfilename mki18nfilename mklegend mkvname parsedb printcontrols printdefaultscript printi18nscript printincludescript printmenudatascript printsummary readfile readnagiosperms readpermsfile rrdupdate runcreate runupdate scandirectory scanhierarchy scanhsdata scrubuserlist setdata setlabels sortnaturally stacktrace str2list evalrules);
 
 $VERSION = '1.4.4';
 $CFGNAME = 'nagiosgraph.conf';
@@ -668,21 +668,20 @@ sub listtodict {
     return $Config{$val};
 }
 
-sub str2hash {
-    my ($str) = @_;
-    my %rval;
-    foreach my $i (split /;/, $str) {
-        my ($n, $v) = split /=/, $i;
-        $rval{$n} = $v;
-    }
-    return \%rval;
-}
-
+# FIXME: ensure no regexp breakage (do this when reading/validated conf)
+# return a list from the indicated string.
+# strip any leading and trailing spaces from each element.
 sub str2list {
-    my ($str) = @_;
+    my ($str, $delim) = @_;
+    $str ||= q();
+    $delim ||= q(;);
     my @rval;
-    foreach my $i (split /;/, $str) {
-        push @rval, $i;
+    foreach my $i (split /$delim/, $str) {
+        $i =~ s/^\s+//g;
+        $i =~ s/\s+$//g;
+        if ($i ne q()) {
+            push @rval, $i;
+        }
     }
     return \@rval;
 }
@@ -762,6 +761,7 @@ sub checkrrddir {
 }
 
 # read the config file.  get the log initialized as soon as possible.
+# convert any deprecated variables to new variables and/or syntax.
 # ensure sane default values for everything, even if not specified.
 sub readconfig {
     my ($app, $logid) = @_;
@@ -773,23 +773,32 @@ sub readconfig {
 
     initlog($app, $Config{$logid});
 
+    convertdeprecated(\%Config);
+
+    # now initialize structures and configure defaults
+
     $Config{rrdoptshash}{global} =
         defined $Config{rrdopts} ? $Config{rrdopts} : q();
 
-    foreach my $ii ('maximums', 'minimums', 'lasts',
-                    'withmaximums', 'withminimums',
-                    'altautoscale', 'nogridfit', 'logarithmic', 'negate',
-                    'plotasLINE1', 'plotasLINE2', 'plotasLINE3',
-                    'plotasAREA', 'plotasTICK', 'stack') {
+    foreach my $ii ('withmaximums', 'withminimums',
+                    'altautoscale', 'nogridfit', 'logarithmic') {
         listtodict($ii, q(,));
     }
-    foreach my $ii ('hostservvar', 'lineformat') {
+    foreach my $ii ('hostservvar') {
         listtodict($ii, q(;));
     }
     foreach my $ii ('altautoscalemax', 'altautoscalemin') {
         listtodict($ii, q(;), 1);
     }
-    foreach my $ii ('heartbeats', 'stepsizes', 'resolutions', 'steps', 'xffs') {
+    foreach my $ii ('plotasLINE1', 'plotasLINE2', 'plotasLINE3', 'plotasAREA',
+                    'plotasTICK', 'stack', 'negate', 'lineformat',
+                    'maximums', 'minimums', 'lasts') {
+        if ($Config{$ii}) {
+            $Config{$ii . 'list'} =
+                str2list($Config{$ii}, $Config{$ii} =~ /;/ ? q(;) : q(,));
+        }
+    }
+    foreach my $ii ('heartbeats', 'stepsizes', 'resolutions', 'steps', 'xffs'){
         if (defined $Config{$ii}) {
             my $key = $ii;
             chomp $key;
@@ -821,6 +830,45 @@ sub readconfig {
     $Config{colors} = [split /\s*,\s*/, $Config{colors}];
 
     return q();
+}
+
+# process the configuration variables and convert anything in old format to
+# the newest format.  this is to maintain backward compatibility with older
+# configuration files.
+sub convertdeprecated {
+    my ($cfg) = @_;
+
+    # lineformat=warn,LINE1,FFFFFF  ->  lineformat=warn=LINE1,FFFFFF
+    if ( defined $cfg->{lineformat} && $cfg->{lineformat} !~ /=/ ) {
+        my $v = q();
+        foreach my $tuple (split /;/, $cfg->{lineformat}) {
+            my $lhs = q();
+            my $rhs = q();
+            foreach my $x (split /,/, $tuple) {
+                if ($x eq 'LINE1' || $x eq 'LINE2' ||
+                    $x eq 'LINE3' || $x eq 'AREA' ||
+                    $x eq 'TICK' || $x eq 'STACK' ||
+                    $x =~ /[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]+/) {
+                    if ($rhs ne q()) {
+                        $rhs .= q(,);
+                    }
+                    $rhs .= $x;
+                } else {
+                    if ($lhs ne q()) {
+                        $lhs .= q(,);
+                    }
+                    $lhs .= $x;
+                }
+            }
+            if ($v ne q()) {
+                $v .= q(;);
+            }
+            $v .= $lhs . q(=) . $rhs;
+        }
+        $cfg->{lineformat} = $v;
+    }
+
+    return;
 }
 
 sub readrrdoptsfile {
@@ -1591,39 +1639,117 @@ sub graphinfo {
     return \@rrd;
 }
 
-sub getlineattr {
-    my ($ds,$db) = @_;
-    $db |= q();
-    my $dds = "${ds}[${db}]"; # distinguished ds
-    my $stack = 0;
-    if (defined $Config{stack}->{$ds} ||
-        defined $Config{stack}->{$dds}) {
-        $stack = 1;
+# return the first instance of a match for host, service, db, datasource
+sub gethsddvalue { ## no critic (ProhibitManyArgs)
+    my ($key, $dflt, $host, $service, $db, $ds) = @_;
+    return gethsdd('DS', $key, $dflt, $host, $service, $db, $ds);
+}
+
+# return the first instance of a match for the host, service, and database.
+sub gethsdvalue {
+    my ($key, $dflt, $host, $service, $db) = @_;
+    return gethsdd('S', $key, $dflt, $host, $service, $db);
+}
+
+# similar to gethsdvalue, but use the non-list key first if one is defined.
+sub gethsdvalue2 {
+    my ($key, $val, $host, $service, $db) = @_;
+    my $x = $val;
+    if ( defined $Config{$key} ) {
+        $x = $Config{$key};
     }
+    return gethsdd('S', $key, $x, $host, $service, $db);
+}
+
+# return the first instance of a match for the host, service, database, and
+# datasource.
+sub gethsdd { ## no critic (ProhibitManyArgs)
+    my ($pri, $key, $dflt, $host, $service, $db, $ds) = @_;
+    my $value = $dflt;
+    if ( defined $Config{$key . 'list'} ) {
+        foreach my $item (@{$Config{$key . 'list'}}) {
+            my ($p, $v);
+            if ($item =~ /=/) {
+                ($p,$v) = split /=/, $item;
+            } else {
+                ($p,$v) = ($item, 1);
+            }
+            debug(DBDEB, "p=$p v=$v");
+            if (hsddmatch($key, $p, $pri, $host, $service, $db, $ds)) {
+                $value = $v;
+                last;
+            }
+        }
+    }
+    return $value;
+}
+
+# return 1 if we have a match, 0 otherwise.
+# there are different matching patterns, depending on whether the priority is
+# the datasource (ds) or the service (s).  the pattern matching expects four
+# fields, so format the components depending on how many fields are in the
+# match string.
+#
+# datasource
+#                               datasource
+#                      database,datasource
+#              service,database,datasource
+#         host,service,database,datasource
+#
+# service
+#              service
+#              service,database
+#         host,service,database
+#
+sub hsddmatch { ## no critic (ProhibitManyArgs)
+    my ($key, $str, $priority, $host, $service, $db, $ds) = @_;
+    $host ||= q();
+    $service ||= q();
+    $db ||= q();
+    $ds ||= q();
+    my $count = $str =~ s/(,)/$1/g;
+    my $tuple = 'BOGUS_PATTERN';
+    if ($priority eq 'DS') {
+        if ($count == 0) {
+            $tuple = $ds;
+        } elsif ($count == 1) {
+            $tuple = "$db,$ds";
+        } elsif ($count == 2) {
+            $tuple = "$service,$db,$ds";
+        } elsif ($count == 3) {
+            $tuple = "$host,$service,$db,$ds";
+        } else {
+            debug(DBDEB, "in config '$key', bad pattern '$str': expecting 1 to 4 parts, found " . ($count+1));
+        }
+    } else {
+        if ($count == 0) {
+            $tuple = $service;
+        } elsif ($count == 1) {
+            $tuple = "$service,$db";
+        } elsif ($count == 2) {
+            $tuple = "$host,$service,$db";
+        } else {
+            debug(DBDEB, "in config '$key', bad pattern '$str': expecting 1 to 3 parts, found " . ($count+1));
+        }
+    }
+
+    return $tuple =~ /^${str}$/ ? 1 : 0;
+}
+
+# FIXME: support old-style formatting of linestyle
+sub getlineattr {
+    my ($host,$service,$db,$ds) = @_;
+    my $stack = gethsddvalue('stack', 0, $host, $service, $db, $ds) ? 1 : 0;
     my $linestyle = $Config{plotas};
     foreach my $ii (qw(LINE1 LINE2 LINE3 AREA TICK)) {
-        if (defined $Config{'plotas' . $ii}->{$ds} ||
-            defined $Config{'plotas' . $ii}->{$dds}) {
+        if (gethsddvalue('plotas' . $ii, 0, $host, $service, $db, $ds)) {
             $linestyle = $ii;
             last;
         }
     }
     my $linecolor = q();
     if (defined $Config{lineformat}) {
-        my $tuple = q();
-        my $distinguished = 0;
-        foreach my $t (keys %{$Config{lineformat}}) {
-            my ($id) = $t =~ /^([^,]+)/;
-            $id =~ s/\s+$//g;
-            $id =~ s/^\s+//g;
-            if ($id eq $ds && !$distinguished) {
-                $tuple = $t;
-            }
-            if ($id eq $dds) {
-                $tuple = $t;
-                $distinguished = 1;
-            }
-        }
+        my $tuple = gethsddvalue('lineformat', q(), $host, $service, $db, $ds);
         if ($tuple ne q()) {
             my @values = split /,/, $tuple;
             foreach my $value (@values) {
@@ -1631,7 +1757,7 @@ sub getlineattr {
                     $value eq 'LINE3' || $value eq 'AREA' ||
                     $value eq 'TICK') {
                     $linestyle = $value;
-                } elsif ($value =~ /[0-9a-f][0-9a-f][0-9a-f]+/) {
+                } elsif ($value =~ /[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]+/) {
                     $linecolor = $value;
                 } elsif ($value eq 'STACK') {
                     $stack = 1;
@@ -1666,30 +1792,27 @@ sub mklegend {
 }
 
 sub setlabels { ## no critic (ProhibitManyArgs)
-    my ($dsname, $dbname, $file, $serv, $label, $maxlen) = @_;
-    debug(DBDEB, "setlabels($dsname, $dbname, $file, $serv, $maxlen)");
+    my ($host, $serv, $dbname, $dsname, $file, $label, $maxlen) = @_;
+    debug(DBDEB, "setlabels($host, $serv, $dbname, $dsname, $file, $maxlen)");
     my @ds;
     my $id = mkvname($dbname, $dsname);
     my $legend = mklegend($label, $maxlen);
-    my ($linestyle, $linecolor, $stack) = getlineattr($dsname,$dbname);
-    my $sdef = q();
-    if ($stack) {
-        $sdef = ':STACK';
-    }
-    if (defined $Config{maximums}->{$serv}) {
+    my ($linestyle, $linecolor, $stack) =
+        getlineattr($host, $serv, $dbname, $dsname);
+    my $sdef = $stack ? ':STACK' : q();
+    if (gethsdvalue('maximums', 0, $host, $serv, $dbname)) {
         push @ds, "DEF:$id=$file:$dsname:MAX"
                 , "CDEF:ceil$id=$id,CEIL"
                 , "$linestyle:${id}#$linecolor:$legend$sdef";
-    } elsif (defined $Config{minimums}->{$serv}) {
+    } elsif (gethsdvalue('minimums', 0, $host, $serv, $dbname)) {
         push @ds, "DEF:$id=$file:$dsname:MIN"
                 , "CDEF:floor$id=$id,FLOOR"
                 , "$linestyle:${id}#$linecolor:$legend$sdef";
     } else {
-        my $t = defined $Config{lasts}->{$serv} ? 'LAST' : 'AVERAGE';
+        my $t = gethsdvalue('lasts', 0, $host, $serv, $dbname) ?
+            'LAST' : 'AVERAGE';
         push @ds, "DEF:${id}=$file:$dsname:$t";
-        my $ddsname = "${dsname}[${dbname}]";
-        if (defined $Config{negate}->{$dsname} ||
-            defined $Config{negate}->{$ddsname}) {
+        if (gethsddvalue('negate', 0, $host, $serv, $dbname, $dsname)) {
             push @ds, "CDEF:${id}_neg=${id},-1,*"
                     , "$linestyle:${id}_neg#$linecolor:$legend$sdef";
         } else {
@@ -1700,8 +1823,8 @@ sub setlabels { ## no critic (ProhibitManyArgs)
 }
 
 sub setdata { ## no critic (ProhibitManyArgs)
-    my ($dsname, $dbname, $file, $serv, $fixedscale, $dur) = @_;
-    debug(DBDEB, "setdata($dsname, $dbname, $file, $serv, $fixedscale, $dur)");
+    my ($serv, $dbname, $dsname, $file, $fixedscale, $dur) = @_;
+    debug(DBDEB, "setdata($serv, $dbname, $dsname, $file, $fixedscale, $dur)");
     my @ds;
     my $id = mkvname($dbname, $dsname);
     my $format = ($fixedscale ? '%7.2lf' : '%7.2lf%s');
@@ -1847,8 +1970,10 @@ sub rrdline {
                 $serv = substr $service, 0, $pos;
             }
             my $label = getdatalabel("$dbname,$dsname");
-            push @ds, setlabels($dsname, $dbname, "$fn", $serv, $label, $longest);
-            push @ds, setdata($dsname, $dbname, "$fn", $serv, $fixedscale, $duration);
+            push @ds, setlabels($host, $serv, $dbname, $dsname,
+                                "$fn", $label, $longest);
+            push @ds, setdata($serv, $dbname, $dsname,
+                              "$fn", $fixedscale, $duration);
         }
     }
 
@@ -2520,14 +2645,14 @@ sub readperfdata {
 }
 
 # construct the RRA strings
-sub getrras {
-    my ($service, $xff, $rows, $steps, $choice) = @_;
+sub getrras { ## no critic (ProhibitManyArgs)
+    my ($host, $service, $dbname, $xff, $rows, $steps, $choice) = @_;
     if (not $choice) {
-        if (defined $Config{lasts}->{$service}) {
+        if (gethsdvalue('lasts', 0, $host, $service, $dbname)) {
             $choice = 'LAST';
-        } elsif (defined $Config{maximums}->{$service}) {
+        } elsif (gethsdvalue('maximums', 0, $host, $service, $dbname)) {
             $choice = 'MAX';
-        } elsif (defined $Config{minimums}->{$service}) {
+        } elsif (gethsdvalue('minimums', 0, $host, $service, $dbname)) {
             $choice = 'MIN';
         } else {
             $choice = 'AVERAGE';
@@ -2571,26 +2696,6 @@ sub checkdsname {
     return 0;
 }
 
-# look up the key.  if there is a specialization for a host/service/db, then
-# use that instead.
-sub gethsdmatch {
-    my ($key, $val, $host, $service, $db) = @_;
-    my $x = $val;
-    if ( defined $Config{$key} ) {
-        $x = $Config{$key};
-    }
-    if ( defined $Config{$key . 'list'} ) {
-        foreach my $i (@{$Config{$key . 'list'}}) {
-            my ($n, $v) = split /=/, $i;
-            my $tuple = $host . q(,) . $service . q(,) . $db;
-            if ($tuple =~ /$n/) {
-                $x = $v;
-            }
-        }
-    }
-    return $x;
-}
-
 sub createrrd {
     my ($start, $host, $service, $labels) = @_;
     debug(DBDEB, "createrrd($start,$host,$service,$labels->[0])");
@@ -2614,7 +2719,7 @@ sub createrrd {
         croak($msg);
     }
 
-    my $rstr = gethsdmatch('resolution', RESOLUTIONS, $host, $service, $db);
+    my $rstr = gethsdvalue2('resolution', RESOLUTIONS, $host, $service, $db);
     my @rows = split / /, $rstr;
     if (scalar @rows != 4) {
         my $msg = 'wrong number of values for resolution (expecting 4, got '
@@ -2623,7 +2728,7 @@ sub createrrd {
         croak($msg);
     }
 
-    my $sstr = gethsdmatch('step', STEPS, $host, $service, $db);
+    my $sstr = gethsdvalue2('step', STEPS, $host, $service, $db);
     my @steps = split / /, $sstr;
     if (scalar @steps != 4) {
         my $msg = 'wrong number of values for step (expecting 4, got '
@@ -2632,11 +2737,11 @@ sub createrrd {
         croak($msg);
     }
 
-    my $xff = gethsdmatch('xff', XFF, $host, $service, $db);
+    my $xff = gethsdvalue2('xff', XFF, $host, $service, $db);
 
-    my $heartbeat = gethsdmatch('heartbeat', HEARTBEAT, $host, $service, $db);
+    my $heartbeat = gethsdvalue2('heartbeat', HEARTBEAT, $host, $service, $db);
 
-    my $stepsize = gethsdmatch('stepsize', STEPSIZE, $host, $service, $db);
+    my $stepsize = gethsdvalue2('stepsize', STEPSIZE, $host, $service, $db);
 
     debug(DBDEB, 'createrrd step=' . $stepsize
           . ' heartbeat=' . $heartbeat
@@ -2674,18 +2779,18 @@ sub createrrd {
             push @datasets, [$ii];
             if (not -e "$directory/$fn") {
                 runcreate(["$directory/$fn",
-                           '--start', $start, '--step', $stepsize,
-                           $ds, getrras($service,$xff,\@rows,\@steps)]);
+                           '--start', $start, '--step', $stepsize, $ds,
+                           getrras($host,$service,$db,$xff,\@rows,\@steps)]);
             }
             if (checkminmax('min', $service, $directory, $fn)) {
                 runcreate(["$directory/${fn}_min",
-                           '--start', $start, '--step', $stepsize,
-                           $ds, getrras($service,$xff,\@rows,\@steps,'MIN')]);
+                           '--start', $start, '--step', $stepsize, $ds,
+                           getrras($host,$service,$db,$xff,\@rows,\@steps,'MIN')]);
             }
             if (checkminmax('max', $service, $directory, $fn)) {
                 runcreate(["$directory/${fn}_max",
-                           '--start', $start, '--step', $stepsize,
-                           $ds, getrras($service,$xff,\@rows,\@steps,'MAX')]);
+                           '--start', $start, '--step', $stepsize, $ds,
+                           getrras($host,$service,$db,$xff,\@rows,\@steps,'MAX')]);
             }
             next;
         } else {
@@ -2701,16 +2806,16 @@ sub createrrd {
     }
     if (not -e "$directory/$filenames[0]" and
         checkdatasources(\@ds, $directory, \@filenames)) {
-        push @ds, getrras($service, $xff, \@rows, \@steps);
+        push @ds, getrras($host, $service, $db, $xff, \@rows, \@steps);
         runcreate(\@ds);
     }
     createminmax('min', \@dsmin, \@filenames,
-                 { service => $service,
-                   directory => $directory,
+                 { directory => $directory,
+                   host => $host, service => $service, db => $db,
                    xff => $xff, rows => \@rows, steps => \@steps });
     createminmax('max', \@dsmax, \@filenames,
-                 { service => $service,
-                   directory => $directory,
+                 { directory => $directory,
+                   host => $host, service => $service, db => $db,
                    xff => $xff, rows => \@rows, steps => \@steps });
     dumper(DBDEB, 'createrrd filenames', \@filenames);
     dumper(DBDEB, 'createrrd datasets', \@datasets);
@@ -2733,7 +2838,7 @@ sub createminmax {
         checkdatasources($ds, $opts->{directory}, $filenames)) {
         my $s = $conf;
         $s =~ tr/[a-z]/[A-Z]/;
-        push @{$ds}, getrras($opts->{service},
+        push @{$ds}, getrras($opts->{host}, $opts->{service}, $opts->{db},
                              $opts->{xff}, $opts->{rows}, $opts->{steps}, $s);
         runcreate($ds);
     }

@@ -23,6 +23,7 @@ use Fcntl ':mode';
 use File::Copy qw(copy move);
 use File::Path qw(mkpath);
 use File::Temp qw(tempfile);
+use IPC::Open3 qw(open3);
 use POSIX qw(strftime);
 use strict;
 use warnings;
@@ -841,11 +842,16 @@ sub checkinstallation {
     }
 
     logmsg('checking map file with perl');
-    my $result = `perl -c $mapfn 2>&1`;
-    if ($result =~ /syntax OK/) {
+    my ($CHILD_IN, $CHILD_OUT, $CHILD_ERR);
+    open3($CHILD_IN, $CHILD_OUT, $CHILD_ERR, "perl -c $mapfn");
+    if (! $CHILD_ERR) {
         logmsg('  no errors detected in map file.');
     } else {
         logmsg('  one or more problems with map file');
+        my $result = q();
+        while( <$CHILD_ERR> ) {
+            $result .= $_;
+        }
         logmsg($result);
         $fail = 1;
     }

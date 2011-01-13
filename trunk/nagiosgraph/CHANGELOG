@@ -11,6 +11,10 @@ $Id$
    configured rrdtool and gd have been major source of installation woes).
    added options for different layouts (overlay or separate) and locations.
    the install script now respects the DESTDIR conventions for packaging.
+* improved handling of host,service,database,datasource specifications in the
+   graphing parameters (plotasX, stack, lineformat) and the data collection
+   parameters (minimums, maximums, lasts).  individual data sources can now
+   be distinguished, and pattern matching is supported throughout.
 * added make targets for creating rpm and deb packages.
 * added default rule to the map file that will catch any plugin with
    standards-compliant perfdata output.  removed old/redundant rules from the
@@ -38,6 +42,7 @@ $Id$
    with the string 'ignore' so they are reported as ignored rather than as not
    recognized.
 * added better reporting of missing host, service, output and/or perfdata.
+* fixed bug in hexadecimal character matching for lineformat colors.
 * fixed timestamp bug (Matthias Motzke).
 * fixed heartbeat/stepsize/resolution bug (obermufti).
 * fixed zooming on ie8 (derekdawson).

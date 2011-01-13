@@ -1259,66 +1259,68 @@ easier.
 Project Testing/Code Summary
 ----------------------------
 
-Here are some project statistics as of 27dec10:
+Here are some project statistics as of 12jan11:
 
-number of unit tests: 1073
+number of unit tests: 1259
 
 Test coverage:
                                stmt   bran   cond    sub    pod   time  total
-etc/ngshared.pm                84.3   78.5   66.9   91.1    0.0  100.0   78.3
+etc/ngshared.pm                84.3   78.5   68.6   91.3    0.0  100.0   78.5
 
 Platforms on which installation has been tested:
 
 os             arch     method             nagios
 -------------------------------------------------------------------------------
-debian 5       ppc      manual             3.2.0, 3.2.1, 3.2.2, 3.2.3
-ubuntu 10.04   i386     deb, installer     3.2.0
-fedora 14      i386     rpm, installer     3.2.3
-centos 5.5     i386     rpm, installer     3.2.3
-opensuse 11.3  i386     rpm, installer     3.2.1
+debian 5       ppc       manual             3.2.0, 3.2.1, 3.2.2, 3.2.3
+ubuntu 10.04   i386,x64  deb, installer     3.2.0
+fedora 14      i386,x64  rpm, installer     3.2.3
+centos 5.5     i386      rpm, installer     3.2.3
+opensuse 11.3  i386      rpm, installer     3.2.1
+redhat 6       i386,x64  rpm, installer     3.2.3
 
 The codebase looks like this:
 
  lines  words  bytes
    197    652   5425 cgi/show.cgi
-   515   1488  12479 cgi/showconfig.cgi
+   515   1488  12480 cgi/showconfig.cgi
    204    659   5306 cgi/showgraph.cgi
    197    732   5280 cgi/showgroup.cgi
    202    709   5564 cgi/showhost.cgi
    189    668   5096 cgi/showservice.cgi
    176    734   5487 cgi/testcolor.cgi
-  2992  12372 103361 etc/ngshared.pm
+  3113  12993 108019 etc/ngshared.pm
     72    329   2162 lib/insert.pl
-  4744  18343 150160 total
+  4865  18964 154819 total
 
    153    310   2478 share/nagiosgraph.css
-  1436   5057  40859 share/nagiosgraph.js
+  1437   5067  40944 share/nagiosgraph.js
      1      3     75 share/nagiosgraph.ssi
-  1590   5370  43412 total
+  1591   5380  43497 total
 
-    10     30    180 t/01required_modules.t
-  3551   9119 100426 t/02ngshared.t
-   180    478   6396 t/03defaults.t
+    32     98    923 t/01required_modules.t
+  3962  10351 114860 t/02ngshared.t
+   157    415   5992 t/03defaults.t
    129    400   3216 t/04show.t
-   788   2015  24038 t/05permissions.t
-  2204   3209  44139 t/06rules.t
-  1295   2395  27660 t/07perfdata.t
-  2011   3977  44717 t/09plugins.t
+   792   2024  24098 t/05permissions.t
+  2243   3268  44833 t/06rules.t
+  1299   2404  27720 t/07perfdata.t
+  2026   4108  46305 t/09plugins.t
+   220    584   7076 t/10backward.t
     11     27    346 t/97pod.t
      6     20    178 t/98podcoverage.t
      7     18    152 t/99kwalitee.t
- 10192  21688 251448 total
+ 10884  23717 275699 total
 
     32    163    879 etc/access.conf
-    20     83    714 etc/datasetdb.conf
+    22     90    787 etc/datasetdb.conf
     63    249   2251 etc/groupdb.conf
     42    164   1446 etc/hostdb.conf
-   144    326   2717 etc/labels.conf
-   341   2032  13399 etc/nagiosgraph.conf
+    92    255   1828 etc/labels.conf
+   364   2134  14366 etc/nagiosgraph.conf
     52     81    793 etc/nagiosgraph_de.conf
     52     92    865 etc/nagiosgraph_es.conf
     52    102    935 etc/nagiosgraph_fr.conf
     20    119    660 etc/rrdopts.conf
     16     78    480 etc/servdb.conf
-   229   1311   8776 etc/map
-  1063   4800  33915 total
+   255   1432   9831 etc/map
+  1062   4959  35121 total
