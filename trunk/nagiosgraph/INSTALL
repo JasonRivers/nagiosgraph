@@ -1227,6 +1227,22 @@ easier.
 
   This will generate a cover_db directory with code coverage metrics.
 
+- profiling
+
+  Use the perl profiler to see which parts of the code are taking most time.
+  Run the cgi script with DProf enabled, specifying args on the command line.
+
+      perl -d:DProf cgi/show.cgi
+      perl -d:DProf cgi/showgraph.cgi host=HOST service=SERVICE
+
+  Then view the profiling results.
+
+      dprofpp
+
+  The bottlenecks are RRDs::graph (showgraph.cgi) and RRDs::info (show.cgi).
+  RRDs::info is invoked on each file in the rrd directory tree.  On a 1.4GHz
+  G4 PPC, getting info on 500 files takes about 0.2 seconds.
+
 - internationalization (i18n)
 
   To get a list of all translated string constants, do the following:

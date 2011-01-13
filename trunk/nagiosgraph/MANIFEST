@@ -61,6 +61,7 @@ t/05permissions.t
 t/06rules.t
 t/07perfdata.t
 t/09plugins.t
+t/10backward.t
 t/97pod.t
 t/98podcoverage.t
 t/99kwalitee.t
