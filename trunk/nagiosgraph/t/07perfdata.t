@@ -17,17 +17,28 @@
 # test for various units
 # test for variations in perfdata formatting
 
+## no critic (RequireUseWarnings)
+## no critic (RequireBriefOpen)
+## no critic (ProhibitImplicitNewlines)
+## no critic (ProhibitEmptyQuotes)
+## no critic (ProhibitQuotedWordLists)
+## no critic (RequireInterpolationOfMetachars)
+
 use FindBin;
 use Test;
 use strict;
 
 BEGIN {
-    eval "require RRDs; RRDs->import();
-          use Data::Dumper;
-          use File::Copy qw(copy);
-          use lib \"$FindBin::Bin/../etc\";
-          use ngshared;";
-    if ($@) {
+    my $rc = eval {
+        require RRDs; RRDs->import();
+        use Carp;
+        use Data::Dumper;
+        use English qw(-no_match_vars);
+        use File::Copy qw(copy);
+        use lib "$FindBin::Bin/../etc";
+        use ngshared;
+    };
+    if ($rc) {
         plan tests => 0;
         exit 0;
     } else {
@@ -40,22 +51,24 @@ my $mapfile = 'map_minimal';
 
 sub formatdata {
     my (@data) = @_;
-    return "hostname:$data[1]\nservicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";    
+    return "hostname:$data[1]\nservicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";
 }
 
 sub setup {
-    open $LOG, '+>', $logfile;
+    open $LOG, '+>', $logfile or carp "open LOG ($logfile) failed: $OS_ERROR";
 #    $Config{debug} = 5;
-    undef &evalrules;
+    undef &evalrules; ## no critic (ProhibitAmpersandSigils)
     copy "examples/$mapfile", "etc/$mapfile";
     my $rval = getrules( $mapfile );
     ok($rval, q());
+    return;
 }
 
 sub teardown {
-    close $LOG;
+    close $LOG or carp "close LOG failed: $OS_ERROR";
     unlink $logfile;
     unlink "etc/$mapfile";
+    return;
 }
 
 
@@ -67,6 +80,7 @@ sub testnoperfdata {
     @data = ('0', 'host', 'ping', 'PING OK', '');
     @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
@@ -100,11 +114,11 @@ sub testperfdatalabels {
           ]
         ];\n");
 
-    @data = ('0', 'host', 'ping', 'PING OK', "'quotedname'=2");
+    @data = ('0', 'host', 'ping', 'PING OK', '\'quote\'dname\'=2');
     @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [
           [
-            'quotedname',
+            'quote\\'dname',
             [
               'data',
               'GAUGE',
@@ -244,6 +258,8 @@ sub testperfdatalabels {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -459,6 +475,8 @@ sub testranges {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -525,6 +543,8 @@ sub testrandomperfdata {
     @data = ('0', 'host', 'ping', 'PING OK', 'a = 2');
     @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+
+    return;
 }
 
 
@@ -620,6 +640,8 @@ sub testmultipleperfdata {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -1062,6 +1084,8 @@ sub testunits {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -1285,6 +1309,8 @@ sub testminmax {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 

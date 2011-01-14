@@ -11,26 +11,45 @@
 #        should be reduced/eliminated and the subroutines refactored so that
 #        have fewer side effects and global dependencies.
 
+## no critic (RequireUseWarnings)
+## no critic (ProhibitImplicitNewlines)
+## no critic (ProhibitMagicNumbers)
+## no critic (RequireNumberSeparators)
+## no critic (RequireBriefOpen)
+## no critic (ProhibitPostfixControls)
+## no critic (ProhibitEmptyQuotes)
+## no critic (ProhibitQuotedWordLists)
+## no critic (ProhibitNoisyQuotes)
+## no critic (RequireExtendedFormatting)
+## no critic (RequireLineBoundaryMatching)
+## no critic (ProhibitEscapedCharacters)
+
 use FindBin;
 use Test;
 use strict;
 
 use CGI qw(:standard escape unescape);
+use Carp;
 use Data::Dumper;
 use File::Find;
 use File::Path qw(rmtree);
+use English qw(-no_match_vars);
 use lib "$FindBin::Bin/../etc";
 use ngshared;
 
 BEGIN {
-    eval "require RRDs; RRDs->import();
-          use CGI qw(:standard escape unescape);
-          use Data::Dumper;
-          use File::Find;
-          use File::Path qw(rmtree);
-          use lib \"$FindBin::Bin/../etc\";
-          use ngshared;";
-    if ($@) {
+    my $rc = eval {
+        require RRDs; RRDs->import();
+        use CGI qw(:standard escape unescape);
+        use Carp;
+        use Data::Dumper;
+        use English qw(-no_match_vars);
+        use File::Find;
+        use File::Path qw(rmtree);
+        use lib "$FindBin::Bin/../etc";
+        use ngshared;
+    };
+    if ($rc) {
         plan tests => 0;
         exit 0;
     } else {
@@ -39,22 +58,35 @@ BEGIN {
 }
 
 my ($log);
+my $curdir = $FindBin::Bin; ## no critic (ProhibitPackageVars)
 
 # ensure that we have a clean slate from which to work
 sub setup {
-    rmtree($FindBin::Bin . '/testbox');
+    rmtree($curdir . '/testbox');
+    return;
+}
+
+sub writefile {
+    my ($fn, @data) = @_;
+    open my $TEST, '>', $fn or carp "open $fn failed; $OS_ERROR";
+    foreach my $line (@data) {
+        print ${TEST} $line . "\n" or carp "print failed: $OS_ERROR";
+    }
+    close $TEST or carp "close $fn failed: $OS_ERROR";
+    return;
 }
 
 sub dumpdata {
     my ($log, $val, $label) = @_;
-    open my $TMP, '>>', 'test.log' or die;
+    open my $TMP, '>>', 'test.log' or carp "open test.log failed: $OS_ERROR";
     if ($label) {
         my $dd = Data::Dumper->new([$val], [$label]);
         $dd->Indent(1);
-        print $TMP $dd->Dump();
+        print ${TMP} $dd->Dump() or carp "print failed: $OS_ERROR";
     }
-    print $TMP $log;
-    close $TMP;
+    print ${TMP} $log or carp "print failed: $OS_ERROR";
+    close $TMP or carp "close test.log failed: $OS_ERROR";
+    return;
 }
 
 sub printdata {
@@ -68,47 +100,56 @@ sub printdata {
 sub readtestfile {
     my ($fn) = @_;
     my $contents = q();
-    if (open FILE, '<', $fn) {
-        while(<FILE>) {
+    if (open my $FILE, '<', $fn) {
+        while(<$FILE>) {
             $contents .= $_;
         }
-        close FILE;
+        close $FILE or carp "close $fn failed: $OS_ERROR";
     }
     return $contents;
 }
 
 sub gettestrrddir {
-    return $FindBin::Bin . q(/) . 'rrd';
+    return $curdir . q(/) . 'rrd';
 }
 
 sub setupdebug {
-    $Config{debug} = 5;
-    open $LOG, '+>', 'test-debug.txt';
+    my ($level, $fn) = @_;
+    $level ||= 5;
+    $fn ||= 'test-debug.txt';
+    $Config{debug} = $level;
+    open $LOG, '+>', $fn or carp "open LOG ($fn) failed: $OS_ERROR";
+    return;
 }
 
 sub teardowndebug {
-    close $LOG;
+    close $LOG or carp "close LOG failed: $OS_ERROR";
     $Config{debug} = 0;
+    return;
 }
 
 sub setuphsdata {
     undef %hsdata;
     scanhsdata();
+    return;
 }
 
 sub teardownhsdata {
     undef %hsdata;
+    return;
 }
 
 sub setupauthhosts {
     undef %hsdata;
     scanhsdata();
     %authhosts = getserverlist('');
+    return;
 }
 
 sub teardownauthhosts {
     undef %hsdata;
     undef %authhosts;
+    return;
 }
 
 # create rrd files used in the tests
@@ -161,49 +202,53 @@ sub setuprrd {
                 ['total', 'GAUGE', 500],
                 ['used', 'GAUGE', 20] ];
     @result = createrrd(1221495632, 'host5', 'ntdisk', $testvar);
+
+    return;
 }
 
 sub teardownrrd {
     rmtree(gettestrrddir());
+    return;
 }
 
 sub testdebug { # Test the logger.
-	open $LOG, '+>', \$log;
-	$Config{debug} = 1;
-	debug(0, "test message");
-	ok($log, qr/02ngshared.t none test message$/);
-	close $LOG;
-	open $LOG, '+>', \$log;
-	debug(2, "test no message");
-	ok($log, "");
-	close $LOG;
+    open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
+    $Config{debug} = 1;
+    debug(0, 'test message');
+    ok($log, qr/02ngshared.t none test message$/);
+    close $LOG or carp "close LOG failed: $OS_ERROR";
+    open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
+    debug(2, 'test no message');
+    ok($log, '');
+    close $LOG or carp "close LOG failed: $OS_ERROR";
+    return;
 }
 
 sub testdumper { # Test the list/hash output debugger.
-	open $LOG, '+>', \$log;
-	my $testvar = 'test';
-	dumper(0, 'test', \$testvar);
-	ok($log, qr/02ngshared.t none test = .'test';$/);
-	close $LOG;
-	open $LOG, '+>', \$log;
-	$testvar = ['test'];
-	dumper(0, 'test', $testvar);
-	ok($log, qr/02ngshared.t none test = \[\s+'test'\s+\];$/s);
-	close $LOG;
-	open $LOG, '+>', \$log;
-	$testvar = {test => 1};
-	dumper(0, 'test', $testvar);
-	ok($log, qr/02ngshared.t none test = \{\s+'test' => 1\s+\};$/s);
-	close $LOG;
-	open $LOG, '+>', \$log;
-	dumper(2, 'test', $testvar);
-	ok($log, '');
-	close $LOG;
-	$Config{debug} = 0;
+    open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
+    my $testvar = 'test';
+    dumper(0, 'test', \$testvar);
+    ok($log, qr/02ngshared.t none test = .'test';$/);
+    close $LOG or carp "close LOG failed: $OS_ERROR";
+    open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
+    $testvar = ['test'];
+    dumper(0, 'test', $testvar);
+    ok($log, qr/02ngshared.t none test = \[\s+'test'\s+\];$/s);
+    close $LOG or carp "close LOG failed: $OS_ERROR";
+    open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
+    $testvar = {test => 1};
+    dumper(0, 'test', $testvar);
+    ok($log, qr/02ngshared.t none test = \{\s+'test' => 1\s+\};$/s);
+    close $LOG or carp "close LOG failed: $OS_ERROR";
+    open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
+    dumper(2, 'test', $testvar);
+    ok($log, '');
+    close $LOG or carp "close LOG failed: $OS_ERROR";
+    $Config{debug} = 0;
+    return;
 }
 
 sub testgetdebug {
- 
     # missing app (programming mistake)
     $Config{debug} = -1;
     getdebug();
@@ -211,77 +256,83 @@ sub testgetdebug {
  
     $Config{debug} = -1;
     getdebug('test', '', '');
-    ok($Config{debug}, -1);		# not configured, so no change
-   
+    ok($Config{debug}, -1);  # not configured, so no change
+
     # just program tests
     $Config{debug_test} = 1;
     getdebug('test', '', '');
-    ok($Config{debug}, 1);		# configured, so change
+    ok($Config{debug}, 1);   # configured, so change
     $Config{debug} = -1;
     getdebug('test', 'testbox', 'ping');
-    ok($Config{debug}, 1);		# _host and _service not set, so change
+    ok($Config{debug}, 1);   # _host and _service not set, so change
     $Config{debug} = -1;
-    
+
     # just program and hostname tests
     $Config{debug_test_host} = 'testbox';
     getdebug('test', 'testbox', 'ping');
-    ok($Config{debug}, 1);		# _host set to same hostname, so change
+    ok($Config{debug}, 1);   # _host set to same hostname, so change
     $Config{debug} = -1;
     getdebug('test', 'testing', 'ping');
-    ok($Config{debug}, 0);		# _host set to different hostname, so no logging
+    ok($Config{debug}, 0);   # _host set to different hostname, so no logging
     $Config{debug} = -1;
-    
+
     # program, hostname and service tests
     $Config{debug_test_service} = 'ping';
     getdebug('test', 'testbox', 'ping');
-    ok($Config{debug}, 1);		# _host and _service same, so change
+    ok($Config{debug}, 1);   # _host and _service same, so change
     $Config{debug} = -1;
     getdebug('test', 'testbox', 'smtp');
-    ok($Config{debug}, 0);		# _host same, but _service not, so no logging
+    ok($Config{debug}, 0);   # _host same, but _service not, so no logging
     $Config{debug} = -1;
     getdebug('test', 'testing', 'ping');
-    ok($Config{debug}, 0);		# _service same, but _host not, so no logging
+    ok($Config{debug}, 0);   # _service same, but _host not, so no logging
     $Config{debug} = -1;
     getdebug('test', 'testing', 'smtp');
-    ok($Config{debug}, 0);		# neither _host or _service not, so no logging
+    ok($Config{debug}, 0);   # neither _host or _service not, so no logging
     $Config{debug} = -1;
-    
+
     # just program and service tests
     delete $Config{debug_test_host};
     getdebug('test', 'testbox', 'ping');
-    ok($Config{debug}, 1);		# _service same, so change
+    ok($Config{debug}, 1);   # _service same, so change
     $Config{debug} = -1;
     getdebug('test', 'testbox', 'smtp');
-    ok($Config{debug}, 0);		# _service not, so no logging
+    ok($Config{debug}, 0);   # _service not, so no logging
 
     # clean up
     $Config{debug} = 0;
+    return;
 }
 
 sub testformatelapsedtime {
     my $s = gettimestamp();
     my $result = formatelapsedtime($s, $s+3_000_000);
-    ok($result, "00:00:03.000");
+    ok($result, '00:00:03.000');
     $result = formatelapsedtime($s, $s+60_010_000);
-    ok($result, "00:01:00.010");
+    ok($result, '00:01:00.010');
     $result = formatelapsedtime($s, $s+36_610_000_000);
-    ok($result, "10:10:10.000");
+    ok($result, '10:10:10.000');
     $result = formatelapsedtime($s, $s+7_260_100_000);
-    ok($result, "02:01:00.100");
+    ok($result, '02:01:00.100');
     $result = formatelapsedtime($s, $s+1_000);
-    ok($result, "00:00:00.001");
+    ok($result, '00:00:00.001');
     $result = formatelapsedtime($s, $s+10);
-    ok($result, "00:00:00.000");
+    ok($result, '00:00:00.000');
+    return;
 }
 
 sub testhtmlerror {
-    open SAVEOUT, ">&STDOUT";
-    my $fn = $FindBin::Bin . q(/) . 'error.html';
-    open STDOUT, '>', $fn;
+## no critic (ProhibitTwoArgOpen)
+## no critic (ProhibitBarewordFileHandles)
+## no critic (ProhibitInterpolationOfLiterals)
+
+    open SAVEOUT, ">&STDOUT" or carp "open SAVEOUT failed: $OS_ERROR";
+    my $fn = $curdir . q(/) . 'error.html';
+    open STDOUT, '>', $fn or carp "open $fn failed: $OS_ERROR";
     htmlerror('test');
-    close STDOUT;
-    open STDOUT, ">&SAVEOUT";
-    close SAVEOUT;
+    close STDOUT or carp "close STDOUT failed: $OS_ERROR";
+    open STDOUT, ">&SAVEOUT" or carp "open STDOUT failed: $OS_ERROR";
+    close SAVEOUT or carp "close SAVEOUT failed: $OS_ERROR";
     my $result = readtestfile($fn);
     ok($result, "Content-Type: text/html; charset=ISO-8859-1\r
 \r
@@ -300,74 +351,82 @@ sub testhtmlerror {
 </body>
 </html>");
     unlink $fn;
+    return;
 }
 
 sub testimgerror {
-    my $cgi = new CGI;
-    my $fn = $FindBin::Bin . q(/) . 'error.png';
+## no critic (ProhibitTwoArgOpen)
+## no critic (ProhibitBarewordFileHandles)
+## no critic (ProhibitInterpolationOfLiterals)
 
-    my $haveGD = 0;
-    my $rval = eval "{ require GD; }";
+    my $cgi = new CGI;
+    my $fn = $curdir . q(/) . 'error.png';
+
+    my $havegd = 0;
+    my $rval = eval { require GD; };
     if (defined $rval && $rval == 1) {
-        $haveGD = 1;
+        $havegd = 1;
     }
 
-    open SAVEOUT, ">&STDOUT";
-    open STDOUT, '>', $fn;
+    open SAVEOUT, ">&STDOUT" or carp "open SAVEOUT failed: $OS_ERROR";
+    open STDOUT, '>', $fn or carp "open $fn failed: $OS_ERROR";
     imgerror($cgi);
-    close STDOUT;
-    open STDOUT, ">&SAVEOUT";
-    close SAVEOUT;
+    close STDOUT or carp "close $fn failed: $OS_ERROR";
+    open STDOUT, ">&SAVEOUT" or carp "open STDOUT failed: $OS_ERROR";
+    close SAVEOUT or carp "close SAVEOUT failed: $OS_ERROR";
     my $result = readtestfile($fn);
     ok($result, "Content-Type: image/png\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\0\5\0\0\0\5\b\6\0\0\0\x8Do&\xE5\0\0\0!tEXtSoftware\0GraphicConverter (Intel)w\x87\xFA\31\0\0\0\31IDATx\x9Cb\xF8\xFF\xFF?\3:\xC6\20\xA0\x82 \0\0\0\xFF\xFF\3\0x\xC3J\xB6\x9F\xEB2\35\0\0\0\0IEND\xAEB`\x82");
     unlink $fn;
 
-    open SAVEOUT, ">&STDOUT";
-    open STDOUT, '>', $fn;
+    open SAVEOUT, ">&STDOUT" or carp "open SAVEOUT failed: $OS_ERROR";
+    open STDOUT, '>', $fn or carp "open STDOUT failed: $OS_ERROR";
     imgerror($cgi, 'test');
-    close STDOUT;
-    open STDOUT, ">&SAVEOUT";
-    close SAVEOUT;
+    close STDOUT or carp "close STDOUT failed: $OS_ERROR";
+    open STDOUT, ">&SAVEOUT" or carp "open STDOUT failed: $OS_ERROR";
+    close SAVEOUT or carp "close SAVEOUT failed: $OS_ERROR";
     $result = readtestfile($fn);
 
-    if ($haveGD) {
+    if ($havegd) {
         ok($result, "Content-Type: image/png\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\2`\0\0\0\27\1\3\0\0\0\x96\35a\xC3\0\0\0\6PLTE\xFF\xFF\xFF\xFF\24\24\xDF.\xE4\xBB\0\0\0\1tRNS\0@\xE6\xD8f\0\0\0>IDAT8\x8Dc`\30\5\xA3\0;`a`\34\xA4\x86\xF1\xCB\24\37\xA0\x9Aa,J\x9DT3\x8B\x81\xC5.\x91\x8A\x86)\bR\xD1\xB0\5\x9D\nT3\x8CY\xA6\xE0\0\xD5\f\e\5\xA3\x80\16\0\0\4Q\5\x8C\xE7\37\xF6\\\0\0\0\0IEND\xAEB`\x82");
     } else {
         ok($result, "Content-Type: image/png\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\0\5\0\0\0\5\b\6\0\0\0\x8Do&\xE5\0\0\0!tEXtSoftware\0GraphicConverter (Intel)w\x87\xFA\31\0\0\0\31IDATx\x9Cb\xF8\xFF\xFF?\3:\xC6\20\xA0\x82 \0\0\0\xFF\xFF\3\0x\xC3J\xB6\x9F\xEB2\35\0\0\0\0IEND\xAEB`\x82");
     }
 
     unlink $fn;
+    return;
 }
 
 sub testgetimg {
-    my $haveGD = 0;
-    my $rval = eval "{ require GD; }";
+    my $havegd = 0;
+    my $rval = eval { require GD; };
     if (defined $rval && $rval == 1) {
-        $haveGD = 1;
+        $havegd = 1;
     }
 
-    if ($haveGD) {
+    if ($havegd) {
         ok(getimg('test'), "\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\2`\0\0\0\27\1\3\0\0\0\x96\35a\xC3\0\0\0\6PLTE\xFF\xFF\xFF\xFF\24\24\xDF.\xE4\xBB\0\0\0\1tRNS\0@\xE6\xD8f\0\0\0>IDAT8\x8Dc`\30\5\xA3\0;`a`\34\xA4\x86\xF1\xCB\24\37\xA0\x9Aa,J\x9DT3\x8B\x81\xC5.\x91\x8A\x86)\bR\xD1\xB0\5\x9D\nT3\x8CY\xA6\xE0\0\xD5\f\e\5\xA3\x80\16\0\0\4Q\5\x8C\xE7\37\xF6\\\0\0\0\0IEND\xAEB`\x82");
     } else {
         ok(getimg('test'), "\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\0\5\0\0\0\5\b\6\0\0\0\x8Do&\xE5\0\0\0!tEXtSoftware\0GraphicConverter (Intel)w\x87\xFA\31\0\0\0\31IDATx\x9Cb\xF8\xFF\xFF?\3:\xC6\20\xA0\x82 \0\0\0\xFF\xFF\3\0x\xC3J\xB6\x9F\xEB2\35\0\0\0\0IEND\xAEB`\x82");
     }
+    return;
 }
 
 # ensure that asking about host data does not create host directory
 sub testdircreation {
-    $Config{rrddir} = $FindBin::Bin;
+    $Config{rrddir} = $curdir;
     $Config{dbseparator} = 'subdir';
     my $host = 'xxx';
     my $service = 'yyy';
     my ($d,$f) = mkfilename($host,$service);
-    my $dir = $FindBin::Bin . q(/) . $host;
+    my $dir = $curdir . q(/) . $host;
     ok(! -d $dir);
     rmdir $dir if -d $dir;
+    return;
 }
 
 sub testmkfilename { # Test getting the file and directory for a database.
     # Make rrddir where we run from
-    $Config{rrddir} = $FindBin::Bin;
+    $Config{rrddir} = $curdir;
 
     $Config{dbseparator} = '';
     my @result = mkfilename();
@@ -377,57 +436,62 @@ sub testmkfilename { # Test getting the file and directory for a database.
     ok($result[0], 'BOGUSDIR');
     ok($result[1], 'BOGUSFILE');
     @result = mkfilename('testbox', 'Partition: /');
-    ok($result[0], $FindBin::Bin);
+    ok($result[0], $curdir);
     ok($result[1], 'testbox_Partition%3A%20%2F_');
     @result = mkfilename('testbox', 'Partition: /', 'diskgb');
-    ok($result[0], $FindBin::Bin);
+    ok($result[0], $curdir);
     ok($result[1], 'testbox_Partition%3A%20%2F_diskgb.rrd');
 
     $Config{dbseparator} = 'subdir';
     @result = mkfilename('testbox', 'Partition: /');
-    ok($result[0], $FindBin::Bin . '/testbox');
+    ok($result[0], $curdir . '/testbox');
     ok($result[1], 'Partition%3A%20%2F___');
     ok(! -d $result[0]);
     rmdir $result[0] if -d $result[0];
     @result = mkfilename('testbox', 'Partition: /', 'diskgb');
-    ok($result[0], $FindBin::Bin . '/testbox');
+    ok($result[0], $curdir . '/testbox');
     ok($result[1], 'Partition%3A%20%2F___diskgb.rrd');
     ok(! -d $result[0]);
     rmdir $result[0] if -d $result[0];
+    return;
 }
 
 # With 16 generated colors, the default rainbow and one custom.
 sub testhashcolor {
     my @testdata = ('FF0333', '3300CC', '990033', 'FF03CC', '990333', 'CC00CC', '000099', '6603CC');
-    for (my $ii = 0; $ii < 8; $ii++) {
+    foreach my $ii (0..7) {
         my $result = hashcolor('Current Load', $ii + 1);
         ok($result, $testdata[$ii - 1]);
     }
     @testdata = ('CC0300', 'FF0399', '990000', '330099', '990300', '660399', '990000', 'CC0099');
-    for (my $ii = 1; $ii < 9; $ii++) {
+    foreach my $ii (1..8) {
         my $result = hashcolor('PLW', $ii);
         ok($result, $testdata[$ii - 1]);
     }
     $Config{colors} = ['123', 'ABC'];
     @testdata = ('123', 'ABC', '123');
-    for (my $ii = 0; $ii < 3; $ii++) {
+    foreach my $ii (0..2) {
         my $result = hashcolor('test', 9);
         ok($result, $testdata[$ii]);
     }
     undef %Config;
     $Config{colorscheme} = 2;
     ok(hashcolor('x'), '009900');
+    return;
 }
 
 sub testlisttodict { # Split a string separated by a configured value into hash
-    open $LOG, '+>', \$log;
+#    setupdebug(5, 'testlisttodict.log');
+
     $Config{testsep} = ',';
     $Config{test} = 'Current Load,PLW,Procs: total,User Count';
     my $testvar = listtodict('test');
     foreach my $ii ('Current Load','PLW','Procs: total','User Count') {
         ok($testvar->{$ii}, 1);
     }
-    close $LOG;
+
+#    teardowndebug();
+    return;
 }
 
 sub teststr2list {
@@ -467,6 +531,7 @@ sub teststr2list {
     ok(Dumper($val), $str);
     $val = str2list('*,*=50     ; H,S,D=10  ');
     ok(Dumper($val), $str);
+    return;
 }
 
 sub testarrayorstring {
@@ -475,17 +540,19 @@ sub testarrayorstring {
     $opts{array} = ['a','b','c'];
     ok(arrayorstring(\%opts, 'a'), '&a=aval');
     ok(arrayorstring(\%opts, 'array'), '&array=a&array=b&array=c');
+    return;
 }
 
 sub testcheckdirempty { # Test with an empty directory, then one with a file.
-	mkdir 'checkdir', 0770;
-	ok(checkdirempty('checkdir'), 1);
-	open TMP, '>checkdir/tmp';
-	print TMP "test\n";
-	close TMP;
-	ok(checkdirempty('checkdir'), 0);
-	unlink 'checkdir/tmp';
-	rmdir 'checkdir';
+    mkdir 'checkdir', 0770;
+    ok(checkdirempty('checkdir'), 1);
+    open my $TMP, '>', 'checkdir/tmp' or carp "open TMP failed: $OS_ERROR";
+    print ${TMP} "test\n" or carp "print failed: $OS_ERROR";
+    close $TMP or carp "close TMP failed: $OS_ERROR";
+    ok(checkdirempty('checkdir'), 0);
+    unlink 'checkdir/tmp';
+    rmdir 'checkdir';
+    return;
 }
 
 sub testhsddmatch {
@@ -503,6 +570,7 @@ sub testhsddmatch {
     ok(hsddmatch('XX', 'h,s,db,ds', 'DS', 'H', 's', 'db', 'ds'), 0);
     ok(hsddmatch('XX', 'h,s,db', 'S', 'h', 's', 'db'), 1);
     ok(hsddmatch('XX', 'h,s,db', 'S', 'H', 's', 'db'), 0);
+    return;
 }
 
 sub testgethsdd {
@@ -530,18 +598,19 @@ sub testgethsdd {
 
     undef $Config{hsd};
     undef $Config{hsdlist};
+    return;
 }
 
 sub testgethsddvalue {
-#    $Config{debug} = 5;
-#    open $LOG, '>', 'testgethsddvalue';
+#    setupdebug(5, 'testgethsddvalue.log');
     $Config{hsd} = 'h,s,db,ds';
     $Config{hsdlist} = str2list($Config{hsd});
     ok(gethsddvalue('hsd', '0', 'h', 's', 'db', 'ds'), 1);
     ok(gethsddvalue('hsd', '0', 'H', 's', 'db', 'ds'), 0);
     undef $Config{hsd};
     undef $Config{hsdlist};
-#    close $LOG;
+#    teardowndebug();
+    return;
 }
 
 sub testgethsdvalue {
@@ -557,6 +626,7 @@ sub testgethsdvalue {
     ok(gethsdvalue('hsd', '0', 'h', 's', 'db'), '0');
     undef $Config{hsd};
     undef $Config{hsdlist};
+    return;
 }
 
 sub testgethsdvalue2 {
@@ -632,49 +702,50 @@ sub testgethsdvalue2 {
     $x = gethsdvalue2('heartbeat', 5, 'host2', 'ping', 'loss');
     ok($x, 500);
     undef $Config{heartbeatlist};
+
+    return;
 }
 
 sub testreadfile {
-    my $fn = "$FindBin::Bin/test.conf";
+    my $fn = "$curdir/test.conf";
 
-    open TEST, ">$fn";
-    print TEST "name0 = value0\n";
-    print TEST "name1 = x1,x2,x3\n";
-    print TEST "#name2 = value2\n";
-    print TEST "  #name2 = value2\n";
-    print TEST "name3 = value3 # comment\n";
-    print TEST "name4 = --color BACK#FFFFFF\n";
-    print TEST "name5=      y1,    y2,y3   ,y4\n";
-    close TEST;
+    writefile($fn, ('name0 = value0',
+                    'name1 = x1,x2,x3',
+                    '#name2 = value2',
+                    '  #name2 = value2',
+                    'name3 = value3 # comment',
+                    'name4 = --color BACK#FFFFFF',
+                    'name5=      y1,    y2,y3   ,y4'));
 
     my %vars;
     readfile($fn, \%vars);
     ok(scalar keys %vars, 5);
-    ok($vars{name0}, "value0");
-    ok($vars{name1}, "x1,x2,x3");
+    ok($vars{name0}, 'value0');
+    ok($vars{name1}, 'x1,x2,x3');
     ok($vars{name2}, undef);                    # ignore commented lines
-    ok($vars{name3}, "value3 # comment");       # do not strip comments
-    ok($vars{name4}, "--color BACK#FFFFFF");
-    ok($vars{name5}, "y1,    y2,y3   ,y4");
+    ok($vars{name3}, 'value3 # comment');       # do not strip comments
+    ok($vars{name4}, '--color BACK#FFFFFF');
+    ok($vars{name5}, 'y1,    y2,y3   ,y4');
 
     unlink $fn;
+    return;
 }
 
 sub testinitlog {
-    my $fn = "$FindBin::Bin/testlog.txt";
+    my $fn = "$curdir/testlog.txt";
 
     undef %Config;
     $Config{debug} = 5;
     initlog('test');
     debug(DBDEB, 'test message');
-    close $LOG;
+    close $LOG or carp "close LOG failed: $OS_ERROR";
 
     undef %Config;
     $Config{debug} = 5;
     $Config{logfile} = $fn;
     initlog('test');
     debug(DBDEB, 'test message');
-    close $LOG;
+    close $LOG or carp "close LOG failed: $OS_ERROR";
     my $result = readtestfile($fn);
     ok($result =~ /debug test message/);
     unlink $fn;
@@ -683,7 +754,7 @@ sub testinitlog {
     $Config{debug} = 5;
     initlog('test', $fn);
     debug(DBDEB, 'test message');
-    close $LOG;
+    close $LOG or carp "close LOG failed: $OS_ERROR";
     $result = readtestfile($fn);
     ok($result =~ /debug test message/);
     unlink $fn;
@@ -693,7 +764,7 @@ sub testinitlog {
     $Config{debug_test} = 5;
     initlog('test', $fn);
     debug(DBDEB, 'test message');
-    close $LOG;
+    close $LOG or carp "close LOG failed: $OS_ERROR";
     $result = readtestfile($fn);
     ok($result =~ /debug test message/);
     unlink $fn;
@@ -703,17 +774,19 @@ sub testinitlog {
     $Config{debug_foo} = 5;
     initlog('test', $fn);
     debug(DBDEB, 'test message');
-    close $LOG;
+#    close $LOG or carp "close LOG failed: $OS_ERROR";
     $result = readtestfile($fn);
     ok($result, '');
     unlink $fn;
 
     undef %Config;
+    return;
 }
 
 sub testreadconfig {
-    my $fn = "$FindBin::Bin/testlog.txt";
-    open $LOG, '+>', \$log;
+#    setupdebug(5, 'testreadconfig.log');
+
+    my $fn = "$curdir/testlog.txt";
 
     $Config{junklog} = $fn;;
     my $msg = readconfig('read', 'junklog');
@@ -755,38 +828,39 @@ sub testreadconfig {
     $Config{xffs} = 'host1,svc1,db1=1;host2,svc2,db2=2';
     $msg = readconfig('read');
     ok($msg, q());
-    ok($Config{rrdopts}, "--flymetothemoon");
+    ok($Config{rrdopts}, '--flymetothemoon');
     ok(Dumper(\$Config{rrdoptshash}), "\$VAR1 = \\{
             'global' => '--flymetothemoon'
           };\n");
-    ok($Config{heartbeats}, "host1,svc1,db1=100;host2,svc2,db2=200");
+    ok($Config{heartbeats}, 'host1,svc1,db1=100;host2,svc2,db2=200');
     ok(Dumper(\$Config{heartbeatslist}), "\$VAR1 = \\[
             'host1,svc1,db1=100',
             'host2,svc2,db2=200'
           ];\n");
-    ok($Config{stepsizes}, "host1,svc1,db1=30;host2,svc2,db2=50");
+    ok($Config{stepsizes}, 'host1,svc1,db1=30;host2,svc2,db2=50');
     ok(Dumper(\$Config{stepsizeslist}), "\$VAR1 = \\[
             'host1,svc1,db1=30',
             'host2,svc2,db2=50'
           ];\n");
-    ok($Config{resolutions}, "host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2");
+    ok($Config{resolutions}, 'host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2');
     ok(Dumper(\$Config{resolutionslist}), "\$VAR1 = \\[
             'host1,svc1,db1=1 1 1 1',
             'host2,svc2,db2=2 2 2 2'
           ];\n");
-    ok($Config{steps}, "host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2");
+    ok($Config{steps}, 'host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2');
     ok(Dumper(\$Config{stepslist}), "\$VAR1 = \\[
             'host1,svc1,db1=1 1 1 1',
             'host2,svc2,db2=2 2 2 2'
           ];\n");
-    ok($Config{xffs}, "host1,svc1,db1=1;host2,svc2,db2=2");
+    ok($Config{xffs}, 'host1,svc1,db1=1;host2,svc2,db2=2');
     ok(Dumper(\$Config{xffslist}), "\$VAR1 = \\[
             'host1,svc1,db1=1',
             'host2,svc2,db2=2'
           ];\n");
     unlink $fn;
 
-    close $LOG;
+#    teardowndebug();
+    return;
 }
 
 sub testgetparams {
@@ -818,24 +892,24 @@ sub testgetparams {
           'showgraphtitle' => '',
           'label' => []
         };\n");
+    return;
 }
 
 sub testdbfilelist { # Check getting a list of rrd files
-    $Config{debug} = 0;
-    open $LOG, '+>', \$log;
-    $Config{rrddir} = $FindBin::Bin;
+#    setupdebug(5, 'testdbfilelist.log');
+
+    $Config{rrddir} = $curdir;
     $Config{dbseparator} = '';
     my $result = dbfilelist('testbox', 'Partition: /');
     ok(@{$result}, 0);
-    my $file = "$FindBin::Bin/testbox_Partition%3A%20%2F_test.rrd";
-    open TEST, ">$file";
-    print TEST "test\n";
-    close TEST;
+    my $file = "$curdir/testbox_Partition%3A%20%2F_test.rrd";
+    writefile($file, ('test'));
     my @result = dbfilelist('testbox', 'Partition: /');
     ok(@result, 1);
     unlink $file;
-    close $LOG;
-    $Config{debug} = 0;
+
+#    teardowndebug();
+    return;
 }
 
 sub testgetdataitems {
@@ -845,21 +919,20 @@ sub testgetdataitems {
     my @rval = getdataitems($fn);
     ok(Dumper(\@rval), "\$VAR1 = [
           'Bps'
-        ];
-");
+        ];\n");
     $fn = $rrddir . q(/) . 'host2/PING___ping.rrd';
     @rval = getdataitems($fn);
     ok(Dumper(\@rval), "\$VAR1 = [
           'rta',
           'losspct'
-        ];
-");
+        ];\n");
     teardownrrd();
+    return;
 }
 
 # FIXME: bad use of result variable here
 sub testgraphinfo {
-    $Config{rrddir} = $FindBin::Bin;
+    $Config{rrddir} = $curdir;
 
     $Config{dbseparator} = '';
     my $testvar = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
@@ -869,18 +942,18 @@ sub testgraphinfo {
     ok($Config{hostservvar}->{testbox}->{procs}->{users}, 1);
     my @result = createrrd(1221495632, 'testbox', 'procs', $testvar);
     ok($result[0]->[1], 'testbox_procsusers_procs.rrd');
-    ok(-f $FindBin::Bin . '/testbox_procsusers_procs.rrd');
-    ok(-f $FindBin::Bin . '/testbox_procs_procs.rrd');
+    ok(-f $curdir . '/testbox_procsusers_procs.rrd');
+    ok(-f $curdir . '/testbox_procs_procs.rrd');
 
     my $result = graphinfo('testbox', 'procs', ['procs']);
-    my $file = $FindBin::Bin . '/testbox_procs_procs.rrd';
+    my $file = $curdir . '/testbox_procs_procs.rrd';
     skip(! -f $file, $result->[0]->{file}, 'testbox_procs_procs.rrd');
     skip(! -f $file, $result->[0]->{line}->{uwarn}, 1);
     unlink $file if -f $file;
-    $file = $FindBin::Bin . '/testbox_procs_procs.rrd';
-    unlink  $file if -f $file;
-    $file = $FindBin::Bin . '/testbox_procsusers_procs.rrd';
-    unlink  $file if -f $file;
+    $file = $curdir . '/testbox_procs_procs.rrd';
+    unlink $file if -f $file;
+    $file = $curdir . '/testbox_procsusers_procs.rrd';
+    unlink $file if -f $file;
 
     # create default data file
     $Config{dbseparator} = 'subdir';
@@ -891,9 +964,10 @@ sub testgraphinfo {
     ok($result[1]->[0]->[1], 1);
 
     $result = graphinfo('testbox', 'PING', ['ping']);
-    $file = $FindBin::Bin . '/testbox/PING___ping.rrd';
+    $file = $curdir . '/testbox/PING___ping.rrd';
     skip(! -f $file, $result->[0]->{file}, 'testbox/PING___ping.rrd');
     skip(! -f $file, $result->[0]->{line}->{rta}, 1);
+    return;
 }
 
 sub testgetlineattr {
@@ -1063,6 +1137,7 @@ sub testgetlineattr {
     ok($linestyle, 'TICK');
     ok($linecolor, '222222');
     ok($stack, 1);
+    return;
 }
 
 # return a set of parameters for testing rrdline
@@ -1080,6 +1155,7 @@ sub testrrdline {
     $Config{colorscheme} = 1;
     $Config{plotas} = 'LINE2';
 
+## no critic (ProhibitInterpolationOfLiterals)
     # these are common to many results
     my $RRDLINES0 = "'-',
           '-a',
@@ -1092,14 +1168,14 @@ sub testrrdline {
     # test a minimal invocation with no data for the host
     my %params = qw(host host30 service ping);
     my ($ds,$err) = rrdline(\%params);
-    ok($err, "No data available: host=host30 service=ping");
+    ok($err, 'No data available: host=host30 service=ping');
     ok(Dumper($ds), "\$VAR1 = [];\n");
 
     # host and service but no data match
     %params = qw(host host30 service PING);
     $params{db} = [qw(foobar)];
     ($ds,$err) = rrdline(\%params);
-    ok($err, "No data available: host=host30 service=PING db=foobar");
+    ok($err, 'No data available: host=host30 service=PING db=foobar');
     ok(Dumper($ds), "\$VAR1 = [];\n");
 
     # minimal invocation when data exist for the host
@@ -1366,6 +1442,7 @@ sub testrrdline {
 
     teardownrrd();
     undef %Config;
+    return;
 }
 
 sub testgetserverlist {
@@ -1544,6 +1621,7 @@ sub testgetserverlist {
     undef %authz;
     teardownrrd();
     teardownhsdata();
+    return;
 }
 
 sub testprintmenudatascript {
@@ -1559,42 +1637,43 @@ sub testprintmenudatascript {
     # when no javascript, print nothing
     undef $Config{javascript};
     my $result = printmenudatascript(\@servers, \%servers);
-    ok($result, "");
+    ok($result, '');
 
     # when we have javascript, we should have menudata
     $Config{javascript} = 'foo';
     $result = printmenudatascript(\@servers, \%servers);
-    ok($result, "<script type=\"text/javascript\">
+    ok($result, '<script type="text/javascript">
 menudata = new Array();
-menudata[0] = [\"host0\"
- ,[\"HTTP\",[\"http\",\"Bps\"]]
- ,[\"PING\",[\"ping\",\"losspct\",\"rta\"]]
+menudata[0] = ["host0"
+ ,["HTTP",["http","Bps"]]
+ ,["PING",["ping","losspct","rta"]]
 ];
-menudata[1] = [\"host1\"
- ,[\"HTTP\",[\"http\",\"Bps\"]]
+menudata[1] = ["host1"
+ ,["HTTP",["http","Bps"]]
 ];
-menudata[2] = [\"host2\"
- ,[\"PING\",[\"ping\",\"losspct\",\"rta\"]]
+menudata[2] = ["host2"
+ ,["PING",["ping","losspct","rta"]]
 ];
-menudata[3] = [\"host3\"
- ,[\"ping\",[\"loss\",\"losscrit\",\"losspct\",\"losswarn\"],[\"rta\",\"rta\",\"rtacrit\",\"rtawarn\"]]
+menudata[3] = ["host3"
+ ,["ping",["loss","losscrit","losspct","losswarn"],["rta","rta","rtacrit","rtawarn"]]
 ];
-menudata[4] = [\"host4\"
- ,[\"c:\\\\ space\",[\"ntdisk\",\"total\",\"used\"]]
+menudata[4] = ["host4"
+ ,["c:\\\\ space",["ntdisk","total","used"]]
 ];
-menudata[5] = [\"host5\"
- ,[\"ntdisk\",[\"c:\\\\ space\",\"total\",\"used\"]]
+menudata[5] = ["host5"
+ ,["ntdisk",["c:\\\\ space","total","used"]]
 ];
 </script>
-");
+');
 
     teardownrrd();
     teardownhsdata();
+    return;
 }
 
 sub testgraphsizes {
-    $Config{debug} = 0;
-    open $LOG, '+>', \$log;
+#    setupdebug(5, 'testgraphsizes.log');
+
     my @result = graphsizes(''); # defaults
     ok($result[0][0], 'day');
     ok($result[1][2], 604800);
@@ -1603,32 +1682,32 @@ sub testgraphsizes {
     ok($result[1][2], 7776000);
     @result = graphsizes('test junk week'); # only returns week
     ok(@result, 1);
-    close $LOG;
-    $Config{debug} = 0;
+
+#    teardowndebug();
+    return;
 }
 
 sub testreadperfdata {
-    my @testdata = ('1221495633||testbox||HTTP||CRITICAL - Socket timeout after 10 seconds||',
-                 '1221495690||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||losspct: 0%, rta: 37.06'
-                 );
-    my $fn = $FindBin::Bin . '/perfdata.log';
+    my @testdata =
+        ('1221495633||testbox||HTTP||CRITICAL - Socket timeout after 10 seconds||',
+         '1221495690||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||losspct: 0%, rta: 37.06'
+         );
+    my $fn = $curdir . '/perfdata.log';
+
     # a test without data
-    open $LOG, ">$fn";
-    close $LOG;
+    writefile($fn);
     my @result = readperfdata($fn);
     ok(@result, 0);
+
     # a test with data
-    open $LOG, ">$fn";
-    foreach my $ii (@testdata) {
-        print $LOG "$ii\n";
-    }
-    close $LOG;
+    writefile($fn, @testdata);
     @result = readperfdata($fn);
     chomp $result[0];
     ok($result[0], $testdata[0]);
     chomp $result[1];
     ok($result[1], $testdata[1]);
     unlink $fn;
+    return;
 }
 
 sub testgetrras {
@@ -1716,27 +1795,29 @@ sub testgetrras {
           'RRA:AVERAGE:0.5:24:3',
           'RRA:AVERAGE:0.5:288:4'
         ];\n");
+
+    return;
 }
 
 sub testcheckdatasources {
-    $Config{debug} = 0;
-    open $LOG, '+>', \$log;
+#    setupdebug(5, 'testcheckdatasources.log');
+
     my $result = checkdatasources([0], 'test', [0]);
     ok($result, 1);
     $result = checkdatasources([0,1,2], 'test', [0, 1]);
     ok($result, 1);
     $result = checkdatasources([0,1,2], 'test', [0]);
     ok($result, 0);
-    close $LOG;
-    $Config{debug} = 0;
+
+#    teardowndebug();
+    return;
 }
 
 # FIXME: the hostservar naming convention is awful, but we must respect it
 #  in order to maintain backward compatibility
 # beware! createrrd modifies the contents of $s
 sub testcreaterrd {
-#    $Config{debug} = 5;
-#    open $LOG, '+>', 'testcreaterrd';
+#    setupdebug(5, 'testcreaterrd.log');
 
     my $rrddir = gettestrrddir();
     $Config{rrddir} = $rrddir;
@@ -1858,7 +1939,8 @@ sub testcreaterrd {
     ok(-f $rrddir . '/testbox/procs___procs.rrd');
     rmtree($rrddir);
 
-#    close $LOG;
+#    teardowndebug();
+    return;
 }
 
 sub testrrdupdate {
@@ -1879,12 +1961,12 @@ sub testrrdupdate {
     $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
     @result = createrrd(1221495632, 'testbox', 'PING', $s);
     $f = "${rrddir}/${fn}";
-    $ts1 = (stat($f))[9];
-    sleep(2);
+    $ts1 = (stat $f)[9];
+    sleep 2;
     $s = [ ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
     rrdupdate($result[0]->[0], 1221495635,
               'testbox', 'PING', $result[1]->[0], $s);
-    $ts2 = (stat($f))[9];
+    $ts2 = (stat $f)[9];
     ok(-f $f);
     ok($ts2 > $ts1);
     rmtree($rrddir);
@@ -1900,12 +1982,12 @@ sub testrrdupdate {
     $s = ['ping', ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
     @result = createrrd(1221495632, 'testbox', 'PING', $s);
     $f = "${rrddir}/testbox/${fn}";
-    $ts1 = (stat($f))[9];
-    sleep(2);
+    $ts1 = (stat $f)[9];
+    sleep 2;
     $s = [ ['losspct', 'GAUGE', 0], ['rta', 'GAUGE', .006] ];
     rrdupdate($result[0]->[0], 1221495635,
               'testbox', 'PING', $result[1]->[0], $s);
-    $ts2 = (stat($f))[9];
+    $ts2 = (stat $f)[9];
     ok(-f $f);
     ok($ts2 > $ts1);
     rmtree($rrddir);
@@ -1913,8 +1995,7 @@ sub testrrdupdate {
     # test regression for handling of services with underscore in the name
     # https://sourceforge.net/projects/nagiosgraph/forums/forum/394748/topic/4043301
 
-#    open $LOG, '>', 'testrrdupdate.log';
-#    $Config{debug} = 5;
+#    setupdebug(5, 'testrrdupdate.log');
 
     $fn = 'PING_MAX___ping.rrd';
     $Config{withminimums} = 'PING';
@@ -1933,7 +2014,8 @@ sub testrrdupdate {
               'testbox', 'PING_MAX', $result[1]->[0], $s);
     rmtree($rrddir);
 
-#    close $LOG;
+#    teardowndebug();
+    return;
 }
 
 sub testcheckdsname {
@@ -1950,6 +2032,7 @@ sub testcheckdsname {
     # hyphenated ds names.  so we permit it as well (fwiw, cacti documentation
     # indicates that hyphens are ok).
     ok(checkdsname('a-b'), 0);
+    return;
 }
 
 sub testmkvname {
@@ -1957,114 +2040,119 @@ sub testmkvname {
     ok(mkvname('ping','loss%20pct'), 'ping_loss_20pct');
     ok(mkvname('0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789','abcdefghijklmnopqrstuvwxyz'), '0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789_abcd');
     ok(mkvname('a-b','r_s,'), 'a-b_r_s_');
+    return;
 }
 
 sub testgetrules {
-    $Config{debug} = 0;
-    undef &evalrules;
+#    setupdebug(5, 'testgetrules.log');
 
-    open $LOG, '+>', \$log;
-    getrules("$FindBin::Bin/../etc/map");
-    ok($log, "");
+    undef &evalrules; ## no critic (ProhibitAmpersandSigils)
+    getrules("$curdir/../etc/map");
+    ok($log, '');
     ok(*evalrules);
-    close $LOG;
+
+#    teardowndebug();
+    return;
 }
 
 sub testprocessdata { # depends on testcreaterdd and testgetrules
-    $Config{debug} = 5;
-    my $rrdfile = $FindBin::Bin . '/testbox/PING___pingloss.rrd';
-    rmtree($FindBin::Bin . '/testbox');
-    
-    my $fn1 = $FindBin::Bin . '/map-ping-output';
-    my $fn2 = $FindBin::Bin . '/map-ping-perfdata';
+#    setupdebug(5, 'testprocessdata.log');
+
+    my $FILE;
+    my $rrdfile = $curdir . '/testbox/PING___pingloss.rrd';
+    rmtree($curdir . '/testbox');
+
+    my $fn1 = $curdir . '/map-ping-output';
+    my $fn2 = $curdir . '/map-ping-perfdata';
 
     # map rule to grab stuff from ping output
-    open FILE, '>', $fn1;
-    print FILE <<"EoB";
+    open $FILE, '>', $fn1 or carp "open $fn1 failed: $OS_ERROR";
+    print ${FILE} <<"EOB" or carp "print failed: $OS_ERROR";
 /output:PING.*?(\\d+)%.+?([.\\d]+)\\sms/
 and push \@s, [ 'pingloss',
                [ 'losspct', GAUGE, \$1 ]]
 and push \@s, [ 'pingrta',
                [ 'rta', GAUGE, \$2/1000 ]];
-EoB
+EOB
+    close $FILE or carp "close $fn1 failed: $OS_ERROR";
 
     # map rule to grab stuff from ping perfdata
-    open FILE, '>', $fn2;
-    print FILE <<"EoB";
+    open $FILE, '>', $fn2 or carp "open $fn2 failed: $OS_ERROR";
+    print ${FILE} <<"EOB" or carp "print failed: $OS_ERROR";
 /perfdata:rta=([.\\d]+)ms;([.\\d]+);([.\\d]+);([.\\d]+)\\s+losspct=([.\\d]+)%;([.\\d]+);([.\\d]+);([.\\d]+)/
 and push \@s, [ 'pingloss',
                [ 'losspct', GAUGE, \$5 ]]
 and push \@s, [ 'pingrta',
                [ 'rta', GAUGE, \$1/1000 ]];
-EoB
-    close FILE;
+EOB
+    close $FILE or carp "close $fn2 failed: $OS_ERROR";
 
-    open $LOG, '+>', \$log;
-
-    undef &evalrules;
+    undef &evalrules; ## no critic (ProhibitAmpersandSigils)
     getrules($fn1);
 
     my @perfline = ('1221495636||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
     processdata(@perfline);
     ok(-f $rrdfile);
-    rmtree($FindBin::Bin . '/testbox');
+    rmtree($curdir . '/testbox');
 
     # missing timestamp
     @perfline = ('||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
     processdata(@perfline);
     ok(! -f $rrdfile);
-    rmtree($FindBin::Bin . '/testbox');
+    rmtree($curdir . '/testbox');
 
     # missing host
     @perfline = ('1221495636||||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
     processdata(@perfline);
     ok(! -f $rrdfile);
-    rmtree($FindBin::Bin . '/testbox');
+    rmtree($curdir . '/testbox');
 
     # missing service
     @perfline = ('1221495636||testbox||||PING OK - Packet loss = 0%, RTA = 37.06 ms ||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
     processdata(@perfline);
     ok(! -f $rrdfile);
-    rmtree($FindBin::Bin . '/testbox');
+    rmtree($curdir . '/testbox');
 
     # missing output, parsing on output
     @perfline = ('1221495636||testbox||PING||||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
     processdata(@perfline);
     ok(! -f $rrdfile);
-    rmtree($FindBin::Bin . '/testbox');
+    rmtree($curdir . '/testbox');
 
     # missing perfdata, parsing on output
     @perfline = ('1221495636||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||');
     processdata(@perfline);
     ok(-f $rrdfile);
-    rmtree($FindBin::Bin . '/testbox');
+    rmtree($curdir . '/testbox');
 
     # match perfdata now rather than output
-    undef &evalrules;
+    undef &evalrules; ## no critic (ProhibitAmpersandSigils)
     getrules($fn2);
 
     # missing output, parsing on perfdata
     @perfline = ('1221495636||testbox||PING||||rta=37.06ms;50;100;0 losspct=0%;2;10;0');
     processdata(@perfline);
     ok(-f $rrdfile);
-    rmtree($FindBin::Bin . '/testbox');
+    rmtree($curdir . '/testbox');
 
     # missing perfdata, parsing on perfdata
     @perfline = ('1221495636||testbox||PING||PING OK - Packet loss = 0%, RTA = 37.06 ms ||');
     processdata(@perfline);
     ok(! -f $rrdfile);
-    rmtree($FindBin::Bin . '/testbox');
+    rmtree($curdir . '/testbox');
 
     # no lines
     my @nolines;
     processdata(@nolines);
     ok(! -f $rrdfile);
-    rmtree($FindBin::Bin . '/testbox');
+    rmtree($curdir . '/testbox');
 
-    close $LOG;
-    undef &evalrules;
+#    teardowndebug();
+
+    undef &evalrules; ## no critic (ProhibitAmpersandSigils)
     unlink $fn1;
     unlink $fn2;
+    return;
 }
 
 # test for the primary string literals.  do not test for error strings.
@@ -2097,35 +2185,33 @@ sub testi18n {
     ok(_('Size:'), 'Size:');
     ok(_('Update Graphs'), 'Update Graphs');
 
-    my $cwd = $FindBin::Bin;
-
     undef %i18n;
     $ENV{HTTP_ACCEPT_LANGUAGE} = '';
     my $errstr = readi18nfile();
     ok($errstr, 'Cannot determine language');
 
     $errstr = readi18nfile('bogus');
-    ok($errstr, "No translations for 'bogus' ($cwd/../etc/nagiosgraph_bogus.conf)");
+    ok($errstr, "No translations for 'bogus' ($curdir/../etc/nagiosgraph_bogus.conf)");
 
     $errstr = readi18nfile('en');
-    ok($errstr, "");
+    ok($errstr, '');
 
     undef %i18n;
     $ENV{HTTP_ACCEPT_LANGUAGE} = 'es-mx,es';
     $errstr = readi18nfile();
-    ok($errstr, "");
+    ok($errstr, '');
     ok(_('Day'), 'Diario');
 
     undef %i18n;
     $ENV{HTTP_ACCEPT_LANGUAGE} = 'es_mx,es';
     $errstr = readi18nfile();
-    ok($errstr, "");
+    ok($errstr, '');
     ok(_('Day'), 'Diario');
 
     undef %i18n;
     $Config{language} = 'es';
     $errstr = readi18nfile();
-    ok($errstr, "");
+    ok($errstr, '');
     ok(_('Day'), 'Diario');
     ok(_('Week'), 'Semanal');
     ok(_('Month'), 'Mensual');
@@ -2135,7 +2221,7 @@ sub testi18n {
     undef %i18n;
     $Config{language} = 'fr';
     $errstr = readi18nfile();
-    ok($errstr, "");
+    ok($errstr, '');
     ok(_('Day'), 'Jour');
     ok(_('Week'), 'Semaine');
     ok(_('Month'), 'Mois');
@@ -2145,7 +2231,7 @@ sub testi18n {
     undef %i18n;
     $Config{language} = 'de';
     $errstr = readi18nfile();
-    ok($errstr, "");
+    ok($errstr, '');
     ok(_('Day'), 'Tag');
     ok(_('Week'), 'Woche');
     ok(_('Month'), 'Monat');
@@ -2154,131 +2240,131 @@ sub testi18n {
 
     undef %i18n;
     undef $Config{language};
+    return;
 }
 
 sub testprinti18nscript {
     undef $Config{javascript};
     my $result = printi18nscript();
-    ok($result, "");
+    ok($result, '');
 
     $Config{javascript} = 'foo';
     $result = printi18nscript();
-    ok($result, "<script type=\"text/javascript\">
+    ok($result, '<script type="text/javascript">
 var i18n = {
-  \"Jan\": 'Jan',
-  \"Feb\": 'Feb',
-  \"Mar\": 'Mar',
-  \"Apr\": 'Apr',
-  \"May\": 'May',
-  \"Jun\": 'Jun',
-  \"Jul\": 'Jul',
-  \"Aug\": 'Aug',
-  \"Sep\": 'Sep',
-  \"Oct\": 'Oct',
-  \"Nov\": 'Nov',
-  \"Dec\": 'Dec',
-  \"Mon\": 'Mon',
-  \"Tue\": 'Tue',
-  \"Wed\": 'Wed',
-  \"Thu\": 'Thu',
-  \"Fri\": 'Fri',
-  \"Sat\": 'Sat',
-  \"Sun\": 'Sun',
-  \"OK\": 'OK',
-  \"Now\": 'Now',
-  \"Cancel\": 'Cancel',
-  \"now\": 'now',
-  \"graph data\": 'graph data',
+  "Jan": \'Jan\',
+  "Feb": \'Feb\',
+  "Mar": \'Mar\',
+  "Apr": \'Apr\',
+  "May": \'May\',
+  "Jun": \'Jun\',
+  "Jul": \'Jul\',
+  "Aug": \'Aug\',
+  "Sep": \'Sep\',
+  "Oct": \'Oct\',
+  "Nov": \'Nov\',
+  "Dec": \'Dec\',
+  "Mon": \'Mon\',
+  "Tue": \'Tue\',
+  "Wed": \'Wed\',
+  "Thu": \'Thu\',
+  "Fri": \'Fri\',
+  "Sat": \'Sat\',
+  "Sun": \'Sun\',
+  "OK": \'OK\',
+  "Now": \'Now\',
+  "Cancel": \'Cancel\',
+  "now": \'now\',
+  "graph data": \'graph data\',
 };
 </script>
-");
+');
 
     $Config{language} = 'es';
     undef %i18n;
     $Config{language} = 'es';
     my $errstr = readi18nfile();
-    ok($errstr, "");
+    ok($errstr, '');
     $result = printi18nscript();
-    ok($result, "<script type=\"text/javascript\">
+    ok($result, '<script type="text/javascript">
 var i18n = {
-  \"Jan\": 'Enero',
-  \"Feb\": 'Febrero',
-  \"Mar\": 'Marzo',
-  \"Apr\": 'Abril',
-  \"May\": 'Mai',
-  \"Jun\": 'Junio',
-  \"Jul\": 'Julio',
-  \"Aug\": 'Augosto',
-  \"Sep\": 'Septiembre',
-  \"Oct\": 'Octubre',
-  \"Nov\": 'Noviembre',
-  \"Dec\": 'Diciembre',
-  \"Mon\": 'Lun',
-  \"Tue\": 'Mar',
-  \"Wed\": 'Mie',
-  \"Thu\": 'Jue',
-  \"Fri\": 'Vie',
-  \"Sat\": 'Sab',
-  \"Sun\": 'Dom',
-  \"OK\": 'OK',
-  \"Now\": 'Ahora',
-  \"Cancel\": 'Cancelar',
-  \"now\": 'now',
-  \"graph data\": 'datos del gr&#241;fico',
+  "Jan": \'Enero\',
+  "Feb": \'Febrero\',
+  "Mar": \'Marzo\',
+  "Apr": \'Abril\',
+  "May": \'Mai\',
+  "Jun": \'Junio\',
+  "Jul": \'Julio\',
+  "Aug": \'Augosto\',
+  "Sep": \'Septiembre\',
+  "Oct": \'Octubre\',
+  "Nov": \'Noviembre\',
+  "Dec": \'Diciembre\',
+  "Mon": \'Lun\',
+  "Tue": \'Mar\',
+  "Wed": \'Mie\',
+  "Thu": \'Jue\',
+  "Fri": \'Vie\',
+  "Sat": \'Sab\',
+  "Sun": \'Dom\',
+  "OK": \'OK\',
+  "Now": \'Ahora\',
+  "Cancel": \'Cancelar\',
+  "now": \'now\',
+  "graph data": \'datos del gr&#241;fico\',
 };
 </script>
-");
+');
 
     undef %i18n;
     undef $Config{language};
+    return;
 }
 
 sub testinitperiods {
-    $Config{debug} = 0;
-    open $LOG, '+>', \$log;
+#    setupdebug(5, 'testinitperiods.log');
 
     # ensure we get values from opts
     my %opts = ('period', 'day week month', 'expand_period', 'month year');
-    my ($a,$b) = initperiods('both', \%opts);
-    ok($a, 'day,week,month');
-    ok($b, 'month,year');
+    my ($x,$y) = initperiods('both', \%opts);
+    ok($x, 'day,week,month');
+    ok($y, 'month,year');
     %opts = ('period', 'day week', 'expand_period', 'day month');
-    ($a,$b) = initperiods('all', \%opts);
-    ok($a, 'day,week');
-    ok($b, 'day,month');
-    ($a,$b) = initperiods('host', \%opts);
-    ok($a, 'day,week');
-    ok($b, 'day,month');
-    ($a,$b) = initperiods('service', \%opts);
-    ok($a, 'day,week');
-    ok($b, 'day,month');
-    ($a,$b) = initperiods('group', \%opts);
-    ok($a, 'day,week');
-    ok($b, 'day,month');
+    ($x,$y) = initperiods('all', \%opts);
+    ok($x, 'day,week');
+    ok($y, 'day,month');
+    ($x,$y) = initperiods('host', \%opts);
+    ok($x, 'day,week');
+    ok($y, 'day,month');
+    ($x,$y) = initperiods('service', \%opts);
+    ok($x, 'day,week');
+    ok($y, 'day,month');
+    ($x,$y) = initperiods('group', \%opts);
+    ok($x, 'day,week');
+    ok($y, 'day,month');
 
     # ensure we get values from config
     $Config{timeall} = 'month,year';
     $Config{expand_timeall} = 'day';
     %opts = ('period', '', 'expand_period', '');
-    ($a,$b) = initperiods('all', \%opts);
-    ok($a, 'month,year');
-    ok($b, 'day');
+    ($x,$y) = initperiods('all', \%opts);
+    ok($x, 'month,year');
+    ok($y, 'day');
 
     # ensure values from opts override those from config
     $Config{timeall} = 'month,year';
     $Config{expand_timeall} = 'day';
     %opts = ('period', 'day', 'expand_period', 'month');
-    ($a,$b) = initperiods('all', \%opts);
-    ok($a, 'day');
-    ok($b, 'month');
-    
-    close $LOG;
-    $Config{debug} = 0;
+    ($x,$y) = initperiods('all', \%opts);
+    ok($x, 'day');
+    ok($y, 'month');
+
+#    teardowndebug();
+    return;
 }
 
 sub testparsedb {
-    $Config{debug} = 0;
-    open $LOG, '+>', \$log;
+#    setupdebug(5, 'testparsedb.log');
 
     # single data source
     my $str = '&db=ping,rta';
@@ -2327,8 +2413,8 @@ sub testparsedb {
           'ping,loss' => 'LOSS'
         };\n");
 
-    close $LOG;
-    $Config{debug} = 0;
+#    teardowndebug();
+    return;
 }
 
 # ensure that we unescape properly anything that is thrown at us
@@ -2338,14 +2424,15 @@ sub testcleanline {
 
     $ostr = cleanline('&db=ping,rta&label=Real%20Time%20Astronaut');
     ok($ostr, '&db=ping,rta&label=Real Time Astronaut');
+    return;
 }
 
 sub testgetcfgfn {
-    my $cwd = $FindBin::Bin;
     my $fn = getcfgfn('/home/file.txt');
-    ok($fn, "/home/file.txt");
+    ok($fn, '/home/file.txt');
     $fn = getcfgfn('file.txt');
-    ok($fn, "$cwd/../etc/file.txt");
+    ok($fn, "$curdir/../etc/file.txt");
+    return;
 }
 
 sub testreadhostdb {
@@ -2360,29 +2447,23 @@ sub testreadhostdb {
     $result = readhostdb('host0');
     ok(@{$result}, 2);
 
-    my $fn = "$FindBin::Bin/db.conf";
+    my $fn = "$curdir/db.conf";
     my $rrddir = gettestrrddir();
     $Config{hostdb} = $fn;
 
     # nothing when nothing in file
-    open TEST, ">$fn";
-    print TEST "\n";
-    close TEST;
+    writefile($fn);
     $result = readhostdb();
     ok(@{$result}, 0);
 
     # nothing when bogus file contents
-    open TEST, ">$fn";
-    print TEST "servicio=7up\n";
-    close TEST;
+    writefile($fn, ('servicio=7up'));
     $result = readhostdb();
     ok(@{$result}, 0);
 
     # specify ping service with ping db
-    open TEST, ">$fn";
-    print TEST "#this is a comment\n";
-    print TEST "service=PING&db=ping\n";
-    close TEST;
+    writefile($fn, ('#this is a comment',
+                    'service=PING&db=ping'));
 
     # degenerate cases should return nothing
     $result = readhostdb();
@@ -2413,11 +2494,9 @@ sub testreadhostdb {
         ];\n");
 
     # bogus lines should be ignored
-    open TEST, ">$fn";
-    print TEST "  service=ping&db=rta\n";
-    print TEST "service=PING&db=ping\n";
-    print TEST " host=host1\n";
-    close TEST;
+    writefile($fn, ('  service=ping&db=rta',
+                    'service=PING&db=ping',
+                    ' host=host1'));
     $result = readhostdb('host3');
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
@@ -2432,9 +2511,7 @@ sub testreadhostdb {
         ];\n");
 
     # empty db spec should be filled in
-    open TEST, ">$fn";
-    print TEST "service=PING\n";
-    close TEST;
+    writefile($fn, ('service=PING'));
     $result = readhostdb('host0');
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
@@ -2450,13 +2527,11 @@ sub testreadhostdb {
     ok(Dumper($result), "\$VAR1 = [];\n");
 
     # now add more data sets, all for ping service
-    open TEST, ">$fn";
-    print TEST "service=ping&db=rta\n";
-    print TEST "service=ping&db=loss\n";
-    print TEST "service=PING&db=ping\n";
-    print TEST "service=PING&db=ping,rta\n";
-    print TEST "service=PING&db=ping,losspct\n";
-    close TEST;
+    writefile($fn, ('service=ping&db=rta',
+                    'service=ping&db=loss',
+                    'service=PING&db=ping',
+                    'service=PING&db=ping,rta',
+                    'service=PING&db=ping,losspct'));
 
     # this should pick up three different pings
     $result = readhostdb('host2');
@@ -2511,9 +2586,7 @@ sub testreadhostdb {
 
 
     # valid service, bogus data source
-    open TEST, ">$fn";
-    print TEST "service=PING&db=foo\n";
-    close TEST;
+    writefile($fn, ('service=PING&db=foo'));
 
     # this host should not match anything
     $result = readhostdb('host2');
@@ -2521,10 +2594,8 @@ sub testreadhostdb {
 
 
     # test multiple data sources per line
-    open TEST, ">$fn";
-    print TEST "service=ping&db=rta&db=loss\n";
-    print TEST "service=PING&db=ping,losspct&db=ping,rta\n";
-    close TEST;
+    writefile($fn, ('service=ping&db=rta&db=loss',
+                    'service=PING&db=ping,losspct&db=ping,rta'));
     $result = readhostdb('host2');
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
@@ -2554,9 +2625,7 @@ sub testreadhostdb {
 
 
     # test database versus data source
-    open TEST, ">$fn";
-    print TEST "service=PING&db=ping\n";
-    close TEST;
+    writefile($fn, ('service=PING&db=ping'));
     $result = readhostdb('host2');
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
@@ -2569,9 +2638,7 @@ sub testreadhostdb {
             'host' => 'host2'
           }
         ];\n");
-    open TEST, ">$fn";
-    print TEST "service=PING&db=ping,rta\n";
-    close TEST;
+    writefile($fn, ('service=PING&db=ping,rta'));
     $result = readhostdb('host2');
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
@@ -2584,25 +2651,19 @@ sub testreadhostdb {
             'host' => 'host2'
           }
         ];\n");
-    open TEST, ">$fn";
-    print TEST "service=PING&db=rta\n";
-    close TEST;
+    writefile($fn, ('service=PING&db=rta'));
     $result = readhostdb('host2');
     ok(@{$result}, 0);
     ok(Dumper($result), "\$VAR1 = [];\n");
     # bogus data source should result in no match
-    open TEST, ">$fn";
-    print TEST "service=PING&db=ping,bogus\n";
-    close TEST;
+    writefile($fn, ('service=PING&db=ping,bogus'));
     $result = readhostdb('host2');
     ok(@{$result}, 0);
     ok(Dumper($result), "\$VAR1 = [];\n");
 
-    
+
     # test multiple data sets alternative syntax
-    open TEST, ">$fn";
-    print TEST "service=ping&db=loss,losspct,losswarn&db=rta,rtawarn,rtacrit\n";
-    close TEST;
+    writefile($fn, ('service=ping&db=loss,losspct,losswarn&db=rta,rtawarn,rtacrit'));
     $result = readhostdb('host3');
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
@@ -2619,10 +2680,8 @@ sub testreadhostdb {
 
 
     # test service labels parsing
-    open TEST, ">$fn";
-    print TEST "service=ping&label=PING&db=rta&db=loss\n";
-    print TEST "service=PING&label=PINGIT&db=ping,losspct&db=ping,rta\n";
-    close TEST;
+    writefile($fn, ('service=ping&label=PING&db=rta&db=loss',
+                    'service=PING&label=PINGIT&db=ping,losspct&db=ping,rta'));
     $result = readhostdb('host2');
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
@@ -2654,9 +2713,7 @@ sub testreadhostdb {
 
 
     # test data source labels parsing
-    open TEST, ">$fn";
-    print TEST "service=PING&db=ping&label=Ping Loss Percentage\n";
-    close TEST;
+    writefile($fn, ('service=PING&db=ping&label=Ping Loss Percentage'));
     $result = readhostdb('host0');
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
@@ -2671,9 +2728,7 @@ sub testreadhostdb {
             'host' => 'host0'
           }
         ];\n");
-    open TEST, ">$fn";
-    print TEST "service=PING&db=ping,losspct&label=Ping Loss Percentage\n";
-    close TEST;
+    writefile($fn, ('service=PING&db=ping,losspct&label=Ping Loss Percentage'));
     $result = readhostdb('host0');
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
@@ -2689,11 +2744,9 @@ sub testreadhostdb {
           }
         ];\n");
 
-    
+
     # test multiple data sets
-    open TEST, ">$fn";
-    print TEST "service=PING&db=ping,losspct&label=LP&db=ping,rta&label=RTA\n";
-    close TEST;
+    writefile($fn, ('service=PING&db=ping,losspct&label=LP&db=ping,rta&label=RTA'));
     $result = readhostdb('host0');
     ok(@{$result}, 1);
     ok(Dumper($result), "\$VAR1 = [
@@ -2714,6 +2767,7 @@ sub testreadhostdb {
     unlink $fn;
     teardownrrd();
     teardownauthhosts();
+    return;
 }
 
 sub testreadservdb {
@@ -2728,14 +2782,12 @@ sub testreadservdb {
     $result = readservdb('HTTP');
     ok(@{$result}, 2);
 
-    my $fn = "$FindBin::Bin/db.conf";
+    my $fn = "$curdir/db.conf";
     $Config{servdb} = $fn;
 
     # when nothing in file, use defaults
 
-    open TEST, ">$fn";
-    print TEST "\n";
-    close TEST;
+    writefile($fn, (''));
 
     $result = readservdb('PING');
     ok(@{$result}, 2);
@@ -2753,11 +2805,9 @@ sub testreadservdb {
     ok(@{$result}, 0);
 
     # bogus lines should be ignored
-    open TEST, ">$fn";
-    print TEST "  host=host0\n";
-    print TEST "service=service1\n";
-    print TEST " host=  host1\n";
-    close TEST;
+    writefile($fn, ('  host=host0',
+                    'service=service1',
+                    ' host=  host1'));
     $result = readservdb('HTTP');
     ok(@{$result}, 2);
     ok(Dumper($result), "\$VAR1 = [
@@ -2765,15 +2815,13 @@ sub testreadservdb {
           'host1'
         ];\n");
 
-    open TEST, ">$fn";
-    print TEST "#this is a comment\n";
-    print TEST "host=host0\n";
-    print TEST "host=host1\n";
-    print TEST "host=host2\n";
-    print TEST "host=host3\n";
-    print TEST "host=host4\n";
-    print TEST "host=host5\n";
-    close TEST;
+    writefile($fn, ('#this is a comment',
+                    'host=host0',
+                    'host=host1',
+                    'host=host2',
+                    'host=host3',
+                    'host=host4',
+                    'host=host5'));
 
     # degenerate cases should return nothing
 
@@ -2836,18 +2884,14 @@ sub testreadservdb {
 
     # verify the order of hosts
 
-    open TEST, ">$fn";
-    print TEST "host=host0,host1\n";
-    close TEST;
+    writefile($fn, ('host=host0,host1'));
     $result = readservdb('HTTP');
     ok(@{$result}, 2);
     ok(Dumper($result), "\$VAR1 = [
           'host0',
           'host1'
         ];\n");
-    open TEST, ">$fn";
-    print TEST "host=host1,host0\n";
-    close TEST;
+    writefile($fn, ('host=host1,host0'));
     $result = readservdb('HTTP');
     ok(@{$result}, 2);
     ok(Dumper($result), "\$VAR1 = [
@@ -2857,9 +2901,7 @@ sub testreadservdb {
 
     # verify specialized requests
 
-    open TEST, ">$fn";
-    print TEST "host=host0,host1\n";
-    close TEST;
+    writefile($fn, ('host=host0,host1'));
     $result = readservdb('HTTP', ['http']);
     ok(@{$result}, 2);
     ok(Dumper($result), "\$VAR1 = [
@@ -2880,40 +2922,35 @@ sub testreadservdb {
     unlink $fn;
     teardownrrd();
     teardownauthhosts();
+    return;
 }
 
 sub testreadgroupdb {
     setuprrd();
     setupauthhosts();
 
-    my $fn = "$FindBin::Bin/db.conf";
+    my $fn = "$curdir/db.conf";
     my $rrddir = gettestrrddir();
     $Config{groupdb} = $fn;
 
     # nothing when nothing in file
-    open TEST, ">$fn";
-    print TEST "\n";
-    close TEST;
+    writefile($fn, (''));
     my ($names,$infos) = readgroupdb('PING');
     ok(@{$names}, 0);
 
     # skip bogus lines
-    open TEST, ">$fn";
-    print TEST "#this is a comment\n";
-    print TEST "backup\n";
-    print TEST "backup=host\n";
-    print TEST "PING=\n";
-    close TEST;
+    writefile($fn, ('#this is a comment',
+                    'backup',
+                    'backup=host',
+                    'PING='));
     ($names,$infos) = readgroupdb('PING');
     ok(@{$names}, 0);
 
     # test scan for defaults
-    open TEST, ">$fn";
-    print TEST "#this is a comment\n";
-    print TEST "PING=host0,PING\n";
-    print TEST "PING=host2,PING&db=ping,losspct\n";
-    print TEST "PING=host3,PING\n";
-    close TEST;
+    writefile($fn, ('#this is a comment',
+                    'PING=host0,PING',
+                    'PING=host2,PING&db=ping,losspct',
+                    'PING=host3,PING'));
     ($names,$infos) = readgroupdb('PING');
     ok(@{$names}, 1);
     ok(Dumper($infos), "\$VAR1 = [
@@ -2933,22 +2970,20 @@ sub testreadgroupdb {
           }
         ];\n");
 
-    open TEST, ">$fn";
-    print TEST "#this is a comment\n";
-    print TEST "PING=host1,PING&db=ping,rta\n";
-    print TEST "PING=host1,PING&db=ping,losspct\n";
-    print TEST "PING=host2,PING&db=ping,losspct\n";
-    print TEST "PING=host3,PING&db=ping,losspct\n";
-    print TEST "PING=host4,PING&db=ping,rta\n";
-    print TEST "PING=host4,PING&db=ping,losspct\n";
-    print TEST "PING=host5,PING&db=ping,losspct\n";
-    print TEST "Web Servers=host0,PING&db=ping,losspct\n";
-    print TEST "Web Servers=host0,HTTP&db=http\n";
-    print TEST "Web Servers=host1,PING&db=ping,losspct\n";
-    print TEST "Web Servers=host1,HTTP&db=http\n";
-    print TEST "Web Servers=host5,PING&db=ping,losspct\n";
-    print TEST "Web Servers=host5,HTTP&db=http\n";
-    close TEST;
+    writefile($fn, ('#this is a comment',
+                    'PING=host1,PING&db=ping,rta',
+                    'PING=host1,PING&db=ping,losspct',
+                    'PING=host2,PING&db=ping,losspct',
+                    'PING=host3,PING&db=ping,losspct',
+                    'PING=host4,PING&db=ping,rta',
+                    'PING=host4,PING&db=ping,losspct',
+                    'PING=host5,PING&db=ping,losspct',
+                    'Web Servers=host0,PING&db=ping,losspct',
+                    'Web Servers=host0,HTTP&db=http',
+                    'Web Servers=host1,PING&db=ping,losspct',
+                    'Web Servers=host1,HTTP&db=http',
+                    'Web Servers=host5,PING&db=ping,losspct',
+                    'Web Servers=host5,HTTP&db=http'));
 
     ($names,$infos) = readgroupdb();
     ok(@{$names}, 2);
@@ -2999,12 +3034,9 @@ sub testreadgroupdb {
           }
         ];\n");
 
-    
     # test multiple data sources from multiple databases
 
-    open TEST, ">$fn";
-    print TEST "PING=host3,ping&db=loss,losspct,losscrit,losswarn&db=rta,rtacrit\n";
-    close TEST;
+    writefile($fn, ('PING=host3,ping&db=loss,losspct,losscrit,losswarn&db=rta,rtacrit'));
     ($names,$infos) = readgroupdb('PING');
     ok(@{$infos}, 1);
     ok(Dumper($infos), "\$VAR1 = [
@@ -3021,10 +3053,8 @@ sub testreadgroupdb {
 
     # test service and data labels
 
-    open TEST, ">$fn";
-    print TEST "PING=host0,PING&label=PING RTA&db=ping,rta\n";
-    print TEST "PING=host0,PING&db=ping,losspct&label=LOSSY\n";
-    close TEST;
+    writefile($fn, ('PING=host0,PING&label=PING RTA&db=ping,rta',
+                    'PING=host0,PING&db=ping,losspct&label=LOSSY'));
 
     ($names,$infos) = readgroupdb('PING');
     ok(@{$names}, 1);
@@ -3056,6 +3086,7 @@ sub testreadgroupdb {
     unlink $fn;
     teardownrrd();
     teardownauthhosts();
+    return;
 }
 
 sub testreaddatasetdb {
@@ -3070,31 +3101,24 @@ sub testreaddatasetdb {
     $result = readdatasetdb();
     ok(keys %{$result}, 0);
 
-    my $fn = "$FindBin::Bin/db.conf";
+    my $fn = "$curdir/db.conf";
     $Config{datasetdb} = $fn;
 
     # nothing when nothing in file
-    open TEST, ">$fn";
-    print TEST "\n";
-    close TEST;
+    writefile($fn, (''));
     $result = readdatasetdb();
     ok(keys %{$result}, 0);
 
     # bogus lines should be ignored
-    open TEST, ">$fn";
-    print TEST "service=\n";
-    print TEST "  service = ping&db=rta\n";
-    print TEST "host\n";
-    close TEST;
+    writefile($fn, ('service=',
+                    '  service = ping&db=rta',
+                    'host'));
     $result = readdatasetdb();
     ok(keys %{$result}, 1);
 
-    open TEST, ">$fn";
-    print TEST "#this is a comment\n";
-    print TEST "service=PING&db=ping,rta\n";
-    print TEST "service=net&db=bytes-received&db=bytes-transmitted\n";
-    close TEST;
-
+    writefile($fn, ('#this is a comment',
+                    'service=PING&db=ping,rta',
+                    'service=net&db=bytes-received&db=bytes-transmitted'));
     $result = readdatasetdb();
     ok(keys %{$result}, 2);
     ok(Dumper($result), "\$VAR1 = {
@@ -3107,10 +3131,8 @@ sub testreaddatasetdb {
                    ]
         };\n");
 
-    open TEST, ">$fn";
-    print TEST "service=PING&db=ping,rta\n";
-    print TEST "service=PING&db=ping,loss\n";
-    close TEST;
+    writefile($fn, ('service=PING&db=ping,rta',
+                    'service=PING&db=ping,loss'));
 
     # if multiple definitions, use the last one
     $result = readdatasetdb();
@@ -3123,15 +3145,16 @@ sub testreaddatasetdb {
 
     unlink $fn;
     teardownrrd();
+    return;
 }
 
 sub testreadrrdoptsfile {
     # do nothing if file not defined
     undef $Config{rrdoptsfile};
     my $errstr = readrrdoptsfile();
-    ok($errstr, "");
+    ok($errstr, '');
 
-    my $fn = "$FindBin::Bin/db.conf";
+    my $fn = "$curdir/db.conf";
     $Config{rrdoptsfile} = $fn;
 
     undef $Config{rrdoptshash};
@@ -3140,35 +3163,32 @@ sub testreadrrdoptsfile {
     ok($errstr, "cannot open $fn: No such file or directory");
     ok(Dumper($Config{rrdoptshash}), "\$VAR1 = {
           'global' => ''
-        };
-");
+        };\n");
 
-    open TEST, ">$fn";
-    print TEST "ping=-u 1 -l 0\n";
-    print TEST "ntp=-A\n";
-    close TEST;
+    writefile($fn, ('ping=-u 1 -l 0',
+                    'ntp=-A'));
 
     undef $Config{rrdoptshash};
     $Config{rrdoptshash}{global} = q();
     $errstr = readrrdoptsfile();
-    ok($errstr, "");
+    ok($errstr, '');
     ok(Dumper($Config{rrdoptshash}), "\$VAR1 = {
           'ntp' => '-A',
           'ping' => '-u 1 -l 0',
           'global' => ''
-        };
-");
+        };\n");
 
     undef $Config{rrdoptshash};
     unlink $fn;
+    return;
 }
 
 sub testreadlabelsfile {
     undef %Labels;
     my $errstr = readlabelsfile();
-    ok($errstr, "");
+    ok($errstr, '');
 
-    my $fn = "$FindBin::Bin/db.conf";
+    my $fn = "$curdir/db.conf";
     $Config{labelfile} = $fn;
 
     undef %Labels;
@@ -3176,44 +3196,43 @@ sub testreadlabelsfile {
     ok($errstr, "cannot open $fn: No such file or directory");
     ok(Dumper(\%Labels), "\$VAR1 = {};\n");
 
-    open TEST, ">$fn";
-    print TEST "ping=PING\n";
-    close TEST;
+    writefile($fn, ('ping=PING'));
 
     undef %Labels;
     $errstr = readlabelsfile();
-    ok($errstr, "");
+    ok($errstr, '');
     ok(Dumper(\%Labels), "\$VAR1 = {
           'ping' => 'PING'
-        };
-");
+        };\n");
 
     unlink $fn;
+    return;
 }
 
 # build hash from rrd files in a single directory
 sub testscandirectory {
+    my $TMP;
     my $rrddir = 'testrrddir';
-    mkdir($rrddir, 0755);
+    mkdir $rrddir, 0755;
 
     undef %hsdata;
     $_ = '..';
     scandirectory();
     ok(%hsdata, 0, 'Nothing should be set yet');
     $_ = $rrddir;
-    mkdir($_, 0755);
+    mkdir $_, 0755;
     scandirectory();
     ok(%hsdata, 0, 'Nothing should be set yet');
     $_ = $rrddir . '/test1.rrd';
-    open TMP, ">$_";
-    print TMP "test1\n";
-    close TMP;
+    open $TMP, '>', $_ or carp "open failed: $OS_ERROR";
+    print ${TMP} "test1\n" or carp "print failed: $OS_ERROR";
+    close $TMP or carp "close failed: $OS_ERROR";
     scandirectory();
     ok(Dumper(\%hsdata), "\$VAR1 = {};\n");
     $_ = $rrddir . '/host0_ping_rta.rrd';
-    open TMP, ">$_";
-    print TMP "test1\n";
-    close TMP;
+    open $TMP, '>', $_ or carp "open failed: $OS_ERROR";
+    print ${TMP} "test1\n" or carp "print failed: $OS_ERROR";
+    close $TMP or carp "close failed: $OS_ERROR";
     scandirectory();
     ok(Dumper(\%hsdata), "\$VAR1 = {
           'testrrddir/host0' => {
@@ -3221,12 +3240,11 @@ sub testscandirectory {
                                               'rta'
                                             ]
                                 }
-        };
-");
+        };\n");
     $_ = $rrddir . '/host1_ping_rta.rrd';
-    open TMP, ">$_";
-    print TMP "test1\n";
-    close TMP;
+    open $TMP, '>', $_ or carp "open failed: $OS_ERROR";
+    print ${TMP} "test1\n" or carp "print failed: $OS_ERROR";
+    close $TMP or carp "close failed: $OS_ERROR";
     scandirectory();
     ok(Dumper(\%hsdata), "\$VAR1 = {
           'testrrddir/host1' => {
@@ -3239,14 +3257,13 @@ sub testscandirectory {
                                               'rta'
                                             ]
                                 }
-        };
-");
+        };\n");
 
     undef %hsdata;
     $_ = $rrddir . '/host0_ping_Round%20Trip%20Average.rrd';
-    open TMP, ">$_";
-    print TMP "test1\n";
-    close TMP;
+    open $TMP, '>', $_ or carp "open failed: $OS_ERROR";
+    print ${TMP} "test1\n" or carp "print failed: $OS_ERROR";
+    close $TMP or carp "close failed: $OS_ERROR";
     scandirectory();
     ok(Dumper(\%hsdata), "\$VAR1 = {
           'testrrddir/host0' => {
@@ -3254,43 +3271,45 @@ sub testscandirectory {
                                               'Round Trip Average'
                                             ]
                                 }
-        };
-");
+        };\n");
 
     undef %hsdata;
     rmtree($rrddir);
+    return;
 }
 
 # build hash from rrd files in a directory hierarchy
 sub testscanhierarchy {
+    my $TMP;
     undef %hsdata;
     $_ = '..';
     scanhierarchy();
     ok(%hsdata, 0, 'Nothing should be set yet');
     $_ = 'test';
-    mkdir($_, 0755);
+    mkdir $_, 0755;
     scanhierarchy();
     ok(%hsdata, 0, 'Nothing should be set yet');
     $_ = 'test/test1';
-    open TMP, ">$_";
-    print TMP "test1\n";
-    close TMP;
+    open $TMP, '>', $_ or carp "open failed: $OS_ERROR";
+    print ${TMP} "test1\n" or carp "print failed: $OS_ERROR";
+    close $TMP or carp "close failed: $OS_ERROR";
     scanhierarchy();
     ok(%hsdata, 0, 'Nothing should be set yet');
     $_ = 'test';
     scanhierarchy();
-    ok(Dumper($hsdata{$_}), qr'{}');
+    ok(Dumper($hsdata{$_}), "\$VAR1 = {};\n");
     $_ = 'test/test1.rrd';
-    open TMP, ">$_";
-    print TMP "test1\n";
-    close TMP;
-    $File::Find::dir = $FindBin::Bin;
+    open $TMP, '>', $_ or carp "open failed: $OS_ERROR";
+    print ${TMP} "test1\n" or carp "print failed: $OS_ERROR";
+    close $TMP or carp "close failed: $OS_ERROR";
+    $File::Find::dir = $curdir;
     scanhierarchy();
-    ok($hsdata{$FindBin::Bin}{'test/test1.rrd'}[0], undef);
+    ok($hsdata{$curdir}{'test/test1.rrd'}[0], undef);
     unlink 'test/test1';
     unlink 'test/test1.rrd';
     rmdir 'test';
     undef %hsdata;
+    return;
 }
 
 # ensure that scanning host/service data works.  do it with both subdir and
@@ -3334,8 +3353,7 @@ sub testscanhsdata {
       'c:\\\\ space'
     ]
   }
-};
-");
+};\n");
     undef %hsdata;
     teardownrrd();
 
@@ -3377,10 +3395,10 @@ sub testscanhsdata {
       'c:\\\\ space'
     ]
   }
-};
-");
+};\n");
     undef %hsdata;
     teardownrrd();
+    return;
 }
 
 sub testgetstyle {
@@ -3391,11 +3409,11 @@ sub testgetstyle {
           {
             '-src' => 'sheet.css'
           }
-        ];
-");
+        ];\n");
     undef $Config{stylesheet};
     @style = getstyle();
     ok(Dumper(\@style), "\$VAR1 = [];\n");
+    return;
 }
 
 sub testgetrefresh {
@@ -3406,11 +3424,11 @@ sub testgetrefresh {
           'Refresh',
           '-content',
           '500'
-        ];
-");
+        ];\n");
     undef $Config{refresh};
     @refresh = getrefresh();
     ok(Dumper(\@refresh), "\$VAR1 = [];\n");
+    return;
 }
 
 sub testgetperiodctrls {
@@ -3424,6 +3442,7 @@ sub testgetperiodctrls {
     ok($p, '<a href="&amp;offset=172800"><</a>');
     ok($c, '15:10 25 Feb - 00:10 27 Feb');
     ok($n, '<a href="&amp;offset=0">></a>');
+    return;
 }
 
 sub testgetperiodlabel {
@@ -3438,37 +3457,39 @@ sub testgetperiodlabel {
     my $o = 86_400;
     my $p = 118_800;
     my $s = getperiodlabel($n, $o, $p, 'day');
-    ok($s, "15:10 25 Feb - 00:10 27 Feb");
+    ok($s, '15:10 25 Feb - 00:10 27 Feb');
     $s = getperiodlabel($n, $o, $p, 'week');
-    ok($s, "25 Feb - 27 Feb");
+    ok($s, '25 Feb - 27 Feb');
     $s = getperiodlabel($n, $o, $p, 'month');
-    ok($s, "week 08 - week 08");
+    ok($s, 'week 08 - week 08');
     $s = getperiodlabel($n, $o, $p, 'quarter');
-    ok($s, "week 08 - week 08");
+    ok($s, 'week 08 - week 08');
     $s = getperiodlabel($n, $o, $p, 'year');
-    ok($s, "Feb 2010 - Feb 2010");
+    ok($s, 'Feb 2010 - Feb 2010');
 
     $o = 172_800;
     $s = getperiodlabel($n, $o, $p, 'day');
-    ok($s, "15:10 24 Feb - 00:10 26 Feb");
+    ok($s, '15:10 24 Feb - 00:10 26 Feb');
     $o = 86_400;
     $p = 8_467_200;
     $s = getperiodlabel($n, $o, $p, 'day');
-    ok($s, "00:10 21 Nov - 00:10 27 Feb");
+    ok($s, '00:10 21 Nov - 00:10 27 Feb');
+    return;
 }
 
 sub testformattime {
     my $t = 1267333859; # Sun Feb 28 00:10:59 2010
     $Config{timeformat_day} = '%H:%M %e %b';
     my $s = formattime($t, 'timeformat_day');
-    ok($s, "00:10 28 Feb");
+    ok($s, '00:10 28 Feb');
     $s = formattime($t, 'bogus');
-    ok($s, "Sun Feb 28 00:10:59 2010");
+    ok($s, 'Sun Feb 28 00:10:59 2010');
+    return;
 }
 
 sub testcheckrrddir {
     my $isroot = $ENV{LOGNAME} eq 'root' ? 1 : 0;
-    my $cwd = $FindBin::Bin;
+    my $cwd = $curdir;
     my $gp = $cwd . '/gp';
     my $p = $gp . '/p';
     my $rrd = $p . '/rrd';
@@ -3477,18 +3498,18 @@ sub testcheckrrddir {
 
     rmtree($gp);
     my $msg = checkrrddir('write');
-    ok($msg, "");
+    ok($msg, '');
 
     rmtree($gp);
     mkdir $gp, 0770;
     $msg = checkrrddir('write');
-    ok($msg, "");
+    ok($msg, '');
 
     rmtree($gp);
     mkdir $gp, 0550;
     $msg = checkrrddir('write');
     if ($isroot) {
-        ok($msg, "");
+        ok($msg, '');
     } else {
         ok($msg, "Cannot create rrd directory $cwd/gp/p/rrd: No such file or directory");
     }
@@ -3498,7 +3519,7 @@ sub testcheckrrddir {
     mkdir $p, 0770;
     $msg = checkrrddir('write');
     if ($isroot) {
-        ok($msg, "");
+        ok($msg, '');
     } else {
         ok($msg, "Cannot create rrd directory $cwd/gp/p/rrd: No such file or directory");
     }
@@ -3508,7 +3529,7 @@ sub testcheckrrddir {
     mkdir $p, 0550;
     $msg = checkrrddir('write');
     if ($isroot) {
-        ok($msg, "");
+        ok($msg, '');
     } else {
         ok($msg, "Cannot create rrd directory $cwd/gp/p/rrd: Permission denied");
     }
@@ -3529,14 +3550,13 @@ sub testcheckrrddir {
     ok($msg, "No data in rrd directory $cwd/gp/p/rrd");
 
     my $fn = $rrd . '/file.rrd';
-    open TEST, ">$fn";
-    print TEST "\n";
-    close TEST;
+    writefile($fn, (''));
 
     $msg = checkrrddir('read');
-    ok($msg, "");
+    ok($msg, '');
 
     rmtree($gp);
+    return;
 }
 
 sub testgetlabel {
@@ -3544,6 +3564,7 @@ sub testgetlabel {
     $Labels{foo} = 'bar';
     ok(getlabel('foo'), 'bar');
     undef $Labels{foo};
+    return;
 }
 
 # test fallback behavior when getting labels for data
@@ -3569,6 +3590,7 @@ sub testgetdatalabel {
     ok(getdatalabel('ping,loss'), 'PING Loss');
 
     undef %Labels;
+    return;
 }
 
 sub testbuildurl {
@@ -3599,6 +3621,7 @@ sub testbuildurl {
     ok(buildurl('host0', 'ping', \%opts),
        'host=host0&service=ping&geom=100x100');
     undef $opts{geom};
+    return;
 }
 
 sub testcfgparams {
@@ -3675,6 +3698,7 @@ sub testcfgparams {
         };\n");
 
     undef %Config;
+    return;
 }
 
 sub testsetlabels {
@@ -3754,6 +3778,7 @@ sub testsetlabels {
         ];\n");
 
     undef %Config;
+    return;
 }
 
 sub testsetdata {
@@ -3887,6 +3912,7 @@ sub testsetdata {
           'CDEF:db_ds_mini=db_ds_minif,db_ds,db_ds_min,IF',
           'GPRINT:db_ds_mini:MIN:Min\\\\:%7.2lf%s\\\\n'
         ];\n");
+    return;
 }
 
 
@@ -3910,7 +3936,6 @@ testgethsdd();
 testgethsddvalue();
 testgethsdvalue();
 testgethsdvalue2();
-#testgethsddvalue();
 testreadfile();
 testinitlog();
 testreadconfig();

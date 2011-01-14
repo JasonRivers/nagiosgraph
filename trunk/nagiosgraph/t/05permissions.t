@@ -6,21 +6,43 @@
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 # Author:  (c) Matthew Wall, 2010
 
+## no critic (RequireUseWarnings)
+## no critic (ProhibitImplicitNewlines)
+## no critic (ProhibitMagicNumbers)
+## no critic (RequireBriefOpen)
+## no critic (ProhibitEmptyQuotes)
+## no critic (ProhibitQuotedWordLists)
+## no critic (ProhibitNoisyQuotes)
+
 use FindBin;
 use Test;
 use strict;
 
 BEGIN {
-    eval "require RRDs; RRDs->import();
-          use Data::Dumper;
-          use lib \"$FindBin::Bin/../etc\";
-          use ngshared;";
-    if ($@) {
+    my $rc = eval {
+        require RRDs; RRDs->import();
+        use Carp;
+        use Data::Dumper;
+        use English qw(-no_match_vars);
+        use lib "$FindBin::Bin/../etc";
+        use ngshared;
+    };
+    if ($rc) {
         plan tests => 0;
         exit 0;
     } else {
         plan tests => 178;
     }
+}
+
+sub writefile {
+    my ($fn, @data) = @_;
+    open my $TEST, '>', $fn or carp "open $fn failed; $OS_ERROR";
+    foreach my $line (@data) {
+        print ${TEST} $line . "\n" or carp "print failed: $OS_ERROR";
+    }
+    close $TEST or carp "close $fn failed: $OS_ERROR";
+    return;
 }
 
 sub testcheckuserlist {
@@ -30,6 +52,7 @@ sub testcheckuserlist {
     ok(checkuserlist('jane.user'), 0);
     ok(checkuserlist('*.user'), 0);
     ok(checkuserlist('!bill'), 0);
+    return;
 }
 
 sub testscrubuserlist {
@@ -37,12 +60,13 @@ sub testscrubuserlist {
     ok(scrubuserlist(' bill  , bob, nancy'), 'bill,bob,nancy');
     ok(scrubuserlist('bill,bob fred,nancy'), 'bill,bobfred,nancy');
     ok(scrubuserlist('bob,!bill, ! nancy'), 'bob,!bill,!nancy');
+    return;
 }
 
 sub testgetperms {
     $Config{debug} = 5;
     my $fn = 'matches.txt';
-    open $LOG, '>', $fn;
+    open $LOG, '>', $fn or carp "open LOG failed: $OS_ERROR";
 
     ok(getperms('guest', 'guest'), 1);
     ok(getperms('guest', '*'), 1);
@@ -78,9 +102,10 @@ sub testgetperms {
     # be sure the error handling works properly.
     ok(getperms('guest', '???'), 0);
 
-    close $LOG;
+    close $LOG or carp "close LOG failed: $OS_ERROR";
     $Config{debug} = 0;
     unlink $fn;
+    return;
 }
 
 sub testhavepermission {
@@ -145,13 +170,14 @@ sub testhavepermission {
     ok(havepermission('host0', 'ping'), 0);
     ok(havepermission('host0', 'http'), 1);
     ok(havepermission('host1', 'ping'), 0);
+
+    return;
 }
 
 # this does the baseline testing for error messages and resulting permission.
 # detailed tests for nagios and nagiosgraph configurations are done in
 # separate test methods.
 sub testloadperms {
-    my $cwd = $FindBin::Bin;
     undef %authz;
 
     my $errmsg = loadperms('guest');
@@ -194,20 +220,14 @@ sub testloadperms {
 
     # authentication disabled in nagios
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=0\n";
-    close TEST;
-
+    writefile($fn, ('use_authentication=0'));
     $errmsg = loadperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {};\n");
 
     # authentication enabled in nagios
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=1\n";
-    close TEST;
-
+    writefile($fn, ('use_authentication=1'));
     $errmsg = loadperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -236,7 +256,7 @@ sub testloadperms {
         };\n");
     $Config{authzfile} = 'boo';
     $errmsg = loadperms('guest');
-    ok($errmsg, "cannot open access control file $cwd/../etc/boo: No such file or directory");
+    ok($errmsg, "cannot open access control file $FindBin::Bin/../etc/boo: No such file or directory");
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -246,15 +266,15 @@ sub testloadperms {
     undef $Config{authzmethod};
     undef $Config{authzfile};
     unlink $fn;
+
+    return;
 }
 
 sub testreadnagiosperms {
     my $fn = "$FindBin::Bin/test_cgi.cfg";
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=1\n";
-    print TEST "default_user_name=admin\n";
-    close TEST;
+    writefile($fn, ('use_authentication=1',
+                    'default_user_name=admin'));
 
     # no config file defined
 
@@ -282,7 +302,7 @@ sub testreadnagiosperms {
 
     $Config{authzfile} = 'foobar';
     $errmsg = readnagiosperms('guest');
-    ok($errmsg, "cannot open nagios config foobar: No such file or directory");
+    ok($errmsg, 'cannot open nagios config foobar: No such file or directory');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -293,10 +313,8 @@ sub testreadnagiosperms {
 
     # authentication disabled
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=0\n";
-    print TEST "default_user_name=admin\n";
-    close TEST;
+    writefile($fn, ('use_authentication=0',
+                    'default_user_name=admin'));
     $errmsg = readnagiosperms('admin');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {};\n");
@@ -306,10 +324,8 @@ sub testreadnagiosperms {
 
     # authentication enabled
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=1\n";
-    print TEST "default_user_name=admin\n";
-    close TEST;
+    writefile($fn, ('use_authentication=1',
+                    'default_user_name=admin'));
     $errmsg = readnagiosperms('admin');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -327,10 +343,8 @@ sub testreadnagiosperms {
 
     # guest is default user
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=1\n";
-    print TEST "default_user_name=guest\n";
-    close TEST;
+    writefile($fn, ('use_authentication=1',
+                    'default_user_name=guest'));
     $errmsg = readnagiosperms('admin');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -348,10 +362,8 @@ sub testreadnagiosperms {
 
     # guest has host access
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=1\n";
-    print TEST "authorized_for_all_hosts=guest\n";
-    close TEST;
+    writefile($fn, ('use_authentication=1',
+                    'authorized_for_all_hosts=guest'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -360,10 +372,8 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=1\n";
-    print TEST "authorized_for_all_hosts=bill, bob , guest , nancy\n";
-    close TEST;
+    writefile($fn, ('use_authentication=1',
+                    'authorized_for_all_hosts=bill, bob , guest , nancy'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -372,10 +382,8 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=1\n";
-    print TEST "authorized_for_all_hosts=bill, bob , nancy\n";
-    close TEST;
+    writefile($fn, ('use_authentication=1',
+                    'authorized_for_all_hosts=bill, bob , nancy'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -386,10 +394,8 @@ sub testreadnagiosperms {
 
     # guest has service access
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=1\n";
-    print TEST "authorized_for_all_services=guest\n";
-    close TEST;
+    writefile($fn, ('use_authentication=1',
+                    'authorized_for_all_services=guest'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -398,10 +404,8 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=1\n";
-    print TEST "authorized_for_all_services=  jane, guest,bill\n";
-    close TEST;
+    writefile($fn, ('use_authentication=1',
+                    'authorized_for_all_services=  jane, guest,bill'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -410,10 +414,8 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=1\n";
-    print TEST "authorized_for_all_services=  jane,bill\n";
-    close TEST;
+    writefile($fn, ('use_authentication=1',
+                    'authorized_for_all_services=  jane,bill'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -424,14 +426,12 @@ sub testreadnagiosperms {
 
     # check config file formatting
 
-    open TEST, ">$fn";
-    print TEST "#comments should be ignored\n";
-    print TEST "other parameters should be ignored\n";
-    print TEST "default_user_name=guest\n";
-    print TEST "#comments should be ignored\n";
-    print TEST "other parameters should be ignored\n";
-    print TEST "use_authentication=1\n";
-    close TEST;
+    writefile($fn, ('#comments should be ignored',
+                    'other parameters should be ignored',
+                    'default_user_name=guest',
+                    '#comments should be ignored',
+                    'other parameters should be ignored',
+                    'use_authentication=1'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -441,10 +441,8 @@ sub testreadnagiosperms {
         };\n");
 
     # ignore anything non 0 or 1
-    open TEST, ">$fn";
-    print TEST "use_authentication=false\n";
-    print TEST "default_user_name=guest\n";
-    close TEST;
+    writefile($fn, ('use_authentication=false',
+                    'default_user_name=guest'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -453,10 +451,8 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    open TEST, ">$fn";
-    print TEST "use_authentication=true\n";
-    print TEST "default_user_name=guest\n";
-    close TEST;
+    writefile($fn, ('use_authentication=true',
+                    'default_user_name=guest'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -465,10 +461,8 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    open TEST, ">$fn";
-    print TEST "bogus_use_authentication=1\n";
-    print TEST "default_user_name=guest\n";
-    close TEST;
+    writefile($fn, ('bogus_use_authentication=1',
+                    'default_user_name=guest'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -477,10 +471,8 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    open TEST, ">$fn";
-    print TEST "bogus_use_authentication=0\n";
-    print TEST "default_user_name=guest\n";
-    close TEST;
+    writefile($fn, ('bogus_use_authentication=0',
+                    'default_user_name=guest'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -489,26 +481,20 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    open TEST, ">$fn";
-    print TEST "  use_authentication=0\n";
-    print TEST "default_user_name=guest\n";
-    close TEST;
+    writefile($fn, ('  use_authentication=0',
+                    'default_user_name=guest'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {};\n");
 
-    open TEST, ">$fn";
-    print TEST "use_authentication   =0\n";
-    print TEST "default_user_name=guest\n";
-    close TEST;
+    writefile($fn, ('use_authentication   =0',
+                    'default_user_name=guest'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {};\n");
 
-    open TEST, ">$fn";
-    print TEST "use_authentication   =   0\n";
-    print TEST "default_user_name=guest\n";
-    close TEST;
+    writefile($fn, ('use_authentication   =   0',
+                    'default_user_name=guest'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {};\n");
@@ -517,11 +503,11 @@ sub testreadnagiosperms {
 
     undef $Config{authzfile};
     unlink $fn;
+
+    return;
 }
 
 sub testreadpermsfile {
-    my $cwd = $FindBin::Bin;
-
     # no access control file defined
 
     undef $Config{authzfile};
@@ -546,7 +532,7 @@ sub testreadpermsfile {
 
     $Config{authzfile} = 'foobar';
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "cannot open access control file $cwd/../etc/foobar: No such file or directory");
+    ok($errmsg, "cannot open access control file $FindBin::Bin/../etc/foobar: No such file or directory");
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -557,15 +543,12 @@ sub testreadpermsfile {
 
     my $fn = "$FindBin::Bin/testaccess.conf";
     $Config{authzfile} = $fn;
-
-    open TEST, ">$fn";
-    print TEST "\n";
-    close TEST;
+    writefile($fn, ("\n"));
 
     # no user
 
     $errmsg = readpermsfile();
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -575,7 +558,7 @@ sub testreadpermsfile {
     # empty user
 
     $errmsg = readpermsfile('');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -585,7 +568,7 @@ sub testreadpermsfile {
     # valid user but empty file
 
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -594,12 +577,10 @@ sub testreadpermsfile {
 
     # bogus userlist
 
-    open TEST, ">$fn";
-    print TEST "*=bill & ted\n";
-    close TEST;
+    writefile($fn, ('*=bill & ted'));
 
     $errmsg = readpermsfile('bill');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -608,11 +589,9 @@ sub testreadpermsfile {
 
     # deny access to everyone
 
-    open TEST, ">$fn";
-    print TEST "*=\n";
-    close TEST;
+    writefile($fn, ('*='));
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -621,11 +600,9 @@ sub testreadpermsfile {
 
     # grant access to everyone
 
-    open TEST, ">$fn";
-    print TEST "*=*\n";
-    close TEST;
+    writefile($fn, ('*=*'));
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 1
@@ -634,24 +611,18 @@ sub testreadpermsfile {
 
     # the order matters, use whatever defined last
 
-    open TEST, ">$fn";
-    print TEST "*=*\n";
-    print TEST "*=\n";
-    close TEST;
+    writefile($fn, ('*=*', '*='));
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
                                    }
         };\n");
 
-    open TEST, ">$fn";
-    print TEST "*=\n";
-    print TEST "*=*\n";
-    close TEST;
+    writefile($fn, ('*=', '*=*'));
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 1
@@ -660,19 +631,16 @@ sub testreadpermsfile {
 
     # guest for everything, but no one else
 
-    open TEST, ">$fn";
-    print TEST "*=\n";
-    print TEST "*=guest\n";
-    close TEST;
+    writefile($fn, ('*=', '*=guest'));
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 1
                                    }
         };\n");
     $errmsg = readpermsfile('someone');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -681,20 +649,18 @@ sub testreadpermsfile {
 
     # guest has some access, admin has all, everyone else has none
 
-    open TEST, ">$fn";
-    print TEST "*=\n";
-    print TEST "*=admin\n";
-    print TEST "host0=guest\n";
-    print TEST "#host1=admin\n";
-    print TEST "#host2=admin\n";
-    print TEST "host2,ping=guest\n";
-    print TEST "host3=guest\n";
-    print TEST "host3,http=!guest\n";
-    print TEST "host4,*=*\n";
-    print TEST "host4,*=!guest\n";
-    close TEST;
+    writefile($fn, ('*=',
+                    '*=admin',
+                    'host0=guest',
+                    '#host1=admin',
+                    '#host2=admin',
+                    'host2,ping=guest',
+                    'host3=guest',
+                    'host3,http=!guest',
+                    'host4,*=*',
+                    'host4,*=!guest'));
     $errmsg = readpermsfile('admin');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'host4' => {
                        'default_service_access' => 1
@@ -704,7 +670,7 @@ sub testreadpermsfile {
                                    }
         };\n");
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'host4' => {
                        'default_service_access' => 0
@@ -724,7 +690,7 @@ sub testreadpermsfile {
                                    }
         };\n");
     $errmsg = readpermsfile('someone');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'host4' => {
                        'default_service_access' => 1
@@ -736,11 +702,9 @@ sub testreadpermsfile {
 
     # exclusion specializes wildcard
 
-    open TEST, ">$fn";
-    print TEST "*=*,!guest\n";
-    close TEST;
+    writefile($fn, ('*=*,!guest'));
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -749,11 +713,9 @@ sub testreadpermsfile {
 
     # trailing wildcard overrides previous exclusion
 
-    open TEST, ">$fn";
-    print TEST "*=!guest,*\n";
-    close TEST;
+    writefile($fn, ('*=!guest,*'));
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 1
@@ -762,12 +724,9 @@ sub testreadpermsfile {
 
     # granular grant
 
-    open TEST, ">$fn";
-    print TEST "*=\n";
-    print TEST "*,ping=guest\n";
-    close TEST;
+    writefile($fn, ('*=', '*,ping=guest'));
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "");
+    ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'ping' => 1,
@@ -778,6 +737,8 @@ sub testreadpermsfile {
     unlink $fn;
     undef $Config{authzfile};
     undef %authz;
+
+    return;
 }
 
 

@@ -11,18 +11,30 @@
 # when new output/perfdata are added, you must also add a result string for
 # each map configuration (e.g. 1.3, 1.4.3, etc).
 
+## no critic (RequireUseWarnings)
+## no critic (RequireBriefOpen)
+## no critic (ProhibitPostfixControls)
+## no critic (ProhibitEmptyQuotes)
+## no critic (ProhibitMagicNumbers)
+## no critic (ProhibitImplicitNewlines)
+## no critic (ProhibitInterpolationOfLiterals)
+
 use FindBin;
 use Test;
 use strict;
 
 BEGIN {
-    eval "require RRDs; RRDs->import();
-          use CGI qw(:standard escape unescape);
-          use Data::Dumper;
-          use File::Copy qw(copy);
-          use lib \"$FindBin::Bin/../etc\";
-          use ngshared;";
-    if ($@) {
+    my $rc = eval {
+        require RRDs; RRDs->import();
+        use CGI qw(:standard escape unescape);
+        use Carp;
+        use Data::Dumper;
+        use English qw(-no_match_vars);
+        use File::Copy qw(copy);
+        use lib "$FindBin::Bin/../etc";
+        use ngshared;
+    };
+    if ($rc) {
         plan tests => 0;
         exit 0;
     } else {
@@ -39,19 +51,21 @@ sub formatdata {
 
 sub setup {
     my ($mapfile) = @_;
-    open $LOG, '+>', $logfile;
+    open $LOG, '+>', $logfile or carp "open LOG ($logfile) failed: $OS_ERROR";
 #    $Config{debug} = 5;
     copy "examples/$mapfile", "etc/$mapfile";
-    undef &evalrules;
+    undef &evalrules; ## no critic (ProhibitAmpersandSigils)
     my $rval = getrules( $mapfile );
     ok($rval, '');
+    return;
 }
 
 sub teardown {
     my ($mapfile) = @_;
-    close $LOG;
+    close $LOG or carp "close LOG failed: $OS_ERROR";
     unlink $logfile;
     unlink "etc/$mapfile";
+    return;
 }
 
 sub runtests {
@@ -74,6 +88,7 @@ sub runtests {
     }
 
     teardown($mapfile);
+    return;
 }
 
 # these are the data from various plugins.  this array should grow as much as
@@ -87,41 +102,41 @@ sub runtests {
 #   2 - 1.4.3
 #   3 - 1.4.4
 #
-my @testdata = 
+my @testdata =
     (
      # these are the output and performance strings from the 1.3 map file
 
      [
       ['0', 'host', 'CHECK_NRPE', 'CHECK_NRPE: Socket timeout', ''],
-      "",
+      '',
       "'ignore'",
       "'ignore'",
       ],
 
      [
       ['0', 'host', 'NRPE', 'NRPE: Unable to read output', ''],
-      "",
+      '',
       "'ignore'",
       "'ignore'",
       ],
 
      [
       ['0', 'host', 'service', 'CRITICAL - Socket timeout after', ''],
-      "",
+      '',
       "'ignore'",
       "'ignore'",
       ],
 
      [
       ['0', 'host', 'service', 'Connection refused by host', ''],
-      "",
+      '',
       "'ignore'",
       "'ignore'",
       ],
 
      [
       ['0', 'host', 'service', 'CRITICAL - Plugin timed out after', ''],
-      "",
+      '',
       "'ignore'",
       "'ignore'",
       ],
@@ -144,8 +159,8 @@ my @testdata =
               '0'
             ]
           ]"
-      ,  "ditto"
-      ,  "" # FIXME
+      ,  'ditto'
+      ,  '' # FIXME
       ],
 
      [
@@ -168,8 +183,8 @@ my @testdata =
               '90'
             ]
           ]"
-      ,  "ditto"
-      ,  "" # FIXME
+      ,  'ditto'
+      ,  '' # FIXME
       ],
 
      [
@@ -240,7 +255,7 @@ my @testdata =
               '91'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             '/',
             [
@@ -309,7 +324,7 @@ my @testdata =
               '0.008'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'time',
             [
@@ -335,8 +350,8 @@ my @testdata =
               '0.009'
             ]
           ]"
-      ,  "ditto"
-      ,  "" # FIXME
+      ,  'ditto'
+      ,  '' # FIXME
       ],
 
      [
@@ -349,7 +364,7 @@ my @testdata =
               '0.004'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'time',
             [
@@ -385,7 +400,7 @@ my @testdata =
               '0.73'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'load1',
             [
@@ -477,7 +492,7 @@ my @testdata =
               '10000'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'unsent',
             [
@@ -551,8 +566,8 @@ my @testdata =
               51805820
             ]
           ]"
-      ,  "ditto"
-      ,  "ditto"
+      ,  'ditto'
+      ,  'ditto'
       ],
 
      [
@@ -631,8 +646,8 @@ my @testdata =
               '0.008'
             ]
           ]"
-      ,  "ditto"
-      ,  "" # FIXME
+      ,  'ditto'
+      ,  '' # FIXME
       ],
 
      [
@@ -645,8 +660,8 @@ my @testdata =
               '43'
             ]
           ]"
-      ,  "ditto"
-      ,  "" # FIXME
+      ,  'ditto'
+      ,  '' # FIXME
       ],
 
      [
@@ -659,8 +674,8 @@ my @testdata =
               '0.187'
             ]
           ]"
-      ,  "ditto"
-      ,  "" # FIXME
+      ,  'ditto'
+      ,  '' # FIXME
       ],
 
      [
@@ -688,7 +703,7 @@ my @testdata =
               '2877292544'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'swap',
             [
@@ -739,7 +754,7 @@ my @testdata =
               '10'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'users',
             [
@@ -775,7 +790,7 @@ my @testdata =
               '0'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'zombies',
             [
@@ -796,8 +811,8 @@ my @testdata =
               '485333.333333333'
             ]
           ]"
-      ,  "ditto"
-      ,  "" # FIXME
+      ,  'ditto'
+      ,  '' # FIXME
       ],
 
      [
@@ -825,7 +840,7 @@ my @testdata =
               '10.000000'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'time',
             [
@@ -862,7 +877,7 @@ my @testdata =
 
      [
       ['0', 'host', 'ups-charge', 'Battery Charge: 100.0%', 'charge=100.0;50;10']
-      ,  ""
+      ,  ''
       ,  "[
             'charge',
             [
@@ -893,7 +908,7 @@ my @testdata =
 
      [
       ['0', 'host', 'ups-time', 'OK - Time Left: 42.0 Minutes', 'timeleft=42.0;20;10']
-      ,  ""
+      ,  ''
       ,  "[
             'time',
             [
@@ -934,7 +949,7 @@ my @testdata =
 
      [
       ['0', 'host', 'ups-load', 'OK - Load: 5.2%', 'load=3.6;30;40']
-      ,  ""
+      ,  ''
       ,  "[
             'load',
             [
@@ -975,7 +990,7 @@ my @testdata =
 
      [
       ['0', 'host', 'ups-temp', 'OK - Internal Temperature: 25.6 C', 'temperature=25.6;30;40']
-      ,  ""
+      ,  ''
       ,  "[
             'temp',
             [
@@ -1016,7 +1031,7 @@ my @testdata =
 
      [
       ['0', 'host', 'uptime', 'OK - uptime is 36 Days, 2 Hours, 42 Minutes', '']
-      ,  ""
+      ,  ''
       ,  "[
             'data',
             [
@@ -1037,7 +1052,7 @@ my @testdata =
 
      [
       ['0', 'host', 'ntp', 'NTP OK: Offset 0.001083 secs', '']
-      ,  ""
+      ,  ''
       ,   "[
             'ntp',
             [
@@ -1046,12 +1061,12 @@ my @testdata =
               '0.001083'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ],
 
      [
       ['0', 'host', 'NTP', 'NTP OK: Offset 0.001083 secs', 'offset=1032.98;60.00000;120.00000;']
-      ,  ""
+      ,  ''
       ,  "[
             'ntp',
             [
@@ -1082,7 +1097,7 @@ my @testdata =
 
      [
       ['0', 'host', 'NTP', 'NTP OK: Offset 0.001083 secs', 'offset=1032.98s;60.00000;120.00000;']
-      ,  ""
+      ,  ''
       ,  "[
             'ntp',
             [
@@ -1113,7 +1128,7 @@ my @testdata =
 
      [
       ['0', 'host', 'proc', 'OK: Total: 90, Zombie: 0, RSDT: 23', 'total=90 zombie=0 rsdt=23']
-      ,  ""
+      ,  ''
       ,  "[
             'data',
             [
@@ -1160,7 +1175,7 @@ my @testdata =
 
      [
       ['0', 'host', 'cpu', 'User: 14%, Nice: 0%, System: 1%, Idle: 83%', 'user=14.17 nice=0 sys=1.9488 idle=83.87']
-      ,  ""
+      ,  ''
       ,  "[
             'cpu',
             [
@@ -1220,7 +1235,7 @@ my @testdata =
 
      [
       ['0', 'host', 'mem', 'Real Free: 25924 kB, Swap Free: 1505472 kb', 'total=514560 free=25924 swaptot=1506172 swapfree=1505472']
-      ,  ""
+      ,  ''
       ,  "[
             'data',
             [
@@ -1280,7 +1295,7 @@ my @testdata =
 
      [
       ['0', 'host', 'net', 'Received 3956221475, Transmitted = 571374458', 'rbyte=3956221475 rpacket=36097353 rerr=0 rdrop=0 rmult=0 tbyte=571374458 tpacket=62062295 terr=6 tdrop=0 tmult=0']
-      ,  ""
+      ,  ''
       ,  "[
             'data',
             [
@@ -1423,15 +1438,15 @@ my @testdata =
 
      [
       ['0', 'host', 'service', 'Connection refused', ''],
-      "",
-      "",
+      '',
+      '',
       "'ignore'",
       ],
 
      [
       ['0', 'host', 'service', 'Error code 255: plugin may be missing', ''],
-      "",
-      "",
+      '',
+      '',
       "'ignore'",
       ],
 
@@ -1453,7 +1468,7 @@ my @testdata =
               '0.00045'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'rta',
             [
@@ -1537,7 +1552,7 @@ my @testdata =
               '98'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             '/',
             [
@@ -1662,7 +1677,7 @@ my @testdata =
               '0.340'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'time',
             [
@@ -1688,7 +1703,7 @@ my @testdata =
               '0.014'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'time',
             [
@@ -1729,7 +1744,7 @@ my @testdata =
               '0.007'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'time',
             [
@@ -1775,7 +1790,7 @@ my @testdata =
               '0.62'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'load1',
             [
@@ -1867,7 +1882,7 @@ my @testdata =
               '30'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'unsent',
             [
@@ -1903,7 +1918,7 @@ my @testdata =
               '0.005'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'time',
             [
@@ -1944,7 +1959,7 @@ my @testdata =
               '0.007'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'time',
             [
@@ -1995,7 +2010,7 @@ my @testdata =
               '1541406720'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'swap',
             [
@@ -2046,7 +2061,7 @@ my @testdata =
               '20'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'users',
             [
@@ -2082,7 +2097,7 @@ my @testdata =
               '607500'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'time',
             [
@@ -2146,7 +2161,7 @@ my @testdata =
               '10.000000'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'time',
             [
@@ -2187,7 +2202,7 @@ my @testdata =
               '0'
             ]
           ]"
-      ,  "ditto"
+      ,  'ditto'
       ,  "[
             'procs',
             [
@@ -2200,23 +2215,23 @@ my @testdata =
 
 #     [
 #      ['0', 'host', '', '', '']
-#      ,  ""
-#      ,  ""
-#      ,  ""
+#      ,  ''
+#      ,  ''
+#      ,  ''
 #      ],
 
 #     [
 #      ['0', 'host', '', '', '']
-#      ,  ""
-#      ,  ""
-#      ,  ""
+#      ,  ''
+#      ,  ''
+#      ,  ''
 #      ],
 
 #     [
 #      ['0', 'host', '', '', '']
-#      ,  ""
-#      ,  ""
-#      ,  ""
+#      ,  ''
+#      ,  ''
+#      ,  ''
 #      ],
 
      );
@@ -2227,14 +2242,17 @@ my @testdata =
 
 sub testrules_1_3 {
     runtests('1.3', 'map_1_3', 1, \@testdata);
+    return;
 }
 
 sub testrules_1_4_3 {
     runtests('1.4.3', 'map_1_4_3', 2, \@testdata);
+    return;
 }
 
 sub testrules_1_4_4 {
     runtests('1.4.4', 'map_1_4_4', 3, \@testdata);
+    return;
 }
 
 

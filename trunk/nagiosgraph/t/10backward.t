@@ -9,27 +9,31 @@
 # tests to ensure backward compatibility.  any deprecated configuration
 # parameters and/or formatting go here.
 
+## no critic (RequireUseWarnings)
+## no critic (ProhibitMagicNumbers)
+## no critic (ProhibitImplicitNewlines)
+
 use FindBin;
 use Test;
 use strict;
 
 BEGIN {
-    eval "require RRDs; RRDs->import();
-          use CGI qw(:standard escape unescape);
-          use Data::Dumper;
-          use File::Find;
-          use File::Path qw(rmtree);
-          use lib \"$FindBin::Bin/../etc\";
-          use ngshared;";
-    if ($@) {
+    my $rc = eval {
+        require RRDs; RRDs->import();
+        use CGI qw(:standard escape unescape);
+        use Data::Dumper;
+        use File::Find;
+        use File::Path qw(rmtree);
+        use lib "$FindBin::Bin/../etc";
+        use ngshared;
+    };
+    if ($rc) {
         plan tests => 0;
         exit 0;
     } else {
         plan tests => 45;
     }
 }
-
-my ($log);
 
 sub testconvertdeprecated {
     my %cfg;
@@ -39,6 +43,7 @@ sub testconvertdeprecated {
     $cfg{lineformat} = 'warn,LINE3,FFFFFF;crit,STACK,FFAAFF';
     convertdeprecated(\%cfg);
     ok($cfg{lineformat}, 'warn=LINE3,FFFFFF;crit=STACK,FFAAFF');
+    return;
 }
 
 # plotasLINE1
@@ -154,6 +159,8 @@ sub testlineformats {
     ok($linestyle, 'AREA');
     ok($linecolor, 'dddddd88');
     ok($stack, 1);
+
+    return;
 }
 
 # maximums, minimums, and lasts
@@ -212,6 +219,8 @@ sub testrras {
           'RRA:AVERAGE:0.5:24:3',
           'RRA:AVERAGE:0.5:288:4'
         ];\n");
+
+    return;
 }
 
 

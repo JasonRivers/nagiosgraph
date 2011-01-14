@@ -6,16 +6,25 @@
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 # Author:  (c) Matthew Wall, 2010
 
+## no critic (RequireUseWarnings)
+## no critic (RequireBriefOpen)
+## no critic (ProhibitMagicNumbers)
+## no critic (ProhibitImplicitNewlines)
+
 use FindBin;
 use Test;
 use strict;
 
 BEGIN {
-    eval "require RRDs; RRDs->import();
-          use Data::Dumper;
-          use lib \"$FindBin::Bin/../etc\";
-          use ngshared;";
-    if ($@) {
+    my $rc = eval {
+        require RRDs; RRDs->import();
+        use Carp;
+        use Data::Dumper;
+        use English qw(-no_match_vars);
+        use lib "$FindBin::Bin/../etc";
+        use ngshared;
+    };
+    if ($rc) {
         plan tests => 0;
         exit 0;
     } else {
@@ -33,7 +42,8 @@ sub testconfig {
     my $fn = "$FindBin::Bin/testlog.txt";
     $Config{junklog} = $fn;;
 
-    open $LOG, '+>', $logfile;
+    open $LOG, '+>', $logfile or carp "open LOG failed: $OS_ERROR";
+
     readconfig('read', 'junklog');
     ok($Config{logfile}, '/var/nagiosgraph/nagiosgraph.log');
     ok($Config{cgilogfile}, '/var/nagiosgraph/nagiosgraph-cgi.log');
@@ -101,12 +111,12 @@ sub testconfig {
     ok($Config{expand_timehost}, 'week');
     ok($Config{expand_timeservice}, 'week');
     ok($Config{expand_timegroup}, 'day');
-    ok($Config{timeformat_now}, "%H:%M:%S %d %b %Y %Z");
-    ok($Config{timeformat_day}, "%H:%M %e %b");
-    ok($Config{timeformat_week}, "%e %b");
-    ok($Config{timeformat_month}, "Week %U");
-    ok($Config{timeformat_quarter}, "Week %U");
-    ok($Config{timeformat_year}, "%b %Y");
+    ok($Config{timeformat_now}, '%H:%M:%S %d %b %Y %Z');
+    ok($Config{timeformat_day}, '%H:%M %e %b');
+    ok($Config{timeformat_week}, '%e %b');
+    ok($Config{timeformat_month}, 'Week %U');
+    ok($Config{timeformat_quarter}, 'Week %U');
+    ok($Config{timeformat_year}, '%b %Y');
     ok($Config{refresh}, undef);
     ok($Config{hidengtitle}, undef);
     ok($Config{showprocessingtime}, undef);
@@ -116,7 +126,7 @@ sub testconfig {
     ok($Config{hidelegend}, undef);
     ok($Config{graphonly}, undef);
     ok(Dumper($Config{maximums}), "\$VAR1 = 'Current Load,.*;Current Users,.*;Total Processes,.*;PLW,.*';\n");
-    ok(Dumper($Config{minimums}), "\$VAR1 = 'APCUPSD,.*;';\n");
+    ok(Dumper($Config{minimums}), "\$VAR1 = \'APCUPSD,.*;';\n");
     ok(Dumper($Config{withmaximums}), "\$VAR1 = {
           'HTTP' => 1,
           'PING' => 1
@@ -149,9 +159,13 @@ sub testconfig {
     ok($Config{authzmethod}, undef);
     ok($Config{authzfile}, undef);
     ok($Config{language}, undef);
-    close $LOG;
+
+    close $LOG or carp "close LOG failed: $OS_ERROR";
+
     unlink $logfile;
     unlink $fn;
+
+    return;
 }
 
 testconfig();

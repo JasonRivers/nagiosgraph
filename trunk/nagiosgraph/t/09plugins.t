@@ -38,18 +38,27 @@
 # W3SVC                     x                                       x
 # Explorer                  x                                       x
 
+## no critic (RequireUseWarnings)
+## no critic (RequireBriefOpen)
+## no critic (ProhibitImplicitNewlines)
+## no critic (ProhibitEmptyQuotes)
+## no critic (ProhibitInterpolationOfLiterals)
 
 use FindBin;
 use Test;
 use strict;
 
 BEGIN {
-    eval "require RRDs; RRDs->import();
-          use Data::Dumper;
-          use File::Copy qw(copy);
-          use lib \"$FindBin::Bin/../etc\";
-          use ngshared;";
-    if ($@) {
+    my $rc = eval {
+        require RRDs; RRDs->import();
+        use Carp;
+        use Data::Dumper;
+        use English qw(-no_match_vars);
+        use File::Copy qw(copy);
+        use lib "$FindBin::Bin/../etc";
+        use ngshared;
+    };
+    if ($rc) {
         plan tests => 0;
         exit 0;
     } else {
@@ -62,22 +71,24 @@ my $mapfile = 'map_minimal';
 
 sub formatdata {
     my (@data) = @_;
-    return "hostname:$data[1]\nservicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";    
+    return "hostname:$data[1]\nservicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";
 }
 
 sub setup {
-    open $LOG, '+>', $logfile;
+    open $LOG, '+>', $logfile or carp "open LOG ($logfile) failed: $OS_ERROR";
 #    $Config{debug} = 5;
-    undef &evalrules;
+    undef &evalrules; ## no critic (ProhibitAmpersandSigils)
     copy "examples/$mapfile", "etc/$mapfile";
     my $rval = getrules( $mapfile );
     ok($rval, q());
+    return;
 }
 
 sub teardown {
-    close $LOG;
+    close $LOG or carp "close LOG failed: $OS_ERROR";
     unlink $logfile;
     unlink "etc/$mapfile";
+    return;
 }
 
 
@@ -86,10 +97,11 @@ sub test_apt {
     my @data = ('0', 'host', 'check_apt', 'APT OK: 0 packages available for upgrade (0 critical updates).', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
-sub test_breeze { }
+sub test_breeze { return; }
 
 
 # check_by_ssh -H host -C uptime
@@ -97,13 +109,14 @@ sub test_by_ssh {
     my @data = ('0', 'host', 'check_by_ssh', '17:52  up 20 days, 10:03, 3 users, load averages: 0.02 0.42 0.76', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
-sub test_clamd { }
+sub test_clamd { return; }
 
 
-sub test_cluster { }
+sub test_cluster { return; }
 
 
 # check_dhcp
@@ -111,6 +124,7 @@ sub test_dhcp {
     my @data = ('0', 'host', 'check_dhcp', 'OK: Received 1 DHCPOFFER(s), max lease time = 7200 sec.', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
@@ -143,6 +157,8 @@ sub test_dig {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -264,6 +280,8 @@ sub test_disk {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -272,6 +290,7 @@ sub test_disk_smb {
     my @data = ('0', 'host', 'check_disk_smb', 'Disk ok - 444.32G (90%) free on \\mozzarella\dev', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
@@ -294,6 +313,8 @@ sub test_dns {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -302,6 +323,7 @@ sub test_dummy {
     my @data = ('0', 'host', 'check_dummy', 'CRITICAL: hello', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
@@ -310,10 +332,11 @@ sub test_file_age {
     my @data = ('0', 'host', 'check_file_age', 'FILE_AGE CRITICAL: /home/nagios/.bashrc is 80625296 seconds old and 3116 bytes', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
-sub test_flexlm { }
+sub test_flexlm { return; }
 
 
 # check_ftp -H ftp.mozilla.org -w 10 -c 20
@@ -350,10 +373,12 @@ sub test_ftp {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
-sub test_hpjd { }
+sub test_hpjd { return; }
 
 
 # check_http -H www.mozilla.com
@@ -388,6 +413,8 @@ sub test_http {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -454,6 +481,8 @@ sub test_icmp {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -462,13 +491,14 @@ sub test_ide_smart {
     my @data = ('0', 'host', 'check_ide_smart', 'OK - Operational (23/23 tests passed)', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
-sub test_ifoperstatus { }
+sub test_ifoperstatus { return; }
 
 
-sub test_ifstatus { }
+sub test_ifstatus { return; }
 
 
 # check_imap -H imap.example.com -w 10 -c 20
@@ -505,6 +535,8 @@ sub test_imap {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -513,6 +545,7 @@ sub test_ircd {
     my @data = ('0', 'host', 'check_ircd', 'Warning Number Of Clients Connected : 12 (Limit = 10)', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
@@ -584,6 +617,8 @@ sub test_jabber {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -616,6 +651,8 @@ sub test_ldap {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -624,6 +661,7 @@ sub test_ldaps {
 #    my @data = ('0', 'host', 'check_ldaps', '', '');
 #    my @s = evalrules( formatdata( @data ) );
 #    ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
@@ -702,6 +740,8 @@ sub test_load {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -710,6 +750,7 @@ sub test_log {
     my @data = ('0', 'host', 'check_log', 'Log check ok - 0 pattern matches found', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
@@ -742,13 +783,15 @@ sub test_mailq {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
-sub test_mrtg { }
+sub test_mrtg { return; }
 
 
-sub test_mrtgtraf { }
+sub test_mrtgtraf { return; }
 
 
 # check_mysql
@@ -756,6 +799,7 @@ sub test_mysql {
     my @data = ('0', 'host', 'check_mysql', 'Uptime: 27396472  Threads: 1  Questions: 1193380  Slow queries: 1  Opens: 55  Flush tables: 1  Open tables: 49  Queries per second avg: 0.044', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
@@ -764,10 +808,11 @@ sub test_mysql_query {
     my @data = ('0', 'host', 'check_mysql_query', 'QUERY OK: \'select * from Users;\' returned 1.000000', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
-sub test_nagios { }
+sub test_nagios { return; }
 
 
 # check_nntp -H gail.ripco.com -w 10 -c 20
@@ -804,6 +849,8 @@ sub test_nntp {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -841,10 +888,12 @@ sub test_nntps {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
-sub test_nrpe { }
+sub test_nrpe { return; }
 
 
 
@@ -944,6 +993,8 @@ sub test_nt {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -971,6 +1022,8 @@ sub test_ntp {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -998,6 +1051,8 @@ sub test_ntp_peer {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -1025,20 +1080,22 @@ sub test_ntp_time {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
 
-sub test_nwstat { }
+sub test_nwstat { return; }
 
 
-sub test_openvpn { }
+sub test_openvpn { return; }
 
 
-sub test_oracle { }
+sub test_oracle { return; }
 
 
-sub test_overcr { }
+sub test_overcr { return; }
 
 
 # check_ping -H example.com -w 100,10% -c 200,20%
@@ -1093,6 +1150,8 @@ sub test_ping {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -1130,6 +1189,8 @@ sub test_pop {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -1138,10 +1199,11 @@ sub test_procs {
     my @data = ('0', 'host', 'check_procs', 'PROCS OK: 68 processes', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
-sub test_real { }
+sub test_real { return; }
 
 
 # check_rpc -H mozzarella -C nfs
@@ -1149,6 +1211,7 @@ sub test_rpc {
     my @data = ('0', 'host', 'check_rpc', 'OK: RPC program nfs version 2 version 3 version 4 udp running', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
@@ -1157,10 +1220,11 @@ sub test_sensors {
     my @data = ('0', 'host', 'check_sensors', 'sensor ok', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
-sub test_simap { }
+sub test_simap { return; }
 
 
 # check_smtp -H smtp.example.com
@@ -1182,6 +1246,8 @@ sub test_smtp {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -1220,6 +1286,8 @@ sub test_snmp {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -1247,6 +1315,8 @@ sub test_spop {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -1255,6 +1325,7 @@ sub test_ssh {
     my @data = ('0', 'host', 'check_ssh', 'SSH OK - OpenSSH_5.1p1 Debian-5ubuntu1 (protocol 2.0)', '');
     my @s = evalrules( formatdata( @data ) );
     ok(Dumper(\@s), "\$VAR1 = [];\n");
+    return;
 }
 
 
@@ -1282,6 +1353,8 @@ sub test_ssmtp {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -1353,6 +1426,8 @@ sub test_swap {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -1414,6 +1489,8 @@ sub test_tcp {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
@@ -1543,13 +1620,15 @@ sub test_time {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
-sub test_udp { }
+sub test_udp { return; }
 
 
-sub test_ups { }
+sub test_ups { return; }
 
 
 # check_users -w 10 -c 20
@@ -1581,10 +1660,12 @@ sub test_users {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 
-sub test_wave { }
+sub test_wave { return; }
 
 
 
@@ -1954,6 +2035,8 @@ sub test_nsclient {
             ]
           ]
         ];\n");
+
+    return;
 }
 
 

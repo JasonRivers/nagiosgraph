@@ -42,7 +42,7 @@ install:
 
 sub MY::postamble { "
 critic:
-\tperlcritic -1 install.pl etc/ngshared.pm cgi/show.cgi cgi/showhost.cgi cgi/showservice.cgi cgi/showgroup.cgi cgi/showconfig.cgi cgi/testcolor.cgi lib/insert.pl
+\tperlcritic -1 install.pl etc/ngshared.pm lib/insert.pl cgi/*.cgi t/*.t
 
 test-coverage:
 \tPERL5OPT=-MDevel::Cover make test

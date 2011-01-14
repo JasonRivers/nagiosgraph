@@ -11,18 +11,31 @@
 # brittle set of tests.  prolly better to compare for just a portion of the
 # HTML.
 
+## no critic (RequireUseWarnings)
+## no critic (ProhibitMagicNumbers)
+## no critic (RequireNumberSeparators)
+## no critic (RequireBriefOpen)
+## no critic (ProhibitPackageVars)
+
 use FindBin;
 use Test;
 use strict;
 
 BEGIN {
     plan tests => 0;
-    eval "require RRDs; RRDs->import();
-          use File::Copy qw(copy);
-          use File::Path qw(rmtree);
-          use lib \"$FindBin::Bin/../etc\";
-          use ngshared;";
-    exit 0 if $@;
+    my $rc = eval {
+        require RRDs; RRDs->import();
+        use Carp;
+        use English qw(-no_match_vars);
+        use File::Copy qw(copy);
+        use File::Path qw(rmtree);
+        use IPC::Open3 qw(open3);
+        use lib "$FindBin::Bin/../etc";
+        use ngshared;
+    };
+    if ($rc) {
+        exit 0;
+    }
 }
 
 my $src = $FindBin::Bin . '/..';
@@ -34,23 +47,24 @@ sub copyfile {
     my ($src, $dst, $fn, %repl) = @_;
     my $ifile = "$src/$fn";
     my $ofile = "$dst/$fn";
-    if ( open my $FH, $ifile ) {
-        if ( open my $OFH, ">$ofile" ) {
+    if ( open my $FH, '<', $ifile ) {
+        if ( open my $OFH, '>', $ofile ) {
             while( <$FH> ) {
                 my $line = $_;
                 foreach my $k (keys %repl) {
-                    $line =~ s/$k/$repl{$k}/;
+                    $line =~ s/$k/$repl{$k}/xm;
                 }
-                print $OFH $line;
+                print ${OFH} $line or carp "print failed: $OS_ERROR";
             }
-            close $OFH;
+            close ${OFH} or carp "close $ofile failed: $OS_ERROR";
         } else {
-            croak("cannot write file $ofile");
+            carp "cannot write file $ofile: $OS_ERROR";
         }
-        close $FH;
+        close $FH or carp "close $ifile failed: $OS_ERROR";
     } else {
-        croak("cannot read file $ifile");
+        carp "cannot read file $ifile: $OS_ERROR";
     }
+    return;
 }
 
 # create directories and copy files used in the tests
@@ -69,10 +83,12 @@ sub setup {
              ('/etc/nagiosgraph' => "$dst/etc",
               '/var/log' => "$dst/log",
               '/var/nagiosgraph/rrd' => "$dst/rrd",));
+    return;
 }
 
 sub teardown {
     rmtree($dst);
+    return;
 }
 
 # create rrd files used in the tests
@@ -91,10 +107,12 @@ sub setupdata {
     $testvar = ['http',
                 ['Bps', 'GAUGE', 0] ];
     @result = createrrd('host0', 'HTTP', 1221495632, $testvar);
+    return;
 }
 
 sub teardowndata {
     rmtree("$dst/rrd");
+    return;
 }
 
 
@@ -102,25 +120,34 @@ sub teardowndata {
 # no data in the rrd directory
 sub testnodata {
     setup();
-    ok(`$app`, "");
+    my ($CHILD_IN, $CHILD_OUT, $CHILD_ERR);
+    open3($CHILD_IN, $CHILD_OUT, $CHILD_ERR, $app);
+    ok($CHILD_OUT, q());
     teardown();
+    return;
 }
 
 # basic data in the rrd directory, no cgi arguments
 sub testnoargs {
     setup();
     setupdata();
-    ok(`$app`, "");
+    my ($CHILD_IN, $CHILD_OUT, $CHILD_ERR);
+    open3($CHILD_IN, $CHILD_OUT, $CHILD_ERR, $app);
+    ok($CHILD_OUT, q());
     teardowndata();
     teardown();
+    return;
 }
 
 sub testperiod {
     setup();
     setupdata();
-    ok(`$app period=week`, "");
+    my ($CHILD_IN, $CHILD_OUT, $CHILD_ERR);
+    open3($CHILD_IN, $CHILD_OUT, $CHILD_ERR, "$app period=week");
+    ok($CHILD_OUT, q());
     teardowndata();
     teardown();
+    return;
 }
 
 
