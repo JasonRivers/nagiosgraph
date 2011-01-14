@@ -1182,15 +1182,19 @@ The makefile rules control pretty much everything.  To create the makefile,
 
   perl Makefile.PL
 
+Basic targets are the same as any MakeMaker perl module.
+
+  make
+  make test
+  make install
+  make clean
+  make realclean
+
 There are rules to build a source distribution, debian, and redhat packages.
 
   make dist                  creates nagiosgraph-x.y.z.tar.gz
   make deb-package           creates nagsiograph-x.y.z.deb
   make rpm-package           creates nagiosgraph-x.y.z.rpm
-
-These rules are useful for maintaining the perl module:
-
-  make MANIFEST
 
 If you would like to contribute to nagiosgraph, there are a few things you
 should do to make your life and the lives of the other nagiosgraph developers
