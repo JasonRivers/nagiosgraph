@@ -8,9 +8,14 @@
 %define layout unknown
 
 # suse
-%if "%{_vendor}" == "suse"
-%define layout suse
+%if 0%{?suse_version} || 0%{?sles_version}
+%if 0%{?suse_version}
 %define relos .suse%{suse_version}
+%endif
+%if 0%{?sles_version}
+%define relos .sles%{sles_version}
+%endif
+%define layout suse
 %define apacheconfdir %{_sysconfdir}/apache2/conf.d
 %define apacheuser wwwrun
 %define apachegroup nagcmd
@@ -21,9 +26,13 @@
 %endif
 
 # redhat, fedora, centos
-%if "%{_vendor}" == "redhat"
-%define layout redhat
+%if 0%{?fedora} || 0%{?rhel_version} || 0%{?centos_version}
+%if 0%{?centos_version}
+%define relos .centos%{centos_version}
+%else
 %define relos %{?dist:%{dist}}
+%endif
+%define layout redhat
 %define apacheconfdir %{_sysconfdir}/httpd/conf.d
 %define apacheuser apache
 %define apachegroup apache
@@ -141,6 +150,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %{ng_examples_dir}/nagiosgraph-apache.conf
 %{ng_examples_dir}/nagiosgraph-nagios.cfg
 %{ng_examples_dir}/nagiosgraph-commands.cfg
+%{ng_examples_dir}/nagiosgraph-logrotate
 %{ng_examples_dir}/map_1_4_4
 %{ng_examples_dir}/map_1_3
 %{ng_examples_dir}/map_1_4_3

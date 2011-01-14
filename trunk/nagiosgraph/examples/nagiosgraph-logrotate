@@ -1,0 +1,17 @@
+/var/nagiosgraph/nagiosgraph.log {
+  weekly
+  missingok
+  rotate 52
+  compress
+  delaycompress
+  notifempty
+}
+
+/var/nagiosgraph/nagiosgraph-cgi.log {
+  weekly
+  missingok
+  rotate 52
+  compress
+  delaycompress
+  notifempty
+}

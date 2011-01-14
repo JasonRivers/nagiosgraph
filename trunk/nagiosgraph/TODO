@@ -29,8 +29,6 @@ Desired Features
     host history
     host trends
     host state breakdowns
-* maximums/minimums specification of host,service,db,ds
-* enable specification of host,service,db,ds not just ds[db]
 * testing with incinga, nagios xi
 * cron job to archive or delete old rrd files
 * logrotate scripts for nagiosgraph.log and nagiosgraph-cgi.log    
