@@ -85,7 +85,7 @@ into RRD files and displays graphs in web pages.
 
 %install
 rm -rf %{buildroot}
-DESTDIR=%{buildroot} NG_LAYOUT=%{layout} perl install.pl --no-check-prereq --no-chown --doc-dir %{ng_doc_dir}
+DESTDIR=%{buildroot} NG_LAYOUT=%{layout} NG_DOC_DIR=%{ng_doc_dir} perl install.pl --no-check-prereq --no-chown
 
 %post
 cp %{_sysconfdir}/%{name}/nagiosgraph-apache.conf %{apacheconfdir}/nagiosgraph.conf
