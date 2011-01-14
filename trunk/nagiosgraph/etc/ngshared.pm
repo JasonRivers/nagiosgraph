@@ -740,8 +740,9 @@ sub checkrrddir {
         # Make sure rrddir exists and is writable
         if (not -d $Config{rrddir}) {
             debug(DBINF, "creating directory $Config{rrddir}");
-            mkpath($Config{rrddir}, {error => \my $err});
-            if (@{$err}) {
+            my $err;
+            mkpath($Config{rrddir}, {error => \$err});
+            if ($err && @{$err}) {
                 $errmsg =
                     "Cannot create rrd directory $Config{rrddir}: $OS_ERROR";
             }

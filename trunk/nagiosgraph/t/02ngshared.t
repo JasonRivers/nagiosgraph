@@ -55,7 +55,7 @@ BEGIN {
         plan tests => 0;
         exit 0;
     } else {
-        plan tests => 644;
+        plan tests => 645;
     }
 }
 
@@ -789,21 +789,24 @@ sub testreadconfig {
 #    setupdebug(5, 'testreadconfig.log');
 
     my $fn = "$curdir/testlog.txt";
+    my $msg;
 
-    $Config{junklog} = $fn;;
-    my $msg = readconfig('read', 'junklog');
+    $msg = readconfig('read');
     ok($msg, q());
     unlink $fn;
 
-    $Config{logfile} = $fn;;
     $msg = readconfig('read', '');
+    ok($msg, q());
+    unlink $fn;
+
+    $Config{testlog} = $fn;
+    $msg = readconfig('read', 'testlog');
     ok($msg, q());
     unlink $fn;
 
     # test handling of hash/list variables
 
-    $Config{logfile} = $fn;;
-    $msg = readconfig('read');
+    $msg = readconfig('read', 'testlog');
     ok($msg, q());
     ok($Config{rrdopts}, undef);
     ok(Dumper(\$Config{rrdoptshash}), "\$VAR1 = \\{
@@ -821,14 +824,13 @@ sub testreadconfig {
     ok(Dumper(\$Config{xffslist}), "\$VAR1 = \\undef;\n");
     unlink $fn;
 
-    $Config{logfile} = $fn;;
     $Config{rrdopts} = '--flymetothemoon';
     $Config{heartbeats} = 'host1,svc1,db1=100;host2,svc2,db2=200';
     $Config{stepsizes} = 'host1,svc1,db1=30;host2,svc2,db2=50';
     $Config{resolutions} = 'host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2';
     $Config{steps} = 'host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2';
     $Config{xffs} = 'host1,svc1,db1=1;host2,svc2,db2=2';
-    $msg = readconfig('read');
+    $msg = readconfig('read', 'testlog');
     ok($msg, q());
     ok($Config{rrdopts}, '--flymetothemoon');
     ok(Dumper(\$Config{rrdoptshash}), "\$VAR1 = \\{
@@ -3986,4 +3988,3 @@ testcfgparams();
 testgetparams();
 testsetlabels();
 testsetdata();
-
