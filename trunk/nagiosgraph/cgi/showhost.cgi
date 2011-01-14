@@ -164,8 +164,6 @@ action_url https://server/nagios/cgi-bin/showhost.cgi?host=host1
 to the B<define host> (Nagios 3) or B<define hostextinfo> (Nagios 2.12) stanza
 (changing the base URL and host1 as needed).
 
-Copy the B<action.gif> file to the nagios/images directory, if desired.
-
 =head1 INCOMPATIBILITIES
 
 =head1 BUGS AND LIMITATIONS

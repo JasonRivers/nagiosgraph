@@ -134,7 +134,7 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios.
      }
 
  - Replace the Nagios action icon with the nagiosgraph graph icon:
-    cp share/action.gif /usr/local/nagios/share/images
+     cp share/graph.gif /usr/local/nagios/share/images/action.gif
 
  - In the nagiosgraph SSI file, set the URL for nagiosgraph.js:
      vi share/nagiosgraph.ssi
@@ -143,8 +143,8 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios.
  - Install the nagiosgraph SSI file:
      cp share/nagiosgraph.ssi /usr/local/nagios/share/ssi/common-header.ssi
 
-  - Modify side.php (e.g. /usr/local/nagios/share/side.php) by inserting
-    bullets under the 'Trends' heading:
+ - Modify the Nagios sidebar (e.g. /usr/local/nagios/share/side.php)
+   by inserting bullets under the 'Trends' heading:
 
 <li><a href="<?php echo $cfg["cgi_base_url"];?>/trends.cgi" target="<?php echo $link_target;?>">Trends</a>
 <ul>

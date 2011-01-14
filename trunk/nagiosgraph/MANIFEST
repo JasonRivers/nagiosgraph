@@ -50,7 +50,7 @@ MANIFEST
 META.yml
 nagiosgraph.spec
 README
-share/action.gif
+share/graph.gif
 share/nagiosgraph.css
 share/nagiosgraph.js
 share/nagiosgraph.ssi

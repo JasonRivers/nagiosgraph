@@ -159,8 +159,6 @@ The service_description must match an existing service.  Only the hosts
 listed in host_name will have an action icon next to the service name on
 a detail page.
 
-Copy the B<action.gif> file to the nagios/images directory, if desired.
-
 =head1 INCOMPATIBILITIES
 
 =head1 BUGS AND LIMITATIONS

@@ -1237,7 +1237,7 @@ sub installfiles {
         for my $f (@files) {
             $fail |= ng_copy("examples/$f", "$dst", $doit);
         }
-        $fail |= ng_copy('share/action.gif', "$dst", $doit);
+        $fail |= ng_copy('share/graph.gif', "$dst", $doit);
         $fail |= ng_copy('share/nagiosgraph.ssi', "$dst", $doit);
     }
 

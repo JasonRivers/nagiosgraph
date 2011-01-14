@@ -154,7 +154,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %{ng_examples_dir}/map_1_4_4
 %{ng_examples_dir}/map_1_3
 %{ng_examples_dir}/map_1_4_3
-%{ng_examples_dir}/action.gif
+%{ng_examples_dir}/graph.gif
 %{ng_examples_dir}/nagiosgraph.ssi
 %{ng_www_dir}/nagiosgraph.css
 %{ng_www_dir}/nagiosgraph.js
