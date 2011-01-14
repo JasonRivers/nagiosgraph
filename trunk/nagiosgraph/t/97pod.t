@@ -7,16 +7,15 @@
 # Author:  (c) Matthew Wall, 2010
 
 ## no critic (RequireUseWarnings)
+## no critic (ProhibitStringyEval)
+## no critic (ProhibitPunctuationVars)
+## no critic (ProhibitPostfixControls)
 
 use Test::More;
 use strict;
 
-my $rc = eval {
-    use Test::Pod 1.00;
-};
-if ($rc) {
-    plan skip_all => 'Test::Pod 1.00 required for testing POD';
-}
+my $rc = eval 'use Test::Pod 1.00;';
+plan skip_all => 'Test::Pod 1.00 required for testing POD' if $@;
 
 all_pod_files_ok(qw(install.pl
                     cgi/show.cgi

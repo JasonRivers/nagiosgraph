@@ -16,24 +16,28 @@
 ## no critic (RequireNumberSeparators)
 ## no critic (RequireBriefOpen)
 ## no critic (ProhibitPackageVars)
+## no critic (ProhibitImplicitNewlines)
 
 use FindBin;
 use Test;
 use strict;
 
 BEGIN {
+## no critic (ProhibitStringyEval)
+## no critic (ProhibitPunctuationVars)
     plan tests => 0;
-    my $rc = eval {
+    my $rc = eval "
         require RRDs; RRDs->import();
         use Carp;
         use English qw(-no_match_vars);
         use File::Copy qw(copy);
         use File::Path qw(rmtree);
         use IPC::Open3 qw(open3);
-        use lib "$FindBin::Bin/../etc";
+        use lib \"$FindBin::Bin/../etc\";
         use ngshared;
-    };
-    if ($rc) {
+    ";
+    if ($@) {
+        plan tests => 0;
         exit 0;
     }
 }

@@ -38,7 +38,9 @@ use lib "$FindBin::Bin/../etc";
 use ngshared;
 
 BEGIN {
-    my $rc = eval {
+## no critic (ProhibitStringyEval)
+## no critic (ProhibitPunctuationVars)
+    my $rc = eval "
         require RRDs; RRDs->import();
         use CGI qw(:standard escape unescape);
         use Carp;
@@ -46,10 +48,10 @@ BEGIN {
         use English qw(-no_match_vars);
         use File::Find;
         use File::Path qw(rmtree);
-        use lib "$FindBin::Bin/../etc";
+        use lib \"$FindBin::Bin/../etc\";
         use ngshared;
-    };
-    if ($rc) {
+    ";
+    if ($@) {
         plan tests => 0;
         exit 0;
     } else {

@@ -7,16 +7,14 @@
 # Author:  (c) Matthew Wall, 2010
 
 ## no critic (RequireUseWarnings)
+## no critic (ProhibitStringyEval)
+## no critic (ProhibitPunctuationVars)
+## no critic (ProhibitPostfixControls)
 
 use Test::More;
 use strict;
 
-my $rc = eval {
-    use Test::Pod::Coverage 1.00;
-};
-if ($rc) {
-    plan skip_all =>
-        'Test::Pod::Coverage 1.00 required for testing POD coverage';
-}
+my $rc = eval 'use Test::Pod::Coverage 1.00;';
+plan skip_all => 'Test::Pod::Coverage 1.00 required for testing POD coverage' if $@;
 
 all_pod_coverage_ok();
