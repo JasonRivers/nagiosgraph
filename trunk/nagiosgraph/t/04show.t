@@ -25,7 +25,6 @@ use strict;
 BEGIN {
 ## no critic (ProhibitStringyEval)
 ## no critic (ProhibitPunctuationVars)
-    plan tests => 0;
     my $rc = eval "
         require RRDs; RRDs->import();
         use Carp;
@@ -39,6 +38,8 @@ BEGIN {
     if ($@) {
         plan tests => 0;
         exit 0;
+    } else {
+        plan tests => 0;
     }
 }
 
