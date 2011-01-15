@@ -105,7 +105,7 @@ sub checkstyles {
 }
 
 sub dumpenv {
-    print "<h1>Environment</h1>\n";
+    print "<h2>Environment</h2>\n";
     print "<div>\n";
     print "<pre class='listing'>\n";
     foreach my $i (sort keys %ENV) {
@@ -116,7 +116,7 @@ sub dumpenv {
 }
 
 sub dumpinc {
-    print "<h1>Include Paths</h1>\n";
+    print "<h2>Include Paths</h2>\n";
     print "<div>\n";
     print "<pre class='listing'>\n";
     for my $i (@INC) {
@@ -125,6 +125,11 @@ sub dumpinc {
     print "</pre>\n";
     print "</div>\n";
     return;
+}
+
+sub printrow {
+    my ($style, $func, $msg, $errmsg) = @_;
+    print "<tr><td class='$style'> </td><td align='right'>$func:</td><td>$msg</td><td class='$style'>$errmsg</td></tr>\n";
 }
 
 sub checkmodule {
@@ -136,13 +141,13 @@ sub checkmodule {
         $statusstr = $func->VERSION;
         $status = 'ok';
     }
-    print '<tr><td class=' . "'$status'" . '> </td><td>' . $func . ': ' . $statusstr . '</td></tr>';
+    printrow($status, $func, $statusstr);
     return;
 }
 
 sub checkmodules {
     my $rval;
-    print '<h1>PERL modules - required</h1>' . "\n";
+    print '<h2>PERL modules - required</h2>' . "\n";
     print '<div>' . "\n";
     print '<table>' . "\n";
     checkmodule('Carp');
@@ -161,7 +166,7 @@ sub checkmodules {
 
 sub checkoptmodules {
     my $rval;
-    print '<h1>PERL modules - optional</h1>' . "\n";
+    print '<h2>PERL modules - optional</h2>' . "\n";
     print '<div>' . "\n";
     print '<table>' . "\n";
     checkmodule('GD', 1);
@@ -189,7 +194,7 @@ sub checkngshared {
         push @{$failures}, $errmsg;
     }
 
-    print "<tr valign='top'><td class='$style'> </td><td>$func: $status</td><td class='$style'>$errmsg</td></tr>\n";
+    printrow($style, $func, $status, $errmsg);
     return;
 }
 
@@ -210,7 +215,8 @@ sub checkngversion {
     if ($status eq 'fail') {
         push @{$failures}, $errmsg;
     }
-    print "<tr valign='top'><td class='$style'> </td><td>$func: $status</td><td class='$style'>$errmsg</td></tr>\n";
+
+    printrow($style, $func, $status, $errmsg);
     return;
 }
 
@@ -230,7 +236,8 @@ sub checkngconf {
     if ($status eq 'fail') {
         push @{$failures}, $errmsg;
     }
-    print "<tr valign='top'><td class='$style'> </td><td>$func: $status</td><td class='$style'>$errmsg</td></tr>\n";
+
+    printrow($style, $func, $status, $errmsg);
     return;
 }
 
@@ -253,7 +260,8 @@ sub checkmaprules {
     if ($status eq 'fail') {
         push @{$failures}, $errmsg;
     }
-    print "<tr valign='top'><td class='$style'> </td><td>$func: $status</td><td class='$style'>$errmsg</td></tr>\n";
+
+    printrow($style, $func, $status, $errmsg);
     return;
 }
 
@@ -263,19 +271,18 @@ sub checkng {
     my $status;
     my @failures;
 
-    print '<h1>nagiosgraph</h1>' . "\n";
+    print '<h2>nagiosgraph</h2>' . "\n";
 
     print '<table>' . "\n";
     checkngshared(\@failures);
     checkngversion(\@failures);
-    print '</table>' . "\n";
 
     if (scalar @failures) {
+        print '</table>' . "\n";
         emitfooter();
         exit 1;
     }
 
-    print '<table>' . "\n";
     checkngconf(\@failures);
     checkdir('rrddir', 'RRD directory', \@failures);
     checkfile('logfile', 'log file', \@failures);
@@ -342,10 +349,10 @@ sub dumpdirs {
 sub dumpfile {
     my ($key, $desc) = @_;
     my %vars = %ngshared::Config;
+    print '<h2>' . $desc . '</h2>';
     print '<div>';
     if ($vars{$key}) {
         my $fn = ngshared::getcfgfn($vars{$key});
-        print '<h2>' . $desc . '</h2>';
         print '<p>' . $fn . '</p>';
         print '<pre class="listing">';
         if (open my $FH, '<', $fn) {
@@ -360,7 +367,7 @@ sub dumpfile {
         }
         print '</pre>';
     } else {
-        print $key . ' is not defined';
+        print '<i>' . $key . '</i> is not defined';
     }
     print '</div>';
     return;
@@ -369,8 +376,8 @@ sub dumpfile {
 # FIXME: do the recursive listing in pure perl
 sub dumpdir {
     my ($dir, $desc) = @_;
-    print '<div>';
     print '<h2>' . $desc . '</h2>';
+    print '<div>';
     print '<pre class="listing">' . "\n";
     print `ls -lRa $dir`; ## no critic (InputOutput::ProhibitBacktickOperators)
     print "\n" . '</pre>' . "\n";
@@ -401,8 +408,8 @@ sub checkdir {
     if ($status eq 'fail') {
         push @{$failures}, $errmsg;
     }
-    print "<tr valign='top'><td class='$style'> </td><td>$desc: $status</td><td class='$style'>$errmsg</td></tr>\n";
 
+    printrow($style, $desc, $status, $errmsg);
     return;
 }
 
@@ -430,8 +437,8 @@ sub checkfile {
         push @{$failures}, $errmsg;
         $style = 'critical';
     }
-    print "<tr valign='top'><td class='$style'> </td><td>$desc: $status</td><td class='$style'>$errmsg</td></tr>\n";
 
+    printrow($style, $desc, $status, $errmsg);
     return;
 }
 
