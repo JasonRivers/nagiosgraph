@@ -23,6 +23,7 @@
 %define nagiosuser nagios
 %define nagiosgroup nagios
 %define nagioscmd nagios
+%define logdirgroup nagcmd
 %endif
 
 # redhat, fedora, centos
@@ -36,6 +37,7 @@
 %define nagiosuser nagios
 %define nagiosgroup nagios
 %define nagioscmd nagios
+%define logdirgroup nagios
 %endif
 
 %global relnum 1
@@ -157,7 +159,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %attr(755,root,root) %{ng_util_dir}/testentry.pl
 %attr(755,root,root) %{ng_util_dir}/upgrade.pl
 %attr(755,%{nagiosuser},%{apachegroup}) %{ng_rrd_dir}
-%attr(775,root,%{apachegroup}) %{ng_log_dir}
+%attr(775,root,%{logdirgroup}) %{ng_log_dir}
 %attr(644,%{nagiosuser},%{nagiosgroup}) %{ng_log_file}
 %attr(644,%{apacheuser},%{apachegroup}) %{ng_cgilog_file}
 
