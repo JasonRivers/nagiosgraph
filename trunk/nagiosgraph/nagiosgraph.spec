@@ -27,11 +27,7 @@
 
 # redhat, fedora, centos
 %if "%{_vendor}" == "redhat"
-%if 0%{?centos_version}
-%define relos .centos%{centos_version}
-%else
 %define relos %{?dist:%{dist}}
-%endif
 %define layout redhat
 %define apacheconfdir %{_sysconfdir}/httpd/conf.d
 %define apacheuser apache
