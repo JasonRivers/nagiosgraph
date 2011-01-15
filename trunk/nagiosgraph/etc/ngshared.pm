@@ -1675,7 +1675,6 @@ sub gethsdd { ## no critic (ProhibitManyArgs)
             } else {
                 ($p,$v) = ($item, 1);
             }
-            debug(DBDEB, "p=$p v=$v");
             if (hsddmatch($key, $p, $pri, $host, $service, $db, $ds)) {
                 $value = $v;
                 last;
@@ -1794,7 +1793,7 @@ sub mklegend {
 
 sub setlabels { ## no critic (ProhibitManyArgs)
     my ($host, $serv, $dbname, $dsname, $file, $label, $maxlen) = @_;
-    debug(DBDEB, "setlabels($host, $serv, $dbname, $dsname, $file, $maxlen)");
+    debug(DBDEB, "setlabels($host, $serv, $dbname, $dsname, $maxlen)");
     my @ds;
     my $id = mkvname($dbname, $dsname);
     my $legend = mklegend($label, $maxlen);
@@ -1825,7 +1824,7 @@ sub setlabels { ## no critic (ProhibitManyArgs)
 
 sub setdata { ## no critic (ProhibitManyArgs)
     my ($serv, $dbname, $dsname, $file, $fixedscale, $dur) = @_;
-    debug(DBDEB, "setdata($serv, $dbname, $dsname, $file, $fixedscale, $dur)");
+    debug(DBDEB, "setdata($serv, $dbname, $dsname, $fixedscale, $dur)");
     my @ds;
     my $id = mkvname($dbname, $dsname);
     my $format = ($fixedscale ? '%7.2lf' : '%7.2lf%s');

@@ -45,7 +45,7 @@ use constant ETAG => '# end nagiosgraph configuration';
 
 my @NAGIOS_USERS = qw(nagios);
 my @NAGIOS_GROUPS = qw(nagios);
-my @APACHE_USERS = qw(www-data www apache webservd);
+my @APACHE_USERS = qw(www-data www apache wwwrun webservd);
 my @APACHE_GROUPS = qw(nagcmd www webservd);
 
 # put the keys in a specific order to make it easier to see where things go
