@@ -1151,9 +1151,9 @@ sub installfiles {
         $fail |= ng_mkdir($dst, $doit);
         my @files = getfiles('etc', '.*.conf$');
         for my $f (@files) {
-            $fail |= ng_copy("etc/$f", "$dst", $doit);
+            $fail |= ng_copy("etc/$f", "$dst", $doit, 1);
         }
-        $fail |= ng_copy('etc/map', "$dst", $doit);
+        $fail |= ng_copy('etc/map', "$dst", $doit, 1);
         $fail |= ng_copy('etc/ngshared.pm', "$dst", $doit);
         $fail |= replacetext("$dst/nagiosgraph.conf", {
   '^perflog\\s*=.*', 'perflog = ' . $conf->{nagios_perfdata_file},
