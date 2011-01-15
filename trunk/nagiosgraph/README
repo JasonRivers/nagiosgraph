@@ -170,9 +170,11 @@ is part of rrdtool.  The GD perl module is optional, but recommended.
   SUSE:
     rrdtool, perl, perl-GD
   Solaris:
-    ?
+    rrdtool, perl, gd
   FreeBSD:
     rrdtool, perl5, gd
+  OpenBSD:
+    perl5, p5-RRD, p5-GD
 
 The install.pl script includes an option to check for pre-requisites:
 

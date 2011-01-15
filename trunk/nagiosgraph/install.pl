@@ -45,8 +45,8 @@ use constant ETAG => '# end nagiosgraph configuration';
 
 my @NAGIOS_USERS = qw(nagios);
 my @NAGIOS_GROUPS = qw(nagios);
-my @APACHE_USERS = qw(www-data www apache);
-my @APACHE_GROUPS = qw(nagcmd www);
+my @APACHE_USERS = qw(www-data www apache webservd);
+my @APACHE_GROUPS = qw(nagcmd www webservd);
 
 # put the keys in a specific order to make it easier to see where things go
 my @CONFKEYS = qw(ng_layout ng_prefix ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_examples_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file nagios_commands_file modify_apache_config apache_config_dir apache_config_file);
@@ -1097,7 +1097,7 @@ sub printnagioscmd {
     return $str;
 }
 
-# ensure that the instructions are printed out whether or not we are vebose.
+# ensure that the instructions are printed out whether or not we are verbose.
 sub printinstructions {
     my ($conf) = @_;
     my $oldv = $verbose;
@@ -1109,26 +1109,35 @@ sub printinstructions {
     }
     if (!isyes($conf->{modify_nagios_config})) {
         logmsg(q());
-        logmsg('    * In the nagios configuration file (e.g. nagios.cfg),');
-        logmsg('      add these lines:');
+        logmsg('  * In the nagios configuration file (e.g. nagios.cfg),');
+        logmsg('    add these lines:');
         logmsg(q());
         logmsg(printnagioscfg($conf->{nagios_perfdata_file}));
         logmsg(q());
-        logmsg('    * In the nagios commands file (e.g. command.cfg),');
-        logmsg('      add these lines:');
+        logmsg('  * In the nagios commands file (e.g. command.cfg),');
+        logmsg('    add these lines:');
         logmsg(q());
         logmsg(printnagioscmd("$conf->{ng_bin_dir}/insert.pl"));
     }
     if (!isyes($conf->{modify_apache_config})) {
         logmsg(q());
-        logmsg('    * In the apache configuration file (e.g. httpd.conf),');
-        logmsg('      add this line:');
+        logmsg('  * In the apache configuration file (e.g. httpd.conf),');
+        logmsg('    add this line:');
         logmsg(q());
-        logmsg("      include $conf->{ng_etc_dir}/" . APACHE_STUB_FN);
+        logmsg("include $conf->{ng_etc_dir}/" . APACHE_STUB_FN);
     }
     logmsg(q());
-    logmsg('  You must restart nagios before data collection will occur.');
-    logmsg('  You must restart apache to enable display of graphs.');
+    logmsg('  * Restart nagios to start data collection:');
+    logmsg(q());
+    logmsg('/etc/init.d/nagios restart');
+    logmsg(q());
+    logmsg('  * Restart apache to enable display of graphs:');
+    logmsg(q());
+    logmsg('/etc/init.d/apache restart');
+    logmsg(q());
+    logmsg('  * To enable graph links and mouseovers, see README sections:');
+    logmsg('       Displaying Per-Service and Per-Host Graph Icons and Links');
+    logmsg('       Displaying Graphs in Nagios Mouseovers');
     logmsg(q());
     $verbose = $oldv;
     return;
@@ -1216,7 +1225,8 @@ sub installfiles {
     if (defined $conf->{ng_www_dir}) {
         $dst = $dd . $conf->{ng_www_dir};
         $fail |= ng_mkdir($dst, $doit);
-        $fail |= ng_copy('share/nagiosgraph.css', "$dst", $doit);
+        $fail |= ng_copy('share/nagiosgraph.css', "$dst/nagiosgraph.css",
+                         $doit, 1);
         $fail |= ng_copy('share/nagiosgraph.js', "$dst", $doit);
     }
 
