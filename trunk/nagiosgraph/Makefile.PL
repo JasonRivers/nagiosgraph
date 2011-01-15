@@ -74,22 +74,25 @@ rpm-package: dist
 \tmv /tmp/rpmbuild/SRPMS/nagiosgraph* .
 \trm -rf /tmp/rpmbuild
 
+DEBARCH=all
+DEBREVISION=1
+DEBVERSION=\$(VERSION)-\$(DEBREVISION)_\$(DEBARCH)
 deb-package:
-\trm -rf nagiosgraph-\$(VERSION)
-\tmkdir -m 0755 nagiosgraph-\$(VERSION)
-\tDESTDIR=nagiosgraph-\$(VERSION) NG_LAYOUT=debian fakeroot perl install.pl --no-check-prereq --no-chown
-\tmkdir -m 0755 nagiosgraph-\$(VERSION)/DEBIAN
-\tcp debian/compat nagiosgraph-\$(VERSION)/DEBIAN
-\tcp debian/conffiles nagiosgraph-\$(VERSION)/DEBIAN
-\tcp debian/control nagiosgraph-\$(VERSION)/DEBIAN
-\tcp debian/copyright nagiosgraph-\$(VERSION)/DEBIAN
-\tcp debian/docs nagiosgraph-\$(VERSION)/DEBIAN
-\tcp debian/rules nagiosgraph-\$(VERSION)/DEBIAN
-\tcp debian/postinst nagiosgraph-\$(VERSION)/DEBIAN
-\tcp debian/postrm nagiosgraph-\$(VERSION)/DEBIAN
-\tutils/cvtchangelog.pl > nagiosgraph-\$(VERSION)/DEBIAN/changelog
-\tperl -pi -e 's/Version:.*/Version: \$(VERSION)/' nagiosgraph-\$(VERSION)/DEBIAN/control
-\tdpkg -b nagiosgraph-\$(VERSION)
-\trm -rf nagiosgraph-\$(VERSION)
+\trm -rf nagiosgraph-\$(DEBVERSION)
+\tmkdir -m 0755 nagiosgraph-\$(DEBVERSION)
+\tDESTDIR=nagiosgraph-\$(DEBVERSION) NG_LAYOUT=debian fakeroot perl install.pl --no-check-prereq --no-chown
+\tmkdir -m 0755 nagiosgraph-\$(DEBVERSION)/DEBIAN
+\tcp debian/compat nagiosgraph-\$(DEBVERSION)/DEBIAN
+\tcp debian/conffiles nagiosgraph-\$(DEBVERSION)/DEBIAN
+\tcp debian/control nagiosgraph-\$(DEBVERSION)/DEBIAN
+\tcp debian/copyright nagiosgraph-\$(DEBVERSION)/DEBIAN
+\tcp debian/docs nagiosgraph-\$(DEBVERSION)/DEBIAN
+\tcp debian/rules nagiosgraph-\$(DEBVERSION)/DEBIAN
+\tcp debian/postinst nagiosgraph-\$(DEBVERSION)/DEBIAN
+\tcp debian/postrm nagiosgraph-\$(DEBVERSION)/DEBIAN
+\tutils/cvtchangelog.pl > nagiosgraph-\$(DEBVERSION)/DEBIAN/changelog
+\tperl -pi -e 's/Version:.*/Version: \$(DEBVERSION)/' nagiosgraph-\$(DEBVERSION)/DEBIAN/control
+\tdpkg -b nagiosgraph-\$(DEBVERSION)
+\trm -rf nagiosgraph-\$(DEBVERSION)
 ";
 }
