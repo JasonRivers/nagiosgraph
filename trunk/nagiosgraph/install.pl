@@ -1386,12 +1386,21 @@ sub ng_mkdir {
 }
 
 # return 0 on success, 1 on failure.  this is the opposite of what copy does.
+# if the backup flag is true and a file already exists at the destination, then
+# move it aside with a timestamp before doing the copy.
 sub ng_copy {
-    my ($a, $b, $doit) = @_;
+    my ($a, $b, $doit, $backup) = @_;
     $doit = 1 if !defined $doit;
+    $backup = 0 if !defined $backup;
     my $rc = 1;
     logmsg("copy $a to $b");
-    $rc = copy($a, $b) if $doit;
+    if ($doit) {
+        if ( -f $b ) {
+            my $ts = strftime '%Y%m%d%H%M%S', localtime time;
+            ng_move($b, $b . $ts);
+        }
+        $rc = copy($a, $b);
+    }
     if ($rc == 0) {
         logmsg("*** cannot copy $a to $b: $OS_ERROR");
     }
