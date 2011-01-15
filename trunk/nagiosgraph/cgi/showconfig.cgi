@@ -20,7 +20,6 @@ use warnings;
 emitheader();
 #checkstyles();
 checkmodules();
-checkoptmodules();
 checkng();
 dumpenv();
 dumpinc();
@@ -146,10 +145,10 @@ sub checkmodule {
 }
 
 sub checkmodules {
-    my $rval;
-    print '<h2>PERL modules - required</h2>' . "\n";
+    print '<h2>PERL modules</h2>' . "\n";
     print '<div>' . "\n";
     print '<table>' . "\n";
+    print "<tr><td colspan='2'></td><td><b>required</b></td></tr>\n";
     checkmodule('Carp');
     checkmodule('CGI');
     checkmodule('Data::Dumper');
@@ -159,16 +158,7 @@ sub checkmodules {
     checkmodule('POSIX');
     checkmodule('RRDs');
     checkmodule('Time::HiRes');
-    print '</table>' . "\n";
-    print '</div>' . "\n";
-    return;
-}
-
-sub checkoptmodules {
-    my $rval;
-    print '<h2>PERL modules - optional</h2>' . "\n";
-    print '<div>' . "\n";
-    print '<table>' . "\n";
+    print "<tr><td colspan='2'></td><td><b>optional</b></td></tr>\n";
     checkmodule('GD', 1);
     print '</table>' . "\n";
     print '</div>' . "\n";
