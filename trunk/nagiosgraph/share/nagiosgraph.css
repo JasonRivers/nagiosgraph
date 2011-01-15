@@ -127,6 +127,21 @@ td.calHdrCell {
   opacity: 0.9;
 }
 
+#toggle_day {
+  font-size: 5pt;
+}
+#toggle_week {
+  font-size: 5pt;
+}
+#toggle_month {
+  font-size: 5pt;
+}
+#toggle_quarter {
+  font-size: 5pt;
+}
+#toggle_year {
+  font-size: 5pt;
+}
 
 /* controls in upper right corner, floating above graphs. */
 .controls {
