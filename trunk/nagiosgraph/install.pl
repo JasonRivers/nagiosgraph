@@ -1403,13 +1403,13 @@ sub ng_copy {
     $doit = 1 if !defined $doit;
     $moveaside = 0 if !defined $moveaside;
     my $rc = 1;
-    logmsg("copy $a to $b");
-    if ($doit) {
-        if ( $moveaside && -f $b ) {
-            my $ts = strftime '%Y%m%d%H%M%S', localtime time;
-            ng_move($b, "$b.$ts", $doit);
-        }
-        $rc = copy($a, $b);
+    if ( $moveaside && -f $b ) {
+        my $ts = strftime '%Y%m%d%H%M%S', localtime time;
+        $rc = ng_move($b, "$b.$ts", $doit) ? 0 : 1;
+    }
+    if ($rc) {
+        logmsg("copy $a to $b");
+        $rc = copy($a, $b) if $doit;
     }
     if ($rc == 0) {
         logmsg("*** cannot copy $a to $b: $OS_ERROR");
