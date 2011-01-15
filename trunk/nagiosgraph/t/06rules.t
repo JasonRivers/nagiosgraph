@@ -663,7 +663,14 @@ my @testdata =
             ]
           ]"
       ,  'ditto'
-      ,  '' # FIXME
+      ,  "[
+            'procs',
+            [
+              'data',
+              'GAUGE',
+              '43'
+            ]
+          ]"
       ],
 
      [

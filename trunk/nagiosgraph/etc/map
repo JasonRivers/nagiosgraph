@@ -157,7 +157,7 @@ and push @s, [ 'zombies',
 #
 # if units are KB, MB, TB, PB then convert to B
 # if units are ms or us then convert to s
-# if units is counter, then use counter instead of gauge
+# if units is counter, then use type DERIVE (DS min will be 0)
 #
 # warn and crit have range format:
 #
@@ -208,7 +208,7 @@ and push @s, [ 'zombies',
         if (defined $u) {
             my $mult = 1;
             if ($u eq 'c') {
-                $t = 'COUNTER';
+                $t = 'DERIVE';
             } elsif ($u eq 's') {
                 $mult = 1;
             } elsif ($u eq 'ms') {
