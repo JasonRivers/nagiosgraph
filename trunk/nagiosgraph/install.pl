@@ -1151,9 +1151,9 @@ sub installfiles {
         $fail |= ng_mkdir($dst, $doit);
         my @files = getfiles('etc', '.*.conf$');
         for my $f (@files) {
-            $fail |= ng_copy("etc/$f", "$dst", $doit, 1);
+            $fail |= ng_copy("etc/$f", "$dst/$f", $doit, 1);
         }
-        $fail |= ng_copy('etc/map', "$dst", $doit, 1);
+        $fail |= ng_copy('etc/map', "$dst/map", $doit, 1);
         $fail |= ng_copy('etc/ngshared.pm', "$dst", $doit);
         $fail |= replacetext("$dst/nagiosgraph.conf", {
   '^perflog\\s*=.*', 'perflog = ' . $conf->{nagios_perfdata_file},
@@ -1389,15 +1389,15 @@ sub ng_mkdir {
 # if the backup flag is true and a file already exists at the destination, then
 # move it aside with a timestamp before doing the copy.
 sub ng_copy {
-    my ($a, $b, $doit, $backup) = @_;
+    my ($a, $b, $doit, $moveaside) = @_;
     $doit = 1 if !defined $doit;
-    $backup = 0 if !defined $backup;
+    $moveaside = 0 if !defined $moveaside;
     my $rc = 1;
     logmsg("copy $a to $b");
     if ($doit) {
-        if ( -f $b ) {
+        if ( $moveaside && -f $b ) {
             my $ts = strftime '%Y%m%d%H%M%S', localtime time;
-            ng_move($b, $b . $ts);
+            ng_move($b, "$b.$ts", $doit);
         }
         $rc = copy($a, $b);
     }
