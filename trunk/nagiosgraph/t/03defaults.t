@@ -128,7 +128,7 @@ sub testconfig {
     ok($Config{hidelegend}, undef);
     ok($Config{graphonly}, undef);
     ok(Dumper($Config{maximums}), "\$VAR1 = 'Current Load,.*;Current Users,.*;Total Processes,.*;PLW,.*';\n");
-    ok(Dumper($Config{minimums}), "\$VAR1 = \'APCUPSD,.*;';\n");
+    ok(Dumper($Config{minimums}), "\$VAR1 = '';\n");
     ok(Dumper($Config{withmaximums}), "\$VAR1 = {
           'HTTP' => 1,
           'PING' => 1
