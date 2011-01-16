@@ -1,0 +1,160 @@
+$Id$
+------------------------       License: OSI Artistic License
+nagiosgraph Installation       Author:  (c) 2005 Soren Dossing
+------------------------       Author:  (c) 2008 Alan Brenner, Ithaka Harbors
+                               Author:  (c) 2010 Matthew Wall
+
+Installation is a three-step process.  First install the nagiosgraph files,
+then configure Nagios for data collection, and finally customize the graphs
+and links as needed.  Installation can be done manually by copying files and
+modifying configuration files, or automatically using the install.pl script.
+For installation details, upgrading instructions, customization options, and
+troubleshooting, see the README file.
+
+Easy Install
+------------
+
+    install.pl
+
+
+Installation Script Examples
+----------------------------
+
+To see a list of options:
+
+    install.pl --help
+
+To see if pre-requisites are installed:
+
+    install.pl --check-prerequisites
+
+To install on a redhat system:
+
+    install.pl --layout redhat
+
+To install on a debian or ubuntu system:
+
+    install.pl --layout debian
+
+
+Recipe for Manual Installation
+------------------------------
+
+These instructions assume an overlay layout, with nagios at /usr/local/nagios.
+
+ - Extract nagiosgraph into a temporary location:
+     cd /tmp
+     tar xzvf nagiosgraph-x.y.z.tgz
+
+ - Copy the contents of etc into your preferred configuration location:
+     mkdir /etc/nagiosgraph
+     cp etc/* /etc/nagiosgraph
+
+ - Edit the perl scripts in the cgi and lib directories, modifying the
+   "use lib" line to point to the directory from the previous step.
+     vi cgi/*.cgi lib/insert.pl
+
+ - Copy insert.pl to a location from which it can be executed:
+     cp lib/insert.pl /usr/local/nagios/libexec
+
+ - Copy CGI scripts to a script directory served by the web server:
+     cp cgi/*.cgi /usr/local/nagios/sbin
+
+ - Copy CSS and JavaScript files to a directory served by the web server:
+     cp share/nagiosgraph.css /usr/local/nagios/share
+     cp share/nagiosgraph.js /usr/local/nagios/share
+
+ - Edit /etc/nagiosgraph/nagiosgraph.conf.  Set at least the following:
+     perflog           = /var/nagios/perfdata.log
+     rrddir            = /var/nagios/rrd
+     mapfile           = /etc/nagiosgraph/map
+     nagiosgraphcgiurl = /nagios/cgi-bin
+     javascript        = /nagios/nagiosgraph.js
+     stylesheet        = /nagios/nagiosgraph.css
+     logfile           = /var/log/nagiosgraph.log
+     cgilogfile        = /var/log/nagiosgraph-cgi.log
+
+ - Set permissions of "rrddir" (as defined in nagiosgraph.conf) so that
+   the *nagios* user can write to it and the *www* user can read it:
+     mkdir /var/nagios/rrd
+     chown nagios /var/nagios/rrd
+     chmod 755 /var/nagios/rrd
+
+ - Set permissions of "logfile" so that the *nagios* user can write to it:
+     touch /var/log/nagiosgraph.log
+     chown nagios /var/log/nagiosgraph.log
+     chmod 664 /var/log/nagiosgraph.log
+
+ - Set permissions of "cgilogfile" so that the *www* user can write to it:
+     touch /var/log/nagiosgraph-cgi.log
+     chown www /var/log/nagiosgraph-cgi.log
+     chmod 664 /var/log/nagiosgraph-cgi.log
+
+ - In the Nagios configuration file (/etc/nagios/nagios.cfg) add this:
+
+     process_performance_data=1
+     service_perfdata_file=/var/nagios/perfdata.log
+     service_perfdata_file_template=$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$
+     service_perfdata_file_mode=a
+     service_perfdata_file_processing_interval=30
+     service_perfdata_file_processing_command=process-service-perfdata
+
+ - In the Nagios commands file (/etc/nagios/commands.cfg) add this:
+
+     define command {
+       command_name  process-service-perfdata
+       command_line  /usr/local/nagios/libexec/insert.pl
+     }
+
+ - Restart nagios
+
+     /etc/init.d/nagios restart
+
+ - Verify that nagiosgraph is working by running showconfig.cgi
+
+     http://server/nagios/cgi-bin/showconfig.cgi
+
+ - Try graphing some data by running show.cgi
+
+     http://server/nagios/cgi-bin/show.cgi
+
+ - In the Nagios configuration, add a template for graphed services:
+
+     define service {
+       name graphed-service
+       action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/cgi-bin/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450+-j
+     }
+
+ - Enable graph links for services by appending the graphed-service to existing
+   service definitions in the Nagios configuration:
+
+     define service {
+       use local-service,graphed-service
+       ...
+     }
+
+ - Replace the Nagios action icon with the nagiosgraph graph icon:
+     cp share/graph.gif /usr/local/nagios/share/images/action.gif
+
+ - In the nagiosgraph SSI file, set the URL for nagiosgraph.js:
+     vi share/nagiosgraph.ssi
+     src="/nagiosgraph/nagiosgraph.js"   ->    src="/nagios/nagiosgraph.js"
+
+ - Install the nagiosgraph SSI file:
+     cp share/nagiosgraph.ssi /usr/local/nagios/share/ssi/common-header.ssi
+
+ - Modify the Nagios sidebar (e.g. /usr/local/nagios/share/side.php)
+   by inserting bullets under the 'Trends' heading:
+
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/trends.cgi" target="<?php echo $link_target;?>">Trends</a>
+<ul>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/show.cgi" target="<?php echo $link_target;?>">Graphs</a></li>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/showhost.cgi" target="<?php echo $link_target;?>">Graphs by Host</a></li>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/showservice.cgi" target="<?php echo $link_target;?>">Graphs by Service</a></li>
+<li><a href="<?php echo $cfg["cgi_base_url"];?>/showgroup.cgi" target="<?php echo $link_target;?>">Graphs by Group</a></li>
+</ul>
+</li>
+
+ - Restart nagios
+
+     /etc/init.d/nagios restart

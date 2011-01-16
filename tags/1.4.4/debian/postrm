@@ -1,0 +1,29 @@
+#!/bin/sh
+
+ars=n
+nrs=n
+
+# remove apache configuration changes
+if [ -f /etc/apache2/conf.d/nagiosgraph.conf ]; then
+  rm /etc/apache2/conf.d/nagiosgraph.conf
+  ars=y
+fi
+
+# remove nagios configuration changes
+# FIXME: this assumes that no changes were made since we cached to -ngsave
+if [ -f /etc/nagios3/nagios.cfg-ngsave ]; then
+  mv /etc/nagios3/nagios.cfg-ngsave /etc/nagios3/nagios.cfg
+  nrs=y
+fi
+if [ -f /etc/nagios3/commands.cfg-ngsave ]; then
+  mv /etc/nagios3/commands.cfg-ngsave /etc/nagios3/commands.cfg
+  nrs=y
+fi
+
+# restart apache and nagios
+if [ "$ars" = "y" ]; then
+  /etc/init.d/apache2 restart
+fi
+if [ "$nrs" = "y" ]; then
+  /etc/init.d/nagios3 restart
+fi

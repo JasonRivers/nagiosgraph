@@ -1,0 +1,14 @@
+Package: nagiosgraph
+Source: nagiosgraph
+Version: VERSION
+Homepage: http://nagiosgraph.sourceforge.net/
+Section: Application/System
+Priority: extra
+Maintainer: Alan Brenner
+Architecture: all
+Depends: nagios3, apache2, libcgi-pm-perl, librrds-perl
+Recommends: libgd-gd2-perl
+Pre-Depends: perl
+Enhances: nagios
+Provides: nagiosgraph
+Description: Nagios add-on for performance data storage and graphing
