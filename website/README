@@ -1,0 +1,8 @@
+These are the web pages for nagiosgraph.
+
+To install these pages at sourceforge:
+
+sftp username,nagiosgraph@web.sourceforge.net
+
+cd htdocs
+put index.html
