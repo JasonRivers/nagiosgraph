@@ -193,8 +193,10 @@ example /opt or /usr/local.
 
 Redhat (Fedora, CentOS), SUSE, and Debian (Ubuntu) systems have their own
 layouts.  If you installed Nagios from a package, you can overlay nagiosgraph
-or you can install nagiosgraph to its own standalone location.  The standalone
-layout is usually easier to manage across updates when installing from source.
+or you can install nagiosgraph to its own standalone location.
+
+When installing from source, the standalone layout is highly recommended
+since it makes updates much easier.
 
 Decide upon a location and layout before you start the installation.
 Examples are in the Sample Installation Layouts section.
@@ -218,12 +220,7 @@ Install Script.  Run the install.pl script.  It will prompt you for the
 parameters it needs, then it will copy and configure nagiosgraph files.
 It will also prompt you to modify apache and nagios configuration files.
 
-  install.pl --layout overlay --prefix /usr/local/nagios
-  install.pl --layout standalone --prefix /opt/nagiosgraph
-  install.pl --layout custom --prefix /usr/local/nagiosgraph
-  install.pl --layout debian
-  install.pl --layout redhat
-  install.pl --layout suse
+  install.pl --prefix=/usr/local/nagiosgraph
 
 Installation Using Packages.  The nagiosgraph packages assume that Nagios
 and apache were installed from packages.  Do not use a nagiosgraph package
@@ -531,20 +528,20 @@ Displaying Graphs in Nagios Mouseovers
 
 To display graphs as mouseovers for each host and/or service, do the following:
 
-  - Edit the file share/nagiosgraph.ssi to contain the correct URL to
-    nagiosgraph.js (e.g. /nagios/nagiosgraph.js)
+ - Edit the file share/nagiosgraph.ssi to contain the correct URL to
+   nagiosgraph.js (e.g. /nagios/nagiosgraph.js)
 
-  - If you have not customized the Nagios SSI, copy share/nagiosgraph.ssi to
-    the nagios ssi directory, and rename it so that Nagios will insert it into
-    each page.  For example:
+ - If you have not customized the Nagios SSI, copy share/nagiosgraph.ssi to
+   the nagios ssi directory, and rename it so that Nagios will insert it into
+   each page.  For example:
 
       cp share/nagiosgraph.ssi /usr/local/nagios/share/ssi/common-header.ssi
 
-    If you have customized Nagios SSI, add the contents of
-    share/nagiosgraph.ssi to your customized SSI header file(s).
+   If you have customized Nagios SSI, add the contents of
+   share/nagiosgraph.ssi to your customized SSI header file(s).
 
-  - Configure services to display graphs on mouseovers by adding some 
-    JavaScript to action_url or notes_url.  For example:
+ - Configure services to display graphs on mouseovers by adding some 
+   JavaScript to action_url or notes_url.  For example:
 
      define service {
        name NTP
@@ -552,7 +549,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
        action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/cgi-bin/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
      }
 
-    This example displays a week of data in a popup with no legend:
+   This example displays a week of data in a popup with no legend:
 
      define service {
        name NTP
@@ -574,8 +571,8 @@ Displaying Graphs in Nagios Frames
 
 To embed nagiosgraph graphs directly into nagios, do the following:
 
-  - Modify side.php (e.g. /usr/local/nagios/share/side.php) by inserting
-    bullets under the 'Trends' heading:
+ - Modify side.php (e.g. /usr/local/nagios/share/side.php) by inserting
+   bullets under the 'Trends' heading:
 
 <li><a href="<?php echo $cfg["cgi_base_url"];?>/trends.cgi" target="<?php echo $link_target;?>">Trends</a>
 <ul>
@@ -586,9 +583,9 @@ To embed nagiosgraph graphs directly into nagios, do the following:
 </ul>
 </li>
 
-  - If you keep the nagiosgraph cgi scripts in a location different than
-    the nagios cgi scripts, then use 'ng_cgi_base_url' rather than
-    'cgi_base_url' and make an entry in config.inc.php such as this:
+ - If you keep the nagiosgraph cgi scripts in a location different than
+   the nagios cgi scripts, then use 'ng_cgi_base_url' rather than
+   'cgi_base_url' and make an entry in config.inc.php such as this:
 
 $cfg['cgi_base_url']='/nagios/cgi-bin';
 $cfg['ng_cgi_base_url']='/nagiosgraph/cgi-bin';
@@ -605,6 +602,8 @@ controls above the graphs, or hiding the controls altogether.
 
 Graphs can be customized individually by specifying CGI arguments, or they
 can be customized overall by specifying values in the configuration files.
+Some parameters apply to each page, others apply to each service, and others
+apply to each data source.
 
 The following CGI arguments are recognized by show.cgi, showhost.cgi,
 showservice.cgi, and showgroup.cgi:
@@ -644,7 +643,8 @@ The following options are available via configuration files:
 
  - lineformat
    Use lineformat to control the line thickness and line color for
-   individual services.
+   individual data sources.  The alpha channel is respected if a recent
+   version of rrdtool is installed.
 
  - plotas
  - plotasLINE1
@@ -652,11 +652,12 @@ The following options are available via configuration files:
  - plotasLINE3
  - plotasAREA
  - plotasTICK
-   Use plotas to control the line thickness for individual services.
+   Use plotas to control the line thickness/style for individual data sources.
 
- - Create stacked area graphs using alpha channel in colors specified
-   in the lineformat directive for each data source or in rrdopts.conf 
-   for specific services and data sources.
+ - stack
+   Create stacked area graphs using the stack directive for individual data
+   sources, the STACK directive in lineformat, or by adjusting the alpha
+   channel in specified colors.
 
  - Some services emit multiple data sources with big differences in magnitude.
    Others emit data with different units.  In such cases, split the data
@@ -815,17 +816,17 @@ the nagios check command from the command line to see what is returned.  Copy
 this output and paste it into testentry.pl.  Paste the rule into testentry.pl.
 Run testentry.pl to see how the output will be handled.
 
- - Changes to the map file generally do not require a restart of Nagios.
+Changes to the map file generally do not require a restart of Nagios.
 
- - It may take awhile for data from a map entry to show up in an RRD file.
-   This is partly due to the service check scheduling in Nagios, and partly
-   due to the perfdata buffering of service_perfdata_file_processing_interval
+It may take awhile for data from a map entry to show up in an RRD file.
+This is partly due to the service check scheduling in Nagios, and partly
+due to the perfdata buffering of service_perfdata_file_processing_interval
 
- - Increase debug level in nagiosgraph.conf to see what is happening.
-   The debug_insert parameter determines the log level for collecting data.
-   Output will go to the nagiosgraph log file.  Keep an eye on the log file;
-   it can grow big.  Perhaps rotate it, or decrease log level when everything
-   works.
+Increase debug level in nagiosgraph.conf to see what is happening.
+The debug_insert parameter determines the log level for collecting data.
+Output will go to the nagiosgraph log file.  Keep an eye on the log file;
+it can grow big.  Perhaps rotate it, or decrease log level when everything
+works.
 
 Share your work. If you have a good map file entry for standard Nagios 
 plugins, then please post it on the forum.

@@ -4,21 +4,16 @@ nagiosgraph Installation       Author:  (c) 2005 Soren Dossing
 ------------------------       Author:  (c) 2008 Alan Brenner, Ithaka Harbors
                                Author:  (c) 2010 Matthew Wall
 
-Installation is a three-step process.  First install the nagiosgraph files,
-then configure Nagios for data collection, and finally customize the graphs
-and links as needed.  Installation can be done manually by copying files and
-modifying configuration files, or automatically using the install.pl script.
-For installation details, upgrading instructions, customization options, and
-troubleshooting, see the README file.
+Installation can be done manually by copying files and modifying configuration
+files, or automatically using the install.pl script.  For installation details,
+upgrading instructions, customization options, and troubleshooting, see the
+README file.
+
 
 Easy Install
 ------------
 
     install.pl
-
-
-Installation Script Examples
-----------------------------
 
 To see a list of options:
 
@@ -26,15 +21,7 @@ To see a list of options:
 
 To see if pre-requisites are installed:
 
-    install.pl --check-prerequisites
-
-To install on a redhat system:
-
-    install.pl --layout redhat
-
-To install on a debian or ubuntu system:
-
-    install.pl --layout debian
+    install.pl --check-prereq
 
 
 Recipe for Manual Installation
