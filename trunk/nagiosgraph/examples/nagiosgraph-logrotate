@@ -5,6 +5,7 @@
   compress
   delaycompress
   notifempty
+  create 644 nagios nagios
 }
 
 /var/nagiosgraph/nagiosgraph-cgi.log {
@@ -14,4 +15,5 @@
   compress
   delaycompress
   notifempty
+  create 644 www www
 }

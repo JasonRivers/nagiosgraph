@@ -28,4 +28,4 @@ all_pod_files_ok(qw(install.pl
                     etc/ngshared.pm
                     lib/insert.pl
                     utils/testentry.pl
-                    utils/upgrade.pl));
+                    utils/flat2hier.pl));

@@ -140,7 +140,7 @@ share/nagiosgraph.js  - All of the JavaScript used by nagiosgraph.
 share/nagiosgraph.ssi - HTML for Nagios pages to enable graphs on mouseover.
 t/*                   - perl test scripts
 utils/testentry.pl    - A script for testing new map file entries.
-utils/upgrade.pl      - A script for upgrading RRD data from flat to hierarchy.
+utils/flat2hier.pl    - Script for converting RRD data from flat to hierarchy.
 
 
 Installation Preliminaries
@@ -209,8 +209,8 @@ There are a few ways to install nagiosgraph: manual, script, and package.
 On most systems the installation requires root permissions, so either do
 the installation as root or preface commands with sudo.
 
-Manual Installation.  Copy and edit files directly.  Follow the instructions
-in the following sections of this document:
+Manual Installation.  Copy and edit files directly.  Follow the recipe in
+the INSTALL file, or the instructions in these sections of this file:
 
   'Installing nagiosgraph Files'       - nagiosgraph installation
   'Configuring Data Processing'        - nagios configuration
@@ -233,7 +233,8 @@ if you installed Nagios or apache from source!
 Installing nagiosgraph Files
 ----------------------------
 
-These instructions assume an overlay layout, with nagios at /usr/local/nagios.
+These instructions assume an overlay layout, with nagios at /usr/local/nagios
+and nagios configuration files at /etc/nagios
 
  - Extract nagiosgraph into a temporary location:
      cd /tmp
@@ -258,6 +259,8 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios.
      cp share/nagiosgraph.js /usr/local/nagios/share
 
  - Edit /etc/nagiosgraph/nagiosgraph.conf.  Set at least the following:
+     logfile           = /var/log/nagiosgraph.log
+     cgilogfile        = /var/log/nagiosgraph-cgi.log
      perflog           = /var/nagios/perfdata.log
      rrddir            = /var/nagios/rrd
      mapfile           = /etc/nagiosgraph/map
@@ -271,30 +274,24 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios.
      chown nagios /var/nagios/rrd
      chmod 755 /var/nagios/rrd
 
-To keep nagiosgraph log output separate from nagios and web server output,
-do the following:
-
- - Edit nagiosgraph.conf.  Set the following:
-     logfile           = /var/log/nagiosgraph.log
-     cgilogfile        = /var/log/nagiosgraph-cgi.log
-
  - Set permissions of "logfile" so that the *nagios* user can write to it:
      touch /var/log/nagiosgraph.log
      chown nagios /var/log/nagiosgraph.log
-     chmod 664 /var/log/nagiosgraph.log
+     chmod 644 /var/log/nagiosgraph.log
 
  - Set permissions of "cgilogfile" so that the *www* user can write to it:
      touch /var/log/nagiosgraph-cgi.log
      chown www /var/log/nagiosgraph-cgi.log
-     chmod 664 /var/log/nagiosgraph-cgi.log
+     chmod 644 /var/log/nagiosgraph-cgi.log
 
 
 Upgrade Notes
 -------------
 
- - Follow the steps above, but keep your customizations.  Your changes should
-   be limited to the map file (map), configuration files (nagiosgraph.conf
-   and other .conf files), and the stylesheet (nagiosgraph.css).
+ - Follow the steps for a new installation, but keep your customizations.
+   Your changes should be limited to the map file (map), configuration
+   files (nagiosgraph.conf and other .conf files), and the stylesheet
+   (nagiosgraph.css).
 
  - Use diff, or a similar tool, to update your nagiosgraph.conf with any new
    fields from etc/nagiosgraph.conf
@@ -357,7 +354,7 @@ service check, thus updating the corresponding RRD files.
 Batch Processing
 ----------------
 
- - In nagios.cfg set:
+ - In the Nagios configuration file (/etc/nagios/nagios.cfg) set:
 
      process_performance_data=1
      service_perfdata_file=/var/nagios/perfdata.log
@@ -372,8 +369,7 @@ Batch Processing
    Make sure that location of service_perfdata_file matches that of perflog
    defined in nagiosgraph.conf.
 
- - In commands.cfg (or checkcommands.cfg or misccommands.cfg for older
-   versions of Nagios, depending on which is defined in nagios.cfg) define
+ - In the Nagios commands file (/etc/nagios/objects/commands.cfg) define
    the process-service-perfdata command:
 
      define command {
@@ -382,6 +378,12 @@ Batch Processing
      }
 
    Make sure there is only one definition for process-service-perfdata.
+
+   Older versions of Nagios used checkcommands.cfg or misccommands.cfg.
+
+ - Check the nagios configuration
+
+     /usr/local/nagios/bin/nagios -v /etc/nagios/nagios.cfg
 
  - Restart nagios
 
@@ -399,13 +401,16 @@ Immediate Processing
    Make sure that service_perfdata_file_processing_command is either
    commented out or not defined.
 
- - In checkcommands.cfg or misccommands.cfg, depending on which one is
-   defined in nagios.cfg:
+ - In commands.cfg:
 
      define command{
        command_name  process-service-perfdata
        command_line  /usr/local/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
      }
+
+ - Check the nagios configuration
+
+     /usr/local/nagios/bin/nagios -v /etc/nagios/nagios.cfg
 
  - Restart nagios
 
@@ -505,6 +510,7 @@ additions go directly in the host and service definitions.
      define service {
        name graphed-service
        action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
+       register 0
      }
 
    Then use it in services like this:
@@ -528,8 +534,8 @@ Displaying Graphs in Nagios Mouseovers
 
 To display graphs as mouseovers for each host and/or service, do the following:
 
- - Edit the file share/nagiosgraph.ssi to contain the correct URL to
-   nagiosgraph.js (e.g. /nagios/nagiosgraph.js)
+ - Edit the file share/nagiosgraph.ssi to contain the URL to the nagiosgraph
+   javascript file (e.g. /nagios/nagiosgraph.js)
 
  - If you have not customized the Nagios SSI, copy share/nagiosgraph.ssi to
    the nagios ssi directory, and rename it so that Nagios will insert it into
@@ -589,6 +595,17 @@ To embed nagiosgraph graphs directly into nagios, do the following:
 
 $cfg['cgi_base_url']='/nagios/cgi-bin';
 $cfg['ng_cgi_base_url']='/nagiosgraph/cgi-bin';
+
+ - Some nagios installations have side.html instead of side.php:
+
+<li><a href="/nagios/cgi-bin/trends.cgi" target="main">Trends</a>
+<ul>
+<li><a href="/nagios/cgi-bin/show.cgi" target="main">Graphs</a></li>
+<li><a href="/nagios/cgi-bin/showhost.cgi" target="main">Graphs by Host</a></li>
+<li><a href="/nagios/cgi-bin/showservice.cgi" target="main">Graphs by Service</a></li>
+<li><a href="/nagios/cgi-bin/showgroup.cgi" target="main">Graphs by Group</a></li>
+</ul>
+</li>
 
 
 
@@ -717,7 +734,9 @@ knowledge. Knowledge of RRD is also helpful.
 There has to be one entry for each type of service. The map file included 
 with nagiosgraph has several examples for cpu, memory, disk, network etc.
 Most examples identify data from either Nagios output or Nagios perfdata
-then define a number of RRD data sources.
+then define a number of RRD data sources.  There is also a generic rule
+that will capture output from any plugin that adheres to the nagios standards
+for plugin performance data.
 
 insert.pl receives data from Nagios.  It formats data into a string consisting
 of four lines of text.  This string might look like this:

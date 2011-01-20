@@ -29,13 +29,12 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '1.0';
+$VERSION = '1.1';
 
 use constant EXIT_FAIL => 1;
 use constant EXIT_OK => 0;
-use constant DPERMS => oct 755;
-use constant FPERMS => oct 644;
-use constant XPERMS => oct 755;
+use constant PERMS_755 => oct 755;
+use constant PERMS_644 => oct 644;
 use constant LOG_FN => 'install-log';
 use constant NAGIOS_CFG_STUB_FN => 'nagiosgraph-nagios.cfg';
 use constant NAGIOS_CMD_STUB_FN => 'nagiosgraph-commands.cfg';
@@ -46,10 +45,37 @@ use constant ETAG => '# end nagiosgraph configuration';
 my @NAGIOS_USERS = qw(nagios);
 my @NAGIOS_GROUPS = qw(nagios);
 my @APACHE_USERS = qw(www-data www apache wwwrun webservd);
-my @APACHE_GROUPS = qw(nagcmd www webservd);
+my @APACHE_GROUPS = qw(nagcmd www-data www webservd);
 
 # put the keys in a specific order to make it easier to see where things go
-my @CONFKEYS = qw(ng_layout ng_prefix ng_etc_dir ng_bin_dir ng_cgi_dir ng_doc_dir ng_examples_dir ng_www_dir ng_util_dir ng_var_dir ng_rrd_dir ng_log_dir ng_log_file ng_cgilog_file ng_url ng_cgi_url ng_css_url ng_js_url nagios_cgi_url nagios_perfdata_file nagios_user www_user modify_nagios_config nagios_config_file nagios_commands_file modify_apache_config apache_config_dir apache_config_file);
+my @CONFKEYS = qw(ng_layout
+                  ng_prefix
+                  ng_etc_dir
+                  ng_bin_dir
+                  ng_cgi_dir
+                  ng_doc_dir
+                  ng_examples_dir
+                  ng_www_dir
+                  ng_util_dir
+                  ng_var_dir
+                  ng_rrd_dir
+                  ng_log_dir
+                  ng_log_file
+                  ng_cgilog_file
+                  ng_url
+                  ng_cgi_url
+                  ng_css_url
+                  ng_js_url
+                  nagios_cgi_url
+                  nagios_perfdata_file
+                  nagios_user
+                  www_user
+                  modify_nagios_config
+                  nagios_config_file
+                  nagios_commands_file
+                  modify_apache_config
+                  apache_config_dir
+                  apache_config_file);
 
 # these are standard installation configurations.
 my @PRESETS = (
@@ -314,7 +340,7 @@ while ($ARGV[0]) {
         print "options include:\n";
         print "  --install             do the installation\n";
         print "  --check-prereq        check pre-requisites\n";
-        print "  --check-installation  check the installation\n";
+        print "  --check-installation  check an existing installation\n";
         print "\n";
         print "  --dry-run\n";
         print "  --verbose | --silent\n";
@@ -332,16 +358,10 @@ while ($ARGV[0]) {
         print "  --www-user userid\n";
         print "\n";
         print "examples:\n";
-        print "to install on an ubuntu system with nagios3:\n";
-        print "  install.pl --layout debian\n";
-        print "to install on a redhat/fedora system with nagios3:\n";
-        print "  install.pl --layout redhat\n";
-        print "to install on a suse system with nagios3:\n";
-        print "  install.pl --layout suse\n";
-        print "to overlay with nagios at /usr/local/nagios:\n";
-        print "  install.pl --layout overlay --prefix /usr/local/nagios\n";
+        print "to install at /usr/local/nagiosgraph:\n";
+        print "  install.pl --prefix /usr/local/nagiosgraph\n";
         print "to install at /opt/nagiosgraph:\n";
-        print "  install.pl --layout standalone --prefix /opt/nagiosgraph\n";
+        print "  install.pl --prefix /opt/nagiosgraph\n";
         print "\n";
         print "to install without prompts for automated or unattended\n";
         print "installations, specify one or more environment variables.\n";
@@ -356,7 +376,7 @@ if ($conf{ng_layout} ne 'standalone' &&
     $conf{ng_layout} ne 'suse' &&
     $conf{ng_layout} ne 'custom') {
     print "unknown layout '$conf{ng_layout}'\n";
-    exit 1;
+    exit EXIT_FAIL;
 }
 
 my $LOG;
@@ -1127,6 +1147,10 @@ sub printinstructions {
         logmsg("include $conf->{ng_etc_dir}/" . APACHE_STUB_FN);
     }
     logmsg(q());
+    logmsg('  * Check the nagios configuration:');
+    logmsg(q());
+    logmsg('/path/to/nagios -v /etc/nagios/nagios.cfg');
+    logmsg(q());
     logmsg('  * Restart nagios to start data collection:');
     logmsg(q());
     logmsg('/etc/init.d/nagios restart');
@@ -1207,7 +1231,7 @@ sub installfiles {
                                  { 'use lib \'/opt/nagiosgraph/etc\'' =>
                                        "use lib '$conf->{ng_etc_dir}'" },
                                  $doit );
-            $fail |= ng_chmod(XPERMS, "$dst/$f", $doit);
+            $fail |= ng_chmod(PERMS_755, "$dst/$f", $doit);
         }
     }
 
@@ -1219,7 +1243,7 @@ sub installfiles {
                              { 'use lib \'/opt/nagiosgraph/etc\'' =>
                                    "use lib '$conf->{ng_etc_dir}'" },
                              $doit);
-        $fail |= ng_chmod(XPERMS, "$dst/insert.pl", $doit);
+        $fail |= ng_chmod(PERMS_755, "$dst/insert.pl", $doit);
     }
 
     if (defined $conf->{ng_www_dir}) {
@@ -1255,15 +1279,15 @@ sub installfiles {
         $dst = $dd . $conf->{ng_util_dir};
         $fail |= ng_mkdir($dst, $doit);
         $fail |= ng_copy('utils/testentry.pl', "$dst", $doit);
-        $fail |= ng_copy('utils/upgrade.pl', "$dst", $doit);
-        $fail |= ng_chmod(XPERMS, "$dst/testentry.pl", $doit);
-        $fail |= ng_chmod(XPERMS, "$dst/upgrade.pl", $doit);
+        $fail |= ng_copy('utils/flat2hier.pl', "$dst", $doit);
+        $fail |= ng_chmod(PERMS_755, "$dst/testentry.pl", $doit);
+        $fail |= ng_chmod(PERMS_755, "$dst/flat2hier.pl", $doit);
     }
 
     if (defined $conf->{ng_rrd_dir}) {
         $dst = $dd . $conf->{ng_rrd_dir};
         $fail |= ng_mkdir("$dst", $doit);
-        $fail |= ng_chmod(DPERMS, "$dst", $doit);
+        $fail |= ng_chmod(PERMS_755, "$dst", $doit);
         $fail |= ng_chown($conf->{nagios_user}, q(-), "$dst", $doit);
     }
 
@@ -1271,21 +1295,21 @@ sub installfiles {
         $dst = $dd . $conf->{ng_log_dir};
         if (! -d "$dst") {
             $fail |= ng_mkdir("$dst", $doit);
-            $fail |= ng_chmod(DPERMS, "$dst", $doit);
+            $fail |= ng_chmod(PERMS_755, "$dst", $doit);
         }
     }
 
     if (defined $conf->{ng_log_file}) {
         $dst = $dd . $conf->{ng_log_file};
         $fail |= ng_touch("$dst", $doit);
-        $fail |= ng_chmod(FPERMS, "$dst", $doit);
+        $fail |= ng_chmod(PERMS_644, "$dst", $doit);
         $fail |= ng_chown($conf->{nagios_user}, q(-), "$dst", $doit);
     }
 
     if (defined $conf->{ng_cgilog_file}) {
         $dst = $dd . $conf->{ng_cgilog_file};
         $fail |= ng_touch("$dst", $doit);
-        $fail |= ng_chmod(FPERMS, "$dst", $doit);
+        $fail |= ng_chmod(PERMS_644, "$dst", $doit);
         $fail |= ng_chown($conf->{www_user}, q(-), "$dst", $doit);
     }
 

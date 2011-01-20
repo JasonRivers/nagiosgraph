@@ -157,7 +157,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %{ng_www_dir}/nagiosgraph.css
 %{ng_www_dir}/nagiosgraph.js
 %attr(755,root,root) %{ng_util_dir}/testentry.pl
-%attr(755,root,root) %{ng_util_dir}/upgrade.pl
+%attr(755,root,root) %{ng_util_dir}/flat2hier.pl
 %attr(755,%{nagiosuser},%{apachegroup}) %{ng_rrd_dir}
 %attr(775,root,%{logdirgroup}) %{ng_log_dir}
 %attr(644,%{nagiosuser},%{nagiosgroup}) %{ng_log_file}

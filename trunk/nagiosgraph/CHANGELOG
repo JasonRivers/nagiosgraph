@@ -1,12 +1,20 @@
 $Id$
 
+1.4.5 TBD
+
+* rename upgrade.pl to flat2hier.pl
+* fixed install option typo for --check-prerequisites in install instructions.
+* encourage standalone installations rather than overlays unless installing
+   from rpm or deb package.
+* encourage nagios pre-flight checks before restarting nagios.
+
 1.4.4 2011-01-15
 
 * this release includes many changes to the default map configuration and the
    default colors and labels.  this was designed to make new installations
    easier right out of the box.  the bug fixes and feature additions are
    backward compatible, so configuration files from existing installations
-   will still work.  see the upgrade section of the INSTALL file for details.
+   will still work.  see the upgrade section of the README file for details.
 * overhaul of install.pl.  added option to check for prerequisites (poorly
    configured rrdtool and gd have been major source of installation woes).
    added options for different layouts (overlay or separate) and locations.

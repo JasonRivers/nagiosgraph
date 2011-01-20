@@ -68,5 +68,5 @@ t/98podcoverage.t
 t/99kwalitee.t
 TODO
 utils/cvtchangelog.pl
+utils/flat2hier.pl
 utils/testentry.pl
-utils/upgrade.pl
