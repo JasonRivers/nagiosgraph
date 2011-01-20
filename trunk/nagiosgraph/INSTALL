@@ -27,7 +27,6 @@ Recipe for Manual Installation
 ------------------------------
 
 These instructions assume an overlay layout, with nagios at /usr/local/nagios
-and nagios configuration files at /etc/nagios
 
  - Extract nagiosgraph into a temporary location:
      cd /tmp

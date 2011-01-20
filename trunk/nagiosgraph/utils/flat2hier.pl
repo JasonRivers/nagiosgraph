@@ -25,12 +25,12 @@ my @unknown;
 
 ## no critic (RequireCheckedSyscalls,ProhibitMixedCaseSubs)
 print 80 x q(-). "\n"; ## no critic (ProhibitMagicNumbers)
-print "NagiosGraph has changed the organization of RRD Databases in this release\n";
-print "Now the rrdir parameter specifies the top-folder where a directory for each\n";
-print "monitored server will be created\n";
-print "This script will help you in reorganize your existing RRDs files\n";
-print "It would be a good idea to run this script from the account that owns the RRD files\n";
-print "If you haven't used NagiosGraph before you don't need to run this script\n";
+print "This script will convert a directory of RRD files from this:\n";
+print "    RRDDIR/hostname_servicedesc_datasource.rrd\n";
+print " to this:\n";
+print "    RRDDIR/hostname/servicedesc___datasource.rrd\n";
+print "This script should be run as the owner of the RRD files.\n";
+print "If you have not used nagiosgraph you do not need to run this script.\n";
 print 80 x q(-) . "\n" x 4; ## no critic (ProhibitMagicNumbers)
 
 # Get and validate the top-level dir
@@ -115,7 +115,7 @@ if ( @unknown ) {
 }
 print "\n" x 4; ## no critic (ProhibitMagicNumbers)
 print "IMPORTANT: Make sure that file ownership and permissions are correct!!\n";
-print "NagiosGraph Upgrade Script finished!!!\n\n\n";
+print "NagiosGraph RRD conversion finished!!!\n\n\n";
 
 
 
@@ -220,13 +220,13 @@ __END__
 
 =head1 NAME
 
-upgrade.pl - upgrade nagiosgraph database.
+flat2hier.pl - upgrade nagiosgraph database.
 
 =head1 DESCRIPTION
 
 =head1 USAGE
 
-B<upgrade.pl>
+B<flat2hier.pl>
 
 =head1 CONFIGURATION
 
