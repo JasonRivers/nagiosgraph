@@ -9,6 +9,13 @@
 # will prompt for all the information needed to do an install.  Specify one
 # or more environment variables to do automated or unattended installations.
 
+# TODO: install logrotate file
+# TODO: install ssi
+# TODO: install graphed-service template
+# TODO: install graph icon
+# TODO: restart nagios and httpd services?
+# TODO: handle both incinga and nagios
+
 ## no critic (ProhibitCascadingIfElse)
 ## no critic (ProhibitPostfixControls)
 ## no critic (RequireBriefOpen)
@@ -24,7 +31,7 @@ use File::Copy qw(copy move);
 use File::Path qw(mkpath);
 use File::Temp qw(tempfile);
 use IPC::Open3 qw(open3);
-use POSIX qw(strftime);
+use POSIX qw(geteuid strftime);
 use strict;
 use warnings;
 
@@ -42,40 +49,24 @@ use constant APACHE_STUB_FN => 'nagiosgraph-apache.conf';
 use constant STAG => '# begin nagiosgraph configuration';
 use constant ETAG => '# end nagiosgraph configuration';
 
-my @NAGIOS_USERS = qw(nagios);
-my @NAGIOS_GROUPS = qw(nagios);
+my @NAGIOS_USERS = qw(nagios icinga);
+my @NAGIOS_GROUPS = qw(nagios icinga);
 my @APACHE_USERS = qw(www-data www apache wwwrun webservd);
-my @APACHE_GROUPS = qw(nagcmd www-data www webservd);
+my @APACHE_GROUPS = qw(www-data www webservd);
 
-# put the keys in a specific order to make it easier to see where things go
-my @CONFKEYS = qw(ng_layout
-                  ng_prefix
-                  ng_etc_dir
-                  ng_bin_dir
-                  ng_cgi_dir
-                  ng_doc_dir
-                  ng_examples_dir
-                  ng_www_dir
-                  ng_util_dir
-                  ng_var_dir
-                  ng_rrd_dir
-                  ng_log_dir
-                  ng_log_file
-                  ng_cgilog_file
-                  ng_url
-                  ng_cgi_url
-                  ng_css_url
-                  ng_js_url
-                  nagios_cgi_url
-                  nagios_perfdata_file
-                  nagios_user
-                  www_user
-                  modify_nagios_config
-                  nagios_config_file
-                  nagios_commands_file
-                  modify_apache_config
-                  apache_config_dir
-                  apache_config_file);
+my @NAGIOS_NAMES = qw(nagios3 nagios2 nagios icinga);
+my @NAGIOS_BIN_DIRS = qw(/usr/bin /usr/sbin /bin /sbin /usr/local/APP/bin /opt/APP/bin);
+my @NAGIOS_VAR_DIRS = qw(/var/APP /var/spool/APP /usr/local/APP/var /opt/APP/var);
+my @NAGIOS_CFG_DIRS = qw(/etc/APP /usr/local/APP/etc /opt/APP/etc);
+my $NAGIOS_CFG = '/path/to/nagios.cfg';
+my $NAGIOS_EXEC = '/path/to/nagios';
+my $NAGIOS_INIT = '/path/to/nagios-init-script';
+
+my @APACHE_NAMES = qw(apache2 apache httpd);
+my @APACHE_CFG_DIRS = qw(/etc/APP /usr/local/APP/etc /opt/APP/etc);
+my @APACHE_BIN_DIRS = qw(/usr/bin /usr/sbin /bin /sbin /usr/local/APP/bin /opt/APP/bin);
+my $APACHE_EXEC = 'path/to/httpd';
+my $APACHE_INIT = 'path/to/apache-init-script';
 
 # these are standard installation configurations.
 my @PRESETS = (
@@ -90,7 +81,7 @@ my @PRESETS = (
       ng_util_dir => 'util',
       ng_var_dir => 'var',
       ng_rrd_dir => 'rrd',
-      ng_log_dir => 'var',
+      ng_log_dir => 'log',
       ng_log_file => 'nagiosgraph.log',
       ng_cgilog_file => 'nagiosgraph-cgi.log',
       ng_cgi_url => 'cgi-bin',
@@ -193,66 +184,75 @@ my @PRESETS = (
     );
 
 my @CONF =
-    ( { conf => 'ng_prefix',
+    ( { key => 'ng_prefix',
         msg => 'Destination directory (prefix)',
         def => '/usr/local/nagiosgraph' },
-      { conf => 'ng_etc_dir',
+      { key => 'ng_etc_dir',
         msg => 'Location of configuration files (etc-dir)',
         parent => 'ng_prefix' },
-      { conf => 'ng_bin_dir',
+      { key => 'ng_bin_dir',
         msg => 'Location of executables',
         parent => 'ng_prefix' },
-      { conf => 'ng_cgi_dir',
+      { key => 'ng_cgi_dir',
         msg => 'Location of CGI scripts',
         parent => 'ng_prefix' },
-      { conf => 'ng_doc_dir',
+      { key => 'ng_doc_dir',
         msg => 'Location of documentation (doc-dir)',
         parent => 'ng_prefix' },
-      { conf => 'ng_examples_dir',
+      { key => 'ng_examples_dir',
         msg => 'Location of examples',
         parent => 'ng_prefix' },
-      { conf => 'ng_www_dir',
+      { key => 'ng_www_dir',
         msg => 'Location of CSS and JavaScript files',
         parent => 'ng_prefix' },
-      { conf => 'ng_util_dir',
+      { key => 'ng_util_dir',
         msg => 'Location of utilities',
         parent => 'ng_prefix' },
-      { conf => 'ng_var_dir',
+      { key => 'ng_var_dir',
         msg => 'Location of state files (var-dir)',
         parent => 'ng_prefix' },
-      { conf => 'ng_rrd_dir',
+      { key => 'ng_rrd_dir',
         msg => 'Location of RRD files',
         parent => 'ng_var_dir' },
-      { conf => 'ng_log_dir',
+      { key => 'ng_log_dir',
         msg => 'Location of log files (log-dir)',
-        parent => 'ng_prefix' },
-      { conf => 'ng_log_file',
+        parent => 'ng_var_dir' },
+      { key => 'ng_log_file',
         msg => 'Path of log file',
         parent => 'ng_log_dir' },
-      { conf => 'ng_cgilog_file',
+      { key => 'ng_cgilog_file',
         msg => 'Path of CGI log file',
         parent => 'ng_log_dir' },
-      { conf => 'ng_cgi_url',
+      { key => 'ng_url',
+        msg => 'Base URL',
+        def => '/nagiosgraph' },
+      { key => 'ng_cgi_url',
         msg => 'URL of CGI scripts',
         parent => 'ng_url' },
-      { conf => 'ng_css_url',
+      { key => 'ng_css_url',
         msg => 'URL of CSS file',
         parent => 'ng_url' },
-      { conf => 'ng_js_url',
+      { key => 'ng_js_url',
         msg => 'URL of JavaScript file',
         parent => 'ng_url' },
-      { conf => 'nagios_perfdata_file',
-        msg => 'Path of Nagios performance data file',
-        def => '/tmp/perfdata.log' },
-      { conf => 'nagios_cgi_url',
+      { key => 'nagios_cgi_url',
         msg => 'URL of Nagios CGI scripts',
         def => '/nagios/cgi-bin' },
-      { conf => 'nagios_user',
+      { key => 'nagios_perfdata_file',
+        msg => 'Path of Nagios performance data file',
+        def => '/tmp/perfdata.log' },
+      { key => 'nagios_user',
         msg => 'username or userid of Nagios user',
         def => 'nagios' },
-      { conf => 'www_user',
+      { key => 'www_user',
         msg => 'username or userid of web server user',
         def => 'www-data' },
+      { key => 'modify_nagios_config' },
+      { key => 'nagios_config_file' },
+      { key => 'nagios_commands_file' },
+      { key => 'modify_apache_config' },
+      { key => 'apache_config_dir' },
+      { key => 'apache_config_file' },
     );
 
 my $verbose = 1;
@@ -362,9 +362,6 @@ while ($ARGV[0]) {
         print "  install.pl --prefix /usr/local/nagiosgraph\n";
         print "to install at /opt/nagiosgraph:\n";
         print "  install.pl --prefix /opt/nagiosgraph\n";
-        print "\n";
-        print "to install without prompts for automated or unattended\n";
-        print "installations, specify one or more environment variables.\n";
         exit $code;
     }
 }
@@ -389,6 +386,7 @@ if($action eq 'check-prereq') {
 } elsif($action eq 'install') {
     open $LOG, '>', LOG_FN ||
         print 'cannot write to log file ' . LOG_FN . ": $OS_ERROR\n";
+    checkuserid();
     $failure |= checkprereq() if $checkprereq;
     $failure |= getconfig(\%conf);
     if (checkconfig(\%conf)) {
@@ -491,28 +489,29 @@ sub prependpath {
 sub checkconfig {
     my ($conf) = @_;
     my $missing = 0;
-    foreach my $ii (@CONFKEYS) {
-        if (! defined $conf->{$ii}) {
-            if($ii eq 'nagios_config_file' &&
+    foreach my $ii (@CONF) {
+        my $key = $ii->{key};
+        if (! defined $conf->{$key}) {
+            if($key eq 'nagios_config_file' &&
                ! isyes($conf->{modify_nagios_config})) {
                 next;
-            } elsif($ii eq 'nagios_commands_file' &&
+            } elsif($key eq 'nagios_commands_file' &&
                     ! isyes($conf->{modify_nagios_config})) {
                 next;
-            } elsif(($ii eq 'apache_config_dir' ||
-                     $ii eq 'apache_config_file') &&
+            } elsif(($key eq 'apache_config_dir' ||
+                     $key eq 'apache_config_file') &&
                     ! isyes($conf->{modify_apache_config})) {
                 next;
-            } elsif($ii eq 'apache_config_file' &&
+            } elsif($key eq 'apache_config_file' &&
                     defined $conf->{apache_config_dir} &&
                     isyes($conf->{modify_apache_config})) {
                 next;
-            } elsif($ii eq 'apache_config_dir' &&
+            } elsif($key eq 'apache_config_dir' &&
                     defined $conf->{apache_config_file} &&
                     isyes($conf->{modify_apache_config})) {
                 next;
             } else {
-                logmsg('parameter ' . $ii . ' is not defined');
+                logmsg('parameter ' . $key . ' is not defined');
                 $missing = 1;
             }
         }
@@ -532,7 +531,8 @@ sub getconfig {
     readconfigpresets($conf);
 
     if (! defined $conf->{nagios_perfdata_file}) {
-        my $x = findfile('perfdata.log', qw(/var/nagios /var/spool/nagios /var/nagios3 /var/spool/nagios3));
+        my $x = findfile('perfdata.log',
+                         mkapppath(\@NAGIOS_NAMES, \@NAGIOS_VAR_DIRS));
         $conf->{nagios_perfdata_file} = $x if $x ne q();
     }
 
@@ -548,15 +548,15 @@ sub getconfig {
 
     # prompt for each item in the configuration
     foreach my $ii (@CONF) {
-        my $def = defined $conf->{$ii->{conf}} ?
-            $conf->{$ii->{conf}} :
+        my $def = defined $conf->{$ii->{key}} ?
+            $conf->{$ii->{key}} :
             defined $ii->{def} ? $ii->{def} : q();
         if ($def ne q() &&
             defined $ii->{parent} &&
             defined $conf->{$ii->{parent}}) {
             $def = prependpath($conf->{$ii->{parent}}, $def);
         }
-        $conf->{$ii->{conf}} = getanswer($ii->{msg}, $def);
+        $conf->{$ii->{key}} = getanswer($ii->{msg}, $def) if defined $ii->{msg};
     }
 
     # find out if we should modify the nagios configuration.  if there is a
@@ -564,18 +564,24 @@ sub getconfig {
     $conf->{modify_nagios_config} =
         getanswer('Modify the Nagios configuration', 'n');
     if (isyes($conf->{modify_nagios_config})) {
+        my @cfgdirs = mkapppath(\@NAGIOS_NAMES, \@NAGIOS_CFG_DIRS);
         my $x = defined $conf->{nagios_config_file} ?
             $conf->{nagios_config_file} : q();
-        if ($x eq q()) {
-            $x = findfile('nagios.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc /etc/nagios3 /usr/local/nagios3/etc /opt/nagios3/etc));
-        }
+        $x = findfile('nagios.cfg', @cfgdirs) if $x eq q();
+        $x = findfile('icinga.cfg', @cfgdirs) if $x eq q();
         $conf->{nagios_config_file} =
             getanswer('Path of Nagios configuration file', $x);
+        $NAGIOS_CFG = $conf->{nagios_config_file};
 
         $x = defined $conf->{nagios_commands_file} ?
             $conf->{nagios_commands_file} : q();
+        $x = findfile('commands.cfg', @cfgdirs) if $x eq q();
         if ($x eq q()) {
-            $x = findfile('commands.cfg', qw(/etc/nagios /usr/local/nagios/etc /opt/nagios/etc /etc/nagios3 /usr/local/nagios3/etc /opt/nagios3/etc));
+            my @cdirs;
+            foreach my $d (@cfgdirs) {
+                push @cdirs, $d . '/objects';
+            }
+            $x = findfile('commands.cfg', @cdirs);
         }
         $conf->{nagios_commands_file} =
             getanswer('Path of Nagios commands file', $x);
@@ -586,22 +592,20 @@ sub getconfig {
     $conf->{modify_apache_config} =
         getanswer('Modify the Apache configuration', 'n');
     if (isyes($conf->{modify_apache_config})) {
-        my @dirs = qw(/etc/apache2 /usr/local/apache2 /opt/apache2 /etc/httpd /usr/local/httpd /opt/httpd);
+        my @dirs = mkapppath(\@APACHE_NAMES, \@APACHE_CFG_DIRS);
         my $x = defined $conf->{apache_config_dir} ?
             $conf->{apache_config_dir} : q();
-        if ($x eq q()) {
-            $x = finddir('conf.d', @dirs);
-            $conf->{apache_config_dir} = $x if $x ne q();
-        }
-        if (! defined $conf->{apache_config_dir}) {
+        $x = finddir('conf.d', @dirs) if $x eq q();
+        $conf->{apache_config_dir} =
+            getanswer('Path of Apache configuration directory', $x);
+        if (! defined $conf->{apache_config_dir} ||
+            $conf->{apache_config_dir} eq q()) {
             $x = defined $conf->{apache_config_file} ?
                 $conf->{apache_config_file} : q();
-            if ($x eq q()) {
-                $x = findfile('apache2.conf', @dirs);
-            }
-            if ($x eq q()) {
-                $x = findfile('httpd.conf', qw(/etc/apache2/conf /usr/local/apache2/conf /opt/apache2/conf /etc/httpd /usr/local/httpd/conf /opt/httpd/conf));
-            }
+            $x = findfile('apache2.conf', @dirs) if $x eq q();
+            $x = findfile('conf/apache2.conf', @dirs) if $x eq q();
+            $x = findfile('httpd.conf', @dirs) if $x eq q();
+            $x = findfile('conf/httpd.conf', @dirs) if $x eq q();
             $conf->{apache_config_file} =
                 getanswer('Path of Apache configuration file', $x);
         }
@@ -637,9 +641,9 @@ sub readconfigenv {
         $cnt += 1;
     }
     foreach my $ii (@CONF) {
-        my $name = mkenvname($ii->{conf});
+        my $name = mkenvname($ii->{key});
         if ($ENV{$name}) {
-            $conf->{$ii->{conf}} = $ENV{$name};
+            $conf->{$ii->{key}} = $ENV{$name};
             $cnt += 1;
         }
     }
@@ -659,15 +663,15 @@ sub readconfigenv {
     $conf->{apache_config_file} = $ENV{$n} if $ENV{$n};
     readconfigpresets($conf);
     foreach my $ii (@CONF) {
-        my $def = defined $conf->{$ii->{conf}} ?
-            $conf->{$ii->{conf}} :
+        my $def = defined $conf->{$ii->{key}} ?
+            $conf->{$ii->{key}} :
             defined $ii->{def} ? $ii->{def} : q();
         if ($def ne q() &&
             defined $ii->{parent} &&
             defined $conf->{$ii->{parent}}) {
             $def = prependpath($conf->{$ii->{parent}}, $def);
         }
-        $conf->{$ii->{conf}} = $def;
+        $conf->{$ii->{key}} = $def;
     }
 
     return $cnt;
@@ -677,14 +681,8 @@ sub envvars {
     my @vars;
     push @vars, 'NG_LAYOUT';
     foreach my $ii (@CONF) {
-        push @vars, mkenvname($ii->{conf});
+        push @vars, mkenvname($ii->{key});
     }
-    push @vars, 'NG_MODIFY_NAGIOS_CONFIG';
-    push @vars, 'NG_NAGIOS_CONFIG_FILE';
-    push @vars, 'NG_NAGIOS_COMMANDS_FILE';
-    push @vars, 'NG_MODIFY_APACHE_CONFIG';
-    push @vars, 'NG_APACHE_CONFIG_DIR';
-    push @vars, 'NG_APACHE_CONFIG_FILE';
     return @vars;
 }
 
@@ -703,8 +701,9 @@ sub printconfig {
     if ($ENV{DESTDIR}) {
         logmsg('  DESTDIR=' . $ENV{DESTDIR});
     }
-    foreach my $ii (@CONFKEYS) {
-        logmsg(sprintf '  %-20s %s', $ii, defined $conf->{$ii} ? $conf->{$ii} : q());
+    foreach my $ii (@CONF) {
+        my $key = $ii->{key};
+        logmsg(sprintf '  %-20s %s', $key, defined $conf->{$key} ? $conf->{$key} : q());
     }
     return;
 }
@@ -731,13 +730,14 @@ sub checkprereq {
     my @dirs;
 
     logmsg('checking nagios installation');
-    @dirs = qw(/usr/local/nagios/bin /usr/local/nagios3/bin /opt/nagios/bin /opt/nagios3/bin /usr/bin /usr/sbin /bin /sbin);
-    $found = checkexec('nagios', @dirs);
-    if ($found eq q()) {
-        $found = checkexec('nagios3', @dirs);
-    }
+    @dirs = mkapppath(\@NAGIOS_NAMES, \@NAGIOS_BIN_DIRS);
+    $found = checkexec('nagios3', @dirs);
+    $found = checkexec('nagios2', @dirs) if $found eq q();
+    $found = checkexec('nagios', @dirs) if $found eq q();
+    $found = checkexec('icinga', @dirs) if $found eq q();
     if ($found ne q()) {
-        logmsg("  found nagios at $found");
+        logmsg("  found nagios exectuable at $found");
+        $NAGIOS_EXEC = $found;
     } else {
         my $dlist;
         foreach my $d (@dirs) {
@@ -747,17 +747,24 @@ sub checkprereq {
         $fail = 1;
     }
 
-    logmsg('checking web server installation');
-    @dirs = qw(/usr/local/apache/bin /opt/apache/bin /usr/local/apache2/bin /opt/apache2/bin /usr/local/httpd/bin /opt/httpd/bin /usr/bin /usr/sbin /bin /sbin);
-    $found = checkexec('httpd', @dirs);
-    if ($found eq q()) {
-        $found = checkexec('apache', @dirs);
-        if ($found eq q()) {
-            $found = checkexec('apache2', @dirs);
-        }
-    }
+    @dirs = ('/etc/init.d');
+    $found = checkexec('nagios3', @dirs);
+    $found = checkexec('nagios2', @dirs) if $found eq q();
+    $found = checkexec('nagios', @dirs) if $found eq q();
+    $found = checkexec('icinga', @dirs) if $found eq q();
     if ($found ne q()) {
-        logmsg("  found apache at $found");
+        logmsg("  found nagios init script at $found");
+        $NAGIOS_INIT = $found;
+    }
+
+    logmsg('checking web server installation');
+    @dirs = mkapppath(\@APACHE_NAMES, \@APACHE_BIN_DIRS);
+    $found = checkexec('apache2', @dirs);
+    $found = checkexec('apache', @dirs) if $found eq q();
+    $found = checkexec('httpd', @dirs) if $found eq q();
+    if ($found ne q()) {
+        logmsg("  found apache executable at $found");
+        $APACHE_EXEC = $found;
     } else {
         my $dlist;
         foreach my $d (@dirs) {
@@ -765,6 +772,15 @@ sub checkprereq {
         }
         logmsg("  apache not found in any of:\n$dlist");
         $fail = 1;
+    }
+
+    @dirs = ('/etc/init.d');
+    $found = checkexec('apache2', @dirs);
+    $found = checkexec('apache', @dirs) if $found eq q();
+    $found = checkexec('httpd', @dirs) if $found eq q();
+    if ($found ne q()) {
+        logmsg("  found apache init script at $found");
+        $APACHE_INIT = $found;
     }
 
     return $fail;
@@ -786,13 +802,11 @@ sub checkmodule {
 sub checkexec {
     my ($app, @dirs) = @_;
     my $found = q();
-    for (my $ii=0; $ii<$#dirs+1; $ii++) { ## no critic (ProhibitCStyleForLoops)
-        my $a = "$dirs[$ii]/$app";
+    foreach my $d (@dirs) {
+        my $a = "$d/$app";
         if (-f $a) {
             $found = $a;
-            if (! -x $a) {
-                $found .= ' (not executable)';
-            }
+            last;
         }
     }
     return $found;
@@ -941,6 +955,14 @@ sub checkinstallation {
     return $fail;
 }
 
+sub checkuserid {
+    if ($dochown && geteuid() != 0) {
+        logmsg("***");
+        logmsg("*** Warning!  root privileges are required for installation");
+        logmsg("***");
+    }
+}
+
 sub finduser {
     my @users = @_;
     foreach my $u (@users) {
@@ -1076,6 +1098,11 @@ sub printapacheconf {
     $str .= $cmmt . "   AllowOverride None\n";
     $str .= $cmmt . "   Order allow,deny\n";
     $str .= $cmmt . "   Allow from all\n";
+    $str .= $cmmt . "#   AuthName \"Nagios Access\"\n";
+    $str .= $cmmt . "#   AuthType Basic\n";
+# FIXME: set the nagios etc dir
+    $str .= $cmmt . "#   AuthUserFile NAGIOS_ETC_DIR/htpasswd.users\n";
+    $str .= $cmmt . "#   Require valid-user\n";
     $str .= $cmmt . "</Directory>\n";
 
     $str .= "# enable nagiosgraph CSS and JavaScript\n";
@@ -1129,19 +1156,19 @@ sub printinstructions {
     }
     if (!isyes($conf->{modify_nagios_config})) {
         logmsg(q());
-        logmsg('  * In the nagios configuration file (e.g. nagios.cfg),');
+        logmsg('  * In the nagios configuration file (nagios.cfg),');
         logmsg('    add these lines:');
         logmsg(q());
         logmsg(printnagioscfg($conf->{nagios_perfdata_file}));
         logmsg(q());
-        logmsg('  * In the nagios commands file (e.g. command.cfg),');
+        logmsg('  * In the nagios commands file (command.cfg),');
         logmsg('    add these lines:');
         logmsg(q());
         logmsg(printnagioscmd("$conf->{ng_bin_dir}/insert.pl"));
     }
     if (!isyes($conf->{modify_apache_config})) {
         logmsg(q());
-        logmsg('  * In the apache configuration file (e.g. httpd.conf),');
+        logmsg('  * In the apache configuration file (httpd.conf),');
         logmsg('    add this line:');
         logmsg(q());
         logmsg("include $conf->{ng_etc_dir}/" . APACHE_STUB_FN);
@@ -1149,15 +1176,15 @@ sub printinstructions {
     logmsg(q());
     logmsg('  * Check the nagios configuration:');
     logmsg(q());
-    logmsg('/path/to/nagios -v /etc/nagios/nagios.cfg');
+    logmsg("$NAGIOS_EXEC -v $NAGIOS_CFG");
     logmsg(q());
     logmsg('  * Restart nagios to start data collection:');
     logmsg(q());
-    logmsg('/etc/init.d/nagios restart');
+    logmsg("$NAGIOS_INIT restart");
     logmsg(q());
     logmsg('  * Restart apache to enable display of graphs:');
     logmsg(q());
-    logmsg('/etc/init.d/apache restart');
+    logmsg("$APACHE_INIT restart");
     logmsg(q());
     logmsg('  * To enable graph links and mouseovers, see README sections:');
     logmsg('       Displaying Per-Service and Per-Host Graph Icons and Links');
@@ -1363,6 +1390,23 @@ sub patchapache {
     }
 
     return $fail;
+}
+
+sub mkapppath {
+    my ($apps, $paths) = @_;
+    my @retpaths;
+    foreach my $p (@{$paths}) {
+        if ($p =~ /APP/) {
+            foreach my $q (@{$apps}) {
+                my $r = $p;
+                $r =~ s/APP/$q/g;
+                push @retpaths, $r;
+            }
+        } else {
+            push @retpaths, $p;
+        }
+    }
+    return @retpaths;
 }
 
 sub isyes {

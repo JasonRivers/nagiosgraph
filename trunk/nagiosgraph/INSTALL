@@ -9,6 +9,21 @@ automatically using the install.pl script.  For installation details, upgrading
 instructions, customization options, and troubleshooting, see the README file.
 
 
+Install Pre-Requisites
+----------------------
+
+To see which pre-requisites are installed:
+
+    install.pl --check-prereq
+
+To install pre-requisites:
+
+  Debian/Ubuntu
+    sudo apt-get install libcgi-pm-perl librrds-perl libgd-gd2-perl
+  Redhat/Fedora/CentOS
+    sudo yum install perl-rrdtool perl-GD
+
+
 Easy Install
 ------------
 
@@ -17,10 +32,6 @@ Easy Install
 To see a list of options:
 
     install.pl --help
-
-To see if pre-requisites are installed:
-
-    install.pl --check-prereq
 
 
 Recipe for Manual Installation

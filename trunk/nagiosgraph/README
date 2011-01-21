@@ -6,10 +6,9 @@ nagiosgraph README             Author:  (c) 2005 Soren Dossing
 
 Nagiosgraph is an add-on to Nagios.  Nagios monitors one or more services on
 each host.  nagiosgraph extracts information from the Nagios output, processes
-it, then inserts it into one or more round-robin database (RRD) files.
-nagiosgraph CGI scripts display data from the RRD files as web pages.  The CGI
-output can be embedded directly into Nagios so that graphs show up just like
-other trend reports.
+it, then inserts it into one or more round-robin database (RRD) files.  CGI
+scripts display data from the RRD files as web pages.  The CGI output can be
+embedded directly into Nagios so that graphs show up like other trend reports.
 
 Installation is a three-step process.  First install the nagiosgraph files,
 then configure Nagios for data collection, and finally customize the graphs
@@ -161,20 +160,21 @@ Nagiosgraph requires rrdtool.  Version 1.4 or later is recommended, but
 older versions will also work.
 
 Nagiosgraph requires the CGI and RRDs perl modules.  The RRDs perl module
-is part of rrdtool.  The GD perl module is optional, but recommended.
+is part of rrdtool but is often distributed as a separate package.  The GD
+perl module is optional, but recommended.
 
   Debian/Ubuntu:
-    rrdtool, perl, libcgi-pm-perl, librrds-perl, libgd-gd2-perl
+    apt-get install libcgi-pm-perl librrds-perl libgd-gd2-perl
   Redhat/Fedora/CentOS:
-    rrdtool, perl, perl-rrdtool, perl-GD
+    yum install perl-rrdtool perl-GD
   SUSE:
-    rrdtool, perl, perl-GD
+    rrdtool, perl-GD
   Solaris:
-    rrdtool, perl, gd
+    rrdtool, gd
   FreeBSD:
-    rrdtool, perl5, gd
+    rrdtool, gd
   OpenBSD:
-    perl5, p5-RRD, p5-GD
+    p5-RRD, p5-GD
 
 The install.pl script includes an option to check for pre-requisites:
 
@@ -234,7 +234,6 @@ Installing nagiosgraph Files
 ----------------------------
 
 These instructions assume an overlay layout, with nagios at /usr/local/nagios
-and nagios configuration files at /etc/nagios
 
  - Extract nagiosgraph into a temporary location:
      cd /tmp
@@ -354,7 +353,7 @@ service check, thus updating the corresponding RRD files.
 Batch Processing
 ----------------
 
- - In the Nagios configuration file (/etc/nagios/nagios.cfg) set:
+ - In the Nagios configuration file (nagios.cfg) set:
 
      process_performance_data=1
      service_perfdata_file=/var/nagios/perfdata.log
@@ -369,7 +368,7 @@ Batch Processing
    Make sure that location of service_perfdata_file matches that of perflog
    defined in nagiosgraph.conf.
 
- - In the Nagios commands file (/etc/nagios/objects/commands.cfg) define
+ - In the Nagios commands file (commands.cfg) define
    the process-service-perfdata command:
 
      define command {
@@ -383,7 +382,7 @@ Batch Processing
 
  - Check the nagios configuration
 
-     /usr/local/nagios/bin/nagios -v /etc/nagios/nagios.cfg
+     /usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg
 
  - Restart nagios
 
@@ -410,7 +409,7 @@ Immediate Processing
 
  - Check the nagios configuration
 
-     /usr/local/nagios/bin/nagios -v /etc/nagios/nagios.cfg
+     /usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg
 
  - Restart nagios
 
@@ -518,6 +517,7 @@ additions go directly in the host and service definitions.
      define service {
        name NTP
        use local-service,graphed-service
+       ...
      }
 
  - To display a graph icon instead of the nagios action icon, replace

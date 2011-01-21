@@ -2,6 +2,7 @@ $Id$
 
 1.4.5 TBD
 
+* fixed install.pl to work with icinga.
 * rename upgrade.pl to flat2hier.pl
 * fixed install option typo for --check-prerequisites in install instructions.
 * encourage standalone installations rather than overlays unless installing
