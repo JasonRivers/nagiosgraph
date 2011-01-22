@@ -43,7 +43,7 @@ use vars qw($VERSION %Config %Labels %i18n %authhosts %authz %hsdata $colorsub $
 ## no critic (Modules::ProhibitAutomaticExportation)
 our @EXPORT = qw($VERSION $CFGNAME %Config DBCRT DBERR DBWRN DBINF DBDEB cfgparams checkrrddir convertdeprecated dbfilelist debug dumper getdebug getimg getlabel getparams getperiodctrls getperiodlabel getrules getstyle gettimestamp graphsizes hashcolor havepermission htmlerror imgerror init initperiods loadperms printfooter printgraphlinks printheader printinitscript printperiodlinks processdata readconfig readdatasetdb readgroupdb readhostdb readi18nfile readlabelsfile readperfdata readrrdoptsfile readservdb rrdline $LOG %authz %authhosts %hsdata %Labels %i18n addopt arrayorstring buildurl checkdatasources checkdirempty checkdsname checkminmax checkuserlist cleanline createminmax createrrd filterdb formatelapsedtime formattime getcfgfn getdataitems getdatalabel getdbs gethsdd gethsddvalue gethsdvalue gethsdvalue2 getlineattr getperms getrefresh getrras getserverlist graphinfo hsddmatch initlog listtodict mergeopts mkfilename mki18nfilename mklegend mkvname parsedb printcontrols printdefaultscript printi18nscript printincludescript printmenudatascript printsummary readfile readnagiosperms readpermsfile rrdupdate runcreate runupdate scandirectory scanhierarchy scanhsdata scrubuserlist setdata setlabels sortnaturally stacktrace str2list evalrules);
 
-$VERSION = '1.4.4';
+$VERSION = '1.4.5';
 $CFGNAME = 'nagiosgraph.conf';
 
 use constant PROG => basename($PROGRAM_NAME);
@@ -64,6 +64,7 @@ use constant {
     RRDEXT => '.rrd',
     DEFAULT => 'default',
     DSNAME_MAXLEN => 19,
+    NCONFIG_VERSION => 35,  # required version of Nagios::Config
 };
 
 # the javascript version number here must match the version number in the
@@ -1400,6 +1401,12 @@ sub readservdb {
 # This returns a list of graph infos for the specified group and a list
 # of all group names.
 #
+# If there is a group configuration file, then use the contents of that file.
+# If there is a nagios configuration file, the list of groups will be
+# automatically generated from the service groups defined in the Nagios
+# configuration. Automatic generation of groups requires a sufficiently
+# recent Nagios::Config perl module.
+#
 # Groups are defined with this format:
 #
 #   groupname=host,service[&label=text][&db=db[,ds][&label=text][...]]
@@ -1409,75 +1416,134 @@ sub readgroupdb {
     $g ||= q();
     debug(DBDEB, "readgroupdb($g)");
 
-    if (! defined $Config{groupdb} || $Config{groupdb} eq q()) {
-        my $msg = 'no groupdb file has been specified';
+    if ( ! defined $Config{groupcfgfile} &&
+         ! defined $Config{groupdb} ) {
+        my $msg = 'No group configuration file(s) specified.  To display Nagios service groups, specify the Nagios configuration file using the \'groupcfgfile\' directive.  To explicitly enumerate groups, specify them in a file referred to by the \'groupdb\' directive.';
         debug(DBERR, $msg);
         htmlerror($msg);
         die $msg; ## no critic (RequireCarping)
     }
 
-    my $fn = getcfgfn($Config{groupdb});
     my %gnames;
     my @ginfo;
-    if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
-        my $lineno = 0;
-        while (my $line = <$DB>) {
-            chomp $line;
-            $lineno += 1;
-            next if $line =~ /^\s*#/;        # skip commented lines
-            $line = cleanline($line);
-            my $group = q();
-            my $host = q();
-            my $service = q();
-            my $label = q();
-            if ( $line =~ s/^([^=]+)\s*=\s*([^,]+)\s*,\s*([^&]+)// ) {
-                $group = $1;
-                $host = $2;
-                $service = $3;
-                if ($line =~ s/^&label=([^&]+)//) {
-                    $label = $1;
+    if (defined $Config{groupdb}) {
+        my $fn = getcfgfn($Config{groupdb});
+        if (open my $DB, '<', $fn) { ## no critic (RequireBriefOpen)
+            my $lineno = 0;
+            while (my $line = <$DB>) {
+                chomp $line;
+                $lineno += 1;
+                next if $line =~ /^\s*#/;        # skip commented lines
+                $line = cleanline($line);
+                my $group = q();
+                my $host = q();
+                my $service = q();
+                my $label = q();
+                if ( $line =~ s/^([^=]+)\s*=\s*([^,]+)\s*,\s*([^&]+)// ) {
+                    $group = $1;
+                    $host = $2;
+                    $service = $3;
+                    if ($line =~ s/^&label=([^&]+)//) {
+                        $label = $1;
+                    }
                 }
-            }
-            if ( ! $group || ! $host || ! $service ) {
-                if ( $line =~ /\S+/ ) {
-                    debug(DBWRN, "groupdb: bad format (line $lineno)");
+                if ( ! $group || ! $host || ! $service ) {
+                    if ( $line =~ /\S+/ ) {
+                        debug(DBWRN, "groupdb: bad format (line $lineno)");
+                    }
+                    next;
                 }
-                next;
+                $gnames{$group} = 1;
+                next if $group ne $g;
+                my ($db, $dblabel);
+                if ($line ne q()) {
+                    ($db, $dblabel) = parsedb($line);
+                    $db = filterdb($host, $service, $db, $authhosts{hostserv});
+                    next if scalar @{$db} == 0;
+                } else {
+                    # find out if there are data for this host-service, but
+                    # do not specify the databases explicitly.
+                    my $x = getdbs($host, $service, \%hsdata);
+                    next if scalar @{$x} == 0;
+                    $db = [];
+                    $dblabel = [];
+                }
+                my %info;
+                $info{host} = $host;
+                $info{service} = $service;
+                if ($label ne q())  { $info{service_label} = $label; }
+                $info{db} = $db;
+                $info{db_label} = $dblabel;
+                push @ginfo, \%info;
+                debug(DBDEB, "readgroupdb: match for $host $service $line");
             }
-            $gnames{$group} = 1;
-            next if $group ne $g;
-            my ($db, $dblabel);
-            if ($line ne q()) {
-                ($db, $dblabel) = parsedb($line);
-                $db = filterdb($host, $service, $db, $authhosts{hostserv});
-                next if scalar @{$db} == 0;
-            } else {
-                # find out if there are data for this host-service, but
-                # do not specify the databases explicitly.
-                my $x = getdbs($host, $service, \%hsdata);
-                next if scalar @{$x} == 0;
-                $db = [];
-                $dblabel = [];
-            }
-            my %info;
-            $info{host} = $host;
-            $info{service} = $service;
-            if ($label ne q())  { $info{service_label} = $label; }
-            $info{db} = $db;
-            $info{db_label} = $dblabel;
-            push @ginfo, \%info;
-            debug(DBDEB, "readgroupdb: match for $host $service $line");
+            close $DB or debug(DBERR, "close failed for $fn: $OS_ERROR");
+        } else {
+            my $msg = "cannot open groupdb $fn: $OS_ERROR";
+            debug(DBERR, $msg);
+            htmlerror($msg);
+            die $msg; ## no critic (RequireCarping)
         }
-        close $DB or debug(DBERR, "close failed for $fn: $OS_ERROR");
     } else {
-        my $msg = "cannot open groupdb $fn: $OS_ERROR";
-        debug(DBERR, $msg);
-        htmlerror($msg);
-        die $msg; ## no critic (RequireCarping)
+        debug(DBINF, 'no groupdb file has been specified');
+    }
+
+    if (defined $Config{groupcfgfile}) {
+        my $fn = $Config{groupcfgfile};
+        if ( ! -f $fn ) {
+            my $msg = "Cannot read nagios configuration file $fn";
+            debug(DBERR, $msg);
+            htmlerror($msg);
+            die $msg; ## no critic (RequireCarping)
+        }
+        my $rval = eval { require Nagios::Config; };
+        if (defined $rval && $rval == 1) {
+            if ( Nagios::Config->VERSION >= NCONFIG_VERSION ) {
+                debug(DBDEB, 'readgroupdb: using nagios service groups');
+                my $cfg = Nagios::Config->new( Filename => $fn );
+                my $objs = $cfg->all_objects_for_type('Nagios::ServiceGroup');
+                foreach my $o (@{$objs}) {
+                    my $n = $o->name ? $o->name : q();
+                    my $a = $o->alias ? $o->alias : q();
+                    debug(DBDEB, $n . ' (' . $a . ')');
+                    my $group = $a ne q() ? $a : $n;
+                    $gnames{$group} = 1;
+                    next if $group ne $g;
+
+                    my $members = $o->members();
+                    foreach my $m (@{$members}) {
+                        my $h = $m->[0];
+                        my $s = $m->[1];
+                        my $hostn = $m->[0]->{host_name};
+                        my $hosta = $m->[0]->{alias};
+                        my $servn = $m->[1]->{service_description};
+                        my $serva = $m->[1]->{display_name};
+
+                        my %info;
+                        $info{host} = $hostn;
+                        $info{service} = $servn;
+                        $info{service_label} = $serva;
+                        $info{db} = q();
+                        $info{db_label} = q();
+                        push @ginfo, \%info;
+                        debug(DBDEB, "readgroupdb: match for $hostn $servn");
+                    }
+                }
+            } else {
+                my $msg = 'Incompatible version of Nagios::Object: found version ' . Nagios::Config->VERSION . ' but version ' . NCONFIG_VERSION . ' or higher is required.';
+                debug(DBERR, $msg);
+                htmlerror($msg);
+                die $msg; ## no critic (RequireCarping)
+            }
+        } else {
+            my $msg = 'Please install the perl module Nagios::Object to obtain groups from the Nagios configuration, or specify groups manually in the groupdb file.';
+            debug(DBERR, $msg);
+            htmlerror($msg);
+            die $msg; ## no critic (RequireCarping)
+        }
     }
 
     my @gnames = sortnaturally(keys %gnames);
-
     dumper(DBDEB, 'groups', \@gnames);
     dumper(DBDEB, 'graphinfos', \@ginfo);
     return \@gnames, \@ginfo;
@@ -1675,6 +1741,7 @@ sub gethsdd { ## no critic (ProhibitManyArgs)
             } else {
                 ($p,$v) = ($item, 1);
             }
+            debug(DBDEB, "p=$p v=$v");
             if (hsddmatch($key, $p, $pri, $host, $service, $db, $ds)) {
                 $value = $v;
                 last;
@@ -1793,7 +1860,7 @@ sub mklegend {
 
 sub setlabels { ## no critic (ProhibitManyArgs)
     my ($host, $serv, $dbname, $dsname, $file, $label, $maxlen) = @_;
-    debug(DBDEB, "setlabels($host, $serv, $dbname, $dsname, $maxlen)");
+    debug(DBDEB, "setlabels($host, $serv, $dbname, $dsname, $file, $maxlen)");
     my @ds;
     my $id = mkvname($dbname, $dsname);
     my $legend = mklegend($label, $maxlen);
@@ -1824,7 +1891,7 @@ sub setlabels { ## no critic (ProhibitManyArgs)
 
 sub setdata { ## no critic (ProhibitManyArgs)
     my ($serv, $dbname, $dsname, $file, $fixedscale, $dur) = @_;
-    debug(DBDEB, "setdata($serv, $dbname, $dsname, $fixedscale, $dur)");
+    debug(DBDEB, "setdata($serv, $dbname, $dsname, $file, $fixedscale, $dur)");
     my @ds;
     my $id = mkvname($dbname, $dsname);
     my $format = ($fixedscale ? '%7.2lf' : '%7.2lf%s');

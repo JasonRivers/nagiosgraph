@@ -129,6 +129,7 @@ sub dumpinc {
 sub printrow {
     my ($style, $func, $msg, $errmsg) = @_;
     print "<tr><td class='$style'> </td><td align='right'>$func:</td><td>$msg</td><td class='$style'>$errmsg</td></tr>\n";
+    return;
 }
 
 sub checkmodule {

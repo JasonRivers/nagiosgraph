@@ -161,10 +161,12 @@ older versions will also work.
 
 Nagiosgraph requires the CGI and RRDs perl modules.  The RRDs perl module
 is part of rrdtool but is often distributed as a separate package.  The GD
-perl module is optional, but recommended.
+perl module is optional, but recommended.  The Nagios::Object perl module is
+optional, but useful for automatic configuration of showgroup.cgi.
 
   Debian/Ubuntu:
-    apt-get install libcgi-pm-perl librrds-perl libgd-gd2-perl
+    apt-get install libcgi-pm-perl librrds-perl
+    apt-get install libgd-gd2-perl libnagios-object-perl
   Redhat/Fedora/CentOS:
     yum install perl-rrdtool perl-GD
   SUSE:

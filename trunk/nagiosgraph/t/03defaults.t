@@ -56,7 +56,7 @@ sub testconfig {
     ok($Config{authfile}, undef);
     ok($Config{hostdb}, undef);
     ok($Config{servdb}, undef);
-    ok($Config{groupdb}, '/etc/nagiosgraph/groupdb.conf');
+    ok($Config{groupdb}, undef);
     ok($Config{datasetdb}, undef);
     ok($Config{nagiosgraphcgiurl}, '/nagiosgraph/cgi-bin');
     ok($Config{nagioscgiurl}, undef);

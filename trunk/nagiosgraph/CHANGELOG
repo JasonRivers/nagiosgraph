@@ -2,8 +2,9 @@ $Id$
 
 1.4.5 TBD
 
+* automatically determine groups from the Nagios servicegroup definitions.
 * fixed install.pl to work with icinga.
-* rename upgrade.pl to flat2hier.pl
+* renamed upgrade.pl to flat2hier.pl
 * fixed install option typo for --check-prerequisites in install instructions.
 * encourage standalone installations rather than overlays unless installing
    from rpm or deb package.

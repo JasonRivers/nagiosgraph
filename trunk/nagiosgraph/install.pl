@@ -957,10 +957,11 @@ sub checkinstallation {
 
 sub checkuserid {
     if ($dochown && geteuid() != 0) {
-        logmsg("***");
-        logmsg("*** Warning!  root privileges are required for installation");
-        logmsg("***");
+        logmsg('***');
+        logmsg('*** Warning!  root privileges are required for installation');
+        logmsg('***');
     }
+    return;
 }
 
 sub finduser {
