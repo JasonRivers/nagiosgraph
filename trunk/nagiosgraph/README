@@ -235,39 +235,46 @@ if you installed Nagios or apache from source!
 Installing nagiosgraph Files
 ----------------------------
 
-These instructions assume an overlay layout, with nagios at /usr/local/nagios
+These instructions assume a standalone layout, with nagios at /usr/local/nagios
+and nagiosgraph at /usr/local/nagiosgraph
+
+ - Create destination directories:
+     mkdir /usr/local/nagiosgraph
+     mkdir /usr/local/nagiosgraph/bin
+     mkdir /usr/local/nagiosgraph/cgi-bin
+     mkdir /usr/local/nagiosgraph/etc
+     mkdir /usr/local/nagiosgraph/share
 
  - Extract nagiosgraph into a temporary location:
      cd /tmp
      tar xzvf nagiosgraph-x.y.z.tgz
 
  - Copy the contents of etc into your preferred configuration location:
-     mkdir /etc/nagiosgraph
-     cp etc/* /etc/nagiosgraph
+     cp etc/* /usr/local/nagiosgraph/etc
 
  - Edit the perl scripts in the cgi and lib directories, modifying the
    "use lib" line to point to the directory from the previous step.
      vi cgi/*.cgi lib/insert.pl
 
  - Copy insert.pl to a location from which it can be executed:
-     cp lib/insert.pl /usr/local/nagios/libexec
+     cp lib/insert.pl /usr/local/nagiosgraph/bin
 
  - Copy CGI scripts to a script directory served by the web server:
-     cp cgi/*.cgi /usr/local/nagios/sbin
+     cp cgi/*.cgi /usr/local/nagiosgraph/cgi-bin
 
  - Copy CSS and JavaScript files to a directory served by the web server:
-     cp share/nagiosgraph.css /usr/local/nagios/share
-     cp share/nagiosgraph.js /usr/local/nagios/share
+     cp share/nagiosgraph.css /usr/local/nagiosgraph/share
+     cp share/nagiosgraph.js /usr/local/nagiosgraph/share
 
- - Edit /etc/nagiosgraph/nagiosgraph.conf.  Set at least the following:
+ - Edit nagiosgraph.conf.  Set at least the following:
      logfile           = /var/log/nagiosgraph.log
      cgilogfile        = /var/log/nagiosgraph-cgi.log
      perflog           = /var/nagios/perfdata.log
      rrddir            = /var/nagios/rrd
-     mapfile           = /etc/nagiosgraph/map
-     nagiosgraphcgiurl = /nagios/cgi-bin
-     javascript        = /nagios/nagiosgraph.js
-     stylesheet        = /nagios/nagiosgraph.css
+     mapfile           = /usr/local/nagiosgraph/etc/map
+     nagiosgraphcgiurl = /nagiosgraph/cgi-bin
+     javascript        = /nagiosgraph/nagiosgraph.js
+     stylesheet        = /nagiosgraph/nagiosgraph.css
 
  - Set permissions of "rrddir" (as defined in nagiosgraph.conf) so that
    the *nagios* user can write to it and the *www* user can read it:
@@ -375,7 +382,7 @@ Batch Processing
 
      define command {
        command_name  process-service-perfdata
-       command_line  /usr/local/nagios/libexec/insert.pl
+       command_line  /usr/local/nagiosgraph/bin/insert.pl
      }
 
    Make sure there is only one definition for process-service-perfdata.
@@ -406,7 +413,7 @@ Immediate Processing
 
      define command{
        command_name  process-service-perfdata
-       command_line  /usr/local/nagios/libexec/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
+       command_line  /usr/local/nagiosgraph/bin/insert.pl "$LASTSERVICECHECK$||$HOSTNAME$||$SERVICEDESC$||$SERVICEOUTPUT$||$SERVICEPERFDATA$"
      }
 
  - Check the nagios configuration
@@ -425,21 +432,32 @@ Configuring Graphing and Display
 First configure the web server to run the nagiosgraph CGI scripts.  For
 example, with Apache do something like this in the Apache configuration:
 
-  ScriptAlias /nagios/cgi-bin /usr/local/nagios/sbin
-  <Directory "/usr/local/nagios/sbin">
+  ScriptAlias /nagiosgraph/cgi-bin /usr/local/nagiosgraph/cgi-bin
+  <Directory "/usr/local/nagiosgraph/cgi-bin">
      Options ExecCGI
      AllowOverride None
      Order allow,deny
      Allow from all
   </Directory>
+  Alias /nagiosgraph "/usr/local/nagiosgraph/share"
+  <Directory "/usr/local/nagiosgraph/share">
+     Options None
+     AllowOverride None
+     Order allow,deny
+     Allow from all
+  </Directory>
+
+Restart the web server:
+
+  /etc/init.d/apache2 restart
 
 Verify that nagiosgraph is working by running showconfig.cgi
 
-  http://server/nagios/cgi-bin/showconfig.cgi
+  http://server/nagiosgraph/cgi-bin/showconfig.cgi
 
 Try graphing some data by running show.cgi
 
-  http://server/nagios/cgi-bin/show.cgi
+  http://server/nagiosgraph/cgi-bin/show.cgi
 
 This should display a web page with a list of your hosts and services.
 Note that it might take a few minutes for data to collect, so at first the
@@ -504,6 +522,13 @@ additions go directly in the host and service definitions.
        name NTP
        use local-service
        action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
+       ...
+     }
+
+     define host {
+       host_name web-server
+       action_url /nagiosgraph/cgi-bin/showhost.cgi?host=$HOSTNAME$
+       ...
      }
 
    To apply graph links to multiple services, define a template such as this:
@@ -546,7 +571,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
       cp share/nagiosgraph.ssi /usr/local/nagios/share/ssi/common-header.ssi
 
    If you have customized Nagios SSI, add the contents of
-   share/nagiosgraph.ssi to your customized SSI header file(s).
+   share/nagiosgraph.ssi to your customized SSI header file.
 
  - Configure services to display graphs on mouseovers by adding some 
    JavaScript to action_url or notes_url.  For example:
@@ -602,10 +627,10 @@ $cfg['ng_cgi_base_url']='/nagiosgraph/cgi-bin';
 
 <li><a href="/nagios/cgi-bin/trends.cgi" target="main">Trends</a>
 <ul>
-<li><a href="/nagios/cgi-bin/show.cgi" target="main">Graphs</a></li>
-<li><a href="/nagios/cgi-bin/showhost.cgi" target="main">Graphs by Host</a></li>
-<li><a href="/nagios/cgi-bin/showservice.cgi" target="main">Graphs by Service</a></li>
-<li><a href="/nagios/cgi-bin/showgroup.cgi" target="main">Graphs by Group</a></li>
+<li><a href="/nagiosgraph/cgi-bin/show.cgi" target="main">Graphs</a></li>
+<li><a href="/nagiosgraph/cgi-bin/showhost.cgi" target="main">Graphs by Host</a></li>
+<li><a href="/nagiosgraph/cgi-bin/showservice.cgi" target="main">Graphs by Service</a></li>
+<li><a href="/nagiosgraph/cgi-bin/showgroup.cgi" target="main">Graphs by Group</a></li>
 </ul>
 </li>
 
@@ -987,7 +1012,7 @@ nagiosgraph respects the following nagios variables:
 To use nagiosgraph access controls, define the following in nagiosgraph.conf:
 
   authzmethod=nagiosgraph
-  authzfile=/etc/nagiosgraph/access.conf
+  authzfile=/usr/local/nagiosgraph/etc/access.conf
 
 The nagiosgraph access control file uses the following syntax:
 
@@ -1126,20 +1151,11 @@ Here are samples of nagiosgraph/nagios installation layouts.
     /opt/nagiosgraph/etc/nagiosgraph.conf
     /opt/nagiosgraph/share/nagiosgraph.css
     /opt/nagiosgraph/share/nagiosgraph.js
-   
-  overlay, installed to /:
-    /usr/lib/nagios/libexec/insert.pl
-    /usr/lib/nagios/cgi-bin/show.cgi
-    /usr/lib/nagios/cgi-bin/showgraph.cgi
-    /etc/nagiosgraph/ngshared.pm
-    /etc/nagiosgraph/nagiosgraph.conf
-    /usr/share/nagios/nagiosgraph.css
-    /usr/share/nagios/nagiosgraph.js
 
-  overlay, installed to /usr/local:
+  overlay, installed to /usr/local/nagios:
     /usr/local/nagios/libexec/insert.pl
-    /usr/local/nagios/cgi-bin/show.cgi
-    /usr/local/nagios/cgi-bin/showgraph.cgi
+    /usr/local/nagios/sbin/show.cgi
+    /usr/local/nagios/sbin/showgraph.cgi
     /usr/local/nagios/etc/ngshared.pm
     /usr/local/nagios/etc/nagiosgraph.conf
     /usr/local/nagios/share/nagiosgraph.css
@@ -1176,7 +1192,6 @@ ScriptAlias /nagiosgraph/cgi-bin/ "/opt/nagiosgraph/cgi/"
    Order allow,deny
    Allow from all
 </Directory>
-
 Alias /nagiosgraph "/opt/nagiosgraph/share"
 <Directory "/opt/nagiosgraph/share">
    Options None
@@ -1192,7 +1207,6 @@ ScriptAlias /nagios/cgi-bin "/opt/nagios/sbin"
    Order allow,deny
    Allow from all
 </Directory>
-
 Alias /nagios "/opt/nagios/share"
 <Directory "/opt/nagios/share">
    Options None
@@ -1372,7 +1386,8 @@ easier.
 
   Be consistent in configuration files and documentation about where the
   nagiosgraph files are installed, regardless of what you use.  Use the
-  overlay layout, with nagios installed at /usr/local/nagios
+  standalone layout, with nagios installed at /usr/local/nagios and
+  nagiosgraph installed at /usr/local/nagiosgraph
 
 - perldoc
 
