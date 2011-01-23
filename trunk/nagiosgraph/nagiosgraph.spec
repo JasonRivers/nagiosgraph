@@ -98,9 +98,14 @@ echo %{etag} >> %{n_cmd_file}
 %{_initrddir}/%{apachecmd} restart
 %{_initrddir}/%{nagioscmd} restart
 
-# FIXME: this assumes no changes were made since we cached to -ngsave
+# save the cfg and cmd files to time-stamped caches just in case someone made
+# modifications since we made the ngsave cache.
+# FIXME: use the standard rpm mechanism for saving modified config files
 %postun
 rm %{apacheconfdir}/nagiosgraph.conf
+ts=`date +"%Y%m%d.%H%M"`
+mv %{n_cfg_file} %{n_cfg_file}-$ts
+mv %{n_cmd_file} %{n_cmd_file}-$ts
 mv %{n_cfg_file}-ngsave %{n_cfg_file}
 mv %{n_cmd_file}-ngsave %{n_cmd_file}
 %{_initrddir}/%{apachecmd} restart

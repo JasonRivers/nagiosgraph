@@ -1,7 +1,10 @@
 #!/bin/sh
 
+# FIXME: use the standard debian mechanisms for saving modified config files
+
 ars=n
 nrs=n
+ts=`date +"%Y%m%d.%H%M"`
 
 # remove apache configuration changes
 if [ -f /etc/apache2/conf.d/nagiosgraph.conf ]; then
@@ -10,12 +13,13 @@ if [ -f /etc/apache2/conf.d/nagiosgraph.conf ]; then
 fi
 
 # remove nagios configuration changes
-# FIXME: this assumes that no changes were made since we cached to -ngsave
 if [ -f /etc/nagios3/nagios.cfg-ngsave ]; then
+  mv /etc/nagios3/nagios.cfg /etc/nagios3/nagios.cfg-$ts
   mv /etc/nagios3/nagios.cfg-ngsave /etc/nagios3/nagios.cfg
   nrs=y
 fi
 if [ -f /etc/nagios3/commands.cfg-ngsave ]; then
+  mv /etc/nagios3/commands.cfg /etc/nagios3/commands.cfg-$ts
   mv /etc/nagios3/commands.cfg-ngsave /etc/nagios3/commands.cfg
   nrs=y
 fi
