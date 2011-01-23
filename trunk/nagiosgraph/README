@@ -562,7 +562,7 @@ Displaying Graphs in Nagios Mouseovers
 To display graphs as mouseovers for each host and/or service, do the following:
 
  - Edit the file share/nagiosgraph.ssi to contain the URL to the nagiosgraph
-   javascript file (e.g. /nagios/nagiosgraph.js)
+   javascript file (e.g. /nagiosgraph/nagiosgraph.js)
 
  - If you have not customized the Nagios SSI, copy share/nagiosgraph.ssi to
    the nagios ssi directory, and rename it so that Nagios will insert it into
@@ -580,6 +580,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
        name NTP
        use local-service
        action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/cgi-bin/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
+       ...
      }
 
    This example displays a week of data in a popup with no legend:
@@ -588,6 +589,7 @@ To display graphs as mouseovers for each host and/or service, do the following:
        name NTP
        use local-service
        action_url /nagiosgraph/cgi-bin/show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$' onMouseOver='showGraphPopup(this)' onMouseOut='hideGraphPopup()' rel='/nagiosgraph/cgi-bin/showgraph.cgi?host=$HOSTNAME$&service=$SERVICEDESC$&period=week&rrdopts=-w+450+-j
+       ...
      }
 
 You must restart Nagios for changes to service/host defintions to take effect.
