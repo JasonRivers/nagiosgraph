@@ -7,7 +7,7 @@ Priority: extra
 Maintainer: Alan Brenner
 Architecture: all
 Depends: nagios3, apache2, libcgi-pm-perl, librrds-perl
-Recommends: libgd-gd2-perl
+Recommends: libgd-gd2-perl, libnagios-object-perl
 Pre-Depends: perl
 Enhances: nagios
 Provides: nagiosgraph
