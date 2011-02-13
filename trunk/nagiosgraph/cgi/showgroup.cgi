@@ -91,8 +91,7 @@ showgroup.cgi - Graph Nagios data for groups of hosts and services
 
 This is a CGI script that is designed to be run on a web server.  It generates
 a page of HTML that displays a list of graphs for a group of hosts and/or 
-services.  The graph data are retrieved from RRD files and are typically
-captured by insert.pl.
+services.  The graph data are retrieved from RRD files.
 
 The showgraph.cgi script generates the graphs themselves.
 
@@ -128,20 +127,19 @@ go to the nagiosgraph log or web server error log.
 
 The B<nagiosgraph.conf> file controls the behavior of this script.
 
-Groups of services and hosts are defined in the B<groupdb.conf> file.
+Groups of services and hosts may be defined in the B<groupdb.conf> file.
 
 =head1 DEPENDENCIES
 
 =over 4
 
+=item B<ngshared.pm>
+
+This is the nagiosgraph perl library.  It contains code used by this script.
+
 =item B<showgraph.cgi>
 
-This generates the graphs shown in the HTML generated here.
-
-=item B<Nagios>
-
-While this could probably run without Nagios, as long as RRD databases exist,
-it is intended to work along side Nagios.
+This generates the graphs that are embedded in the HTML.
 
 =item B<rrdtool>
 
@@ -151,18 +149,23 @@ This provides the data storage and graphing system.
 
 This provides the perl interface to rrdtool.
 
+=item B<Nagios>
+
+Although this CGI script can be used with RRD files independent of Nagios, it
+is designed to be used with Nagios.
+
 =back
 
 =head1 INSTALLATION
 
-Copy B<ngshared.pm>, B<nagiosgraph.conf>, and B<groupdb.conf> to a
-configuration directory such as /etc/nagiosgraph.
+Copy B<ngshared.pm> and B<nagiosgraph.conf> to a configuration directory
+such as /etc/nagiosgraph.
 
 Copy this file to a CGI script directory on a web server and ensure that
 it is executable by the web server.  Modify the B<use lib> line to point
 to the configuration directory.
 
-Edit B<nagiosgraph.conf> and B<groupdb.conf> as needed.
+Edit B<nagiosgraph.conf> as needed.
 
 =head1 INCOMPATIBILITIES
 
@@ -170,17 +173,12 @@ Edit B<nagiosgraph.conf> and B<groupdb.conf> as needed.
 
 =head1 SEE ALSO
 
-B<groupdb.conf> B<nagiosgraph.conf>
-B<ngshared.pm> B<showgraph.cgi>
+B<nagiosgraph.conf> B<groupdb.conf> B<datasetdb.conf>
+B<ngshared.pm>
+B<showgraph.cgi>
 B<show.cgi> B<showhost.cgi> B<showservice.cgi>
 
 =head1 AUTHOR
-
-Soren Dossing, the original author of show.cgi in 2004.
-
-Robert Teeter, the original author of showhost.cgi in 2005
-
-Alan Brenner, author of ngshared.pm and many other parts in 2008.
 
 Matthew Wall, showgroup.cgi, CSS and JavaScript in 2010.
 

@@ -104,7 +104,8 @@ showgraph.cgi - Graph Nagios data
 
 =head1 DESCRIPTION
 
-This CGI script generates a graph of RRD data as a PNG image.
+This is a CGI script that generates a graph of one or more data sets from an
+RRD file as a PNG image.
 
 =head1 USAGE
 
@@ -144,10 +145,9 @@ service
 
 =over 4
 
-=item B<Nagios>
+=item B<ngshared.pm>
 
-While this could probably run without Nagios, as long as RRD databases exist,
-it is intended to work along side Nagios.
+This is the nagiosgraph perl library.  It contains code used by this script.
 
 =item B<rrdtool>
 
@@ -156,6 +156,11 @@ This provides the data storage and graphing system.
 =item B<RRDs>
 
 This provides the perl interface to rrdtool.
+
+=item B<Nagios>
+
+Although this CGI script can be used with RRD files independent of Nagios, it
+is designed to be used with Nagios.
 
 =back
 
@@ -184,10 +189,8 @@ B<show.cgi> B<showhost.cgi> B<showservice.cgi> B<showgroup.cgi>
 
 Soren Dossing, the original author in 2005.
 
-Alan Brenner - alan.brenner@ithaka.org; I've updated this from the version
-at http://nagiosgraph.wiki.sourceforge.net/ by moving some subroutines into a
-shared file (ngshared.pm), adding color number nine, and adding support for
-showhost.cgi and showservice.cgi.
+Alan Brenner - moved subroutines into a shared file (ngshared.pm), using
+showgraph.cgi, and adding links for show.cgi and showservice.cgi.
 
 Matthew Wall, showgroup.cgi, CSS and JavaScript in 2010.
 

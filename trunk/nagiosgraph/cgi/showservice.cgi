@@ -73,14 +73,13 @@ __END__
 
 =head1 NAME
 
-showservice.cgi - Graph Nagios data for a given service
+showservice.cgi - Graph Nagios data for a specific service
 
 =head1 DESCRIPTION
 
 This is a CGI script that is designed to be run on a web server.  It generates
 a page of HTML that displays a list of graphs for a single service on multiple
-hosts.  The graph data are retrieved from RRD files and are typically captured
-by insert.pl.
+hosts.  The graph data are retrieved from RRD files.
 
 The showgraph.cgi script generates the graphs themselves.
 
@@ -118,21 +117,17 @@ go to the nagiosgraph log or web server error log.
 
 The B<nagiosgraph.conf> file controls the behavior of this script.
 
-The B<servdb.conf> controls which services will be listed and the order in
-which those services will appear.
-
 =head1 DEPENDENCIES
 
 =over 4
 
+=item B<ngshared.pm>
+
+This is the nagiosgraph perl library.  It contains code used by this script.
+
 =item B<showgraph.cgi>
 
-This generates the graphs shown in the HTML generated here.
-
-=item B<Nagios>
-
-While this could probably run without Nagios, as long as RRD databases exist,
-it is intended to work along side Nagios.
+This generates the graphs that are embedded in the HTML.
 
 =item B<rrdtool>
 
@@ -142,18 +137,23 @@ This provides the data storage and graphing system.
 
 This provides the perl interface to rrdtool.
 
+=item B<Nagios>
+
+Although this CGI script can be used with RRD files independent of Nagios, it
+is designed to be used with Nagios.
+
 =back
 
 =head1 INSTALLATION
 
-Copy B<ngshared.pm>, B<nagiosgraph.conf>, and B<servdb.conf> to a
-configuration directory such as /etc/nagiosgraph.
+Copy B<ngshared.pm> and B<nagiosgraph.conf> to a configuration directory
+such as /etc/nagiosgraph.
 
 Copy this file to a CGI script directory on a web server and ensure that
 it is executable by the web server.  Modify the B<use lib> line to point
 to the configuration directory.
 
-Edit B<nagiosgraph.conf> and B<servdb.conf> as needed.
+Edit B<nagiosgraph.conf> as needed.
 
 =head1 INCOMPATIBILITIES
 
@@ -161,8 +161,9 @@ Edit B<nagiosgraph.conf> and B<servdb.conf> as needed.
 
 =head1 SEE ALSO
 
-B<servdb.conf> B<nagiosgraph.conf>
-B<ngshared.pm> B<showgraph.cgi>
+B<nagiosgraph.conf> B<servdb.conf> B<datasetdb.conf>
+B<ngshared.pm>
+B<showgraph.cgi>
 B<show.cgi> B<showhost.cgi> B<showgroup.cgi>
 
 =head1 AUTHOR
@@ -171,19 +172,19 @@ Soren Dossing, the original author of show.cgi in 2004.
 
 Robert Teeter, the original author of showhost.cgi in 2005.
 
-Alan Brenner - alan.brenner@ithaka.org; I've written this based on Robert
-Teeter's showhost.cgi.
+Alan Brenner - moved subroutines into a shared file (ngshared.pm), using
+showgraph.cgi, and adding links for show.cgi and showservice.cgi.
 
 Matthew Wall, showgroup.cgi, CSS and JavaScript in 2010.
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright (C) 2008 Ithaka Harbors, Inc.
+Copyright (C) 2005 Soren Dossing, 2008 Ithaka Harbors, Inc.
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of the OSI Artistic License:
+This program is free software; you can redistribute it and/or
+modify it under the terms of the OSI Artistic License see:
 http://www.opensource.org/licenses/artistic-license-2.0.php
 
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

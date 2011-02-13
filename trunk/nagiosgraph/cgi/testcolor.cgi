@@ -107,6 +107,8 @@ Color palette 9 is defined by a list of RGB colors in B<nagiosgraph.conf>
 
 =head1 CONFIGURATION
 
+The B<nagiosgraph.conf> file controls the behavior of this script.
+
 Create a custom color palette in the nagiosgraph configuration file by defining
 a comma-delimited list of colors.  Here are some sample palettes.
 
@@ -124,10 +126,6 @@ colors = 80d080,50a050,308030
 =item B<ngshared.pm>
 
 This is the nagiosgraph perl library.  It contains code used by this script.
-
-=item B<nagiosgraph.conf>
-
-This configuration file controls behavior of this script.
 
 =back
 
@@ -149,17 +147,16 @@ Edit B<nagiosgraph.conf> as needed.
 =head1 SEE ALSO
 
 B<nagiosgraph.conf>
-B<ngshared.pm> B<showgraph.cgi>
+B<ngshared.pm>
+B<showgraph.cgi>
 B<show.cgi> B<showhost.cgi> B<showservice.cgi> B<showgroup.cgi>
 
 =head1 AUTHOR
 
 Soren Dossing, the original author of show.cgi in 2004.
 
-Alan Brenner - alan.brenner@ithaka.org; I've updated this from the version
-at http://nagiosgraph.wiki.sourceforge.net/ by moving some subroutines into a
-shared file (ngshared.pm), using showgraph.cgi, and adding links for show.cgi
-and showservice.cgi.
+Alan Brenner, moved subroutines into a shared file (ngshared.pm), added color
+number nine, and added support for showhost.cgi and showservice.cgi.
 
 Matthew Wall, showgroup.cgi, CSS and JavaScript in 2010.
 

@@ -64,11 +64,13 @@ __END__
 
 =head1 NAME
 
-show.cgi - Graph Nagios data
+show.cgi - Graph Nagios data for a specific service on a specific host
 
 =head1 DESCRIPTION
 
-Run this via a web server to generate a page of graph data.
+This is a CGI script that is designed to be run on a web server.  It generates
+a page of HTML that displays a list of graphs for a single service on a single
+host.  The graph data are retrieved from RRD files.
 
 The showgraph.cgi script generates the graphs themselves.
 
@@ -112,14 +114,13 @@ The B<nagiosgraph.conf> file controls the behavior of this script.
 
 =over 4
 
+=item B<ngshared.pm>
+
+This is the nagiosgraph perl library.  It contains code used by this script.
+
 =item B<showgraph.cgi>
 
-This generates the graphs shown in the HTML generated here.
-
-=item B<Nagios>
-
-While this could probably run without Nagios, as long as RRD databases exist,
-it is intended to work along side Nagios.
+This generates the graphs that are embedded in the HTML.
 
 =item B<rrdtool>
 
@@ -128,6 +129,11 @@ This provides the data storage and graphing system.
 =item B<RRDs>
 
 This provides the perl interface to rrdtool.
+
+=item B<Nagios>
+
+Although this CGI script can be used with RRD files independent of Nagios, it
+is designed to be used with Nagios.
 
 =back
 
@@ -142,41 +148,23 @@ to the configuration directory.
 
 Edit B<nagiosgraph.conf> as needed.
 
-To create links from Nagios web pages, add extinfo definitions in the 
-Nagios configuration.  For example,
-
-=begin text
-
-    define serviceextinfo {
-      service_description Current Load
-      host_name           host1, host2
-      action_url          show.cgi?host=$HOSTNAME$&service=$SERVICEDESC$
-    }
-
-=end text
-
-The service_description must match an existing service.  Only the hosts
-listed in host_name will have an action icon next to the service name on
-a detail page.
-
 =head1 INCOMPATIBILITIES
 
 =head1 BUGS AND LIMITATIONS
 
 =head1 SEE ALSO
 
-B<nagiosgraph.conf>
-B<ngshared.pm> B<showgraph.cgi>
+B<nagiosgraph.conf> B<datasetdb.conf>
+B<ngshared.pm>
+B<showgraph.cgi>
 B<showhost.cgi> B<showservice.cgi> B<showgroup.cgi>
 
 =head1 AUTHOR
 
 Soren Dossing, the original author in 2005.
 
-Alan Brenner - alan.brenner@ithaka.org; I've updated this from the version
-at http://nagiosgraph.wiki.sourceforge.net/ by moving some subroutines into a
-shared file (ngshared.pm), adding color number nine, and adding support for
-showhost.cgi and showservice.cgi.
+Alan Brenner, moved subroutines into a shared file (ngshared.pm), added color
+number nine, and added support for showhost.cgi and showservice.cgi.
 
 Craig Dunn: support for service based graph options via rrdopts.conf file
 

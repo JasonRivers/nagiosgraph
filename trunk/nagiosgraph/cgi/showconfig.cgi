@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# $Id: showhost.cgi 315 2010-03-04 02:15:41Z mwall $
+# $Id$
 # License: OSI Artistic License
 #          http://www.opensource.org/licenses/artistic-license.php
 # Author:  (c) 2010 Matthew Wall
