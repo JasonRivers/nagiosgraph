@@ -29,9 +29,13 @@ etc/nagiosgraph_fr.conf
 etc/ngshared.pm
 etc/rrdopts.conf
 etc/servdb.conf
+examples/graphed-host.cfg
+examples/graphed-service.cfg
+examples/insert.sh
 examples/map_1_3
 examples/map_1_4_3
 examples/map_1_4_4
+examples/map_1_4_5
 examples/map_examples
 examples/map_minimal
 examples/map_mwall
@@ -44,7 +48,6 @@ examples/nagiosgraph.2.css
 INSTALL
 install.pl
 lib/insert.pl
-lib/insert.sh
 Makefile.PL
 MANIFEST
 META.yml

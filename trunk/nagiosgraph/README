@@ -108,18 +108,17 @@ Enumeration of Files
 CHANGELOG             - History of changes
 INSTALL               - Example recipe for installing nagiosgraph
 README                - This file
-TODO                  - A list of potential improvements to nagiosgraph.
+TODO                  - A list of potential improvements to nagiosgraph
 install.pl            - Installation script
-lib/insert.pl         - Reads nagios perfdata log and insert into RRD files.
-lib/insert.sh         - A shell script wrapper around insert.pl.
-cgi/show.cgi          - Generates an html page for the host/service specified.
-cgi/showconfig.cgi    - Check the nagiosgraph configuration.
-cgi/showgraph.cgi     - Generates the actual graph image used by other scripts.
-cgi/showgroup.cgi     - Generates an html page for the group specified.
+lib/insert.pl         - Reads nagios perfdata log and insert into RRD files
+cgi/show.cgi          - Generates an html page for the host/service specified
+cgi/showconfig.cgi    - Check the nagiosgraph configuration
+cgi/showgraph.cgi     - Generates the actual graph image used by other scripts
+cgi/showgroup.cgi     - Generates an html page for the group specified
 cgi/showhost.cgi      - Generates an html page for the host specified, showing
-                          all available services on the host.
+                          all available services on the host
 cgi/showservice.cgi   - Generates an html page for the service specified,
-                          showing all hosts with that service.
+                          showing all hosts with that service
 cgi/testcolor.cgi     - Preview of colors for keywords in each color scheme
 etc/access.conf       - Access control file
 etc/datasetdb.conf    - Optional configuration for data sets
@@ -130,16 +129,16 @@ etc/hostdb.conf       - Configuration specific to showhost.cgi
 etc/servdb.conf       - Configuration specific to showservice.cgi
 etc/rrdopts.conf      - Per-service options to rrdgraph
 etc/map               - Regular expression to identify services and
-                          specification for how to create RRD files.
+                          specification for how to create RRD files
 etc/ngshared.pm       - Shared library of common perl subroutines
-examples/*            - Configuration examples.
-share/graph.gif       - An icon for use in Nagios.
+examples/*            - Configuration examples
+share/graph.gif       - An icon for use in Nagios
 share/nagiosgraph.css - CSS stylesheet
-share/nagiosgraph.js  - All of the JavaScript used by nagiosgraph.
-share/nagiosgraph.ssi - HTML for Nagios pages to enable graphs on mouseover.
+share/nagiosgraph.js  - All of the JavaScript used by nagiosgraph
+share/nagiosgraph.ssi - HTML for Nagios pages to enable graphs on mouseover
 t/*                   - perl test scripts
-utils/testentry.pl    - A script for testing new map file entries.
-utils/flat2hier.pl    - Script for converting RRD data from flat to hierarchy.
+utils/testentry.pl    - A script for testing new map file entries
+utils/flat2hier.pl    - Script for converting RRD data from flat to hierarchy
 
 
 Installation Preliminaries

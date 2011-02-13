@@ -31,11 +31,29 @@ and return ('ignore');
 #
 #   label=value[UOM];[warn];[crit];[min];[max]
 #
+# if units are KB, MB, TB, PB then convert to B
+# if units are ms or us then convert to s
+# if units is counter, then use type DERIVE (DS min will be 0)
+#
+# warn and crit have range format:
+#
+# 10         < 0 or > 10
+# 10:        < 10
+# ~:10       > 10
+# 10:20      < 10 or > 20
+# @10:20     >= 10 and <= 20
+# 
 (! @s || $#s < 0) and /perfdata:(.+)/ and do {
     my $pd = $1;
     while ( $pd =~ s/([^=]+)=(\S+)// ) {
         my ($n,$y) = ($1,$2);
-        next if (!defined $n || $n eq q());
+        next if (!defined $n);
+        $n =~ s/^\s+//g;
+        $n =~ s/\s+$//g;
+        $n =~ s/^\'//g;
+        $n =~ s/\'$//g;
+        $n =~ s/\'\'/\'/g;
+        next if ($n eq q());
         my ($v,$u,$x) = $y =~ /([-0-9.]+)([^;]*)(.*)/;
         next if (!defined $v || $v eq q());
         my ($w,$c,$min,$max);
@@ -43,11 +61,6 @@ and return ('ignore');
             $x =~ s/^;//;
             ($w,$c,$min,$max) = split /;/, $x;
         }
-        $n =~ s/^\s+//g;
-        $n =~ s/\s+$//g;
-        $n =~ s/^\'//g;
-        $n =~ s/\'$//g;
-        $n =~ s/\'\'/\'/g;
         my ($wlo, $whi);
         if (defined $w && $w ne q()) {
             if ($w =~ /([-0-9.]+):([-0-9.]+)/) {
@@ -72,7 +85,7 @@ and return ('ignore');
         if (defined $u) {
             my $mult = 1;
             if ($u eq 'c') {
-                $t = 'COUNTER';
+                $t = 'DERIVE';
             } elsif ($u eq 's') {
                 $mult = 1;
             } elsif ($u eq 'ms') {
