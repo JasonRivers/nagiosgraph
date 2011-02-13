@@ -73,8 +73,11 @@ BuildArch: noarch
 BuildRequires: perl
 
 %description
-nagiosgraph is an add-on to Nagios. It collects performance data
-into RRD files and displays graphs in web pages.
+NagiosGraph is an add-on to Nagios.  Nagios monitors one or more services on
+each host.  NagiosGraph extracts information from the Nagios output, processes
+it, then inserts it into one or more round-robin database (RRD) files.  CGI
+scripts display data from the RRD files as web pages.  The CGI output can be
+embedded directly into Nagios so that graphs show up like other trend reports.
 
 %prep
 %setup -q
