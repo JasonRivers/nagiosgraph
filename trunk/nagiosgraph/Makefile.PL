@@ -76,6 +76,7 @@ rpm-package: dist
 
 DEBARCH=all
 DEBREVISION=1
+DEBVER=\$(VERSION)-\$(DEBREVISION)
 DEBVERSION=\$(VERSION)-\$(DEBREVISION)_\$(DEBARCH)
 deb-package:
 \trm -rf nagiosgraph-\$(DEBVERSION)
@@ -91,7 +92,7 @@ deb-package:
 \tcp debian/postinst nagiosgraph-\$(DEBVERSION)/DEBIAN
 \tcp debian/postrm nagiosgraph-\$(DEBVERSION)/DEBIAN
 \tutils/cvtchangelog.pl > nagiosgraph-\$(DEBVERSION)/DEBIAN/changelog
-\tperl -pi -e 's/Version:.*/Version: \$(DEBVERSION)/' nagiosgraph-\$(DEBVERSION)/DEBIAN/control
+\tperl -pi -e 's/Version:.*/Version: \$(DEBVER)/' nagiosgraph-\$(DEBVERSION)/DEBIAN/control
 \tdpkg -b nagiosgraph-\$(DEBVERSION)
 \trm -rf nagiosgraph-\$(DEBVERSION)
 ";
