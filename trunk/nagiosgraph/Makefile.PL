@@ -85,14 +85,13 @@ deb-package:
 \tmkdir -m 0755 nagiosgraph-\$(DEBVERSION)/DEBIAN
 \tcp debian/compat nagiosgraph-\$(DEBVERSION)/DEBIAN
 \tcp debian/conffiles nagiosgraph-\$(DEBVERSION)/DEBIAN
-\tcp debian/control nagiosgraph-\$(DEBVERSION)/DEBIAN
 \tcp debian/copyright nagiosgraph-\$(DEBVERSION)/DEBIAN
 \tcp debian/docs nagiosgraph-\$(DEBVERSION)/DEBIAN
 \tcp debian/rules nagiosgraph-\$(DEBVERSION)/DEBIAN
 \tcp debian/postinst nagiosgraph-\$(DEBVERSION)/DEBIAN
 \tcp debian/postrm nagiosgraph-\$(DEBVERSION)/DEBIAN
 \tutils/cvtchangelog.pl > nagiosgraph-\$(DEBVERSION)/DEBIAN/changelog
-\tperl -pi -e 's/Version:.*/Version: \$(DEBVER)/' nagiosgraph-\$(DEBVERSION)/DEBIAN/control
+\tsed -e 's/Version:.*/Version: \$(DEBVER)/' debian/control.in > nagiosgraph-\$(DEBVERSION)/DEBIAN/control
 \tdpkg -b nagiosgraph-\$(DEBVERSION)
 \trm -rf nagiosgraph-\$(DEBVERSION)
 ";
