@@ -10,7 +10,7 @@ cgi/testcolor.cgi
 CHANGELOG
 debian/compat
 debian/conffiles
-debian/control
+debian/control.in
 debian/copyright
 debian/docs
 debian/postinst
