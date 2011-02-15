@@ -55,7 +55,7 @@ BEGIN {
         plan tests => 0;
         exit 0;
     } else {
-        plan tests => 645;
+        plan tests => 649;
     }
 }
 
@@ -702,6 +702,15 @@ sub testgethsdvalue2 {
     $x = gethsdvalue2('heartbeat', 5, 'host1', 'ping', 'loss');
     ok($x, 20);
     $x = gethsdvalue2('heartbeat', 5, 'host2', 'ping', 'loss');
+    ok($x, 500);
+    $Config{heartbeatlist} = str2list('host1, ping ,loss=20;.*,.*,.* =500');
+    $x = gethsdvalue2('heartbeat', 5, 'host1', 'ping', 'loss');
+    ok($x, 600);
+    $x = gethsdvalue2('heartbeat', 5, 'host1', ' ping ', 'loss');
+    ok($x, 20);
+    $x = gethsdvalue2('heartbeat', 5, 'host2', 'ping', 'loss');
+    ok($x, 600);
+    $x = gethsdvalue2('heartbeat', 5, 'host2', 'ping', 'loss ');
     ok($x, 500);
     undef $Config{heartbeatlist};
 
