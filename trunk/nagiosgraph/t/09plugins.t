@@ -1262,7 +1262,7 @@ sub test_snmp {
             'iso.3.6.1.4.1.nnnn.x.y.1.1.1.5.1.4.1',
             [
               'data',
-              'COUNTER',
+              'DERIVE',
               '3499'
             ]
           ]
@@ -1275,7 +1275,7 @@ sub test_snmp {
             'iso.3.6.1.4.1.nnnn.x.y.1.1.1.5.1.4.1',
             [
               'data',
-              'COUNTER',
+              'DERIVE',
               '3499'
             ]
           ],
@@ -1283,7 +1283,7 @@ sub test_snmp {
             'iso.3.6.1.4.1.nnnn.x.y.1.1.1.5.1.4.2',
             [
               'data',
-              'COUNTER',
+              'DERIVE',
               '1200'
             ]
           ]

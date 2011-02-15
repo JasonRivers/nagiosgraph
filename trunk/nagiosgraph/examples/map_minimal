@@ -54,12 +54,12 @@ and return ('ignore');
         $n =~ s/\'$//g;
         $n =~ s/\'\'/\'/g;
         next if ($n eq q());
-        my ($v,$u,$x) = $y =~ /([-0-9.]+)([^;]*)(.*)/;
-        next if (!defined $v || $v eq q());
-        my ($w,$c,$min,$max);
-        if (defined $x && $x ne q()) {
-            $x =~ s/^;//;
-            ($w,$c,$min,$max) = split /;/, $x;
+        my ($x,$w,$c,$min,$max) = split /;/, $y;
+        my ($v,$u);
+        if ($x =~ /([-0-9.]+)([^-0-9.]+)/) {
+            $v = $1; $u = $2;
+        } else {
+            $v = $x;
         }
         my ($wlo, $whi);
         if (defined $w && $w ne q()) {
@@ -106,7 +106,7 @@ and return ('ignore');
                 $mult = 1024 * 1024 * 1024 * 1024 * 1024;
             }
             if ($mult != 1) {
-                $v *= $mult;
+                if ( defined $v && $v ne q()) { $v *= $mult; }
                 if ( defined $w && $w ne q()) { $w *= $mult; }
                 if ( defined $c && $c ne q()) { $c *= $mult; }
                 if ( defined $min && $min ne q()) { $min *= $mult; }
@@ -118,7 +118,7 @@ and return ('ignore');
             }
         }
         my @x;
-        push @x, [ 'data', $t, $v ];
+        push @x, [ 'data', $t, $v ] if defined $v && $v ne q();
         push @x, [ 'warn', $t, $w ] if defined $w && $w ne q();
         push @x, [ 'crit', $t, $c ] if defined $c && $c ne q();
         push @x, [ 'min', $t, $min ] if defined $min && $min ne q();
@@ -127,6 +127,6 @@ and return ('ignore');
         push @x, [ 'warn_hi', $t, $whi ] if defined $whi && $whi ne q();
         push @x, [ 'crit_lo', $t, $clo ] if defined $clo && $clo ne q();
         push @x, [ 'crit_hi', $t, $chi ] if defined $chi && $chi ne q();
-        push @s, [ $n, @x ];
+        push @s, [ $n, @x ] if @x;
     }
 };

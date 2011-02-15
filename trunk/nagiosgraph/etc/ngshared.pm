@@ -1598,7 +1598,7 @@ sub readdatasetdb {
 # unescape the filenames as we read in since they should be escaped on disk
 sub dbfilelist {
     my ($host, $serv) = @_;
-    my @rrd;
+    my @files;
     debug(DBDEB, "dbfilelist($host, $serv)");
     if ($host ne q() && $host ne q(-) && $serv ne q() && $serv ne q(-)) {
         my ($directory, $filename) = mkfilename($host, $serv);
@@ -1607,7 +1607,7 @@ sub dbfilelist {
             while (my $entry=readdir DH) {
                 next if $entry =~ /^\./;
                 if ($entry =~ /^${filename}(.+)\.rrd$/) {
-                    push @rrd, unescape($1);
+                    push @files, unescape($1);
                 }
             }
             closedir DH or debug(DBERR, "cannot close $directory: $OS_ERROR");
@@ -1615,8 +1615,8 @@ sub dbfilelist {
             debug(DBERR, "cannot open directory $directory: $OS_ERROR");
         }
     }
-    dumper(DBDEB, 'dbfilelist', \@rrd);
-    return \@rrd;
+    dumper(DBDEB, 'dbfilelist', \@files);
+    return \@files;
 }
 
 # Graphing routines ###########################################################

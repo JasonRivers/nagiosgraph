@@ -44,7 +44,7 @@ BEGIN {
         plan tests => 0;
         exit 0;
     } else {
-        plan tests => 52;
+        plan tests => 66;
     }
 }
 
@@ -550,6 +550,207 @@ sub testrandomperfdata {
 }
 
 
+sub testpartialdata {
+    my @s;
+    my @data;
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=2');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=2;');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=2;;');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=2;;;');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=2;;;;');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=2;0');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ],
+            [
+              'warn',
+              'GAUGE',
+              '0'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=2;;0');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ],
+            [
+              'crit',
+              'GAUGE',
+              '0'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=2;;;0');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ],
+            [
+              'min',
+              'GAUGE',
+              '0'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=2;;;;0');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'data',
+              'GAUGE',
+              '2'
+            ],
+            [
+              'max',
+              'GAUGE',
+              '0'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=;;;;');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=;0;;;');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'warn',
+              'GAUGE',
+              '0'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=;;0;;');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'crit',
+              'GAUGE',
+              '0'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=;;;0;');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'min',
+              'GAUGE',
+              '0'
+            ]
+          ]
+        ];\n");
+
+    @data = ('0', 'host', 'ping', 'PING OK', 'a=;;;;0');
+    @s = evalrules( formatdata( @data ) );
+    ok(Dumper(\@s), "\$VAR1 = [
+          [
+            'a',
+            [
+              'max',
+              'GAUGE',
+              '0'
+            ]
+          ]
+        ];\n");
+
+    return;
+}
+
+
 sub testmultipleperfdata {
     my @s;
     my @data;
@@ -999,27 +1200,27 @@ sub testunits {
             'sent',
             [
               'data',
-              'COUNTER',
+              'DERIVE',
               '200'
             ],
             [
               'warn',
-              'COUNTER',
+              'DERIVE',
               '500'
             ],
             [
               'crit',
-              'COUNTER',
+              'DERIVE',
               '1000'
             ],
             [
               'min',
-              'COUNTER',
+              'DERIVE',
               '0'
             ],
             [
               'max',
-              'COUNTER',
+              'DERIVE',
               '1000'
             ]
           ]
@@ -1321,6 +1522,7 @@ testnoperfdata();
 testperfdatalabels();
 testranges();
 testrandomperfdata();
+testpartialdata();
 testmultipleperfdata();
 testunits();
 testminmax();
