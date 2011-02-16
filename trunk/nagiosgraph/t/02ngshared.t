@@ -55,7 +55,7 @@ BEGIN {
         plan tests => 0;
         exit 0;
     } else {
-        plan tests => 649;
+        plan tests => 665;
     }
 }
 
@@ -822,15 +822,15 @@ sub testreadconfig {
             'global' => ''
           };\n");
     ok($Config{heartbeats}, undef);
-    ok(Dumper(\$Config{heartbeatslist}), "\$VAR1 = \\undef;\n");
+    ok(Dumper(\$Config{heartbeatlist}), "\$VAR1 = \\undef;\n");
     ok($Config{stepsizes}, undef);
-    ok(Dumper(\$Config{stepsizeslist}), "\$VAR1 = \\undef;\n");
+    ok(Dumper(\$Config{stepsizelist}), "\$VAR1 = \\undef;\n");
     ok($Config{resolutions}, undef);
-    ok(Dumper(\$Config{resolutionslist}), "\$VAR1 = \\undef;\n");
+    ok(Dumper(\$Config{resolutionlist}), "\$VAR1 = \\undef;\n");
     ok($Config{steps}, undef);
-    ok(Dumper(\$Config{stepslist}), "\$VAR1 = \\undef;\n");
+    ok(Dumper(\$Config{steplist}), "\$VAR1 = \\undef;\n");
     ok($Config{xffs}, undef);
-    ok(Dumper(\$Config{xffslist}), "\$VAR1 = \\undef;\n");
+    ok(Dumper(\$Config{xfflist}), "\$VAR1 = \\undef;\n");
     unlink $fn;
 
     $Config{rrdopts} = '--flymetothemoon';
@@ -846,27 +846,27 @@ sub testreadconfig {
             'global' => '--flymetothemoon'
           };\n");
     ok($Config{heartbeats}, 'host1,svc1,db1=100;host2,svc2,db2=200');
-    ok(Dumper(\$Config{heartbeatslist}), "\$VAR1 = \\[
+    ok(Dumper(\$Config{heartbeatlist}), "\$VAR1 = \\[
             'host1,svc1,db1=100',
             'host2,svc2,db2=200'
           ];\n");
     ok($Config{stepsizes}, 'host1,svc1,db1=30;host2,svc2,db2=50');
-    ok(Dumper(\$Config{stepsizeslist}), "\$VAR1 = \\[
+    ok(Dumper(\$Config{stepsizelist}), "\$VAR1 = \\[
             'host1,svc1,db1=30',
             'host2,svc2,db2=50'
           ];\n");
     ok($Config{resolutions}, 'host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2');
-    ok(Dumper(\$Config{resolutionslist}), "\$VAR1 = \\[
+    ok(Dumper(\$Config{resolutionlist}), "\$VAR1 = \\[
             'host1,svc1,db1=1 1 1 1',
             'host2,svc2,db2=2 2 2 2'
           ];\n");
     ok($Config{steps}, 'host1,svc1,db1=1 1 1 1;host2,svc2,db2=2 2 2 2');
-    ok(Dumper(\$Config{stepslist}), "\$VAR1 = \\[
+    ok(Dumper(\$Config{steplist}), "\$VAR1 = \\[
             'host1,svc1,db1=1 1 1 1',
             'host2,svc2,db2=2 2 2 2'
           ];\n");
     ok($Config{xffs}, 'host1,svc1,db1=1;host2,svc2,db2=2');
-    ok(Dumper(\$Config{xffslist}), "\$VAR1 = \\[
+    ok(Dumper(\$Config{xfflist}), "\$VAR1 = \\[
             'host1,svc1,db1=1',
             'host2,svc2,db2=2'
           ];\n");
@@ -1826,6 +1826,8 @@ sub testcheckdatasources {
     return;
 }
 
+# FIXME: refactor createrrd to return stuff that is then passed to the RRDs
+#  method.  this will make testing much easier and the code more obvious.
 # FIXME: the hostservar naming convention is awful, but we must respect it
 #  in order to maintain backward compatibility
 # beware! createrrd modifies the contents of $s
@@ -3928,6 +3930,126 @@ sub testsetdata {
     return;
 }
 
+sub testheartbeat {
+    my $logfn = 'testheartbeat.log';
+#    setupdebug(5, $logfn);
+
+    my $rrddir = gettestrrddir();
+    my $s;
+    my @result;
+    my $fn = $rrddir . '/testbox/procs___procs.rrd';
+    my $info;
+    my $cfgfn = 'testheartbeat.cfg';
+
+    writefile($cfgfn, ('testlog=' . $logfn,
+                       'rrddir=' . $rrddir,
+                       'dbseparator = subdir',
+                       'heartbeat = 1000'));
+    readconfig('read', 'testlog', $cfgfn);
+    $s = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    mkdir $Config{rrddir};
+    @result = createrrd(1221495632, 'testbox', 'procs', $s);
+    ok(-f $fn);
+    $info = RRDs::info $fn;
+    ok($info->{'ds[users].minimal_heartbeat'}, '1000');
+    rmtree($rrddir);
+
+    writefile($cfgfn, ('rrddir=' . $rrddir,
+                       'dbseparator = subdir',
+                       'heartbeat = 1000',
+                       'heartbeats =testbox,x,y=100'));
+    readconfig('read', 'testlog', $cfgfn);
+    $s = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    mkdir $Config{rrddir};
+    @result = createrrd(1221495632, 'testbox', 'procs', $s);
+    ok(-f $fn);
+    $info = RRDs::info $fn;
+    ok($info->{'ds[users].minimal_heartbeat'}, '1000');
+    rmtree($rrddir);
+
+    writefile($cfgfn, ('rrddir=' . $rrddir,
+                       'dbseparator = subdir',
+                       'heartbeat = 1000',
+                       'heartbeats =testbox,procs,procs=100'));
+    readconfig('read', 'testlog', $cfgfn);
+    $s = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    mkdir $Config{rrddir};
+    @result = createrrd(1221495632, 'testbox', 'procs', $s);
+    ok(-f $fn);
+    $info = RRDs::info $fn;
+    ok($info->{'ds[users].minimal_heartbeat'}, '100');
+    rmtree($rrddir);
+
+    writefile($cfgfn, ('rrddir=' . $rrddir,
+                       'dbseparator = subdir',
+                       'heartbeat = 1000',
+                       'heartbeats =testbox,procs,.*=100'));
+    readconfig('read', 'testlog', $cfgfn);
+    $s = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    mkdir $Config{rrddir};
+    @result = createrrd(1221495632, 'testbox', 'procs', $s);
+    ok(-f $fn);
+    $info = RRDs::info $fn;
+    ok($info->{'ds[users].minimal_heartbeat'}, '100');
+    rmtree($rrddir);
+
+    writefile($cfgfn, ('rrddir=' . $rrddir,
+                       'dbseparator = subdir',
+                       'heartbeat = 1000',
+                       'heartbeats =testbox,.*,procs=100'));
+    readconfig('read', 'testlog', $cfgfn);
+    $s = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    mkdir $Config{rrddir};
+    @result = createrrd(1221495632, 'testbox', 'procs', $s);
+    ok(-f $fn);
+    $info = RRDs::info $fn;
+    ok($info->{'ds[users].minimal_heartbeat'}, '100');
+    rmtree($rrddir);
+
+    writefile($cfgfn, ('rrddir=' . $rrddir,
+                       'dbseparator = subdir',
+                       'heartbeat = 1000',
+                       'heartbeats =.*,procs,procs=100'));
+    readconfig('read', 'testlog', $cfgfn);
+    $s = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    mkdir $Config{rrddir};
+    @result = createrrd(1221495632, 'testbox', 'procs', $s);
+    ok(-f $fn);
+    $info = RRDs::info $fn;
+    ok($info->{'ds[users].minimal_heartbeat'}, '100');
+    rmtree($rrddir);
+
+    writefile($cfgfn, ('rrddir=' . $rrddir,
+                       'dbseparator = subdir',
+                       'heartbeat = 1000',
+                       'heartbeats =.*,.*,.*=100'));
+    readconfig('read', 'testlog', $cfgfn);
+    $s = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    mkdir $Config{rrddir};
+    @result = createrrd(1221495632, 'testbox', 'procs', $s);
+    ok(-f $fn);
+    $info = RRDs::info $fn;
+    ok($info->{'ds[users].minimal_heartbeat'}, '100');
+    rmtree($rrddir);
+
+    writefile($cfgfn, ('rrddir=' . $rrddir,
+                       'dbseparator = subdir',
+                       'heartbeat = 1000',
+                       'heartbeats = .*,.*,.* =100'));
+    readconfig('read', 'testlog', $cfgfn);
+    $s = ['procs', ['users', 'GAUGE', 1], ['uwarn', 'GAUGE', 5] ];
+    mkdir $Config{rrddir};
+    @result = createrrd(1221495632, 'testbox', 'procs', $s);
+    ok(-f $fn);
+    $info = RRDs::info $fn;
+    ok($info->{'ds[users].minimal_heartbeat'}, '1000');
+    rmtree($rrddir);
+
+    unlink $cfgfn;
+    teardowndebug();
+    return;
+}
+
 
 setup();
 testdebug();
@@ -3997,3 +4119,4 @@ testcfgparams();
 testgetparams();
 testsetlabels();
 testsetdata();
+testheartbeat();

@@ -766,11 +766,12 @@ sub checkrrddir {
 # convert any deprecated variables to new variables and/or syntax.
 # ensure sane default values for everything, even if not specified.
 sub readconfig {
-    my ($app, $logid) = @_;
+    my ($app, $logid, $cfgfn) = @_;
     if (! $logid) { $logid = 'logfile'; }
+    if (! $cfgfn) { $cfgfn = $INC[0] . q(/) . $CFGNAME; }
 
     my $debug = 0; # set this higher to debug config file parsing
-    my $errstr = readfile($INC[0] . q(/) . $CFGNAME, \%Config, $debug);
+    my $errstr = readfile($cfgfn, \%Config, $debug);
     if ($errstr ne q()) { return $errstr; }
 
     initlog($app, $Config{$logid});
@@ -803,7 +804,7 @@ sub readconfig {
     foreach my $ii ('heartbeats', 'stepsizes', 'resolutions', 'steps', 'xffs'){
         if (defined $Config{$ii}) {
             my $key = $ii;
-            chomp $key;
+            chop $key;
             $Config{$key . 'list'} = str2list($Config{$ii});
         }
     }
@@ -1741,7 +1742,6 @@ sub gethsdd { ## no critic (ProhibitManyArgs)
             } else {
                 ($p,$v) = ($item, 1);
             }
-            debug(DBDEB, "p=$p v=$v");
             if (hsddmatch($key, $p, $pri, $host, $service, $db, $ds)) {
                 $value = $v;
                 last;
