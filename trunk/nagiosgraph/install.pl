@@ -725,6 +725,7 @@ sub checkprereq {
 
     logmsg('checking optional PERL modules');
     checkmodule('GD', 1);
+    checkmodule('Nagios::Config', 1);
 
     my $found;
     my @dirs;

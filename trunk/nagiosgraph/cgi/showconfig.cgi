@@ -161,6 +161,7 @@ sub checkmodules {
     checkmodule('Time::HiRes');
     print "<tr><td colspan='2'></td><td><b>optional</b></td></tr>\n";
     checkmodule('GD', 1);
+    checkmodule('Nagios::Config', 1);
     print '</table>' . "\n";
     print '</div>' . "\n";
     return;
