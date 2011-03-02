@@ -505,6 +505,8 @@ sub buildurl {
         $url .= '&fixedscale';
     }
     $url .= arrayorstring($opts, 'rrdopts');
+# FIXME: properly escape the URL, not just this character
+    $url =~ s/#/%23/g;
     debug(DBDEB, "buildurl returning $url");
     return $url;
 }
