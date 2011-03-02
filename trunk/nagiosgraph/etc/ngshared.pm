@@ -162,7 +162,7 @@ sub debug {
 
 sub dumper {
     my ($level, $label, $vals) = @_;
-    return if ($level > $Config{debug});
+    return if ! defined $Config{debug} || $level > $Config{debug};
     my $dd = Data::Dumper->new([$vals], [$label]);
     $dd->Indent(1);
     my $out = $dd->Dump();
