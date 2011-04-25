@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 # $Id$
 # License: OSI Artistic License
-#          http://www.opensource.org/licenses/artistic-license-2.0.php
 # Author:  (c) Soren Dossing, 2005
 # Author:  (c) Alan Brenner, Ithaka Harbors, 2008
 # Author:  (c) Matthew Wall, 2010
@@ -71,7 +70,7 @@ use constant {
 # nagiosgraph.js file.  change this number when the javascript is not
 # backward compatible with previous versions.
 use constant {
-    JSVERSION => 1.5,
+    JSVERSION => 1.6,
     JSMISSING => 'nagiosgraph.js is not installed or wrong version.',
     JSDISABLED => 'JavaScript is disabled.',
 };
@@ -79,7 +78,10 @@ use constant {
 # default values for configuration options
 use constant {
     GEOMETRIES => '500x80,650x150,1000x200',
+    GRAPHTOP => 21,
+    GRAPHLEFT => 50,
     GRAPHWIDTH => 600,
+    GRAPHHEIGHT => 100,
     COLORMAX => '888888',
     COLORMIN => 'BBBBBB',
     COLORS => 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0',
@@ -1868,6 +1870,18 @@ sub getformat {
     return DEFAULT_FORMAT;
 }
 
+sub getgeom {
+    my ($config, $geom) = @_;
+    my $w = GRAPHWIDTH;
+    my $h = GRAPHHEIGHT;
+    if ($geom && $geom ne DEFAULT) {
+        ($w, $h) = split /x/, $geom;
+    } elsif (defined $config->{default_geometry}) {
+        ($w, $h) = split /x/, $config->{default_geometry};
+    }
+    return ($w, $h);
+}
+
 sub setlabels { ## no critic (ProhibitManyArgs)
     my ($host, $serv, $dbname, $dsname, $file, $label, $maxlen) = @_;
     debug(DBDEB, "setlabels($host, $serv, $dbname, $dsname, $file, $maxlen)");
@@ -1979,7 +1993,6 @@ sub rrdline {
         }
     }
 
-    my $geom = $params->{geom};
     my $fixedscale = 0;
     if (defined $params->{fixedscale}) {
         $fixedscale = $params->{fixedscale};
@@ -2065,15 +2078,7 @@ sub rrdline {
     }
 
     # Dimensions of graph
-    my $w = 0;
-    my $h = 0;
-    if ($geom && $geom ne DEFAULT) {
-        ($w, $h) = split /x/, $geom;
-    } elsif (defined $Config{default_geometry}) {
-        ($w, $h) = split /x/, $Config{default_geometry};
-    } else {
-        $w = GRAPHWIDTH; # make graph wider than rrdtool default
-    }
+    my ($w, $h) = getgeom(\%Config, $params->{geom});
     if ($w > 0 && index($rrdopts, '-w') == -1) {
         push @ds, '-w', $w;
     }
@@ -2521,12 +2526,18 @@ sub printgraphlinks {
         ? $cgi->p({-class=>'graph_title'}, $title) : q();
     my $descstr = $desc ne q()
         ? $cgi->p({-class=>'graph_description'}, $desc) : q();
+    my ($w, $h) = getgeom(\%Config, $params->{geom});
 
     return $cgi->div({-class => 'graph'}, "\n",
                      $cgi->div({-class => 'graph_image'},
-                               $cgi->img({-src=>$url,
-                                          -alt=>$alttag,
-                                          -onmouseover=>'ngzInit(this)'})) . "\n",
+                               $cgi->img({-src => $url,
+                                          -alt => $alttag,
+                                          -onmouseover => 'ngzInit(this)',
+                                          -graphtop => GRAPHTOP,
+                                          -graphleft => GRAPHLEFT,
+                                          -graphwidth => $w,
+                                          -graphheight => $h,
+                                          })) . "\n",
                      $cgi->div({-class => 'graph_details'}, "\n",
                                $titlestr, $titlestr ne q() ? "\n" : q(),
                                $descstr, $descstr ne q() ? "\n" : q(),

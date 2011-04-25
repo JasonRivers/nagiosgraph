@@ -2,6 +2,10 @@ $Id$
 
 1.4.5 TBD
 
+* use more precise values for graph zoom bounds.
+* specify explicitly the default graph height.
+* strip leading and trailing whitespace from tuples (heartbeats, stepsizes,
+   resolutions, steps, xffs, plotasLINE1, plotasLINE2, etc).
 * added fixedscale as a per host/service/database/source parameter.  for
    backward compatibility it still works when specified as a cgi argument.
    note that it affects the vertical axis and the values in the legend.

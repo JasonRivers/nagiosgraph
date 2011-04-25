@@ -1209,7 +1209,9 @@ sub testrrdline {
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
           'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
           '-w',
-          600
+          600,
+          '-h',
+          100
         ];\n");
 
     # specify a bogus data set
@@ -1231,7 +1233,9 @@ sub testrrdline {
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
           'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
           '-w',
-          600
+          600,
+          '-h',
+          100
         ];\n");
 
     # test geometry
@@ -1293,6 +1297,8 @@ sub testrrdline {
           'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf\\\\n',
           '-w',
           600,
+          '-h',
+          100,
           '-X',
           '0'
         ];\n");
@@ -1312,7 +1318,9 @@ sub testrrdline {
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
           'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
           '-w',
-          600,";
+          600,
+          '-h',
+          100,";
 
     # test altautoscale
     %params = getrrdlineparams();
@@ -1385,7 +1393,9 @@ sub testrrdline {
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
           'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
           '-w',
-          600
+          600,
+          '-h',
+          100
         ];\n");
     undef $Config{negate};
     undef $Config{negatelist};
@@ -1413,7 +1423,9 @@ sub testrrdline {
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
           'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
           '-w',
-          600
+          600,
+          '-h',
+          100
         ];\n");
     undef $Config{withminimums};
     undef $Config{withmaximums};
@@ -1432,7 +1444,9 @@ sub testrrdline {
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
           'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
           '-w',
-          600
+          600,
+          '-h',
+          100
         ];\n");
 
     %params = getrrdlineparams();
@@ -1448,7 +1462,9 @@ sub testrrdline {
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
           'GPRINT:ping_rta:LAST:Cur\\\\:%7.2lf%s\\\\n',
           '-w',
-          600
+          600,
+          '-h',
+          100
         ];\n");
 
 #FIXME: test rrdopts

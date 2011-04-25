@@ -8,7 +8,7 @@
 // Author:  (c) 2010 Matthew Wall
 
 var PNAME = [ 'day', 'week', 'month', 'quarter', 'year' ];
-var VERSION = 1.5;
+var VERSION = 1.6;
 
 // dead simple i18n
 // based on http://24ways.org/2007/javascript-internationalisation
@@ -203,14 +203,14 @@ function ngzResizeZoomBox(img) {
   ngzZoom.imgLeft = img.offsetLeft;
   ngzZoom.imgWidth = img.width;
   ngzZoom.imgHeight = img.height;
-  var tOffset = 20;
-  var lOffset = 50;
-  var bOffset = 40;
-  var rOffset = 30;
-  var left = lOffset;
-  var top = tOffset;
-  var width = img.width - lOffset - rOffset;
-  var height = img.height - tOffset - bOffset;
+  var top = parseInt(img.getAttribute('graphtop'));
+  if (! top) top = 20;
+  var left = parseInt(img.getAttribute('graphleft'));
+  if (! left) left = 50;
+  var width = img.getAttribute('graphwidth');
+  if (! width) width = img.width - left - 30;
+  var height = img.getAttribute('graphheight');
+  if (! height) height = img.height - top - 40;
   var imgObj = img;
   while(imgObj) {
     top += imgObj.offsetTop;
