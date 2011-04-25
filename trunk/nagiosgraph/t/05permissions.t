@@ -33,7 +33,7 @@ BEGIN {
         plan tests => 0;
         exit 0;
     } else {
-        plan tests => 178;
+        plan tests => 188;
     }
 }
 
@@ -191,16 +191,10 @@ sub testloadperms {
     ok($errmsg, 'unknown authzmethod \'bogus\'');
     ok(Dumper(\%authz), "\$VAR1 = {};\n");
 
+    $Config{authzmethod} = 'nagios3';
+
     # nagios access control
 
-    $Config{authzmethod} = 'nagios3';
-    $errmsg = loadperms('');
-    ok($errmsg, '');
-    ok(Dumper(\%authz), "\$VAR1 = {
-          'default_host_access' => {
-                                     'default_service_access' => 0
-                                   }
-        };\n");
     $errmsg = loadperms('guest');
     ok($errmsg, 'authzfile is not defined');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -219,6 +213,17 @@ sub testloadperms {
 
     my $fn = "$FindBin::Bin/test_cgi.cfg";
     $Config{authzfile} = $fn;
+
+    # no user specified
+
+    writefile($fn, ('use_authentication=1'));
+    $errmsg = loadperms('');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
 
     # authentication disabled in nagios
 
@@ -324,10 +329,44 @@ sub testreadnagiosperms {
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {};\n");
 
-    # authentication enabled
+    # authentication enabled, admin is default, no rights
 
     writefile($fn, ('use_authentication=1',
                     'default_user_name=admin'));
+    $errmsg = readnagiosperms('');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
+    $errmsg = readnagiosperms('admin');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
+    $errmsg = readnagiosperms('guest');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 0
+                                   }
+        };\n");
+
+    # admin is default user, with rights
+
+    writefile($fn, ('use_authentication=1',
+                    'default_user_name=admin',
+                    'authorized_for_all_hosts=admin'));
+    $errmsg = readnagiosperms('');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 1
+                                   }
+        };\n");
     $errmsg = readnagiosperms('admin');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -343,10 +382,18 @@ sub testreadnagiosperms {
                                    }
         };\n");
 
-    # guest is default user
+    # guest is default user with rights
 
     writefile($fn, ('use_authentication=1',
-                    'default_user_name=guest'));
+                    'default_user_name=guest',
+                    'authorized_for_all_hosts=guest'));
+    $errmsg = readnagiosperms('');
+    ok($errmsg, '');
+    ok(Dumper(\%authz), "\$VAR1 = {
+          'default_host_access' => {
+                                     'default_service_access' => 1
+                                   }
+        };\n");
     $errmsg = readnagiosperms('admin');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -433,7 +480,8 @@ sub testreadnagiosperms {
                     'default_user_name=guest',
                     '#comments should be ignored',
                     'other parameters should be ignored',
-                    'use_authentication=1'));
+                    'use_authentication=1',
+                    'authorized_for_all_hosts = guest'));
     $errmsg = readnagiosperms('guest');
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
@@ -449,7 +497,7 @@ sub testreadnagiosperms {
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
-                                     'default_service_access' => 1
+                                     'default_service_access' => 0
                                    }
         };\n");
 
@@ -459,7 +507,7 @@ sub testreadnagiosperms {
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
-                                     'default_service_access' => 1
+                                     'default_service_access' => 0
                                    }
         };\n");
 
@@ -469,7 +517,7 @@ sub testreadnagiosperms {
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
-                                     'default_service_access' => 1
+                                     'default_service_access' => 0
                                    }
         };\n");
 
@@ -479,7 +527,7 @@ sub testreadnagiosperms {
     ok($errmsg, '');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
-                                     'default_service_access' => 1
+                                     'default_service_access' => 0
                                    }
         };\n");
 

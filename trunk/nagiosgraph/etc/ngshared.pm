@@ -906,9 +906,7 @@ sub loadperms {
     return q();
 }
 
-# FIXME: respect contacts, not just all host/services
-# FIXME: verify intent of nagios 'default_user'.  do we have to match the
-#        user, or if default_user is defined then anything goes?
+# TODO: respect contacts, not just all host/services
 # read the nagios permissions configuration.  this would be a lot easier if
 # there were an api.  instead we have to read the config files and basically
 # reverse engineer the nagios behavior.
@@ -917,12 +915,7 @@ sub readnagiosperms {
 
     undef %authz;
     $authz{default_host_access}{default_service_access} = 0;
-    if ( not defined $user or $user eq q() ) {
-        debug(DBWRN, 'no discernable user, defaulting to no permissions');
-        return q();
-    }
-    if ( not defined $Config{authzfile}
-         or $Config{authzfile} eq q() ) {
+    if ( not defined $Config{authzfile} or $Config{authzfile} eq q() ) {
         return 'authzfile is not defined';
     }
     my $fn = $Config{authzfile};
@@ -935,13 +928,13 @@ sub readnagiosperms {
     while (<$FH>) {
         my $line = $_;
         $line =~ s/\s//g;
-        if ( $line =~ /^authorized_for_all_hosts=(.*)/ ) {
+        if ( $line =~ /^authorized_for_all_hosts\s*=\s*(.*)/ ) {
             $host_users = $1;
-        } elsif ( $line =~ /^authorized_for_all_services=(.*)/ ) {
+        } elsif ( $line =~ /^authorized_for_all_services\s*=\s*(.*)/ ) {
             $serv_users = $1;
-        } elsif ( $line =~ /^default_user_name=(.*)/ ) {
+        } elsif ( $line =~ /^default_user_name\s*=\s*(.*)/ ) {
             $default_user = $1;
-        } elsif ( $line =~ /^use_authentication=([\d])/ ) {
+        } elsif ( $line =~ /^use_authentication\s*=\s*([\d])/ ) {
             $authenabled = $1;
         }
     }
@@ -953,21 +946,26 @@ sub readnagiosperms {
         return q();
     }
 
-    # if there is a nagios default user, they can do anything
-    if ( $user eq $default_user ) {
-        $authz{default_host_access}{default_service_access} = 1;
-    } else {
-        foreach my $i (split /,/, $host_users) {
-            if ( $user eq $i ) {
-                $authz{default_host_access}{default_service_access} = 1;
-                last;
-            }
+    # if there is no user but there is a nagios default user, use the default
+    if ( (! defined $user || $user eq q()) && $default_user ne q() ) {
+        $user = $default_user;
+    }
+
+    if ( not defined $user or $user eq q() ) {
+        debug(DBWRN, 'no discernable user, defaulting to no permissions');
+        return q();
+    }
+
+    foreach my $i (split /,/, $host_users) {
+        if ( $user eq $i ) {
+            $authz{default_host_access}{default_service_access} = 1;
+            last;
         }
-        foreach my $i (split /,/, $serv_users) {
-            if ( $user eq $i ) {
-                $authz{default_host_access}{default_service_access} = 1;
-                last;
-            }
+    }
+    foreach my $i (split /,/, $serv_users) {
+        if ( $user eq $i ) {
+            $authz{default_host_access}{default_service_access} = 1;
+            last;
         }
     }
 
