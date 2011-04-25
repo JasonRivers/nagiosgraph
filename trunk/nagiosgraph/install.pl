@@ -14,7 +14,6 @@
 # TODO: install graphed-service template
 # TODO: install graph icon
 # TODO: restart nagios and httpd services?
-# TODO: handle both incinga and nagios
 
 ## no critic (ProhibitCascadingIfElse)
 ## no critic (ProhibitPostfixControls)
@@ -36,7 +35,7 @@ use strict;
 use warnings;
 
 use vars qw($VERSION);
-$VERSION = '1.1';
+$VERSION = '1.2';
 
 use constant EXIT_FAIL => 1;
 use constant EXIT_OK => 0;
@@ -817,6 +816,7 @@ sub checkexec {
 sub checkinstallation {
     my $fail = 0;
 
+    my $pd = getanswer('Path of perfdata file', '/var/nagios/perfdata.log');
     my $mapfn = getanswer('Path of map file', '/etc/nagiosgraph/map');
     my $rrddir = getanswer('Path of RRD directory', '/var/nagiosgraph/rrd');
     my $logdir = getanswer('Path of log directory', '/var/log/nagiosgraph');
@@ -876,48 +876,68 @@ sub checkinstallation {
         logmsg('  GD is not installed (GD is recommended but not required)');
     }
 
-    logmsg('checking map file with perl');
-    my ($CHILD_IN, $CHILD_OUT, $CHILD_ERR);
-    open3($CHILD_IN, $CHILD_OUT, $CHILD_ERR, "perl -c $mapfn");
-    if (! $CHILD_ERR) {
-        logmsg('  no errors detected in map file.');
-    } else {
-        logmsg('  one or more problems with map file');
-        my $result = q();
-        while( <$CHILD_ERR> ) {
-            $result .= $_;
-        }
-        logmsg($result);
-        $fail = 1;
-    }
-
-    logmsg('checking ability to load map file');
-    if (open my $FH, '<', $mapfn) {
-        my @rules;
-        while(<$FH>) {
-            push @rules, $_;
-        }
-        close $FH or logmsg("close failed for $mapfn");
-        # this code must match the code in ngshared
-        ## no critic (RequireInterpolationOfMetachars)
-        my $code = 'sub evalrules {' . "\n" .
-            ' $_ = $_[0];' . "\n" .
-            ' my ($d, @s) = ($_);' . "\n" .
-            ' no strict "subs";' . "\n" .
-            join(q(), @rules) .
-            ' use strict "subs";' . "\n" .
-            ' return () if ($#s > -1 && $s[0] eq "ignore");' . "\n" .
-            ' return @s;' . "\n" .
-            '} 1' . "\n";
-        my $rc = eval $code;  ## no critic (ProhibitStringyEval)
-        if (defined $rc && $rc) {
-            logmsg('  map file loaded successfully');
+    logmsg('checking map file');
+    if (-f $mapfn) {
+        logmsg('checking map file with perl');
+        my ($CHILD_IN, $CHILD_OUT, $CHILD_ERR);
+        open3($CHILD_IN, $CHILD_OUT, $CHILD_ERR, "perl -c $mapfn");
+        if (! $CHILD_ERR) {
+            logmsg('  no errors detected in map file.');
         } else {
-            logmsg('*** map file eval error!');
+            logmsg('  one or more problems with map file');
+            my $result = q();
+            while( <$CHILD_ERR> ) {
+                $result .= $_;
+            }
+            logmsg($result);
+            $fail = 1;
+        }
+
+        logmsg('checking ability to load map file');
+        if (open my $FH, '<', $mapfn) {
+            my @rules;
+            while(<$FH>) {
+                push @rules, $_;
+            }
+            close $FH or logmsg("close failed for $mapfn");
+            # this code must match the code in ngshared
+            ## no critic (RequireInterpolationOfMetachars)
+            my $code = 'sub evalrules {' . "\n" .
+                ' $_ = $_[0];' . "\n" .
+                ' my ($d, @s) = ($_);' . "\n" .
+                ' no strict "subs";' . "\n" .
+                join(q(), @rules) .
+                ' use strict "subs";' . "\n" .
+                ' return () if ($#s > -1 && $s[0] eq "ignore");' . "\n" .
+                ' return @s;' . "\n" .
+                '} 1' . "\n";
+            my $rc = eval $code;  ## no critic (ProhibitStringyEval)
+            if (defined $rc && $rc) {
+                logmsg('  map file loaded successfully');
+            } else {
+                logmsg('*** map file eval error!');
+                $fail = 1;
+            }
+        } else {
+            logmsg("*** cannot open map file $mapfn: $OS_ERROR");
             $fail = 1;
         }
     } else {
-        logmsg("*** cannot open map file $mapfn: $OS_ERROR");
+        logmsg("*** no mapfile at $mapfn");
+    }
+
+    logmsg('checking ability to write perfdata files');
+    my $pddir = $pd;
+    $pddir =~ s/[^\/]+$//g;
+    if (-d $pddir) {
+        if (canwrite($pddir, $nuser, $ngroup)) {
+            logmsg("  writeable by nagios user $nuser");
+        } else {
+            logmsg("*** not writeable by nagios user $nuser:$ngroup");
+            $fail = 1;
+        }
+    } else {
+        logmsg("*** no directory for performance data at $pddir");
         $fail = 1;
     }
 
@@ -927,11 +947,13 @@ sub checkinstallation {
             logmsg("  writeable by nagios user $nuser");
         } else {
             logmsg("*** not writeable by nagios user $nuser:$ngroup");
+            $fail = 1;
         }
         if (canread($rrddir, $auser, $agroup)) {
             logmsg("  readable by apache user $auser");
         } else {
             logmsg("*** not readable by apache user $auser:$agroup");
+            $fail = 1;
         }
     } else {
         logmsg("*** no RRD directory at $rrddir");
@@ -943,14 +965,17 @@ sub checkinstallation {
             logmsg("  writeable by nagios user $nuser");
         } else {
             logmsg("*** not writeable by nagios user $nuser:$ngroup");
+            $fail = 1;
         }
         if (canwrite($logdir, $auser, $agroup)) {
             logmsg("  writeable by apache user $auser");
         } else {
             logmsg("*** not writeable by apache user $auser:$agroup");
+            $fail = 1;
         }
     } else {
         logmsg("*** no log directory at $logdir");
+        $fail = 1;
     }
 
     return $fail;

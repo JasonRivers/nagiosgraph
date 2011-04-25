@@ -15,7 +15,7 @@ then configure Nagios for data collection, and finally customize the graphs
 and links as needed.  Installation can be done manually by copying files and
 modifying configuration files, or automatically using the install.pl script.
 
-The INSTALL file contains a basic installation recipe.
+The INSTALL file contains basic installation instructions.
 
 This README file contains detailed instructions for installing, upgrading,
 customizing, troubleshooting, and managing performance data.
@@ -222,6 +222,7 @@ parameters it needs, then it will copy and configure nagiosgraph files.
 It will also prompt you to modify apache and nagios configuration files.
 
   install.pl --prefix=/usr/local/nagiosgraph
+  install.pl --help
 
 Installation Using Packages.  The nagiosgraph packages assume that Nagios
 and apache were installed from packages.  Do not use a nagiosgraph package
@@ -290,6 +291,10 @@ and nagiosgraph at /usr/local/nagiosgraph
      touch /var/log/nagiosgraph-cgi.log
      chown www /var/log/nagiosgraph-cgi.log
      chmod 644 /var/log/nagiosgraph-cgi.log
+
+ - Ensure that the *nagios* user can create and delete perfdata files:
+     chown nagios /var/nagios
+     chmod 755 /var/nagios
 
 
 Upgrade Notes

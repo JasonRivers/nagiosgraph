@@ -2,6 +2,12 @@ $Id$
 
 1.4.5 TBD
 
+* added fixedscale as a per host/service/database/source parameter.  for
+   backward compatibility it still works when specified as a cgi argument.
+   note that it affects the vertical axis and the values in the legend.
+* handle # in database and data source names
+* ensure the directory containing perfdata log is writeable by nagios user.
+* added export.cgi to dump rrd data in csv or xml format.
 * automatically determine groups from the Nagios servicegroup definitions.
 * fixed heartbeats/stepsizes/resolutions bug.  this time for real.  really.
 * retain a copy of any modifications made to nagios.cfg and commands.cfg when

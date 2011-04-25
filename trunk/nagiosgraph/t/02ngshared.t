@@ -3800,7 +3800,7 @@ sub testsetdata {
     undef $Config{withminimums};
     undef $Config{withmaximums};
 
-    my @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000);
+    my @result = setdata('serv', 'db', 'ds', 'file', 1_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'GPRINT:db_ds:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
@@ -3808,14 +3808,14 @@ sub testsetdata {
           'GPRINT:db_ds:LAST:Cur\\\\:%7.2lf%s\\\\n'
         ];\n");
 
-    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'GPRINT:db_ds:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:db_ds:MIN:Min\\\\:%7.2lf%s\\\\n'
         ];\n");
 
-    @result = setdata('serv', 'db', 'ds', 'file', 1, 1_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 1_000, '%7.2lf');
     ok(Dumper(\@result), "\$VAR1 = [
           'GPRINT:db_ds:MAX:Max\\\\:%7.2lf',
           'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf',
@@ -3823,7 +3823,7 @@ sub testsetdata {
           'GPRINT:db_ds:LAST:Cur\\\\:%7.2lf\\\\n'
         ];\n");
 
-    @result = setdata('serv', 'db', 'ds', 'file', 1, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 1_000_000, '%7.2lf');
     ok(Dumper(\@result), "\$VAR1 = [
           'GPRINT:db_ds:MAX:Max\\\\:%7.2lf',
           'GPRINT:db_ds:AVERAGE:Avg\\\\:%7.2lf',
@@ -3833,7 +3833,7 @@ sub testsetdata {
     $Config{withminimums} =  'serv';
     listtodict('withminimums', q(,));
     undef $Config{withmaximums};
-    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_min=file_min:ds:MIN',
           'LINE1:db_ds_min#BBBBBB:minimum',
@@ -3847,7 +3847,7 @@ sub testsetdata {
     undef $Config{withminimums};
     $Config{withmaximums} =  'serv';
     listtodict('withmaximums', q(,));
-    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_max=file_max:ds:MAX',
           'LINE1:db_ds_max#888888:maximum',
@@ -3862,7 +3862,7 @@ sub testsetdata {
     listtodict('withminimums', q(,));
     $Config{withmaximums} =  'serv';
     listtodict('withmaximums', q(,));
-    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_max=file_max:ds:MAX',
           'LINE1:db_ds_max#888888:maximum',
@@ -3879,7 +3879,7 @@ sub testsetdata {
 
     $Config{colormin} = '111111';
     undef $Config{colormax};
-    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_max=file_max:ds:MAX',
           'LINE1:db_ds_max#888888:maximum',
@@ -3896,7 +3896,7 @@ sub testsetdata {
 
     undef $Config{colormin};
     $Config{colormax} = 'eeeeee';
-    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_max=file_max:ds:MAX',
           'LINE1:db_ds_max#eeeeee:maximum',
@@ -3913,7 +3913,7 @@ sub testsetdata {
 
     $Config{colormin} = '111111';
     $Config{colormax} = 'eeeeee';
-    @result = setdata('serv', 'db', 'ds', 'file', 0, 1_000_000);
+    @result = setdata('serv', 'db', 'ds', 'file', 1_000_000);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds_max=file_max:ds:MAX',
           'LINE1:db_ds_max#eeeeee:maximum',

@@ -90,6 +90,8 @@ use constant {
     STEPS => '1 6 24 288',
     XFF => 0.5,
     PERIODS => 'day week month year',
+    FIXED_SCALE_FORMAT => '%7.2lf',
+    DEFAULT_FORMAT => '%7.2lf%s',
 };
 
 # 5x5 clear image
@@ -797,7 +799,7 @@ sub readconfig {
     }
     foreach my $ii ('plotasLINE1', 'plotasLINE2', 'plotasLINE3', 'plotasAREA',
                     'plotasTICK', 'stack', 'negate', 'lineformat',
-                    'maximums', 'minimums', 'lasts') {
+                    'maximums', 'minimums', 'lasts', 'fixedscale') {
         if ($Config{$ii}) {
             $Config{$ii . 'list'} =
                 str2list($Config{$ii}, $Config{$ii} =~ /;/ ? q(;) : q(,));
@@ -1860,6 +1862,12 @@ sub mklegend {
     return sprintf "%-${maxlen}s", $s;
 }
 
+# TODO: enable per-host/service/db/ds formats
+sub getformat {
+    my ($host, $service, $db, $ds) = @_;
+    return DEFAULT_FORMAT;
+}
+
 sub setlabels { ## no critic (ProhibitManyArgs)
     my ($host, $serv, $dbname, $dsname, $file, $label, $maxlen) = @_;
     debug(DBDEB, "setlabels($host, $serv, $dbname, $dsname, $file, $maxlen)");
@@ -1892,11 +1900,11 @@ sub setlabels { ## no critic (ProhibitManyArgs)
 }
 
 sub setdata { ## no critic (ProhibitManyArgs)
-    my ($serv, $dbname, $dsname, $file, $fixedscale, $dur) = @_;
-    debug(DBDEB, "setdata($serv, $dbname, $dsname, $file, $fixedscale, $dur)");
+    my ($serv, $dbname, $dsname, $file, $dur, $fmt) = @_;
+    my $format = defined $fmt && $fmt ne q() ? $fmt : DEFAULT_FORMAT;
+    debug(DBDEB, "setdata($serv, $dbname, $dsname, $file, $dur, $format)");
     my @ds;
     my $id = mkvname($dbname, $dsname);
-    my $format = ($fixedscale ? '%7.2lf' : '%7.2lf%s');
     if ($dur > 120_000) { # long enough to start getting summation
         if (defined $Config{withmaximums}->{$serv}) {
             my $maxcolor = (defined $Config{colormax}
@@ -2027,12 +2035,15 @@ sub rrdline {
             }
         }
     }
-    # now get the data and labels
+    # now get the data and labels.  apply fixed scaling to the vertical axis
+    # if all of the data sources are fixed scale or if fixed scaling was
+    # explicitly specified.
     for my $ii (@{$graphinfo}) {
         my $file = $ii->{file};
         my $dbname = $ii->{dbname};
         my $fn = "$directory/$file";
         dumper(DBDEB, 'rrdline: this graphinfo entry', $ii);
+        my $allfixed = 1;
         for my $dsname (sortnaturally(keys %{$ii->{line}})) {
             my ($serv, $pos) = ($service, length($service) - length $dsname);
             if (substr($service, $pos) eq $dsname) {
@@ -2041,9 +2052,16 @@ sub rrdline {
             my $label = getdatalabel("$dbname,$dsname");
             push @ds, setlabels($host, $serv, $dbname, $dsname,
                                 "$fn", $label, $longest);
-            push @ds, setdata($serv, $dbname, $dsname,
-                              "$fn", $fixedscale, $duration);
+            my $fmt = $fixedscale ?
+                FIXED_SCALE_FORMAT : getformat($host, $serv, $dbname, $dsname);
+            if (gethsddvalue('fixedscale', 0, $host, $serv, $dbname, $dsname)) {
+                $fmt = FIXED_SCALE_FORMAT;
+            } else {
+                $allfixed = 0;
+            }
+            push @ds, setdata($serv, $dbname, $dsname, "$fn", $duration, $fmt);
         }
+        $fixedscale = 1 if $allfixed;
     }
 
     # Dimensions of graph

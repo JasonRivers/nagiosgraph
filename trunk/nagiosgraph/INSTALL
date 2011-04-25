@@ -4,9 +4,8 @@ nagiosgraph Installation       Author:  (c) 2005 Soren Dossing
 ------------------------       Author:  (c) 2008 Alan Brenner, Ithaka Harbors
                                Author:  (c) 2010 Matthew Wall
 
-Installation can be done manually by copying and modifying files, or
-automatically using the install.pl script.  For installation details, upgrading
-instructions, customization options, and troubleshooting, see the README file.
+Installation can be done automatically using the install.pl script,
+or manually by copying and modifying files.
 
 
 Install Pre-Requisites
@@ -86,6 +85,10 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios
      touch /var/log/nagiosgraph-cgi.log
      chown www /var/log/nagiosgraph-cgi.log
      chmod 644 /var/log/nagiosgraph-cgi.log
+
+ - Ensure that the *nagios* user can create and delete perfdata files:
+     chown nagios /var/nagios
+     chmod 755 /var/nagios
 
  - In the Nagios configuration file (nagios.cfg) add this:
 
