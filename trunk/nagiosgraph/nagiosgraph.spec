@@ -89,12 +89,17 @@ rm -rf %{buildroot}
 DESTDIR=%{buildroot} NG_LAYOUT=%{layout} NG_DOC_DIR=%{ng_doc_dir} perl install.pl --no-check-prereq --no-chown
 
 %post
+ts=`date +"%Y%m%d.%H%M"`
 cp %{_sysconfdir}/%{name}/nagiosgraph-apache.conf %{apacheconfdir}/nagiosgraph.conf
-cp -p %{n_cfg_file} %{n_cfg_file}-ngsave
+cp -p %{n_cfg_file} %{n_cfg_file}-$ts
+sed "/%{stag}/,/%{etag}/d" %{n_cfg_file} > %{n_cfg_file}.tmp
+mv %{n_cfg_file}.tmp %{n_cfg_file}
 echo %{stag} >> %{n_cfg_file}
 cat %{_sysconfdir}/%{name}/nagiosgraph-nagios.cfg >> %{n_cfg_file}
 echo %{etag} >> %{n_cfg_file}
-cp -p %{n_cmd_file} %{n_cmd_file}-ngsave
+cp -p %{n_cmd_file} %{n_cmd_file}-$ts
+sed "/%{stag}/,/%{etag}/d" %{n_cmd_file} > %{n_cmd_file}.tmp
+mv %{n_cmd_file}.tmp %{n_cmd_file}
 echo %{stag} >> %{n_cmd_file}
 cat %{_sysconfdir}/%{name}/nagiosgraph-commands.cfg >> %{n_cmd_file}
 echo %{etag} >> %{n_cmd_file}
@@ -103,14 +108,15 @@ echo %{etag} >> %{n_cmd_file}
 
 # save the cfg and cmd files to time-stamped caches just in case someone made
 # modifications since we made the ngsave cache.
-# FIXME: use the standard rpm mechanism for saving modified config files
 %postun
-rm %{apacheconfdir}/nagiosgraph.conf
 ts=`date +"%Y%m%d.%H%M"`
+rm %{apacheconfdir}/nagiosgraph.conf
 mv %{n_cfg_file} %{n_cfg_file}-$ts
 mv %{n_cmd_file} %{n_cmd_file}-$ts
-mv %{n_cfg_file}-ngsave %{n_cfg_file}
-mv %{n_cmd_file}-ngsave %{n_cmd_file}
+sed "/%{stag}/,/%{etag}/d" %{n_cfg_file} > %{n_cfg_file}.tmp
+mv %{n_cfg_file}.tmp %{n_cfg_file}
+sed "/%{stag}/,/%{etag}/d" %{n_cmd_file} > %{n_cmd_file}.tmp
+mv %{n_cmd_file}.tmp %{n_cmd_file}
 %{_initrddir}/%{apachecmd} restart
 %{_initrddir}/%{nagioscmd} restart
 

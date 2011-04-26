@@ -2,6 +2,18 @@
 
 stag="# begin nagiosgraph configuration"
 etag="# end nagiosgraph configuration"
+ts=`date +"%Y%m%d.%H%M"`
+
+remove_changes() {
+    sed "/$stag/,/$etag/d" $1 > $1.tmp
+    mv $1.tmp $1
+}
+
+insert_changes() {
+    echo $stag >> $1
+    cat $2 >> $1
+    echo $etag >> $1
+}
 
 # set permissions and ownership on nagiosgraph files
 chmod 755 /var/spool/nagiosgraph/rrd
@@ -11,18 +23,20 @@ chown nagios:www-data /var/log/nagiosgraph
 chown nagios:adm /var/log/nagiosgraph/nagiosgraph.log
 chown www-data:adm /var/log/nagiosgraph/nagiosgraph-cgi.log
 
-# configure apache
-cp /etc/nagiosgraph/nagiosgraph-apache.conf /etc/apache2/conf.d/nagiosgraph.conf
+# archive any previous state
+cp /etc/nagios3/nagios.cfg /etc/nagios3/nagios.cfg-$ts
+cp /etc/nagios3/commands.cfg /etc/nagios3/commands.cfg-$ts
+
+# remove any previous nagios changes, if any
+remove_changes /etc/nagios3/nagios.cfg
+remove_changes /etc/nagios3/commands.cfg
 
 # configure nagios
-cp -p /etc/nagios3/nagios.cfg /etc/nagios3/nagios.cfg-ngsave
-echo $stag >> /etc/nagios3/nagios.cfg
-cat /etc/nagiosgraph/nagiosgraph-nagios.cfg >> /etc/nagios3/nagios.cfg
-echo $etag >> /etc/nagios3/nagios.cfg
-cp -p /etc/nagios3/commands.cfg /etc/nagios3/commands.cfg-ngsave
-echo $stag >> /etc/nagios3/commands.cfg
-cat /etc/nagiosgraph/nagiosgraph-commands.cfg >> /etc/nagios3/commands.cfg
-echo $etag >> /etc/nagios3/commands.cfg
+insert_changes /etc/nagios3/nagios.cfg /etc/nagiosgraph/nagiosgraph-nagios.cfg
+insert_changes /etc/nagios3/commands.cfg /etc/nagiosgraph/nagiosgraph-commands.cfg
+
+# configure apache
+cp /etc/nagiosgraph/nagiosgraph-apache.conf /etc/apache2/conf.d/nagiosgraph.conf
 
 # restart apache and nagios
 /etc/init.d/apache2 restart
