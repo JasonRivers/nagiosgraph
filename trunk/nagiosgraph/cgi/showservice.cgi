@@ -2,7 +2,6 @@
 
 # $Id$
 # License: OSI Artistic License
-#          http://www.opensource.org/licenses/artistic-license.php
 # Author:  (c) 2004 Soren Dossing
 # Author:  (c) 2005 Robert Teeter
 # Author:  (c) 2008 Alan Brenner, Ithaka Harbors

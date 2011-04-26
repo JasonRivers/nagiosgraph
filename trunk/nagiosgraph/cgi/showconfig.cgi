@@ -2,7 +2,6 @@
 
 # $Id$
 # License: OSI Artistic License
-#          http://www.opensource.org/licenses/artistic-license.php
 # Author:  (c) 2010 Matthew Wall
 
 ## no critic (InputOutput::RequireCheckedSyscalls)

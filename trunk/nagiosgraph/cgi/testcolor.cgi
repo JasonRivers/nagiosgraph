@@ -2,7 +2,6 @@
 
 # $Id$
 # License: OSI Artistic License
-#          http://www.opensource.org/licenses/artistic-license.php
 # Author:  2005 (c) Soren Dossing
 # Author:  2008 (c) Alan Brenner, Ithaka Harbors
 # Author:  2010 (c) Matthew Wall
