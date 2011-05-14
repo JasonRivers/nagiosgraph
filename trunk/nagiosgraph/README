@@ -20,6 +20,9 @@ The INSTALL file contains basic installation instructions.
 This README file contains detailed instructions for installing, upgrading,
 customizing, troubleshooting, and managing performance data.
 
+Answers to frequently asked questions are at:
+  https://sourceforge.net/apps/mediawiki/nagiosgraph
+
 For help, visit the forum at:
   http://sourceforge.net/projects/nagiosgraph/forums/forum/394748
 
@@ -43,6 +46,7 @@ Note: Nagios is a registered trademark of Ethan Galstad.
   Customizing the Graphs
   Adding Service Types
   Managing Data and RRD Files
+  Managing RRD Parameters
   Configuring Access Controls
   Troubleshooting
   Internationalization
@@ -992,6 +996,39 @@ are the same for all hosts and services, but they can be specified for
 individual hosts, services, and or databases in the nagiosgraph configuration
 file.  To modify these values for an existing RRD file you must do a
 dump/edit/restore.  See the rrdtool documentation for details.
+
+
+
+Managing RRD Parameters
+-----------------------
+
+The most important parameters are stepsize, heartbeat, and sampling interval.
+A typical sign that these parameters are not set correctly is values of NaN
+in the RRD files, which manifests as gaps in the graphs or empty graphs.
+
+A good rule of thumb is to use a heartbeat that is twice the sampling interval
+and a stepsize equal to the sampling interval.
+
+In a default nagiosgraph configuration, the same parameters are applied to all
+hosts and services.  However, they can be specified for individual hosts and
+services if necessary.
+
+The stepsize, in seconds, defines the nominal amount of time between data
+points. The default value is 300 (5 minutes). The heartbeat, in seconds,
+defines the amount of time between updates before a data point should be
+considered unknown. The default value is 600 (10 minutes).  The resolution
+defines how many data points should be kept. The step defines how data points
+are consolidated. The xfiles factor defines how unknown data points are
+considered when consolidating data.  These parameters are specified in the
+nagiosgraph configuration file.
+
+The sampling interval is defined in Nagios (check_interval).  This defines
+how often a service will be checked.
+
+These values are used only when an RRD file is created. To change the
+stepsize, heartbeat, or resolution of an existing RRD, one must dump the
+RRD file to XML, modify the data, then restore the RRD file.  Or simply
+delete the RRD file and let nagiosgraph create a new one.
 
 
 
