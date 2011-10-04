@@ -146,7 +146,7 @@ sub debug {
     if (not defined $Config{debug}) { $Config{debug} = 0; }
     return if ($level > $Config{debug});
     $level = qw(none critical error warn info debug)[$level];
-    my $message = join q( ), scalar (localtime), PROG, $level, $text;
+    my $message = join q( ), scalar (localtime), PROG, $$, $level, $text;
     if (not fileno $LOG) {
         stacktrace($message);
         return;
@@ -509,8 +509,7 @@ sub buildurl {
         $url .= '&fixedscale';
     }
     $url .= arrayorstring($opts, 'rrdopts');
-# FIXME: properly escape the URL, not just this character
-    $url =~ s/#/%23/g;
+    $url = escape($url);
     debug(DBDEB, "buildurl returning $url");
     return $url;
 }
@@ -2714,7 +2713,7 @@ sub formattime {
 sub readperfdata {
     my ($fn) = @_;
     my @lines;
-    debug(DBDEB, 'readperfdata: perflog is ' . $fn);
+    debug(DBDEB, 'readperfdata from ' . $fn);
     if (-s $fn) {
         my $worklog = $fn . '.nagiosgraph';
         if (! rename $fn, $worklog) {
@@ -2990,7 +2989,7 @@ sub rrdupdate { ## no critic (ProhibitManyArgs)
 # Read the map file and define a subroutine that parses performance data
 sub getrules {
     my $file = getcfgfn(shift);
-    debug(DBDEB, "getrules($file)");
+    debug(DBDEB, "getrules from $file");
     my @rules;
     if ( open my $FH, '<', $file ) {
         while (<$FH>) {
@@ -3023,7 +3022,7 @@ sub getrules {
 sub processdata {
     my (@lines) = @_;
     my $t = $#lines + 1;
-    debug(DBDEB, 'processdata (' . $t . ' lines)');
+    debug(DBDEB, 'processdata processing ' . $t . ' lines');
     my $n = 0;
     for my $line (@lines) {
         chomp $line;

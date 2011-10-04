@@ -2,6 +2,8 @@ $Id$
 
 1.4.5 TBD
 
+* isolate date/time formatting for graph mouseovers
+* include pid when logging to help isolate multi-core/multi-thread issues.
 * fixed debian6 packaging problems.
 * change authentication behavior when nagios default_user_name is defined.
    behavior is now aligned to that defined in nagios.
