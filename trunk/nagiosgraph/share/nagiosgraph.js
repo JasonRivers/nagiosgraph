@@ -146,17 +146,26 @@ function ngzZoomBoxDrawInfoFunc(x1, y1, x2, y2) {
     var sec = ngzPix2Sec(x2);
     var date = new Date();
     date.setTime(sec*1000);
-    var txt = dtpFormatDate(date);
+    var txt = ngzFormatDate(date);
     if(ngzMouse.drawBox) {
       sec = ngzPix2Sec(x1);
       date.setTime(sec*1000);
-      txt = dtpFormatDate(date) + '<br>' + txt;
+      txt = ngzFormatDate(date) + '<br>' + txt;
     }
     ngzZoomInfo.innerHTML = txt;
     ngzZoomInfo.style.visibility = 'visible';
   } else {
     ngzZoomInfo.style.visibility = 'hidden';
   }
+}
+
+function ngzFormatDate(date) {
+  var MM = dtpPrepend(date.getMinutes());
+  var HH = dtpPrepend(date.getHours());
+  var dd = dtpPrepend(date.getDate());
+  var mm = dtpPrepend(date.getMonth() + 1);
+  var yy = date.getFullYear();
+  return dd + '.' + mm + '.' + yy + ' ' + HH + ':' + MM;
 }
 
 function ngzZoomBoxDrawBoxFunc(x1, y1, x2, y2) {
