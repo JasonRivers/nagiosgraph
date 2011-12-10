@@ -2254,11 +2254,8 @@ sub printmenudatascript {
             my $s = $jj;
             $s =~ s/\\/\\\\/g;
             $rval .= " ,[\"$s\",";
-            my $c = 0;
+            my %dsstr;
             foreach my $kk (@{$lookup->{$hosts->[$ii]}{$jj}}) {
-                if ($c) {
-                    $rval .= q(,);
-                }
                 my $name = q();
                 my @ds;
                 foreach my $x (@{$kk}) {
@@ -2269,7 +2266,12 @@ sub printmenudatascript {
                         push @ds, $x;
                     }
                 }
-                $rval .= '["' . $name . '","' . join('","', sortnaturally(@ds)) . '"]';
+                $dsstr{$name} = '["' . $name . '","' . join('","', sortnaturally(@ds)) . '"]';
+            }
+            my $c = 0;
+            foreach my $dsn (sortnaturally(keys %dsstr)) {
+                $rval .= q(,) if $c;
+                $rval .= $dsstr{$dsn};
                 $c = 1;
             }
             $rval .= "]\n";
