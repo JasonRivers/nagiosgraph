@@ -152,6 +152,7 @@ td.calHdrCell {
   position: fixed;
   top: 2px;
   right: 2px;
+  z-index: 100;
 }
 .primary_controls {
   padding: 4px 10px 4px 10px;

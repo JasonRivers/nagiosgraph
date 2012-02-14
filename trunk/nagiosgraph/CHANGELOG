@@ -2,6 +2,7 @@ $Id$
 
 1.4.5 TBD
 
+* ensure graph controls float above other elements
 * improved controls layout thanks to matt perry
 * fixed escaping of urls
 * isolate date/time formatting for graph mouseovers
