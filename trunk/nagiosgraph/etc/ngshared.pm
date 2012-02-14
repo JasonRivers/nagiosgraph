@@ -486,10 +486,10 @@ sub arrayorstring {
         if (ref($opts->{$param}) eq 'ARRAY') {
             for my $ii (@{$opts->{$param}}) {
                 next if not defined $ii;
-                $rval .= "&$param=$ii";
+                $rval .= "&$param=" . escape($ii);
             }
         } else {
-            $rval .= "&$param=" . $opts->{$param};
+            $rval .= "&$param=" . escape($opts->{$param});
         }
     }
     return $rval;
@@ -509,7 +509,6 @@ sub buildurl {
         $url .= '&fixedscale';
     }
     $url .= arrayorstring($opts, 'rrdopts');
-    $url = escape($url);
     debug(DBDEB, "buildurl: returning $url");
     return $url;
 }
