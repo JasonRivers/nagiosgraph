@@ -294,18 +294,7 @@ function ngzMouseDown(e) {
 function ngzMouseUp(e) {
   ngzMouse.setEvent(e);
   if(ngzMouse.mouseButtonLeft()) {
-    if(ngzMouse.drawBox) {
-      var s = Math.min(ngzMouse.posXStart, ngzMouse.posX);
-      var e = Math.max(ngzMouse.posXStart, ngzMouse.posX);
-      var w = e - s;
-      ngzMouse.drawBox = 0;
-      ngzZoom.drawBox(0,0,0,0);
-      if(w > 0) {
-        ngzLoadGraph(ngzGraphImg, s, e);
-      }
-    }
-    ngzZoom.drawInfo(ngzMouse.posXStart, ngzMouse.posYStart,
-                     ngzMouse.posX, ngzMouse.posY);
+    ngzZoomGraph();
   } else if(ngzMouse.mouseButtonRight()) {
     ngzRevertGraph(ngzGraphImg);
   }
@@ -341,12 +330,45 @@ function ngzMouseOver(e) {
                    ngzMouse.posX, ngzMouse.posY);
 }
 
+// if the pointer goes out to right or left, pin the zoom
+// rectangle to right or left edge, respectively, and do
+// the zoom.  if the pointer goes out to top or bottom,
+// drop the zoom.
 function ngzMouseOut(e) {
   ngzMouse.setEvent(e);
-  ngzMouse.drawBox = 0;
-  ngzZoom.drawBox(0,0,0,0);
-  ngzMouse.drawInfo = 0;
-  ngzZoom.drawInfo(0,0,0,0);
+  ngzMouse.mouseGetPos();
+  var top = parseInt(ngzZoom.boxTop);
+  var bot = top + parseInt(ngzZoom.boxHeight);
+  if(ngzMouse.posY < top || bot < ngzMouse.posY) {
+    ngzMouse.drawBox = 0;
+    ngzZoom.drawBox(0,0,0,0);
+    ngzMouse.drawInfo = 0;
+    ngzZoom.drawInfo(0,0,0,0);
+  } else {
+    var edge = ngzMouse.posX;
+    if(ngzMouse.posX < ngzZoom.boxLeft) {
+      edge = ngzZoom.boxLeft;
+    } else if(ngzZoom.posX > ngzZoom.boxLeft + ngzZoom.boxWidth) {
+      edge = ngzZoom.boxLeft + ngzZoom.boxWidth;
+    }
+    ngzMouse.posX = edge;
+    ngzZoomGraph();
+  }
+}
+
+function ngzZoomGraph() {
+  if(ngzMouse.drawBox) {
+    var s = Math.min(ngzMouse.posXStart, ngzMouse.posX);
+    var e = Math.max(ngzMouse.posXStart, ngzMouse.posX);
+    var w = e - s;
+    ngzMouse.drawBox = 0;
+    ngzZoom.drawBox(0,0,0,0);
+    if(w > 0) {
+      ngzLoadGraph(ngzGraphImg, s, e);
+    }
+  }
+  ngzZoom.drawInfo(ngzMouse.posXStart, ngzMouse.posYStart,
+                   ngzMouse.posX, ngzMouse.posY);
 }
 
 function ngzRevertGraph(graph) {
