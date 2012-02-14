@@ -2,6 +2,8 @@ $Id$
 
 1.4.5 TBD
 
+* improved controls layout thanks to matt perry
+* fixed escaping of urls
 * isolate date/time formatting for graph mouseovers
 * include pid when logging to help isolate multi-core/multi-thread issues.
 * fixed debian6 packaging problems.

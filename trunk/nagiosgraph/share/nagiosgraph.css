@@ -63,6 +63,8 @@ h1 {
   margin-top: 0;
 }
 #secondary_controls_box {
+  float: right;
+  clear: both;
 }
 #db_controls {
 }

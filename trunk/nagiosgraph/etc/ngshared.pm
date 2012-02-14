@@ -58,7 +58,7 @@ use constant {
 use constant {
     NAGIOSGRAPHURL => 'http://nagiosgraph.sourceforge.net/',
     ERRSTYLE => 'font-family: sans-serif; font-size: 0.8em; padding: 0.5em; background-color: #fff6f3; border: solid 1px #cc3333; margin-bottom: 1.5em;',
-    DBLISTROWS => 3,
+    DBLISTROWS => 10,
     PERIODLISTROWS => 5,
     RRDEXT => '.rrd',
     DEFAULT => 'default',
@@ -2420,28 +2420,29 @@ sub printcontrols {
                               $cgi->button(-name => 'showhidecontrols',
                                            -onClick => 'toggleControlsDisplay(this)',
                                            -label => q(-))) . "\n",
-                      $cgi->div({-id => 'secondary_controls_box', -style => 'display:none'}, "\n" .
-                                $cgi->table(($context eq 'both' || $context eq 'service')
-                                            ? $cgi->Tr({-valign => 'top', -id => 'db_controls' },
-                                                       $cgi->td({-class => 'control_label'}, _('Data Sets:')),
-                                                       $cgi->td($cgi->popup_menu(-name => 'db', -values => [], -size => DBLISTROWS, -multiple => 1)),
-                                                       $cgi->td($cgi->button(-name => 'clear', -label => _('Clear'), -onClick => 'clearDBSelection()')),
-                                                       )
-                                            : q(),
-                                            $cgi->Tr({-valign => 'top'},
-                                                     $cgi->td({-class => 'control_label'}, _('Periods:')),
-                                                     $cgi->td($cgi->popup_menu(-name => 'period', -values => [@PERIOD_KEYS], -labels => \%period_labels, -size => PERIODLISTROWS, -multiple => 1)),
-                                                     $cgi->td($cgi->button(-name => 'clear', -label => _('Clear'), -onClick => 'clearPeriodSelection()')),
-                                                     ),
-                                            $cgi->Tr($cgi->td({-class => 'control_label'}, _('End Date:')),
-                                                     $cgi->td({-colspan => '2'}, $cgi->button(-name => 'enddate', -label => 'now', -onClick => 'showDateTimePicker(this)')),
-                                                     ),
-                                            $cgi->Tr($cgi->td({-class => 'control_label'}, _('Size:')),
-                                                     $cgi->td($cgi->popup_menu(-name => 'geom', -values => [@geom], -labels => \%geom_labels)),
-                                                     $cgi->td(q( )),
-                                                     ),
-                                            )) . "\n",
                       ) . "\n",
+            $cgi->div({-id => 'secondary_controls_box', -style => 'display:none'}, "\n" .
+                      $cgi->table($cgi->Tr({-valign => 'top'},
+                                           $cgi->td(($context eq 'both' || $context eq 'service')
+                                                    ? $cgi->table($cgi->Tr({-valign => 'top', -id => 'db_controls' },
+                                                                           $cgi->td({-class => 'control_label'}, _('Data Sets:')),
+                                                                           $cgi->td($cgi->popup_menu(-name => 'db', -values => [], -size => DBLISTROWS, -multiple => 1)),
+                                                                           $cgi->td($cgi->button(-name => 'clear', -label => _('Clear'), -onClick => 'clearDBSelection()')),
+                                                                           ))
+                                                    : q()),
+                                           $cgi->td($cgi->table($cgi->Tr({-valign => 'top'},
+                                                                         $cgi->td({-class => 'control_label'}, _('Periods:')),
+                                                                         $cgi->td($cgi->popup_menu(-name => 'period', -values => [@PERIOD_KEYS], -labels => \%period_labels, -size => PERIODLISTROWS, -multiple => 1)),
+                                                                         $cgi->td($cgi->button(-name => 'clear', -label => _('Clear'), -onClick => 'clearPeriodSelection()')),
+                                                                         ),
+                                                                $cgi->Tr($cgi->td({-class => 'control_label'}, _('End Date:')),
+                                                                         $cgi->td({-colspan => '2'}, $cgi->button(-name => 'enddate', -label => 'now', -onClick => 'showDateTimePicker(this)')),
+                                                                         ),
+                                                                $cgi->Tr($cgi->td({-class => 'control_label'}, _('Size:')),
+                                                                         $cgi->td($cgi->popup_menu(-name => 'geom', -values => [@geom], -labels => \%geom_labels)),
+                                                                         $cgi->td(q( )),
+                                                                         ))))
+                                  )) . "\n",
             $cgi->end_form . "\n");
 }
 

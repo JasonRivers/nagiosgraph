@@ -1232,8 +1232,6 @@ function cfgDBMenu(host, service) {
       }
     }
   }
-
-  menu.size = 5;
 }
 
 // highlight the period menu items based on the elements in the page.
