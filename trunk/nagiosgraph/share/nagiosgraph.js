@@ -7,7 +7,7 @@
 // Author:  (c) 2008 Alan Brenner, Ithaka Harbors
 // Author:  (c) 2010 Matthew Wall
 
-var PNAME = [ 'day', 'week', 'month', 'quarter', 'year' ];
+var PNAME = [ 'hour', 'day', 'week', 'month', 'quarter', 'year' ];
 var VERSION = 1.6;
 
 // dead simple i18n
@@ -422,7 +422,9 @@ function ngzParseURL(url) {
       }
     } else if((pos=parts[i].indexOf('period')) >= 0) {
       var pstr = unescape(parts[i].substring(parts[i].indexOf('=')+1));
-      if(pstr == 'day') {
+      if(pstr == 'hour') {
+        oldst -= 5400;
+      } else if(pstr == 'day') {
         oldst -= 118800;
       } else if(pstr == 'week') {
         oldst -= 777600;

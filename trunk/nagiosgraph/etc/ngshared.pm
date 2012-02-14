@@ -61,7 +61,7 @@ use constant {
     NAGIOSGRAPHURL => 'http://nagiosgraph.sourceforge.net/',
     ERRSTYLE => 'font-family: sans-serif; font-size: 0.8em; padding: 0.5em; background-color: #fff6f3; border: solid 1px #cc3333; margin-bottom: 1.5em;',
     DBLISTROWS => 10,
-    PERIODLISTROWS => 5,
+    PERIODLISTROWS => 6,
     RRDEXT => '.rrd',
     DEFAULT => 'default',
     DSNAME_MAXLEN => 19,
@@ -106,19 +106,21 @@ use constant IMG => 'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z
 $colorsub = -1;
 
 # Pre-defined available graph periods
+#     Hourly     =   1h =   3600s
 #     Daily      =  33h = 118800s
 #     Weekly     =   9d = 777600s
 #     Monthly    =   5w = 3024000s
 #     Quarterly  =  14w = 8467200s
 #     Yearly     = 400d = 34560000s
 # Period data tuples are [name, period (seconds), offset (seconds)]
-my @PERIOD_KEYS = qw(day week month quarter year);
-my %PERIOD_DATA = ('day' => ['day', 118_800, 86_400],
+my @PERIOD_KEYS = qw(hour day week month quarter year);
+my %PERIOD_DATA = ('hour' => ['hour', 5_400, 3_600],
+                   'day' => ['day', 118_800, 86_400],
                    'week' => ['week', 777_600, 604_800],
                    'month' => ['month', 3_024_000, 2_592_000],
                    'quarter' => ['quarter', 8_467_200, 7_776_000],
                    'year' => ['year', 34_560_000, 31_536_000],);
-my %PERIOD_LABELS =qw(day Day week Week month Month quarter Quarter year Year);
+my %PERIOD_LABELS =qw(hour Hour day Day week Week month Month quarter Quarter year Year);
 
 # keys for string literals in the javascript
 my @JSLABELS = qw(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec);
@@ -353,7 +355,7 @@ sub getdebug {
 # geom=WxH
 # rrdopts=
 # offset=seconds
-# period=(day,week,month,quarter,year)
+# period=(hour,day,week,month,quarter,year)
 # graphonly
 # showgraphtitle
 # hidelegend
@@ -361,7 +363,7 @@ sub getdebug {
 # showtitle
 # showdesc
 # expand_controls
-# expand_period=(day,week,month,quarter,year)
+# expand_period=(hour,day,week,month,quarter,year)
 #
 sub getparams {
     my $cgi = new CGI;  ## no critic (ProhibitIndirectSyntax)

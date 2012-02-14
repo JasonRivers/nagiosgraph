@@ -109,7 +109,7 @@ sub testconfig {
     ok($Config{timehost}, 'day,week,month');
     ok($Config{timeservice}, 'day,week,month');
     ok($Config{timegroup}, 'day,week,month');
-    ok($Config{expand_timeall}, 'day,week,month,year');
+    ok($Config{expand_timeall}, 'hour,day,week,month,quarter,year');
     ok($Config{expand_timehost}, 'week');
     ok($Config{expand_timeservice}, 'week');
     ok($Config{expand_timegroup}, 'day');
