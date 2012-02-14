@@ -2507,8 +2507,6 @@ sub printgraphlinks {
             $rrdopts .= ' -t ' . $t;
         }
     }
-    $rrdopts =~ tr/ /+/;
-    $rrdopts =~ s/#/%23/g;
     debug(DBDEB, 'printgraphlinks: rrdopts=' . $rrdopts);
 
     my $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?'

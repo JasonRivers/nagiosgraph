@@ -98,6 +98,7 @@ function getZoomPanel() {
     ngzZoomPanel.setAttribute('onmouseup', 'ngzMouseUp(event)');
     ngzZoomPanel.setAttribute('onmouseover', 'ngzMouseOver(event)');
     ngzZoomPanel.setAttribute('onmouseout', 'ngzMouseOut(event)');
+    ngzZoomPanel.setAttribute('oncontextmenu', 'if(event.preventDefault) { event.preventDefault(); } if(event.stopPropagation) { event.stopPropagation(); } return false;');
     ngzZoomPanel.style.position = 'absolute';
     ngzZoomPanel.style.overflow = '';
     ngzZoomPanel.style.filter = 'alpha(opacity=0)';
