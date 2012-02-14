@@ -390,7 +390,7 @@ function ngzParseURL(url) {
   for(var i=0; i<parts.length; i++)  {
     var pos = 0;
     if((pos=parts[i].indexOf('rrdopts')) >= 0) {
-      var optstr = parts[i].substring(parts[i].indexOf('=')+1);
+      var optstr = unescape(parts[i].substring(parts[i].indexOf('=')+1));
       optstr = optstr.replace(/\+/g, ' ');
       var opts = optstr.split(' ');
       for(var j=0; j<opts.length; j++) {
@@ -420,7 +420,7 @@ function ngzParseURL(url) {
         }
       }
     } else if((pos=parts[i].indexOf('period')) >= 0) {
-      var pstr = parts[i].substring(parts[i].indexOf('=')+1);
+      var pstr = unescape(parts[i].substring(parts[i].indexOf('=')+1));
       if(pstr == 'day') {
         oldst -= 118800;
       } else if(pstr == 'week') {
@@ -435,7 +435,7 @@ function ngzParseURL(url) {
 // FIXME: complain about unknown period
       }
     } else if((pos=parts[i].indexOf('offset')) >= 0) {
-      var ostr = parts[i].substring(parts[i].indexOf('=')+1);
+      var ostr = unescape(parts[i].substring(parts[i].indexOf('=')+1));
       var offset = parseInt(ostr);
       oldst -= offset;
       oldet -= offset;
