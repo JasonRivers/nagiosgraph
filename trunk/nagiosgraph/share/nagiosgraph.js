@@ -1298,7 +1298,7 @@ function selectDBItems(service, query) {
               if (defaultds[ii][jj] == elem.options[kk].value) {
                 elem.options[kk].selected = true;
                 found = true;
-              } else if (defaultds[ii][jj].indexOf(",") > 0) {
+              } else if (defaultds[ii][jj].indexOf(',') > 0) {
                 var ids = defaultds[ii][jj].split(',');
                 for (var ll=1; ll<ids.length; ll++) {
                   var x = ids[0] + ',' + ids[ll];
@@ -1377,7 +1377,7 @@ function setPeriodGUIStates(expanded_periods) {
   }
   var pflag = [ 0, 0, 0, 0, 0 ];
   if (typeof(pstr) != 'undefined' && pstr != '') {
-     var periods = pstr.split(",");    
+     var periods = pstr.split(',');    
      for (var ii = 0; ii < periods.length; ii++) {
        for (var jj = 0; jj < PNAME.length; jj++) {
          if (periods[ii] == PNAME[jj]) {
