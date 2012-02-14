@@ -217,7 +217,7 @@ sub testdebug { # Test the logger.
     open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
     $Config{debug} = 1;
     debug(0, 'test message');
-    ok($log, qr/02ngshared.t none test message$/);
+    ok($log, qr/02ngshared.t \d+ none test message$/);
     close $LOG or carp "close LOG failed: $OS_ERROR";
     open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
     debug(2, 'test no message');
@@ -230,17 +230,17 @@ sub testdumper { # Test the list/hash output debugger.
     open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
     my $testvar = 'test';
     dumper(0, 'test', \$testvar);
-    ok($log, qr/02ngshared.t none test = .'test';$/);
+    ok($log, qr/02ngshared.t \d+ none test = .'test';$/);
     close $LOG or carp "close LOG failed: $OS_ERROR";
     open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
     $testvar = ['test'];
     dumper(0, 'test', $testvar);
-    ok($log, qr/02ngshared.t none test = \[\s+'test'\s+\];$/s);
+    ok($log, qr/02ngshared.t \d+ none test = \[\s+'test'\s+\];$/s);
     close $LOG or carp "close LOG failed: $OS_ERROR";
     open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
     $testvar = {test => 1};
     dumper(0, 'test', $testvar);
-    ok($log, qr/02ngshared.t none test = \{\s+'test' => 1\s+\};$/s);
+    ok($log, qr/02ngshared.t \d+ none test = \{\s+'test' => 1\s+\};$/s);
     close $LOG or carp "close LOG failed: $OS_ERROR";
     open $LOG, '+>', \$log or carp "open LOG failed: $OS_ERROR";
     dumper(2, 'test', $testvar);
@@ -3640,12 +3640,12 @@ sub testbuildurl {
 
     $opts{db} = 'loss,losspct';
     ok(buildurl('host0', 'ping', \%opts),
-       'host=host0&service=ping&db=loss,losspct');
+       'host=host0&service=ping&db=loss%2Closspct');
     undef $opts{db};
 
     $opts{db} = ['loss,losspct', 'rta,rta'];
     ok(buildurl('host0', 'ping', \%opts),
-       'host=host0&service=ping&db=loss,losspct&db=rta,rta');
+       'host=host0&service=ping&db=loss%2Closspct&db=rta%2Crta');
     undef $opts{db};
 
     $opts{geom} = '100x100';
