@@ -501,7 +501,7 @@ sub buildurl {
         return q();
     }
     debug(DBDEB, "buildurl($host, $service)");
-    dumper(DBDEB, 'buildurl opts', $opts);
+    dumper(DBDEB, 'buildurl: opts', $opts);
     my $url = join q(&), 'host=' . $host, 'service=' . $service;
     $url .= arrayorstring($opts, 'db');
     $url .= arrayorstring($opts, 'geom');
@@ -510,7 +510,7 @@ sub buildurl {
     }
     $url .= arrayorstring($opts, 'rrdopts');
     $url = escape($url);
-    debug(DBDEB, "buildurl returning $url");
+    debug(DBDEB, "buildurl: returning $url");
     return $url;
 }
 
@@ -643,15 +643,15 @@ sub listtodict {
     my (%rval);
     $Config{$val} ||= q();
     if (ref $Config{$val} eq 'HASH') {
-        #debug(DBDEB, 'listtodict returning existing hash');
+        #debug(DBDEB, 'listtodict: returning existing hash');
         return $Config{$val};
     }
     $Config{$val . 'sep'} ||= $sep;
-    #debug(DBDEB, 'listtodict splitting "' . $Config{$val} . '" on "' . $Config{$val . 'sep'} . q(")); # "
+    #debug(DBDEB, 'listtodict: splitting "' . $Config{$val} . '" on "' . $Config{$val . 'sep'} . q(")); # "
     foreach my $ii (split $Config{$val . 'sep'}, $Config{$val}) {
         if ($val eq 'hostservvar') {
             my @data = split /,/, $ii;
-            #dumper(DBDEB, 'listtodict hostservvar data', \@data);
+            #dumper(DBDEB, 'listtodict: hostservvar data', \@data);
             if (defined $rval{$data[0]}) {
                 if (defined $rval{$data[0]}->{$data[1]}) {
                     $rval{$data[0]}->{$data[1]}->{$data[2]} = 1;
@@ -663,14 +663,14 @@ sub listtodict {
             }
         } elsif ($commasplit) {
             my @data = split /,/, $ii;
-            #dumper(DBDEB, 'listtodict commasplit data', \@data);
+            #dumper(DBDEB, 'listtodict: commasplit data', \@data);
             $rval{$data[0]} = $data[1];
         } else {
             $rval{$ii} = 1;
         }
     }
     $Config{$val} = \%rval;
-    #dumper(DBDEB, 'listtodict rval', $Config{$val});
+    #dumper(DBDEB, 'listtodict: rval', $Config{$val});
     return $Config{$val};
 }
 
@@ -728,7 +728,6 @@ sub readfile {
             } else {
                 $hashref->{$key} = $val;
             }
-            #debug(DBDEB, "$filename $key:$val");
         };
     }
     close $FH or return "close failed for $filename: $OS_ERROR";
@@ -1288,7 +1287,7 @@ sub readhostdb {
                 push @ginfo, \%info;
                 debug(DBDEB, "readhostdb: match for $host $service $line");
             }
-            close $DB or debug(DBERR, "readhostdb: close failed for $fn: $OS_ERROR");
+            close $DB or debug(DBERR, "close failed for $fn: $OS_ERROR");
         } else {
             my $msg = "cannot open hostdb $fn: $OS_ERROR";
             debug(DBERR, $msg);
@@ -1316,7 +1315,7 @@ sub readhostdb {
         }
     }
 
-    dumper(DBDEB, 'graphinfos', \@ginfo);
+    dumper(DBDEB, 'readhostdb: graphinfos', \@ginfo);
     return \@ginfo;
 }
 
@@ -1358,7 +1357,7 @@ sub readservdb {
                     debug(DBWRN, "servdb: bad format (line $lineno)");
                 }
             }
-            close $DB or debug(DBERR, "readservdb: close failed for $fn: $OS_ERROR");
+            close $DB or debug(DBERR, "close failed for $fn: $OS_ERROR");
         } else {
             my $msg = "cannot open servdb $fn: $OS_ERROR";
             debug(DBERR, $msg);
@@ -1509,7 +1508,7 @@ sub readgroupdb {
                 foreach my $o (@{$objs}) {
                     my $n = $o->name ? $o->name : q();
                     my $a = $o->alias ? $o->alias : q();
-                    debug(DBDEB, $n . ' (' . $a . ')');
+                    debug(DBDEB, 'readgroupdb: ' . $n . ' (' . $a . ')');
                     my $group = $a ne q() ? $a : $n;
                     $gnames{$group} = 1;
                     next if $group ne $g;
@@ -1606,7 +1605,7 @@ sub dbfilelist {
     debug(DBDEB, "dbfilelist($host, $serv)");
     if ($host ne q() && $host ne q(-) && $serv ne q() && $serv ne q(-)) {
         my ($directory, $filename) = mkfilename($host, $serv);
-        debug(DBDEB, "dbfilelist scanning $directory for $filename");
+        debug(DBDEB, "dbfilelist: scanning $directory for $filename");
         if (opendir DH, $directory) {
             while (my $entry=readdir DH) {
                 next if $entry =~ /^\./;
@@ -1619,7 +1618,7 @@ sub dbfilelist {
             debug(DBERR, "cannot open directory $directory: $OS_ERROR");
         }
     }
-    dumper(DBDEB, 'dbfilelist', \@files);
+    dumper(DBDEB, 'dbfilelist: files', \@files);
     return \@files;
 }
 
@@ -1956,7 +1955,7 @@ sub setdata { ## no critic (ProhibitManyArgs)
 # Generate all the parameters for rrd to produce a graph
 sub rrdline {
     my ($params) = @_;
-    dumper(DBDEB, 'rrdline params', $params);
+    dumper(DBDEB, 'rrdline: params', $params);
 
     my @ds;
     my $host = $params->{host};
@@ -2187,7 +2186,7 @@ sub scandirectory {
 sub getserverlist {
     my($userid) = @_;
     $userid ||= q();
-    debug(DBDEB, "getserverlist userid=$userid");
+    debug(DBDEB, 'getserverlist(' . $userid . ')');
 
     my @hosts;
     foreach my $ii (sortnaturally(keys %hsdata)) {
@@ -2450,8 +2449,8 @@ sub printcontrols {
 sub printgraphlinks {
     my ($cgi, $params, $period, $title) = @_;
     if (! defined $title) { $title = q(); }
-    dumper(DBDEB, 'printgraphlinks params', $params);
-    dumper(DBDEB, 'printgraphlinks period', $period);
+    dumper(DBDEB, 'printgraphlinks: params', $params);
+    dumper(DBDEB, 'printgraphlinks: period', $period);
 
     my $gtitle = q();
     my $alttag = q();
@@ -2470,7 +2469,7 @@ sub printgraphlinks {
             }
         }
     }
-    debug(DBDEB, 'printgraphlinks desc = ' . $desc);
+    debug(DBDEB, 'printgraphlinks: desc=' . $desc);
 
     # include quite a bit of information in the alt tag - it helps when
     # debugging configuration files.
@@ -2483,7 +2482,7 @@ sub printgraphlinks {
         }
         $alttag .= ' )';
     }
-    debug(DBDEB, 'printgraphlinks alttag = ' . $alttag);
+    debug(DBDEB, 'printgraphlinks: alttag=' . $alttag);
 
     my $rrdopts = q();
     if ($params->{rrdopts}) {
@@ -2510,7 +2509,7 @@ sub printgraphlinks {
     }
     $rrdopts =~ tr/ /+/;
     $rrdopts =~ s/#/%23/g;
-    debug(DBDEB, 'printgraphlinks rrdopts = ' . $rrdopts);
+    debug(DBDEB, 'printgraphlinks: rrdopts=' . $rrdopts);
 
     my $url = $Config{nagiosgraphcgiurl} . '/showgraph.cgi?'
         . buildurl($params->{host}, $params->{service},
@@ -2519,7 +2518,7 @@ sub printgraphlinks {
                      fixedscale => $params->{fixedscale},
                      db => $params->{db},
                  });
-    debug(DBDEB, "printgraphlinks url = $url");
+    debug(DBDEB, 'printgraphlinks: url=' . $url);
 
     my $titlestr = $showtitle
         ? $cgi->p({-class=>'graph_title'}, $title) : q();
@@ -2714,8 +2713,8 @@ sub formattime {
 # read data from the perflog
 sub readperfdata {
     my ($fn) = @_;
+    debug(DBDEB, 'readperfdata(' . $fn . ')');
     my @lines;
-    debug(DBDEB, 'readperfdata from ' . $fn);
     if (-s $fn) {
         my $worklog = $fn . '.nagiosgraph';
         if (! rename $fn, $worklog) {
@@ -2840,7 +2839,7 @@ sub createrrd {
 
     my $stepsize = gethsdvalue2('stepsize', STEPSIZE, $host, $service, $db);
 
-    debug(DBDEB, 'createrrd step=' . $stepsize
+    debug(DBDEB, 'createrrd: step=' . $stepsize
           . ' heartbeat=' . $heartbeat
           . ' xff=' . $xff
           . ' resolutions=' . join q( ), @rows
@@ -2914,8 +2913,8 @@ sub createrrd {
                  { directory => $directory,
                    host => $host, service => $service, db => $db,
                    xff => $xff, rows => \@rows, steps => \@steps });
-    dumper(DBDEB, 'createrrd filenames', \@filenames);
-    dumper(DBDEB, 'createrrd datasets', \@datasets);
+    dumper(DBDEB, 'createrrd: filenames', \@filenames);
+    dumper(DBDEB, 'createrrd: datasets', \@datasets);
     return \@filenames, \@datasets;
 }
 
@@ -2991,7 +2990,7 @@ sub rrdupdate { ## no critic (ProhibitManyArgs)
 # Read the map file and define a subroutine that parses performance data
 sub getrules {
     my $file = getcfgfn(shift);
-    debug(DBDEB, "getrules from $file");
+    debug(DBDEB, 'getrules(' . $file . ')');
     my @rules;
     if ( open my $FH, '<', $file ) {
         while (<$FH>) {
@@ -3024,7 +3023,7 @@ sub getrules {
 sub processdata {
     my (@lines) = @_;
     my $t = $#lines + 1;
-    debug(DBDEB, 'processdata processing ' . $t . ' lines');
+    debug(DBDEB, 'processdata: processing ' . $t . ' lines');
     my $n = 0;
     for my $line (@lines) {
         chomp $line;
@@ -3048,7 +3047,7 @@ sub processdata {
         }
         my $debug = $Config{debug};
         getdebug('insert', $data[1], $data[2]);
-        dumper(DBDEB, 'processdata data', \@data);
+        dumper(DBDEB, 'processdata: data', \@data);
         my $dstr = "hostname:$data[1]\nservicedesc:$data[2]\noutput:$data[3]\nperfdata:$data[4]";
         my @x = evalrules($dstr);
         if ( ! @x || $#x < 0 ) {
