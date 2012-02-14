@@ -3,6 +3,7 @@ $Id$
 1.4.5 TBD
 
 * ensure graph controls float above other elements
+* increase variety of colors (thanks to matt perry)
 * improved controls layout (thanks to matt perry)
 * block right-click menu on graphs (thanks to matt perry)
 * fixed escaping of urls

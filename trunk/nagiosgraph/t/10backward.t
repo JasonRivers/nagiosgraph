@@ -68,7 +68,8 @@ sub testconvertdeprecated {
 #   [[[host,]service,]database,]ds-name=linestyle[,color][,STACK]
 #
 sub testlineformats {
-    $Config{colorscheme} = 1;
+    $Config{colorscheme} = 9;
+    $Config{colors} = [qw(90d080 30a030 90c0e0 304090 ffc0ff a050a0 ffc060 c07020)];
     $Config{plotas} = 'LINE1';
     $Config{plotasLINE1} = 'avg5min,avg15min';
     $Config{plotasLINE2} = 'a';
@@ -87,37 +88,37 @@ sub testlineformats {
     my ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'foo');
     ok($linestyle, 'LINE1');
-    ok($linecolor, '000399');
+    ok($linecolor, '90d080');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'ping');
     ok($linestyle, 'AREA');
-    ok($linecolor, '990333');
+    ok($linecolor, '30a030');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'http');
     ok($linestyle, 'TICK');
-    ok($linecolor, '000099');
+    ok($linecolor, '90c0e0');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'avg15min');
     ok($linestyle, 'LINE1');
-    ok($linecolor, '6600FF');
+    ok($linecolor, '304090');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'a');
     ok($linestyle, 'LINE2');
-    ok($linecolor, 'CC00CC');
+    ok($linecolor, 'ffc0ff');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'b');
     ok($linestyle, 'LINE3');
-    ok($linecolor, 'CC00FF');
+    ok($linecolor, 'a050a0');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 's');
     ok($linestyle, 'LINE1');
-    ok($linecolor, 'CC03CC');
+    ok($linecolor, 'ffc060');
     ok($stack, 1);
 
     # test basic lineformat behavior

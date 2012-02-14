@@ -13,6 +13,7 @@
 ## no critic (ProhibitDeepNests)
 ## no critic (ProhibitMagicNumbers)
 ## no critic (ProhibitConstantPragma)
+## no critic (ProhibitPostfixControls)
 
 package ngshared; ## no critic (Capitalization)
 
@@ -30,6 +31,7 @@ use RRDs;
 use POSIX;
 use Time::HiRes qw(gettimeofday);
 use MIME::Base64;
+use Digest::MD5 qw(md5);
 
 use Exporter qw(import);
 
@@ -86,6 +88,8 @@ use constant {
     COLORMIN => 'BBBBBB',
     COLORS => 'D05050,D08050,D0D050,50D050,50D0D0,5050D0,D050D0',
     COLORSCHEME => 1,
+    COLORSATURATION => 0.8,
+    COLORVALUE => 0.95,
     STEPSIZE => 300,
     HEARTBEAT => 600,
     RESOLUTIONS => '600 700 775 797',
@@ -146,7 +150,7 @@ sub debug {
     if (not defined $Config{debug}) { $Config{debug} = 0; }
     return if ($level > $Config{debug});
     $level = qw(none critical error warn info debug)[$level];
-    my $message = join q( ), scalar (localtime), PROG, $$, $level, $text;
+    my $message = join q( ), scalar (localtime), PROG, $PID, $level, $text;
     if (not fileno $LOG) {
         stacktrace($message);
         return;
@@ -614,22 +618,40 @@ sub hashcolor {
         return $Config{colors}[$colorsub];
     }
 
-    my ($min, $max, $rval, @rgb) = (0, 0);
-    # generate a starting value
-    map { $color = (51 * $color + ord) % (216) } split //, $label;
-    # turn the starting value into a red, green, blue triplet
-    @rgb = (51 * int($color / 36), 51 * int($color / 6) % 6, 51 * ($color % 6));
-    for my $ii (0 .. 2) {
-        if ($rgb[$ii] < $rgb[$min]) { $min = $ii; }
-        if ($rgb[$ii] > $rgb[$max]) { $max = $ii; }
-    }
-    # expand the color range, if needed
-    if ($rgb[$min] > 102) { $rgb[$min] = 102; }
-    if ($rgb[$max] < 153) { $rgb[$max] = 153; }
+    my $h = vec md5($label), $color-1, 8;
+    my $s = $Config{colorsaturation} || COLORSATURATION;
+    my $v = $Config{colorvalue} || COLORVALUE;
+    $h = $h/255;
+    my ($r, $g, $b) = hsv2rgb($h, $s, $v);
     # generate the hex color value
-    $color = sprintf '%06X', $rgb[0] * 16 ** 4 + $rgb[1] * 256 + $rgb[2];
+    $color = sprintf '%02X%02X%02X', $r, $g, $b;
     debug(DBDEB, "hashcolor: returning color = $color");
     return $color;
+}
+
+# Accepts a list of HSV values from 0 to 1 and returns RGB values from 0 to 255
+# Based on algorithm from http://www.cs.rit.edu/~ncs/color/t_convert.html
+sub hsv2rgb {
+    my ($h, $s, $v) = @_;
+    my ($r, $g, $bb) = $v; # achromatic (grey)
+
+    if ($s != 0) {
+        my $h_i = int $h * 6;
+        my $f = ($h * 6) - $h_i;
+
+        my $x = $v * (1 - $s);
+        my $y = $v * (1 - $s * $f);
+        my $z = $v * (1 - $s * (1 - $f));
+
+        ($r, $g, $bb) = ($v, $z, $x) if $h_i == 0;
+        ($r, $g, $bb) = ($y, $v, $x) if $h_i == 1;
+        ($r, $g, $bb) = ($x, $v, $z) if $h_i == 2;
+        ($r, $g, $bb) = ($x, $y, $v) if $h_i == 3;
+        ($r, $g, $bb) = ($z, $x, $v) if $h_i == 4;
+        ($r, $g, $bb) = ($v, $x, $y) if $h_i == 5;
+    }
+
+    return int $r*256, int $g*256, int $bb*256;
 }
 
 # Configuration subroutines ###################################################

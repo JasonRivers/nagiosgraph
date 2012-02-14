@@ -153,6 +153,7 @@ sub checkmodules {
     checkmodule('Carp');
     checkmodule('CGI');
     checkmodule('Data::Dumper');
+    checkmodule('Digest::MD5');
     checkmodule('File::Basename');
     checkmodule('File::Find');
     checkmodule('MIME::Base64');

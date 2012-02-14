@@ -460,12 +460,12 @@ sub testmkfilename { # Test getting the file and directory for a database.
 
 # With 16 generated colors, the default rainbow and one custom.
 sub testhashcolor {
-    my @testdata = ('FF0333', '3300CC', '990033', 'FF03CC', '990333', 'CC00CC', '000099', '6603CC');
+    my @testdata = ('30F3E3', '30F0F3', '30ECF3', 'A330F3', 'DEF330', '8C30F3', '3059F3', 'F33062');
     foreach my $ii (0..7) {
         my $result = hashcolor('Current Load', $ii + 1);
         ok($result, $testdata[$ii - 1]);
     }
-    @testdata = ('CC0300', 'FF0399', '990000', '330099', '990300', '660399', '990000', 'CC0099');
+    @testdata = ('30B0F3', 'F3B530', 'DE30F3', 'F33039', '30F38C', '7930F3', 'E3F330', 'F3B030');
     foreach my $ii (1..8) {
         my $result = hashcolor('PLW', $ii);
         ok($result, $testdata[$ii - 1]);
@@ -478,7 +478,7 @@ sub testhashcolor {
     }
     undef %Config;
     $Config{colorscheme} = 2;
-    ok(hashcolor('x'), '009900');
+    ok(hashcolor('x'), 'F030F3');
     return;
 }
 
@@ -984,7 +984,8 @@ sub testgraphinfo {
 }
 
 sub testgetlineattr {
-    $Config{colorscheme} = 1;
+    $Config{colorscheme} = 9;
+    $Config{colors} = [qw(90d080 30a030 90c0e0 304090 ffc0ff a050a0 ffc060 c07020)];
     $Config{plotas} = 'LINE1';
     $Config{plotasLINE1} = 'avg5min,avg15min';
     $Config{plotasLINE2} = 'a';
@@ -1003,37 +1004,37 @@ sub testgetlineattr {
     my ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'foo');
     ok($linestyle, 'LINE1');
-    ok($linecolor, '000399');
+    ok($linecolor, '30a030');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'ping');
     ok($linestyle, 'AREA');
-    ok($linecolor, '990333');
+    ok($linecolor, '90c0e0');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'http');
     ok($linestyle, 'TICK');
-    ok($linecolor, '000099');
+    ok($linecolor, '304090');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'avg15min');
     ok($linestyle, 'LINE1');
-    ok($linecolor, '6600FF');
+    ok($linecolor, 'ffc0ff');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'a');
     ok($linestyle, 'LINE2');
-    ok($linecolor, 'CC00CC');
+    ok($linecolor, 'a050a0');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 'b');
     ok($linestyle, 'LINE3');
-    ok($linecolor, 'CC00FF');
+    ok($linecolor, 'ffc060');
     ok($stack, 0);
     ($linestyle, $linecolor, $stack) =
         getlineattr('host', 'service', 'database', 's');
     ok($linestyle, 'LINE1');
-    ok($linecolor, 'CC03CC');
+    ok($linecolor, 'c07020');
     ok($stack, 1);
 
     # test basic lineformat behavior
@@ -1197,13 +1198,13 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_losspct=$rrddir/host0/PING___ping.rrd:losspct:AVERAGE',
-          'LINE2:ping_losspct#9900FF:ping,losspct',
+          'LINE2:ping_losspct#C7F330:ping,losspct',
           'GPRINT:ping_losspct:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_losspct:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_losspct:MIN:Min\\\\:%7.2lf%s',
           'GPRINT:ping_losspct:LAST:Cur\\\\:%7.2lf%s\\\\n',
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:ping,rta    ',
+          'LINE2:ping_rta#7E30F3:ping,rta    ',
           'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
@@ -1227,7 +1228,7 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:ping,rta',
+          'LINE2:ping_rta#7E30F3:ping,rta',
           'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
@@ -1246,7 +1247,7 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:ping,rta',
+          'LINE2:ping_rta#7E30F3:ping,rta',
           'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
@@ -1272,7 +1273,7 @@ sub testrrdline {
           '-e',
           'now-0',
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:ping,rta',
+          'LINE2:ping_rta#7E30F3:ping,rta',
           'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s\\\\n',
@@ -1290,7 +1291,7 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:ping,rta',
+          'LINE2:ping_rta#7E30F3:ping,rta',
           'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf',
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf',
@@ -1312,7 +1313,7 @@ sub testrrdline {
           '-e',
           'now-0',
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:ping,rta',
+          'LINE2:ping_rta#7E30F3:ping,rta',
           'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
@@ -1387,7 +1388,7 @@ sub testrrdline {
           $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
           'CDEF:ping_rta_neg=ping_rta,-1,*',
-          'LINE2:ping_rta_neg#CC03CC:ping,rta',
+          'LINE2:ping_rta_neg#7E30F3:ping,rta',
           'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
@@ -1411,13 +1412,13 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_losspct=$rrddir/host0/PING___ping.rrd:losspct:AVERAGE',
-          'LINE2:ping_losspct#9900FF:ping,losspct',
+          'LINE2:ping_losspct#C7F330:ping,losspct',
           'GPRINT:ping_losspct:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_losspct:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_losspct:MIN:Min\\\\:%7.2lf%s',
           'GPRINT:ping_losspct:LAST:Cur\\\\:%7.2lf%s\\\\n',
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:ping,rta    ',
+          'LINE2:ping_rta#7E30F3:ping,rta    ',
           'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
@@ -1438,7 +1439,7 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:labela',
+          'LINE2:ping_rta#7E30F3:labela',
           'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
@@ -1456,7 +1457,7 @@ sub testrrdline {
     ok(Dumper($ds), "\$VAR1 = [
           $RRDLINES0
           'DEF:ping_rta=$rrddir/host0/PING___ping.rrd:rta:AVERAGE',
-          'LINE2:ping_rta#CC03CC:this label has \\\\: a colon in it',
+          'LINE2:ping_rta#7E30F3:this label has \\\\: a colon in it',
           'GPRINT:ping_rta:MAX:Max\\\\:%7.2lf%s',
           'GPRINT:ping_rta:AVERAGE:Avg\\\\:%7.2lf%s',
           'GPRINT:ping_rta:MIN:Min\\\\:%7.2lf%s',
@@ -3733,7 +3734,7 @@ sub testcfgparams {
 }
 
 sub testsetlabels {
-    $Config{colorscheme} = 2;
+    $Config{colorscheme} = 1;
     $Config{plotas} = 'LINE1';
 
     undef $Config{minimums};
@@ -3747,7 +3748,7 @@ sub testsetlabels {
     my @result = setlabels('host', 'serv', 'db', 'ds', 'file', 'label', 20);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:AVERAGE',
-          'LINE1:db_ds#990033:label               '
+          'LINE1:db_ds#3EF330:label               '
         ];\n");
 
     $Config{stack} = 'ds';
@@ -3755,7 +3756,7 @@ sub testsetlabels {
     @result = setlabels('host', 'serv', 'db', 'ds', 'file', 'label', 20);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:AVERAGE',
-          'LINE1:db_ds#990033:label               :STACK'
+          'LINE1:db_ds#3EF330:label               :STACK'
         ];\n");
 
     undef $Config{stack};
@@ -3766,7 +3767,7 @@ sub testsetlabels {
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:MAX',
           'CDEF:ceildb_ds=db_ds,CEIL',
-          'LINE1:db_ds#990033:label               '
+          'LINE1:db_ds#3EF330:label               '
         ];\n");
 
     undef $Config{maximums};
@@ -3777,7 +3778,7 @@ sub testsetlabels {
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:MIN',
           'CDEF:floordb_ds=db_ds,FLOOR',
-          'LINE1:db_ds#990033:label               '
+          'LINE1:db_ds#3EF330:label               '
         ];\n");
 
     undef $Config{minimums};
@@ -3788,7 +3789,7 @@ sub testsetlabels {
     @result = setlabels('host', 'serv', 'db', 'ds', 'file', 'label', 20);
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:LAST',
-          'LINE1:db_ds#990033:label               '
+          'LINE1:db_ds#3EF330:label               '
         ];\n");
 
     # if defined for all of them, then max is used because we look for it first
@@ -3805,7 +3806,7 @@ sub testsetlabels {
     ok(Dumper(\@result), "\$VAR1 = [
           'DEF:db_ds=file:ds:MAX',
           'CDEF:ceildb_ds=db_ds,CEIL',
-          'LINE1:db_ds#990033:label               :STACK'
+          'LINE1:db_ds#3EF330:label               :STACK'
         ];\n");
 
     undef %Config;

@@ -715,6 +715,7 @@ sub checkprereq {
     $fail |= checkmodule('Carp');
     $fail |= checkmodule('CGI');
     $fail |= checkmodule('Data::Dumper');
+    $fail |= checkmodule('Digest::MD5');
     $fail |= checkmodule('File::Basename');
     $fail |= checkmodule('File::Find');
     $fail |= checkmodule('MIME::Base64');
