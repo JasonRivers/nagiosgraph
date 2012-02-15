@@ -2616,10 +2616,10 @@ sub printsummary {
                        getlabel($opts->{group}));
     }
 
-    return $cgi->p({ -class => 'summary' },
-                   $s . q( ) . _('as of') . q( ) .
-                   $cgi->span({ -class => 'timestamp' },
-                              formattime(time, 'timeformat_now')));
+    return $cgi->div({ -class => 'summary' },
+                     $s . q( ) . _('as of') . q( ) .
+                     $cgi->span({ -class => 'timestamp' },
+                                formattime(time, 'timeformat_now')));
 }
 
 sub printheader {
