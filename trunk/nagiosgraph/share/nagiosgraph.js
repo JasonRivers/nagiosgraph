@@ -1318,19 +1318,23 @@ function selectDBItems(service, query) {
         if (defaultds[ii][0] == service) {
           for (var jj=1; jj<defaultds[ii].length; jj++) {
             for (var kk=0; kk<elem.length; kk++) {
-              if (defaultds[ii][jj] == elem.options[kk].value) {
+              var v = elem.options[kk].value;
+              if (defaultds[ii][jj] == v) {
                 elem.options[kk].selected = true;
                 found = true;
               } else if (defaultds[ii][jj].indexOf(',') > 0) {
                 var ids = defaultds[ii][jj].split(',');
                 for (var ll=1; ll<ids.length; ll++) {
                   var x = ids[0] + ',' + ids[ll];
-                  if (x == elem.options[kk].value) {
+                  if (x == v) {
                     elem.options[kk].selected = true;
                     found = true;
-                  }                
+                  }
                 }
-              }
+              } else if (v.indexOf(defaultds[ii][jj]) == 0) {
+                elem.options[kk].selected = true;
+                found = true;
+              }              
             }
           }
         }
