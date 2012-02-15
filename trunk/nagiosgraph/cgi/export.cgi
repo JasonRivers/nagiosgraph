@@ -17,6 +17,8 @@ use IO::Handle;
 use strict;
 use warnings;
 
+my @help = ('options include:', 'host=HOST', 'service=SERVICE', 'db=DATASOURCE', 'format=(info|csv|dump)');
+
 my $errmsg = readconfig('testcolor', 'cgilogfile');
 if ($errmsg ne q()) {
     htmlerror($errmsg);
@@ -34,22 +36,35 @@ $format ||= 'info';
 
 # do some error checking on the arguments
 my @msgs;
+my @fmsgs;
 if (!defined $host || !defined $service || !defined $db) {
     if (! defined $host) {
-        push @msgs, 'No host defined.';
+        push @msgs, 'No host specified.';
     }
     if (! defined $service) {
-        push @msgs, 'No service defined.';
+        push @msgs, 'No service specified.';
     }
     if (! defined $db) {
-        push @msgs, 'No database defined.';
+        push @msgs, 'No database specified.';
     }
 }
 if ($format ne 'csv' && $format ne 'dump' && $format ne 'info') {
     push @msgs, "Unsupported format '$format'";
 }
+if (! defined $db && defined $host && defined $service) {
+    my $fref = dbfilelist($host, $service);
+    my @files = @$fref;
+    if (scalar @files > 0) {
+        push @fmsgs, "RRD files for host <b>$host</b> and service <b>$service</b> include:";
+        foreach my $f (@files) {
+            push @fmsgs, $f;
+        }
+    } else {
+        push @msgs, "No RRD files for host <b>$host</b> and service <b>$service</b>";
+    }
+}
 if (scalar @msgs > 0) {
-    htmlerror( join '<br>', @msgs );
+    htmlerror( join '<br>', @msgs, '', @help, '', @fmsgs );
     exit 0;
 }
 if (! havepermission($host, $service)) {
