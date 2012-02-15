@@ -137,17 +137,17 @@ or (/output:.*uptime is.*?([.\d]+)\sMinutes/
     and push @s, [ 'days',
                [ 'data', GAUGE, $1/1440 ] ]);
 
-# Service type: unix-procs
-#   output:PROCS OK: 43 processes
-(/output:PROCS.*?(\d+) processes\n/ or
- /output:PROCS.*?(\d+) processes with STATE = RSZDT/)
-and push @s, [ 'procs',
-               [ 'data', GAUGE, $1 ] ];
-
 # Service type: unix-zombies
 #   ouput:PROCS OK: 0 processes with STATE = Z
 /output:PROCS.*?(\d+) processes with STATE = Z/
 and push @s, [ 'zombies',
+               [ 'data', GAUGE, $1 ] ];
+
+# Service type: unix-procs
+#   output:PROCS OK: 43 processes
+(/output:PROCS.*?(\d+) processes\n/ or
+ /output:PROCS.*?(\d+) processes with STATE = [RSZDT]+/)
+and push @s, [ 'procs',
                [ 'data', GAUGE, $1 ] ];
 
 # default rule.  if none of the other rules did anything, then check for
