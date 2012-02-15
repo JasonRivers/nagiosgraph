@@ -1445,17 +1445,24 @@ easier.
 Project Testing/Code Summary
 ----------------------------
 
-Here are some project statistics as of 12jan11:
+Here are some project statistics as of 14feb12:
 
-number of unit tests: 1259
+number of unit tests: 1307
 
 Test coverage:
                                stmt   bran   cond    sub    pod   time  total
-etc/ngshared.pm                84.3   78.5   68.6   91.3    0.0  100.0   78.5
+etc/ngshared.pm                82.5   77.3   67.4   91.6    0.0  100.0   77.0
+
+Platforms on which unit tests have been run:
+
+os             arch      perl
+-------------------------------
+debian 5       ppc       5.10.0
+debian 6       i386,x64  5.10.1
 
 Platforms on which installation has been tested:
 
-os             arch     method             nagios
+os             arch      method             nagios
 -------------------------------------------------------------------------------
 debian 5       ppc       manual             3.2.0, 3.2.1, 3.2.2, 3.2.3
 debian 5       i386      deb                3.0.6
@@ -1468,46 +1475,47 @@ redhat 6       i386,x64  rpm, installer     3.2.3
 The codebase looks like this:
 
  lines  words  bytes
-   197    652   5425 cgi/show.cgi
-   515   1488  12480 cgi/showconfig.cgi
-   204    659   5306 cgi/showgraph.cgi
-   197    732   5280 cgi/showgroup.cgi
-   202    709   5564 cgi/showhost.cgi
-   189    668   5096 cgi/showservice.cgi
-   176    734   5487 cgi/testcolor.cgi
-  3113  12993 108019 etc/ngshared.pm
+   267    948   6974 cgi/export.cgi
+   182    623   4987 cgi/show.cgi
+   515   1447  12093 cgi/showconfig.cgi
+   206    669   5245 cgi/showgraph.cgi
+   194    709   5063 cgi/showgroup.cgi
+   188    643   4986 cgi/showhost.cgi
+   189    667   5021 cgi/showservice.cgi
+   172    727   5344 cgi/testcolor.cgi
+  3233  13606 113742 etc/ngshared.pm
     72    329   2162 lib/insert.pl
-  4865  18964 154819 total
+  5218  20368 165617 total
 
-   153    310   2478 share/nagiosgraph.css
-  1437   5067  40944 share/nagiosgraph.js
-     1      3     75 share/nagiosgraph.ssi
-  1591   5380  43497 total
+     177   353  2791 share/nagiosgraph.css
+    1473  5251 42421 share/nagiosgraph.js
+       1     3    75 share/nagiosgraph.ssi
+    1651  5607 45287 total
 
-    32     98    923 t/01required_modules.t
-  3962  10351 114860 t/02ngshared.t
-   157    415   5992 t/03defaults.t
-   129    400   3216 t/04show.t
-   792   2024  24098 t/05permissions.t
-  2243   3268  44833 t/06rules.t
-  1299   2404  27720 t/07perfdata.t
-  2026   4108  46305 t/09plugins.t
-   220    584   7076 t/10backward.t
-    11     27    346 t/97pod.t
-     6     20    178 t/98podcoverage.t
-     7     18    152 t/99kwalitee.t
- 10884  23717 275699 total
+    37    120   1087 t/01required_modules.t
+  4139  11033 123394 t/02ngshared.t
+   173    462   6351 t/03defaults.t
+   161    509   4222 t/04show.t
+   803   1983  25545 t/05permissions.t
+  2270   3342  45556 t/06rules.t
+  1529   2885  32559 t/07perfdata.t
+  2111   4229  47498 t/09plugins.t
+   232    620   7383 t/10backward.t
+    31     84   1002 t/97pod.t
+    20     73    608 t/98podcoverage.t
+    18     71    591 t/99kwalitee.t
+ 11524  25411 295796 total
 
-    32    163    879 etc/access.conf
-    22     90    787 etc/datasetdb.conf
-    63    249   2251 etc/groupdb.conf
-    42    164   1446 etc/hostdb.conf
-    92    255   1828 etc/labels.conf
-   364   2134  14366 etc/nagiosgraph.conf
-    52     81    793 etc/nagiosgraph_de.conf
-    52     92    865 etc/nagiosgraph_es.conf
-    52    102    935 etc/nagiosgraph_fr.conf
-    20    119    660 etc/rrdopts.conf
-    16     78    480 etc/servdb.conf
-   255   1432   9831 etc/map
-  1062   4959  35121 total
+      32   163   879 etc/access.conf
+      23    92   873 etc/datasetdb.conf
+      63   249  2279 etc/groupdb.conf
+      42   164  1446 etc/hostdb.conf
+      92   255  1828 etc/labels.conf
+     384  2291 15329 etc/nagiosgraph.conf
+      52    81   793 etc/nagiosgraph_de.conf
+      52    92   865 etc/nagiosgraph_es.conf
+      52   102   935 etc/nagiosgraph_fr.conf
+      20   119   660 etc/rrdopts.conf
+      16    78   480 etc/servdb.conf
+     256  1448  9863 etc/map
+    1084  5134 36230 total
