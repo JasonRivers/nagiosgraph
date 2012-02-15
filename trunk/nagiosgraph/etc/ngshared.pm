@@ -2459,14 +2459,16 @@ sub printcontrols {
                                                                          $cgi->td($cgi->popup_menu(-name => 'period', -values => [@PERIOD_KEYS], -labels => \%period_labels, -size => PERIODLISTROWS, -multiple => 1)),
                                                                          $cgi->td($cgi->button(-name => 'clear', -label => _('Clear'), -onClick => 'clearPeriodSelection()')),
                                                                          ),
+                                                                $cgi->Tr($cgi->td({-class => 'control_label'}, _('Size:')),
+                                                                         $cgi->td($cgi->popup_menu(-name => 'geom', -values => [@geom], -labels => \%geom_labels)),
+                                                                         $cgi->td(q( ))
+                                                                         ),
                                                                 $cgi->Tr($cgi->td({-class => 'control_label'}, _('End Date:')),
                                                                          $cgi->td({-colspan => '2'}, $cgi->button(-name => 'enddate', -label => 'now', -onClick => 'showDateTimePicker(this)')),
                                                                          ),
-                                                                $cgi->Tr($cgi->td({-class => 'control_label'}, _('Size:')),
-                                                                         $cgi->td($cgi->popup_menu(-name => 'geom', -values => [@geom], -labels => \%geom_labels)),
-                                                                         $cgi->td(q( )),
-                                                                         ))))
-                                  )) . "\n",
+                                                                         )),
+                                           )),
+                      ) . "\n",
             $cgi->end_form . "\n");
 }
 
