@@ -4,7 +4,7 @@
 <head>
 <title>Nagiosgraph</title>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<link rev="made" href="mailto:_postfix@neige.apple.com" />
+<link rev="made" href="mailto:root@localhost" />
 </head>
 
 <body style="background-color: white">
@@ -709,88 +709,76 @@ apply to each data source.</p>
 <p>The following CGI arguments are recognized by show.cgi, showhost.cgi,
 showservice.cgi, and showgroup.cgi:</p>
 <dl>
-<dt><strong><a name="hidengtitle" class="item">hidengtitle</a></strong>
+<dt><strong><a name="hidengtitle" class="item">hidengtitle</a></strong></dt>
 
 <dd>
 <p>Do not display the nagiosgraph title in the page.</p>
 </dd>
-</li>
-<dt><strong><a name="geom_wxh" class="item">geom=WxH</a></strong>
+<dt><strong><a name="geom_wxh" class="item">geom=WxH</a></strong></dt>
 
 <dd>
 <p>Set the dimensions of all graphs to W pixels wide and H pixels tall.</p>
 </dd>
-</li>
-<dt><strong><a name="showtitle" class="item">showtitle</a></strong>
+<dt><strong><a name="showtitle" class="item">showtitle</a></strong></dt>
 
 <dd>
 <p>Display a title next to each graph.</p>
 </dd>
-</li>
-<dt><strong><a name="showdesc" class="item">showdesc</a></strong>
+<dt><strong><a name="showdesc" class="item">showdesc</a></strong></dt>
 
 <dd>
 <p>Display a description of data sources next to each graph.</p>
 </dd>
-</li>
-<dt><strong><a name="showgraphtitle" class="item">showgraphtitle</a></strong>
+<dt><strong><a name="showgraphtitle" class="item">showgraphtitle</a></strong></dt>
 
 <dd>
 <p>Display a title in each graph.</p>
 </dd>
-</li>
-<dt><strong><a name="graphonly" class="item">graphonly</a></strong>
+<dt><strong><a name="graphonly" class="item">graphonly</a></strong></dt>
 
 <dd>
 <p>Display only graph data, not axes, grid, or legend.</p>
 </dd>
-</li>
-<dt><strong><a name="hidelegend" class="item">hidelegend</a></strong>
+<dt><strong><a name="hidelegend" class="item">hidelegend</a></strong></dt>
 
 <dd>
 <p>Do not display the legend in each graph.</p>
 </dd>
-</li>
-<dt><strong><a name="fixedscale" class="item">fixedscale</a></strong>
+<dt><strong><a name="fixedscale" class="item">fixedscale</a></strong></dt>
 
 <dd>
 <p>Set the Y-axis to be in the same scale as the performance data.  This is useful
 to prevent a variety of vertical scales when autoscaling results in different
 vertical scaling for each graph.</p>
 </dd>
-</li>
 </dl>
 <p>The following options are available via configuration files:</p>
 <dl>
-<dt><strong><a name="rrdopts" class="item">rrdopts</a></strong>
+<dt><strong><a name="rrdopts" class="item">rrdopts</a></strong></dt>
 
 <dd>
 <p>Use the rrdopts option to specify custom RRD graphing options.  These can be
 specified for all graphs using rrdopts, or per-service using the rrdoptsfile.</p>
 </dd>
-</li>
-<dt><strong><a name="lineformat" class="item">lineformat</a></strong>
+<dt><strong><a name="lineformat" class="item">lineformat</a></strong></dt>
 
 <dd>
 <p>Use lineformat to control the line thickness and line color for individual data
 sources.  The alpha channel is respected if a recent version of rrdtool is
 installed.</p>
 </dd>
-</li>
-<dt><strong><a name="plotas_plotasline1_plotasline2_plotasline3_plotasarea_plotastick" class="item">plotas, plotasLINE1, plotasLINE2, plotasLINE3, plotasAREA, plotasTICK</a></strong>
+<dt><strong><a name="plotas_plotasline1_plotasline2_plotasline3_plotasarea_plotastick" class="item">plotas, plotasLINE1, plotasLINE2, plotasLINE3, plotasAREA, plotasTICK</a></strong></dt>
 
 <dd>
 <p>Use plotas to control the line thickness/style for individual data sources.</p>
 </dd>
-</li>
-<dt><strong><a name="stack" class="item">stack</a></strong>
+<dt><strong><a name="stack" class="item">stack</a></strong></dt>
 
 <dd>
 <p>Create stacked area graphs using the stack directive for individual data
 sources, the STACK directive in lineformat, or by adjusting the alpha
 channel in specified colors.</p>
 </dd>
-</li>
 </dl>
 <p>Some services emit multiple data sources with big differences in magnitude.
 Others emit data with different units.  In such cases, split the data
@@ -1173,192 +1161,161 @@ the environment.</p>
 <hr />
 <h1><a name="enumeration_of_files">Enumeration of Files</a></h1>
 <dl>
-<dt><strong><a name="changelog" class="item">CHANGELOG</a></strong>
+<dt><strong><a name="changelog" class="item">CHANGELOG</a></strong></dt>
 
 <dd>
 <p>History of changes</p>
 </dd>
-</li>
-<dt><strong><a name="install" class="item">INSTALL</a></strong>
+<dt><strong><a name="install" class="item">INSTALL</a></strong></dt>
 
 <dd>
 <p>Example recipe for installing nagiosgraph</p>
 </dd>
-</li>
-<dt><strong><a name="readme" class="item">README</a></strong>
+<dt><strong><a name="readme" class="item">README</a></strong></dt>
 
 <dd>
 <p>This file</p>
 </dd>
-</li>
-<dt><strong><a name="todo" class="item">TODO</a></strong>
+<dt><strong><a name="todo" class="item">TODO</a></strong></dt>
 
 <dd>
 <p>A list of potential improvements to nagiosgraph</p>
 </dd>
-</li>
-<dt><strong><a name="install_pl" class="item">install.pl</a></strong>
+<dt><strong><a name="install_pl" class="item">install.pl</a></strong></dt>
 
 <dd>
 <p>Installation script</p>
 </dd>
-</li>
-<dt><strong><a name="lib_insert_pl" class="item">lib/insert.pl</a></strong>
+<dt><strong><a name="lib_insert_pl" class="item">lib/insert.pl</a></strong></dt>
 
 <dd>
 <p>Reads Nagios perfdata log and insert into RRD files</p>
 </dd>
-</li>
-<dt><strong><a name="cgi_show_cgi" class="item">cgi/show.cgi</a></strong>
+<dt><strong><a name="cgi_show_cgi" class="item">cgi/show.cgi</a></strong></dt>
 
 <dd>
 <p>Generates an html page for the host/service specified</p>
 </dd>
-</li>
-<dt><strong><a name="cgi_showconfig_cgi" class="item">cgi/showconfig.cgi</a></strong>
+<dt><strong><a name="cgi_showconfig_cgi" class="item">cgi/showconfig.cgi</a></strong></dt>
 
 <dd>
 <p>Check the nagiosgraph configuration</p>
 </dd>
-</li>
-<dt><strong><a name="cgi_showgraph_cgi" class="item">cgi/showgraph.cgi</a></strong>
+<dt><strong><a name="cgi_showgraph_cgi" class="item">cgi/showgraph.cgi</a></strong></dt>
 
 <dd>
 <p>Generates the actual graph image used by other scripts</p>
 </dd>
-</li>
-<dt><strong><a name="cgi_showgroup_cgi" class="item">cgi/showgroup.cgi</a></strong>
+<dt><strong><a name="cgi_showgroup_cgi" class="item">cgi/showgroup.cgi</a></strong></dt>
 
 <dd>
 <p>Generates an html page for the group specified</p>
 </dd>
-</li>
-<dt><strong><a name="cgi_showhost_cgi" class="item">cgi/showhost.cgi</a></strong>
+<dt><strong><a name="cgi_showhost_cgi" class="item">cgi/showhost.cgi</a></strong></dt>
 
 <dd>
 <p>Generates an html page for the host specified, showing all available services on the host</p>
 </dd>
-</li>
-<dt><strong><a name="cgi_showservice_cgi" class="item">cgi/showservice.cgi</a></strong>
+<dt><strong><a name="cgi_showservice_cgi" class="item">cgi/showservice.cgi</a></strong></dt>
 
 <dd>
 <p>Generates an html page for the service specified, showing all hosts with that service</p>
 </dd>
-</li>
-<dt><strong><a name="cgi_testcolor_cgi" class="item">cgi/testcolor.cgi</a></strong>
+<dt><strong><a name="cgi_testcolor_cgi" class="item">cgi/testcolor.cgi</a></strong></dt>
 
 <dd>
 <p>Preview of colors for keywords in each color scheme</p>
 </dd>
-</li>
-<dt><strong><a name="etc_access_conf" class="item">etc/access.conf</a></strong>
+<dt><strong><a name="etc_access_conf" class="item">etc/access.conf</a></strong></dt>
 
 <dd>
 <p>Access control file</p>
 </dd>
-</li>
-<dt><strong><a name="etc_datasetdb_conf" class="item">etc/datasetdb.conf</a></strong>
+<dt><strong><a name="etc_datasetdb_conf" class="item">etc/datasetdb.conf</a></strong></dt>
 
 <dd>
 <p>Optional configuration for data sets</p>
 </dd>
-</li>
-<dt><strong><a name="etc_nagiosgraph_conf" class="item">etc/nagiosgraph.conf</a></strong>
+<dt><strong><a name="etc_nagiosgraph_conf" class="item">etc/nagiosgraph.conf</a></strong></dt>
 
 <dd>
 <p>Primary configuration file for nagiosgraph</p>
 </dd>
-</li>
-<dt><strong><a name="etc_nagiosgraph" class="item">etc/nagiosgraph_*</a></strong>
+<dt><strong><a name="etc_nagiosgraph" class="item">etc/nagiosgraph_*</a></strong></dt>
 
 <dd>
 <p>Translations</p>
 </dd>
-</li>
-<dt><strong><a name="etc_groupdb_conf" class="item">etc/groupdb.conf</a></strong>
+<dt><strong><a name="etc_groupdb_conf" class="item">etc/groupdb.conf</a></strong></dt>
 
 <dd>
 <p>Configuration specific to showgroup.cgi</p>
 </dd>
-</li>
-<dt><strong><a name="etc_hostdb_conf" class="item">etc/hostdb.conf</a></strong>
+<dt><strong><a name="etc_hostdb_conf" class="item">etc/hostdb.conf</a></strong></dt>
 
 <dd>
 <p>Configuration specific to showhost.cgi</p>
 </dd>
-</li>
-<dt><strong><a name="etc_servdb_conf" class="item">etc/servdb.conf</a></strong>
+<dt><strong><a name="etc_servdb_conf" class="item">etc/servdb.conf</a></strong></dt>
 
 <dd>
 <p>Configuration specific to showservice.cgi</p>
 </dd>
-</li>
-<dt><strong><a name="etc_rrdopts_conf" class="item">etc/rrdopts.conf</a></strong>
+<dt><strong><a name="etc_rrdopts_conf" class="item">etc/rrdopts.conf</a></strong></dt>
 
 <dd>
 <p>Per-service options to rrdgraph</p>
 </dd>
-</li>
-<dt><strong><a name="etc_map" class="item">etc/map</a></strong>
+<dt><strong><a name="etc_map" class="item">etc/map</a></strong></dt>
 
 <dd>
 <p>Regular expression to identify services and specification for how to create RRD files</p>
 </dd>
-</li>
-<dt><strong><a name="etc_ngshared_pm" class="item">etc/ngshared.pm</a></strong>
+<dt><strong><a name="etc_ngshared_pm" class="item">etc/ngshared.pm</a></strong></dt>
 
 <dd>
 <p>Shared library of common perl subroutines</p>
 </dd>
-</li>
-<dt><strong><a name="examples" class="item">examples/*</a></strong>
+<dt><strong><a name="examples" class="item">examples/*</a></strong></dt>
 
 <dd>
 <p>Configuration examples</p>
 </dd>
-</li>
-<dt><strong><a name="share_graph_gif" class="item">share/graph.gif</a></strong>
+<dt><strong><a name="share_graph_gif" class="item">share/graph.gif</a></strong></dt>
 
 <dd>
 <p>An icon for use in Nagios</p>
 </dd>
-</li>
-<dt><strong><a name="share_nagiosgraph_css" class="item">share/nagiosgraph.css</a></strong>
+<dt><strong><a name="share_nagiosgraph_css" class="item">share/nagiosgraph.css</a></strong></dt>
 
 <dd>
 <p>CSS stylesheet</p>
 </dd>
-</li>
-<dt><strong><a name="share_nagiosgraph_js" class="item">share/nagiosgraph.js</a></strong>
+<dt><strong><a name="share_nagiosgraph_js" class="item">share/nagiosgraph.js</a></strong></dt>
 
 <dd>
 <p>All of the JavaScript used by nagiosgraph</p>
 </dd>
-</li>
-<dt><strong><a name="share_nagiosgraph_ssi" class="item">share/nagiosgraph.ssi</a></strong>
+<dt><strong><a name="share_nagiosgraph_ssi" class="item">share/nagiosgraph.ssi</a></strong></dt>
 
 <dd>
 <p>HTML for Nagios pages to enable graphs on mouseover</p>
 </dd>
-</li>
-<dt><strong><a name="t" class="item">t/*</a></strong>
+<dt><strong><a name="t" class="item">t/*</a></strong></dt>
 
 <dd>
 <p>perl test scripts</p>
 </dd>
-</li>
-<dt><strong><a name="utils_testentry_pl" class="item">utils/testentry.pl</a></strong>
+<dt><strong><a name="utils_testentry_pl" class="item">utils/testentry.pl</a></strong></dt>
 
 <dd>
 <p>A script for testing new map file entries</p>
 </dd>
-</li>
-<dt><strong><a name="utils_flat2hier_pl" class="item">utils/flat2hier.pl</a></strong>
+<dt><strong><a name="utils_flat2hier_pl" class="item">utils/flat2hier.pl</a></strong></dt>
 
 <dd>
 <p>Script for converting RRD data from flat to hierarchy</p>
 </dd>
-</li>
 </dl>
 <p>
 </p>
@@ -1548,6 +1505,7 @@ easier.</p>
 <p>keep it simple</p>
 </li>
 </ol>
+</li>
 <li>
 <p>perlcritic</p>
 <p>Run perlcritic and fix all warnings before you commit.  Be brutal:</p>
