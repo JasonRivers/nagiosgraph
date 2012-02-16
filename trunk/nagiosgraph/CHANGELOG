@@ -5,6 +5,7 @@ $Id$
 * ensure graph controls float above other elements
 * zoom when zoom rectangle drags to right or left
 * added hourly interval
+* generate text and html readme files from README.pod (thanks to matt perrry)
 * fix map rule for PROCS (thanks to matt perry)
 * increase variety of colors (thanks to matt perry)
 * improved controls layout (thanks to matt perry)
