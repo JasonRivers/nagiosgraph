@@ -570,7 +570,7 @@ of these.
 
 
 
-=head2 Displaying Per-Service and Per-Host Graph Icons and Links in Nagios
+=head2 Graph Icons and Links in Nagios
 
 Links to graphs can be embedded in Nagios status pages using the notes or
 actions fields.  The specifics depend on the Nagios version as well as how
@@ -652,7 +652,7 @@ Then use it in services like this:
 
 
 
-=head2 Displaying Graphs in Nagios Mouseovers
+=head2 Graphs in Nagios Mouseovers
 
 To display graphs as mouseovers for each host and/or service, do the following:
 
@@ -706,7 +706,7 @@ action_url.
 
 
 
-=head2 Displaying Graphs in Nagios Frames
+=head2 Graphs in Nagios Frames
 
 To embed nagiosgraph graphs directly into Nagios, do the following:
 

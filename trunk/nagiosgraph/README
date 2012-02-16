@@ -53,11 +53,11 @@ Contents
       Batch Processing
       Immediate Processing
    Configuring Graphing and Display
-      Displaying Per-Service and Per-Host Graph Icons and Links in Nagios
+      Graph Icons and Links in Nagios
          For Nagios 2.6 and Earlier
          For Nagios 2.9 and Nagios 3
-      Displaying Graphs in Nagios Mouseovers
-      Displaying Graphs in Nagios Frames
+      Graphs in Nagios Mouseovers
+      Graphs in Nagios Frames
    Customizing the Graphs
    Adding Service Types
    Managing Data and RRD Files
@@ -476,7 +476,7 @@ Configuring Graphing and Display
   directly in the Nagios frames. The following sections explain how to do
   each of these.
 
- Displaying Per-Service and Per-Host Graph Icons and Links in Nagios
+ Graph Icons and Links in Nagios
 
   Links to graphs can be embedded in Nagios status pages using the notes or
   actions fields. The specifics depend on the Nagios version as well as how
@@ -557,7 +557,7 @@ Configuring Graphing and Display
         ...
       }
 
- Displaying Graphs in Nagios Mouseovers
+ Graphs in Nagios Mouseovers
 
   To display graphs as mouseovers for each host and/or service, do the
   following:
@@ -601,7 +601,7 @@ Configuring Graphing and Display
   displayed by default for each service, or specify the data source(s)
   explicity in each action_url.
 
- Displaying Graphs in Nagios Frames
+ Graphs in Nagios Frames
 
   To embed nagiosgraph graphs directly into Nagios, do the following:
 

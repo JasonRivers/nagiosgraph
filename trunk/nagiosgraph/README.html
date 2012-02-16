@@ -46,15 +46,15 @@
 	<li><a href="#configuring_graphing_and_display">Configuring Graphing and Display</a></li>
 	<ul>
 
-		<li><a href="#displaying_per_service_and_per_host_graph_icons_and_links_in_nagios">Displaying Per-Service and Per-Host Graph Icons and Links in Nagios</a></li>
+		<li><a href="#graph_icons_and_links_in_nagios">Graph Icons and Links in Nagios</a></li>
 		<ul>
 
 			<li><a href="#for_nagios_2_6_and_earlier">For Nagios 2.6 and Earlier</a></li>
 			<li><a href="#for_nagios_2_9_and_nagios_3">For Nagios 2.9 and Nagios 3</a></li>
 		</ul>
 
-		<li><a href="#displaying_graphs_in_nagios_mouseovers">Displaying Graphs in Nagios Mouseovers</a></li>
-		<li><a href="#displaying_graphs_in_nagios_frames">Displaying Graphs in Nagios Frames</a></li>
+		<li><a href="#graphs_in_nagios_mouseovers">Graphs in Nagios Mouseovers</a></li>
+		<li><a href="#graphs_in_nagios_frames">Graphs in Nagios Frames</a></li>
 	</ul>
 
 	<li><a href="#customizing_the_graphs">Customizing the Graphs</a></li>
@@ -550,7 +550,7 @@ directly in the Nagios frames.  The following sections explain how to do each
 of these.</p>
 <p>
 </p>
-<h2><a name="displaying_per_service_and_per_host_graph_icons_and_links_in_nagios">Displaying Per-Service and Per-Host Graph Icons and Links in Nagios</a></h2>
+<h2><a name="graph_icons_and_links_in_nagios">Graph Icons and Links in Nagios</a></h2>
 <p>Links to graphs can be embedded in Nagios status pages using the notes or
 actions fields.  The specifics depend on the Nagios version as well as how
 you have configured your host and service definitions.  Nagios 2 uses the
@@ -622,7 +622,7 @@ a new window, set action_url_target=main in the Nagios cgi.cfg file.</p>
     }</pre>
 <p>
 </p>
-<h2><a name="displaying_graphs_in_nagios_mouseovers">Displaying Graphs in Nagios Mouseovers</a></h2>
+<h2><a name="graphs_in_nagios_mouseovers">Graphs in Nagios Mouseovers</a></h2>
 <p>To display graphs as mouseovers for each host and/or service, do the following:</p>
 <ol>
 <li>
@@ -665,7 +665,7 @@ default for each service, or specify the data source(s) explicity in each
 action_url.</p>
 <p>
 </p>
-<h2><a name="displaying_graphs_in_nagios_frames">Displaying Graphs in Nagios Frames</a></h2>
+<h2><a name="graphs_in_nagios_frames">Graphs in Nagios Frames</a></h2>
 <p>To embed nagiosgraph graphs directly into Nagios, do the following:</p>
 <p>Modify side.php (e.g. /usr/local/nagios/share/side.php) by inserting
 bullets under the 'Trends' heading:</p>
