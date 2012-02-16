@@ -37,7 +37,7 @@ WriteMakefile(
                          'DIST_DEFAULT' => 'all tardist',
                          'COMPRESS'     => "gzip -9f" },
     'realclean'     => { 'FILES' => 'Makefile.old nagiosgraph-*.tar.gz nagiosgraph-*.deb nagiosgraph-*.rpm' },
-    'clean'         => { 'FILES' => 'cover_db perltidy.ERR test.* Debian_CPANTS.txt install-log' },
+    'clean'         => { 'FILES' => 'cover_db perltidy.ERR test.* Debian_CPANTS.txt install-log pod2*.tmp' },
 );
 
 sub MY::install { "
@@ -47,6 +47,12 @@ install:
 }
 
 sub MY::postamble { "
+docs:
+\tpod2text README.pod --indent=2 --loose > README
+\tpod2html README.pod > README.html
+\tperl -pi -e 's/div name=\"index\"/div name=\"index\" class=\"index\"/' README.html
+\tutils/mkpodidx.pl
+
 critic:
 \tperlcritic -1 install.pl etc/ngshared.pm lib/insert.pl cgi/*.cgi t/*.t
 
