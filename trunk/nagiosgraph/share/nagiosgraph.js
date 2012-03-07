@@ -8,7 +8,7 @@
 // Author:  (c) 2010 Matthew Wall
 
 var PNAME = [ 'hour', 'day', 'week', 'month', 'quarter', 'year' ];
-var VERSION = 1.6;
+var VERSION = 1.7;
 
 // dead simple i18n
 // based on http://24ways.org/2007/javascript-internationalisation
@@ -882,10 +882,18 @@ function getCGIBoolean(key) {
 function setExpansionState(expanded, panel, button) {
   if (expanded) {
     if (panel) panel.style.display = 'inline';
-    if (button) button.value = '-';
+    if (button) {
+      button.value = '-';
+      button.firstElementChild.style.display = 'none';
+      button.lastElementChild.style.display = 'inline';
+    }
   } else {
     if (panel) panel.style.display = 'none';
-    if (button) button.value = '+';
+    if (button) {
+      button.value = '+';
+      button.firstElementChild.style.display = 'inline';
+      button.lastElementChild.style.display = 'none';
+    }
   }
 }
 
@@ -894,8 +902,12 @@ function toggleExpansionState(id, button) {
   toggleDisplay(elem);
   if (elem.style.display == 'inline') {
     button.value = '-';
+    button.firstElementChild.style.display = 'none';
+    button.lastElementChild.style.display = 'inline';
   } else {
     button.value = '+';
+    button.firstElementChild.style.display = 'inline';
+    button.lastElementChild.style.display = 'none';
   }
 }
 
@@ -1024,8 +1036,8 @@ function mkCGIArgs() {
     }
   }
 
-  elem = document.menuform.showhidecontrols;
-  if (elem && elem.value == '-') {
+  elem = document.getElementById('secondary_controls_box');
+  if (elem && elem.style.display == 'inline') {
     args.push('expand_controls');
   }
 

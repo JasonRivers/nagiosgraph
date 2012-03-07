@@ -72,7 +72,7 @@ use constant {
 # nagiosgraph.js file.  change this number when the javascript is not
 # backward compatible with previous versions.
 use constant {
-    JSVERSION => 1.6,
+    JSVERSION => 1.7,
     JSMISSING => 'nagiosgraph.js is not installed or wrong version.',
     JSDISABLED => 'JavaScript is disabled.',
 };
@@ -102,6 +102,10 @@ use constant {
 
 # 5x5 clear image
 use constant IMG => 'iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAIXRFWHRTb2Z0d2FyZQBHcmFwaGljQ29udmVydGVyIChJbnRlbCl3h/oZAAAAGUlEQVR4nGL4//8/AzrGEKCCIAAAAP//AwB4w0q2n+syHQAAAABJRU5ErkJggg==';
+# 8x8 plus sign 
+use constant IMG_PLUS => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAQAAABuBnYAAAAAGUlEQVQImWNggIANQIgC8AlsQIOYAiQbCgAUMxNBUqWR0wAAAABJRU5ErkJggg==';                                                               
+# 8x8 minus sign 
+use constant IMG_MINUS => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAQAAABuBnYAAAAAEklEQVQIW2NgIANsQIOYAiQDAOcmCwGcy16yAAAAAElFTkSuQmCC';
 
 $colorsub = -1;
 
@@ -2431,45 +2435,52 @@ sub printcontrols {
         div({-class => 'controls'}, "\n" .
             $cgi->start_form(-method => 'GET',
                              -action => $action,
-                             -name => 'menuform') . "\n",
+                             -name => 'menuform'),
             $cgi->div({-class => 'primary_controls'}, "\n",
-                      $menustr . "\n",
+                      $menustr, "\n",
                       $cgi->span({-class => 'executor'},
                                  $cgi->button(-name => 'go',
                                               -label => _('Update Graphs'),
                                               -onClick => 'jumpto()')
-                                 ) . "\n"), "\n",
-            $cgi->div({-class => 'secondary_controls'}, "\n" .
-                      $cgi->p({-class => 'controls_toggle'},
-                              $cgi->button(-name => 'showhidecontrols',
-                                           -onClick => 'toggleControlsDisplay(this)',
-                                           -label => q(-))) . "\n",
-                      ) . "\n",
-            $cgi->div({-id => 'secondary_controls_box', -style => 'display:none'}, "\n" .
-                      $cgi->table($cgi->Tr({-valign => 'top'},
+                                 ), "\n",
+                      ), "\n",
+            $cgi->div({-class => 'secondary_controls'}, "\n",
+                      $cgi->span({-class => 'controls_toggle'},
+                                 '<button type="button" onClick="toggleControlsDisplay(this)">',
+                                 $cgi->img({src => IMG_PLUS}),
+                                 $cgi->img({style => 'display:none', src => IMG_MINUS}),
+                                 '</button>'
+                                 ), "\n",
+                      ), "\n",
+            $cgi->div({-id => 'secondary_controls_box', -style => 'display:none'}, "\n",
+                      $cgi->table($cgi->Tr({-valign => 'top'}, "\n",
                                            $cgi->td(($context eq 'both' || $context eq 'service')
-                                                    ? $cgi->table($cgi->Tr({-valign => 'top', -id => 'db_controls' },
-                                                                           $cgi->td({-class => 'control_label'}, _('Data Sets:')),
-                                                                           $cgi->td($cgi->popup_menu(-name => 'db', -values => [], -size => DBLISTROWS, -multiple => 1)),
-                                                                           $cgi->td($cgi->button(-name => 'clear', -label => _('Clear'), -onClick => 'clearDBSelection()')),
-                                                                           ))
-                                                    : q()),
-                                           $cgi->td($cgi->table($cgi->Tr({-valign => 'top'},
-                                                                         $cgi->td({-class => 'control_label'}, _('Periods:')),
-                                                                         $cgi->td($cgi->popup_menu(-name => 'period', -values => [@PERIOD_KEYS], -labels => \%period_labels, -size => PERIODLISTROWS, -multiple => 1)),
-                                                                         $cgi->td($cgi->button(-name => 'clear', -label => _('Clear'), -onClick => 'clearPeriodSelection()')),
-                                                                         ),
-                                                                $cgi->Tr($cgi->td({-class => 'control_label'}, _('Size:')),
-                                                                         $cgi->td($cgi->popup_menu(-name => 'geom', -values => [@geom], -labels => \%geom_labels)),
-                                                                         $cgi->td(q( ))
-                                                                         ),
-                                                                $cgi->Tr($cgi->td({-class => 'control_label'}, _('End Date:')),
-                                                                         $cgi->td({-colspan => '2'}, $cgi->button(-name => 'enddate', -label => 'now', -onClick => 'showDateTimePicker(this)')),
-                                                                         ),
-                                                                         )),
-                                           )),
-                      ) . "\n",
-            $cgi->end_form . "\n");
+                                                    ? $cgi->table($cgi->Tr({-valign => 'top', -id => 'db_controls' }, "\n",
+                                                                           $cgi->td({-class => 'control_label'}, _('Data Sets:')), "\n",
+                                                                           $cgi->td($cgi->popup_menu(-name => 'db', -values => [], -size => DBLISTROWS, -multiple => 1)), "\n",
+                                                                           $cgi->td($cgi->button(-name => 'clear', -label => _('Clear'), -onClick => 'clearDBSelection()')), "\n",
+                                                                           ), "\n",
+                                                                  ) . "\n"
+                                                    : q()), "\n",
+                                           $cgi->td($cgi->table($cgi->Tr({-valign => 'top'}, "\n",
+                                                                         $cgi->td({-class => 'control_label'}, _('Periods:')), "\n",
+                                                                         $cgi->td($cgi->popup_menu(-name => 'period', -values => [@PERIOD_KEYS], -labels => \%period_labels, -size => PERIODLISTROWS, -multiple => 1)), "\n",
+                                                                         $cgi->td($cgi->button(-name => 'clear', -label => _('Clear'), -onClick => 'clearPeriodSelection()')), "\n",
+                                                                         ), "\n",
+                                                                $cgi->Tr($cgi->td({-class => 'control_label'}, _('Size:')), "\n",
+                                                                         $cgi->td($cgi->popup_menu(-name => 'geom', -values => [@geom], -labels => \%geom_labels)), "\n",
+                                                                         $cgi->td(q( )), "\n",
+                                                                         ), "\n",
+                                                                $cgi->Tr($cgi->td({-class => 'control_label'}, _('End Date:')), "\n",
+                                                                         $cgi->td({-colspan => '2'}, $cgi->button(-name => 'enddate', -label => 'now', -onClick => 'showDateTimePicker(this)')), "\n",
+                                                                         ), "\n",
+                                                                ), "\n",
+                                                    ), "\n",
+                                           ), "\n",
+                                  ), "\n",
+                      ), "\n",
+            $cgi->end_form,
+            "\n");
 }
 
 sub printgraphlinks {
@@ -2572,9 +2583,10 @@ sub printperiodlinks {
     my $id = 'period_data_' . $period->[0];
     return $cgi->div({-class => 'period_banner'},
                      $cgi->span({-class => 'period_title'},
-                                $cgi->button(-id => 'toggle_' . $period->[0],
-                                             -label => q(-),
-                                             -onClick => 'togglePeriodDisplay(\'' . $id . '\', this)'),
+                                '<button type="button" class="period_toggle" id="toggle_' . $period->[0] . '" onClick="togglePeriodDisplay(\'' . $id . '\', this)">',
+                                $cgi->img({src => IMG_PLUS}),
+                                $cgi->img({src => IMG_MINUS}),
+                                '</button>',
                                 $cgi->a({ -id => $period->[0] },
                                         _($PERIOD_LABELS{$period->[0]}))),
                      $cgi->span({-class => 'period_controls'},

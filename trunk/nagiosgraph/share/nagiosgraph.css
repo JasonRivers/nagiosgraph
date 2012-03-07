@@ -19,6 +19,11 @@ h1 {
   font-size: 1.3em;
   padding-top: 0.25em;
 }
+h2 {
+  clear: both;
+  font-size: 1.2em;
+  padding-top: 0;
+}
 .period_banner {
   clear: both;
   padding-top: 0.25em;
@@ -83,9 +88,8 @@ h1 {
   font-size: 0.8em;
   font-style: italic;
 }
-.summary {
-  margin-top: 1em;
-  margin-bottom: 1em;
+.period_toggle {
+  font-size: 5pt;
 }
 
 #ngzZoomInfo {
@@ -132,24 +136,6 @@ td.calHdrCell {
   opacity: 0.9;
 }
 
-#toggle_hour {
-  font-size: 5pt;
-}
-#toggle_day {
-  font-size: 5pt;
-}
-#toggle_week {
-  font-size: 5pt;
-}
-#toggle_month {
-  font-size: 5pt;
-}
-#toggle_quarter {
-  font-size: 5pt;
-}
-#toggle_year {
-  font-size: 5pt;
-}
 
 /* controls in upper right corner, floating above graphs. */
 .controls {
@@ -174,4 +160,8 @@ td.calHdrCell {
 .controls_toggle {
   text-align: right;
   margin: 0 0 0 0;
+}
+.summary {
+  margin-top: 1em;
+  margin-bottom: 1em;
 }
