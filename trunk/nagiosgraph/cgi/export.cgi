@@ -53,7 +53,7 @@ if ($format ne 'csv' && $format ne 'dump' && $format ne 'info') {
 }
 if (! defined $db && defined $host && defined $service) {
     my $fref = dbfilelist($host, $service);
-    my @files = @$fref;
+    my @files = @{$fref};
     if (scalar @files > 0) {
         push @fmsgs, "RRD files for host <b>$host</b> and service <b>$service</b> include:";
         foreach my $f (@files) {
@@ -64,7 +64,7 @@ if (! defined $db && defined $host && defined $service) {
     }
 }
 if (scalar @msgs > 0) {
-    htmlerror( join '<br>', @msgs, '', @help, '', @fmsgs );
+    htmlerror( join '<br>', @msgs, q(), @help, q(), @fmsgs );
     exit 0;
 }
 if (! havepermission($host, $service)) {
