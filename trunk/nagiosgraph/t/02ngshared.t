@@ -55,7 +55,7 @@ BEGIN {
         plan tests => 0;
         exit 0;
     } else {
-        plan tests => 665;
+        plan tests => 663;
     }
 }
 
@@ -800,13 +800,15 @@ sub testreadconfig {
     my $fn = "$curdir/testlog.txt";
     my $msg;
 
-    $msg = readconfig('read');
-    ok($msg, q());
-    unlink $fn;
+# FIXME: these two tests redirect all test output to stderr
 
-    $msg = readconfig('read', '');
-    ok($msg, q());
-    unlink $fn;
+#    $msg = readconfig('read');
+#    ok($msg, q());
+#    unlink $fn;
+
+#    $msg = readconfig('read', '');
+#    ok($msg, q());
+#    unlink $fn;
 
     $Config{testlog} = $fn;
     $msg = readconfig('read', 'testlog');
@@ -815,6 +817,7 @@ sub testreadconfig {
 
     # test handling of hash/list variables
 
+    $Config{testlog} = $fn;
     $msg = readconfig('read', 'testlog');
     ok($msg, q());
     ok($Config{rrdopts}, undef);
@@ -3413,8 +3416,8 @@ sub testscanhsdata {
   },
   'host3' => {
     'ping' => [
-      'rta',
-      'loss'
+      'loss',
+      'rta'
     ]
   },
   'host4' => {
