@@ -4063,7 +4063,7 @@ sub testheartbeat {
     rmtree($rrddir);
 
     unlink $cfgfn;
-    teardowndebug();
+#    teardowndebug();
     return;
 }
 
