@@ -2,6 +2,7 @@ $Id$
 
 1.4.5 TBD
 
+* ensure compatibility with debian 6
 * ensure that insert.pl works with nagios embedded perl
 * use embedded images for show/hide toggle buttons (thanks to matt perry)
 * ensure graph controls float above other elements
