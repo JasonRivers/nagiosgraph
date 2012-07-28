@@ -377,7 +377,7 @@ sub testimgerror {
     open STDOUT, ">&SAVEOUT" or carp "open STDOUT failed: $OS_ERROR";
     close SAVEOUT or carp "close SAVEOUT failed: $OS_ERROR";
     my $result = readtestfile($fn);
-    ok($result, "Content-Type: image/png\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\0\5\0\0\0\5\b\6\0\0\0\x8Do&\xE5\0\0\0!tEXtSoftware\0GraphicConverter (Intel)w\x87\xFA\31\0\0\0\31IDATx\x9Cb\xF8\xFF\xFF?\3:\xC6\20\xA0\x82 \0\0\0\xFF\xFF\3\0x\xC3J\xB6\x9F\xEB2\35\0\0\0\0IEND\xAEB`\x82");
+    ok($result, "Content-Type: image/png; charset=ISO-8859-1\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\0\5\0\0\0\5\b\6\0\0\0\x8Do&\xE5\0\0\0!tEXtSoftware\0GraphicConverter (Intel)w\x87\xFA\31\0\0\0\31IDATx\x9Cb\xF8\xFF\xFF?\3:\xC6\20\xA0\x82 \0\0\0\xFF\xFF\3\0x\xC3J\xB6\x9F\xEB2\35\0\0\0\0IEND\xAEB`\x82");
     unlink $fn;
 
     open SAVEOUT, ">&STDOUT" or carp "open SAVEOUT failed: $OS_ERROR";
@@ -389,9 +389,9 @@ sub testimgerror {
     $result = readtestfile($fn);
 
     if ($havegd) {
-        ok($result, "Content-Type: image/png\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\2`\0\0\0\27\1\3\0\0\0\x96\35a\xC3\0\0\0\6PLTE\xFF\xFF\xFF\xFF\24\24\xDF.\xE4\xBB\0\0\0\1tRNS\0@\xE6\xD8f\0\0\0>IDAT8\x8Dc`\30\5\xA3\0;`a`\34\xA4\x86\xF1\xCB\24\37\xA0\x9Aa,J\x9DT3\x8B\x81\xC5.\x91\x8A\x86)\bR\xD1\xB0\5\x9D\nT3\x8CY\xA6\xE0\0\xD5\f\e\5\xA3\x80\16\0\0\4Q\5\x8C\xE7\37\xF6\\\0\0\0\0IEND\xAEB`\x82");
+        ok($result, "Content-Type: image/png; charset=ISO-8859-1\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\2`\0\0\0\27\1\3\0\0\0\x96\35a\xC3\0\0\0\6PLTE\xFF\xFF\xFF\xFF\24\24\xDF.\xE4\xBB\0\0\0\1tRNS\0@\xE6\xD8f\0\0\0>IDAT8\x8Dc`\30\5\xA3\0;`a`\34\xA4\x86\xF1\xCB\24\37\xA0\x9Aa,J\x9DT3\x8B\x81\xC5.\x91\x8A\x86)\bR\xD1\xB0\5\x9D\nT3\x8CY\xA6\xE0\0\xD5\f\e\5\xA3\x80\16\0\0\4Q\5\x8C\xE7\37\xF6\\\0\0\0\0IEND\xAEB`\x82");
     } else {
-        ok($result, "Content-Type: image/png\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\0\5\0\0\0\5\b\6\0\0\0\x8Do&\xE5\0\0\0!tEXtSoftware\0GraphicConverter (Intel)w\x87\xFA\31\0\0\0\31IDATx\x9Cb\xF8\xFF\xFF?\3:\xC6\20\xA0\x82 \0\0\0\xFF\xFF\3\0x\xC3J\xB6\x9F\xEB2\35\0\0\0\0IEND\xAEB`\x82");
+        ok($result, "Content-Type: image/png; charset=ISO-8859-1\r\n\r\n\x89PNG\r\n\32\n\0\0\0\rIHDR\0\0\0\5\0\0\0\5\b\6\0\0\0\x8Do&\xE5\0\0\0!tEXtSoftware\0GraphicConverter (Intel)w\x87\xFA\31\0\0\0\31IDATx\x9Cb\xF8\xFF\xFF?\3:\xC6\20\xA0\x82 \0\0\0\xFF\xFF\3\0x\xC3J\xB6\x9F\xEB2\35\0\0\0\0IEND\xAEB`\x82");
     }
 
     unlink $fn;

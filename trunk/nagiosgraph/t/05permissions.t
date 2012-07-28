@@ -35,6 +35,10 @@ BEGIN {
     } else {
         plan tests => 188;
     }
+
+# force locale to c to avoid locale-specific differences.  prolly should not
+# be testing for them in the first place.
+#    $ENV{LANG} = $ENV{LC_MESSAGES} = $ENV{LC_ALL} = "C"
 }
 
 sub writefile {
@@ -204,7 +208,7 @@ sub testloadperms {
         };\n");
     $Config{authzfile} = 'boo';
     $errmsg = loadperms('guest');
-    ok($errmsg, qr/^cannot open nagios config boo: /);
+    ok($errmsg, '/^cannot open nagios config boo: /');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -309,7 +313,7 @@ sub testreadnagiosperms {
 
     $Config{authzfile} = 'foobar';
     $errmsg = readnagiosperms('guest');
-    ok($errmsg, qr/^cannot open nagios config foobar: /);
+    ok($errmsg, '/^cannot open nagios config foobar: /');
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -582,7 +586,7 @@ sub testreadpermsfile {
 
     $Config{authzfile} = 'foobar';
     $errmsg = readpermsfile('guest');
-    ok($errmsg, "cannot open access control file $FindBin::Bin/../etc/foobar: No such file or directory");
+    ok($errmsg, qr/^cannot open access control file $FindBin::Bin\/..\/etc\/foobar: /);
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0

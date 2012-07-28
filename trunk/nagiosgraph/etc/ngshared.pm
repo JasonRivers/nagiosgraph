@@ -571,7 +571,7 @@ sub htmlerror {
 sub imgerror {
     my ($cgi, $msg) = @_;
     $OUTPUT_AUTOFLUSH = 1;
-    print $cgi->header(-type => 'image/png') .
+    print $cgi->header(-type => 'image/png', -charset => 'ISO-8859-1') .
         ( defined $msg && $msg ne q() ? getimg($msg) : decode_base64(IMG))
         or debug(DBCRT, "could not write to STDOUT: $OS_ERROR");
     return;
