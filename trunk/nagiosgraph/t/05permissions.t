@@ -204,7 +204,7 @@ sub testloadperms {
         };\n");
     $Config{authzfile} = 'boo';
     $errmsg = loadperms('guest');
-    ok($errmsg, 'cannot open nagios config boo: No such file or directory');
+    ok($errmsg, qr/^cannot open nagios config boo: /);
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -263,7 +263,7 @@ sub testloadperms {
         };\n");
     $Config{authzfile} = 'boo';
     $errmsg = loadperms('guest');
-    ok($errmsg, "cannot open access control file $FindBin::Bin/../etc/boo: No such file or directory");
+    ok($errmsg, qr/^cannot open access control file $FindBin::Bin\/..\/etc\/boo: /);
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
@@ -309,7 +309,7 @@ sub testreadnagiosperms {
 
     $Config{authzfile} = 'foobar';
     $errmsg = readnagiosperms('guest');
-    ok($errmsg, 'cannot open nagios config foobar: No such file or directory');
+    ok($errmsg, qr/^cannot open nagios config foobar: /);
     ok(Dumper(\%authz), "\$VAR1 = {
           'default_host_access' => {
                                      'default_service_access' => 0
