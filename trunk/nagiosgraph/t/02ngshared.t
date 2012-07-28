@@ -1524,16 +1524,16 @@ sub testgetserverlist {
     'host3' => {
       'ping' => [
         [
-          'loss',
-          'losscrit',
-          'losspct',
-          'losswarn'
-        ],
-        [
           'rta',
           'rtacrit',
           'rta',
           'rtawarn'
+        ],
+        [
+          'loss',
+          'losscrit',
+          'losspct',
+          'losswarn'
         ]
       ]
     },
@@ -1587,16 +1587,16 @@ sub testgetserverlist {
     'host3' => {
       'ping' => [
         [
-          'loss',
-          'losscrit',
-          'losspct',
-          'losswarn'
-        ],
-        [
           'rta',
           'rtacrit',
           'rta',
           'rtawarn'
+        ],
+        [
+          'loss',
+          'losscrit',
+          'losspct',
+          'losswarn'
         ]
       ]
     },
@@ -3374,8 +3374,8 @@ sub testscanhsdata {
   },
   'host3' => {
     'ping' => [
-      'loss',
-      'rta'
+      'rta',
+      'loss'
     ]
   },
   'host4' => {
@@ -3416,8 +3416,8 @@ sub testscanhsdata {
   },
   'host3' => {
     'ping' => [
-      'loss',
-      'rta'
+      'rta',
+      'loss'
     ]
   },
   'host4' => {
