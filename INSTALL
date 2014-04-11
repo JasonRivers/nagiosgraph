@@ -20,10 +20,14 @@ To install pre-requisites:
     sudo apt-get install libcgi-pm-perl librrds-perl libgd-gd2-perl
   Redhat/Fedora/CentOS
     sudo yum install perl-rrdtool perl-GD
+  Mac OS X Homebrew
+    brew install rrdtool
+    cpan -i -f GD
+    cpan -i Nagios::Config
 
 
-Easy Install
-------------
+Easy Install for Nagios
+-----------------------
 
     install.pl
 
@@ -35,7 +39,12 @@ To see a list of options:
 Recipe for Manual Installation
 ------------------------------
 
-These instructions assume an overlay layout, with nagios at /usr/local/nagios
+These instructions assume an overlay layout, with nagios at /usr/local/nagios,
+with additional notes for deployment under the Homebrew nagios package on OS X.
+
+The Icinga 1 re-write of Nagios uses the same configuration files, so these
+steps may apply by replacing the nagios paths with icinga paths, but has not
+been tested.
 
  - Extract nagiosgraph into a temporary location:
      cd /tmp
@@ -51,13 +60,20 @@ These instructions assume an overlay layout, with nagios at /usr/local/nagios
 
  - Copy insert.pl to a location from which it can be executed:
      cp lib/insert.pl /usr/local/nagios/libexec
+   or for Homebrew:
+     cp lib/insert.pl /usr/local/opt/nagios/bin
 
  - Copy CGI scripts to a script directory served by the web server:
      cp cgi/*.cgi /usr/local/nagios/sbin
+   or for Homebrew:
+     cp cgi/*.cgi /usr/local/opt/nagios/cgi-bin
 
  - Copy CSS and JavaScript files to a directory served by the web server:
      cp share/nagiosgraph.css /usr/local/nagios/share
      cp share/nagiosgraph.js /usr/local/nagios/share
+   or for Homebrew:
+     cp share/nagiosgraph.css /usr/local/opt/nagios/share/nagios/htdocs
+     cp share/nagiosgraph.js /usr/local/opt/nagios/share/nagios/htdocs
 
  - Edit /etc/nagiosgraph/nagiosgraph.conf.  Set at least the following:
      logfile           = /var/log/nagiosgraph.log
