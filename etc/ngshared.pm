@@ -44,7 +44,7 @@ use vars qw($VERSION %Config %Labels %i18n %authhosts %authz %hsdata $colorsub $
 ## no critic (Modules::ProhibitAutomaticExportation)
 our @EXPORT = qw($VERSION $CFGNAME %Config DBCRT DBERR DBWRN DBINF DBDEB cfgparams checkrrddir convertdeprecated dbfilelist debug dumper getdebug getimg getlabel getparams getperiodctrls getperiodlabel getrules getstyle gettimestamp graphsizes hashcolor havepermission htmlerror imgerror init initperiods loadperms printfooter printgraphlinks printheader printinitscript printperiodlinks processdata readconfig readdatasetdb readgroupdb readhostdb readi18nfile readlabelsfile readperfdata readrrdoptsfile readservdb rrdline $LOG %authz %authhosts %hsdata %Labels %i18n addopt arrayorstring buildurl checkdatasources checkdirempty checkdsname checkminmax checkuserlist cleanline createminmax createrrd filterdb formatelapsedtime formattime getcfgfn getdataitems getdatalabel getdbs gethsdd gethsddvalue gethsdvalue gethsdvalue2 getlineattr getperms getrefresh getrras getserverlist graphinfo hsddmatch initlog listtodict mergeopts mkfilename mki18nfilename mklegend mkvname parsedb printcontrols printdefaultscript printi18nscript printincludescript printmenudatascript printsummary readfile readnagiosperms readpermsfile rrdupdate runcreate runupdate scandirectory scanhierarchy scanhsdata scrubuserlist setdata setlabels sortnaturally stacktrace str2list evalrules);
 
-$VERSION = '1.4.5';
+$VERSION = '1.5.1';
 $CFGNAME = 'nagiosgraph.conf';
 
 use constant PROG => basename($PROGRAM_NAME);
