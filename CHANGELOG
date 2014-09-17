@@ -1,6 +1,14 @@
 $Id$
 
-1.4.5 TBD
+1.5.2 2014-09-13
+
+* Merge SuSE path update from Cthulhu
+
+1.5.1 2014-04-30
+
+* Update version number
+
+1.5.0 2014-04-11
 
 * ensure compatibility with debian 6
 * ensure that insert.pl works with nagios embedded perl
