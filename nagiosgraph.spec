@@ -61,7 +61,7 @@
 
 Summary: Nagios add-on for performance data storage and graphing
 Name: nagiosgraph
-Version: VERSION
+Version: 1.5.3
 Release: %{release}
 Group: Applications/System
 Source: http://sourceforge.net/projects/nagiosgraph/files/nagiosgraph/%{version}/%{name}-%{version}.tar.gz
@@ -133,6 +133,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %attr(755,root,root) %{ng_cgi_dir}/showhost.cgi
 %attr(755,root,root) %{ng_cgi_dir}/showservice.cgi
 %attr(755,root,root) %{ng_cgi_dir}/testcolor.cgi
+%attr(755,root,root) %{ng_cgi_dir}/export.cgi
 %doc %{ng_doc_dir}/AUTHORS
 %doc %{ng_doc_dir}/CHANGELOG
 %doc %{ng_doc_dir}/INSTALL
@@ -166,6 +167,10 @@ rm -rf ${RPM_BUILD_ROOT}
 %{ng_examples_dir}/map_1_4_4
 %{ng_examples_dir}/map_1_3
 %{ng_examples_dir}/map_1_4_3
+%{ng_examples_dir}/map_1_4_5
+%{ng_examples_dir}/graphed-host.cfg
+%{ng_examples_dir}/graphed-service.cfg
+%{ng_examples_dir}/insert.sh
 %{ng_examples_dir}/graph.gif
 %{ng_examples_dir}/nagiosgraph.ssi
 %{ng_www_dir}/nagiosgraph.css
