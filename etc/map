@@ -155,7 +155,7 @@ and push @s, [ 'procs',
 #
 #   label=value[UOM];[warn];[crit];[min];[max]
 #
-# if units are KB, MB, TB, PB then convert to B
+# if units are KB, MB, TB, PB, KiB, MiB, TiB, PiB then convert to B
 # if units are ms or us then convert to s
 # if units is counter, then use type DERIVE (DS min will be 0)
 #
@@ -219,14 +219,24 @@ and push @s, [ 'procs',
             } elsif ($u eq 'B') {
                 $mult = 1;
             } elsif ($u eq 'KB' || $u eq 'K' || $u eq 'kB') {
-                $mult = 1024;
+                $mult = 1000;
             } elsif ($u eq 'MB' || $u eq 'M' || $u eq 'mB') {
-                $mult = 1024 * 1024;
+                $mult = 1000 * 1000;
             } elsif ($u eq 'GB' || $u eq 'G' || $u eq 'gB') {
-                $mult = 1024 * 1024 * 1024;
+                $mult = 1000 * 1000 * 1000;
             } elsif ($u eq 'TB' || $u eq 'T' || $u eq 'tB') {
-                $mult = 1024 * 1024 * 1024 * 1024;
+                $mult = 1000 * 1000 * 1000 * 1000;
             } elsif ($u eq 'PB' || $u eq 'P' || $u eq 'pB') {
+                $mult = 1000 * 1000 * 1000 * 1000 * 1000;
+            } elsif ($u eq 'KiB' || $u eq 'kiB') {
+                $mult = 1024;
+            } elsif ($u eq 'MiB' || $u eq 'miB') {
+                $mult = 1024 * 1024;
+            } elsif ($u eq 'GiB' || $u eq 'giB') {
+                $mult = 1024 * 1024 * 1024;
+            } elsif ($u eq 'TiB' || $u eq 'tiB') {
+                $mult = 1024 * 1024 * 1024 * 1024;
+            } elsif ($u eq 'PiB' || $u eq 'piB') {
                 $mult = 1024 * 1024 * 1024 * 1024 * 1024;
             }
             if ($mult != 1) {
